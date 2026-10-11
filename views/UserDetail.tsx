@@ -314,7 +314,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
 
     if (loading || !user) {
         return (
-            <div className="flex flex-col items-center justify-center p-24 text-gray-400 gap-4 animate-pulse w-full">
+            <div className="flex flex-col items-center justify-center p-24 text-gray-500 dark:text-gray-400 gap-4 animate-pulse w-full">
                 <Spinner className="w-12 h-12 animate-spin text-primary-500" />
                 <p className="font-bold text-xs uppercase tracking-widest text-zinc-500">Retrieving Traveler ID...</p>
             </div>
@@ -377,7 +377,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                         setEditPassportExpiryDate(user.passportExpiryDate || '');
                                         setIsEditing(true);
                                     }}
-                                    className="p-2 text-zinc-400 hover:text-blue-500 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
+                                    className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-blue-500 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
                                     title="Edit Profile Details"
                                     aria-label="Edit Profile Details"
                                 >
@@ -454,7 +454,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                         <div className="p-6 border-b border-gray-100/40 dark:border-white/5 bg-gradient-to-r from-teal-500/5 to-emerald-500/5 flex justify-between items-center bg-gray-50/50 dark:bg-white/5">
                             <div>
                                 <h3 className="font-extrabold text-gray-900 dark:text-white text-base">Leave & Entitlements</h3>
-                                <p className="text-2xs font-mono text-gray-400 uppercase tracking-widest font-bold">Vacation Days Allocations</p>
+                                <p className="text-2xs font-mono text-gray-500 dark:text-gray-400 uppercase tracking-widest font-bold">Vacation Days Allocations</p>
                             </div>
                             <Badge color={leavePercentage > 80 ? 'red' : leavePercentage > 40 ? 'amber' : 'green'}>
                                 {leavePercentage}% Consumed
@@ -486,11 +486,11 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
 
                             <div className="pt-4 border-t border-gray-100 dark:border-white/5 grid grid-cols-2 gap-4 text-left p-3.5 bg-slate-50/50 dark:bg-black/10 rounded-xl leading-none">
                                 <div>
-                                    <span className="text-2xs font-bold text-zinc-400 block uppercase tracking-wide">Remaining Balance</span>
+                                    <span className="text-2xs font-bold text-zinc-500 dark:text-zinc-400 block uppercase tracking-wide">Remaining Balance</span>
                                     <span className="text-lg font-black text-slate-800 dark:text-zinc-200 block mt-1">{(user.leaveBalance ?? 25) - (user.takenLeave ?? 0)} Days</span>
                                 </div>
                                 <div>
-                                    <span className="text-2xs font-bold text-zinc-400 block uppercase tracking-wide">Weekend Rule</span>
+                                    <span className="text-2xs font-bold text-zinc-500 dark:text-zinc-400 block uppercase tracking-wide">Weekend Rule</span>
                                     <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 block mt-2.5 uppercase font-mono truncate">{user.holidayWeekendRule || 'None'}</span>
                                 </div>
                             </div>
@@ -501,12 +501,12 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                     <Card noPadding className="rounded-3xl">
                         <div className="p-6 border-b border-gray-100/45 dark:border-white/5 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 bg-gray-50/50 dark:bg-white/5">
                             <h3 className="font-extrabold text-gray-900 dark:text-white text-base">Travel Stamps</h3>
-                            <p className="text-2xs font-mono text-gray-400 uppercase tracking-widest font-bold">Aero Passport Stamp Seal Roster</p>
+                            <p className="text-2xs font-mono text-gray-500 dark:text-gray-400 uppercase tracking-widest font-bold">Aero Passport Stamp Seal Roster</p>
                         </div>
                         <div className="p-6">
                             {stats.uniqueDestinations === 0 ? (
-                                <div className="py-12 text-center text-zinc-400 border border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl select-none">
-                                    <Ticket weight="duotone" className="w-10 h-10 mx-auto text-zinc-400" />
+                                <div className="py-12 text-center text-zinc-500 dark:text-zinc-400 border border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl select-none">
+                                    <Ticket weight="duotone" className="w-10 h-10 mx-auto text-zinc-500 dark:text-zinc-400" />
                                     <p className="text-xs font-mono tracking-widest font-bold uppercase mt-3">No active country seals stamped</p>
                                     <p className="text-xs opacity-75 mt-1">Stamps are visual seals dynamically minted from flight logs.</p>
                                 </div>
@@ -548,7 +548,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                     {trips.length === 0 ? (
                         <GlassPanel className="wg-glass-card rounded-[28px] p-16 text-center select-none shadow-glass-card">
                             <Compass weight="duotone" className="w-14 h-14 mx-auto text-gray-300 dark:text-gray-700" />
-                            <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mt-4">No active expeditions found for this traveler</p>
+                            <p className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-4">No active expeditions found for this traveler</p>
                             <p className="text-xs text-gray-500 max-w-xs mx-auto mt-2">When this user joins or gets assigned to a trip, their complete flight route details will appear beautifully styled here.</p>
                         </GlassPanel>
                     ) : (

@@ -959,7 +959,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
             }}
             className={`min-w-[44px] min-h-[44px] px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
               isMultiEditing
-                ? 'bg-primary-500 text-white border-primary-500 shadow-sm'
+                ? 'bg-primary-500 text-slate-950 border-primary-500 shadow-sm'
                 : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text border-black/10 dark:border-white/10'
             }`}
             title="Toggle bulk selection"
@@ -1093,7 +1093,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                 onClick={() => setHubTab('map')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   hubTab === 'map' 
-                    ? 'bg-white text-primary-500 shadow-sm dark:bg-dark-card' 
+                    ? 'bg-white text-primary-800 dark:text-primary-400 shadow-sm dark:bg-dark-card' 
                     : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text'
                 }`}
               >
@@ -1105,7 +1105,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                 onClick={() => setHubTab('chart')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   hubTab === 'chart' 
-                    ? 'bg-white text-primary-500 shadow-sm dark:bg-dark-card' 
+                    ? 'bg-white text-primary-800 dark:text-primary-400 shadow-sm dark:bg-dark-card' 
                     : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text'
                 }`}
               >

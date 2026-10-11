@@ -222,7 +222,7 @@ export const TimezoneSlider: React.FC = () => {
                          </div>
                     </div>
                 </div>
-                <div className="flex justify-between pl-32 text-2xs font-bold text-gray-400 uppercase tracking-widest mt-1">
+                <div className="flex justify-between pl-32 text-2xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-1">
                     <span>00:00</span>
                     <span>12:00</span>
                     <span>24:00</span>

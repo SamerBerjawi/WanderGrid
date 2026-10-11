@@ -54,7 +54,7 @@ export class ErrorBoundary extends Component<Props, State> {
             
             <h1 className="text-2xl font-black tracking-tight text-white mb-3">WanderGrid Stopped Unexpectedly</h1>
             
-            <p className="text-sm text-slate-400 mb-6 leading-relaxed">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
               An unhandled crash occurred in the frontend rendering cycle. This is usually caused by outdated, incompatible local cache or transient route state.
             </p>
 

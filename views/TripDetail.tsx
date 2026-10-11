@@ -470,7 +470,7 @@ const NomadGuide: React.FC<{ trip: Trip }> = ({ trip }) => {
                     <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm ${
                             m.role === 'user' 
-                            ? 'bg-primary-500 text-white rounded-tr-sm' 
+                            ? 'bg-primary-500 text-slate-950 rounded-tr-sm' 
                             : 'bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/10 text-light-text dark:text-dark-text rounded-tl-sm'
                         }`}>
                             <div><ChatText text={m.text} /></div>
@@ -1066,7 +1066,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         return getTransportScheduleEventsForDate(trip?.transports, dateStr);
     };
 
-    if (loading) return <div className="p-8 text-gray-400 animate-pulse">Loading Trip Data...</div>;
+    if (loading) return <div className="p-8 text-gray-500 dark:text-gray-400 animate-pulse">Loading Trip Data...</div>;
 
     if (loadError) {
         return (

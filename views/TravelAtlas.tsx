@@ -896,6 +896,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
           <button 
             type="button"
             onClick={() => setActiveTab('visited')}
+            aria-label="Visited"
             className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
               activeTab === 'visited'
                 ? 'text-primary-600 dark:text-primary-400 font-extrabold'
@@ -919,6 +920,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
           <button 
             type="button"
             onClick={() => setActiveTab('layovers')}
+            aria-label="Layovers"
             className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
               activeTab === 'layovers'
                 ? 'text-amber-600 dark:text-amber-400 font-extrabold'
@@ -942,6 +944,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
           <button 
             type="button"
             onClick={() => setActiveTab('wishlist')}
+            aria-label="Wishlist"
             className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
               activeTab === 'wishlist'
                 ? 'text-rose-600 dark:text-rose-400 font-extrabold'
@@ -965,6 +968,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
           <button 
             type="button"
             onClick={() => setActiveTab('cities')}
+            aria-label="Cities"
             className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
               activeTab === 'cities'
                 ? 'text-blue-600 dark:text-blue-400 font-extrabold'
@@ -988,6 +992,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
           <button 
             type="button"
             onClick={() => setActiveTab('sync')}
+            aria-label="Sync Scanner"
             className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
               activeTab === 'sync'
                 ? 'text-primary-600 dark:text-primary-400 font-extrabold'
@@ -1037,6 +1042,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
           <div className="md:col-span-4 select-none">
             <Select 
+              aria-label="Filter by region"
               id="region-filter"
               value={regionFilter}
               onChange={(e) => setRegionFilter(e.target.value)}
@@ -1049,7 +1055,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
       {/* Main Tab Content */}
       <div className="min-h-[300px]">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 text-gray-400">
+          <div className="flex flex-col items-center justify-center py-24 text-gray-500 dark:text-gray-400">
             <RefreshCw className="w-10 h-10 animate-spin text-indigo-500 mb-3" />
             <span className="text-xs font-bold uppercase tracking-wider">Syncing Atlas Registry...</span>
           </div>
@@ -1066,7 +1072,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
               >
                 {filteredVisitedCountries.length === 0 ? (
-                  <div className="col-span-full py-16 text-center text-gray-400 bg-white/40 dark:bg-zinc-900/20 border border-dashed border-gray-200 dark:border-white/5 rounded-3xl">
+                  <div className="col-span-full py-16 text-center text-gray-500 dark:text-gray-400 bg-white/40 dark:bg-zinc-900/20 border border-dashed border-gray-200 dark:border-white/5 rounded-3xl">
                     <Globe className="w-10 h-10 mx-auto text-gray-300 dark:text-zinc-700 mb-2" />
                     <p className="text-sm font-bold">No visited countries resolved yet</p>
                     <p className="text-xs text-gray-500 mt-1">Try to Scan history from top right, or manually register your first visited country.</p>
@@ -1194,7 +1200,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
               >
                 {filteredLayoverCountries.length === 0 ? (
-                  <div className="col-span-full py-16 text-center text-gray-400 bg-white/40 dark:bg-zinc-900/20 border border-dashed border-amber-500/20 dark:border-amber-500/10 rounded-3xl">
+                  <div className="col-span-full py-16 text-center text-gray-500 dark:text-gray-400 bg-white/40 dark:bg-zinc-900/20 border border-dashed border-amber-500/20 dark:border-amber-500/10 rounded-3xl">
                     <Plane className="w-10 h-10 mx-auto text-amber-400 dark:text-amber-500/40 mb-2 rotate-45" />
                     <p className="text-sm font-bold text-light-text dark:text-dark-text">No Layover Countries Catalogued</p>
                     <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1 max-w-sm mx-auto">
@@ -1304,7 +1310,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
               >
                 {wishlistCountriesList.length === 0 ? (
-                  <div className="col-span-full py-16 text-center text-gray-400 bg-white/40 dark:bg-zinc-900/20 border border-dashed border-rose-500/20 dark:border-rose-500/10 rounded-3xl">
+                  <div className="col-span-full py-16 text-center text-gray-500 dark:text-gray-400 bg-white/40 dark:bg-zinc-900/20 border border-dashed border-rose-500/20 dark:border-rose-500/10 rounded-3xl">
                     <Star className="w-10 h-10 mx-auto text-rose-400 dark:text-rose-500/40 mb-2" />
                     <p className="text-sm font-bold text-light-text dark:text-dark-text">No Wishlist Destinations Added</p>
                     <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1 max-w-sm mx-auto">

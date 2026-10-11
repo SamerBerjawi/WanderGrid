@@ -168,7 +168,7 @@ export const PWAInstallBanner: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleInstallClick}
-                    className="px-4 py-1.5 rounded-xl bg-primary-500 hover:bg-primary-600 active:scale-95 text-white text-xs font-bold shadow-md shadow-primary-500/25 flex items-center gap-1.5 transition-all min-h-[44px] cursor-pointer"
+                    className="px-4 py-1.5 rounded-xl bg-primary-500 hover:bg-primary-600 active:scale-95 text-slate-950 text-xs font-bold shadow-md shadow-primary-500/25 flex items-center gap-1.5 transition-all min-h-[44px] cursor-pointer"
                   >
                     <DownloadSimple size={16} weight="bold" />
                     <span>Install App</span>
@@ -204,7 +204,7 @@ export const PWAInstallBanner: React.FC = () => {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-primary-500 text-white flex items-center justify-center shadow-md">
+                  <div className="w-10 h-10 rounded-2xl bg-primary-500 text-slate-950 flex items-center justify-center shadow-md">
                     <DeviceMobile size={22} weight="duotone" />
                   </div>
                   <div>
@@ -270,7 +270,7 @@ export const PWAInstallBanner: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowIosInstructions(false)}
-                  className="w-full py-3 rounded-2xl bg-primary-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-primary-500/20 active:scale-95 transition-all cursor-pointer min-h-[44px]"
+                  className="w-full py-3 rounded-2xl bg-primary-500 text-slate-950 font-bold text-xs uppercase tracking-wider shadow-lg shadow-primary-500/20 active:scale-95 transition-all cursor-pointer min-h-[44px]"
                 >
                   Got It
                 </button>

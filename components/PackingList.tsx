@@ -228,7 +228,7 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                     };
                     const iconMap: Record<string, string> = {
                         blue: 'text-blue-500', teal: 'text-teal-500', purple: 'text-purple-500',
-                        amber: 'text-amber-500', rose: 'text-rose-500', gray: 'text-gray-400'
+                        amber: 'text-amber-500', rose: 'text-rose-500', gray: 'text-gray-500 dark:text-gray-400'
                     };
                     const CatIcon = cat.Icon;
 
@@ -237,7 +237,7 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                             <div className="flex items-center gap-3 mb-4">
                                 <CatIcon className={`w-5 h-5 ${iconMap[cat.color]}`} />
                                 <h3 className="font-black text-gray-800 dark:text-gray-200">{cat.id}</h3>
-                                <span className="ml-auto text-xs font-bold text-gray-400">{catItems.filter(i => i.isChecked).length}/{catItems.length}</span>
+                                <span className="ml-auto text-xs font-bold text-gray-500 dark:text-gray-400">{catItems.filter(i => i.isChecked).length}/{catItems.length}</span>
                             </div>
                             <div className="space-y-2">
                                 {catItems.map(item => (
@@ -255,7 +255,7 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                                         <button 
                                             type="button"
                                             onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
-                                            className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-semantic-red p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer"
+                                            className="opacity-0 group-hover:opacity-100 text-gray-500 dark:text-gray-400 hover:text-semantic-red p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer"
                                             aria-label={`Delete ${item.text}`}
                                         >
                                             <X className="w-4 h-4" />

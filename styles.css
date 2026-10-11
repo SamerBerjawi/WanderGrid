@@ -304,60 +304,85 @@
   box-shadow: 0 4px 16px -2px var(--pill-shadow-color, rgba(0, 0, 0, 0.4)), 0 1px 3px rgba(0, 0, 0, 0.15) !important;
 }
 
+/* Coloured buttons use the tinted style (UI-003, decision C-3): a translucent tint with dark text in light mode
+   and light text in dark mode. White text on the old solid fills measured 2.2–3.8:1; these pairs exceed 4.5:1. */
 .wg-glass-pill-emerald {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.80), rgba(5, 150, 105, 0.74)) !important;
-  --pill-shadow-color: rgba(16, 185, 129, 0.30);
-  color: #ffffff !important;
+  background: rgba(16, 185, 129, 0.16) !important;
+  border-color: rgba(16, 185, 129, 0.38) !important;
+  --pill-shadow-color: rgba(16, 185, 129, 0.18);
+  color: #065f46 !important;
 }
 .wg-glass-pill-emerald:hover {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.90), rgba(5, 150, 105, 0.84)) !important;
-  --pill-shadow-color: rgba(16, 185, 129, 0.40);
+  background: rgba(16, 185, 129, 0.26) !important;
+}
+.dark .wg-glass-pill-emerald {
+  background: rgba(16, 185, 129, 0.22) !important;
+  color: #6ee7b7 !important;
 }
 
 .wg-glass-pill-blue,
 .wg-glass-pill-sky {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.80), rgba(29, 78, 216, 0.74)) !important;
-  --pill-shadow-color: rgba(37, 99, 235, 0.30);
-  color: #ffffff !important;
+  background: rgba(37, 99, 235, 0.16) !important;
+  border-color: rgba(37, 99, 235, 0.38) !important;
+  --pill-shadow-color: rgba(37, 99, 235, 0.18);
+  color: #1e40af !important;
 }
 .wg-glass-pill-blue:hover,
 .wg-glass-pill-sky:hover {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.90), rgba(29, 78, 216, 0.84)) !important;
-  --pill-shadow-color: rgba(37, 99, 235, 0.40);
+  background: rgba(37, 99, 235, 0.26) !important;
+}
+.dark .wg-glass-pill-blue,
+.dark .wg-glass-pill-sky {
+  background: rgba(37, 99, 235, 0.22) !important;
+  color: #93c5fd !important;
 }
 
 .wg-glass-pill-primary,
 .wg-glass-pill-amber {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.82), rgba(217, 119, 6, 0.76)) !important;
-  --pill-shadow-color: rgba(245, 158, 11, 0.30);
-  color: #ffffff !important;
+  background: rgba(250, 154, 29, 0.16) !important;
+  border-color: rgba(250, 154, 29, 0.38) !important;
+  --pill-shadow-color: rgba(250, 154, 29, 0.18);
+  color: #7d4312 !important;
 }
 .wg-glass-pill-primary:hover,
 .wg-glass-pill-amber:hover {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.92), rgba(217, 119, 6, 0.86)) !important;
-  --pill-shadow-color: rgba(245, 158, 11, 0.40);
+  background: rgba(250, 154, 29, 0.26) !important;
+}
+.dark .wg-glass-pill-primary,
+.dark .wg-glass-pill-amber {
+  background: rgba(250, 154, 29, 0.22) !important;
+  color: #faca89 !important;
 }
 
 .wg-glass-pill-rose,
 .wg-glass-pill-danger {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.80), rgba(220, 38, 38, 0.74)) !important;
-  --pill-shadow-color: rgba(239, 68, 68, 0.30);
-  color: #ffffff !important;
+  background: rgba(239, 68, 68, 0.16) !important;
+  border-color: rgba(239, 68, 68, 0.38) !important;
+  --pill-shadow-color: rgba(239, 68, 68, 0.18);
+  color: #9f1239 !important;
 }
 .wg-glass-pill-rose:hover,
 .wg-glass-pill-danger:hover {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.90), rgba(220, 38, 38, 0.84)) !important;
-  --pill-shadow-color: rgba(239, 68, 68, 0.40);
+  background: rgba(239, 68, 68, 0.26) !important;
+}
+.dark .wg-glass-pill-rose,
+.dark .wg-glass-pill-danger {
+  background: rgba(239, 68, 68, 0.22) !important;
+  color: #fda4af !important;
 }
 
 .wg-glass-pill-indigo {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.80), rgba(79, 70, 229, 0.74)) !important;
-  --pill-shadow-color: rgba(99, 102, 241, 0.30);
-  color: #ffffff !important;
+  background: rgba(99, 102, 241, 0.16) !important;
+  border-color: rgba(99, 102, 241, 0.38) !important;
+  --pill-shadow-color: rgba(99, 102, 241, 0.18);
+  color: #3730a3 !important;
 }
 .wg-glass-pill-indigo:hover {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.90), rgba(79, 70, 229, 0.84)) !important;
-  --pill-shadow-color: rgba(99, 102, 241, 0.40);
+  background: rgba(99, 102, 241, 0.26) !important;
+}
+.dark .wg-glass-pill-indigo {
+  background: rgba(99, 102, 241, 0.22) !important;
+  color: #a5b4fc !important;
 }
 
 /* Translucent Liquid Glass Cards for Transport (matching accommodation tile translucency) */

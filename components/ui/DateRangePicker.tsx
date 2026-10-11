@@ -93,11 +93,11 @@ const ACCENT_THEMES: Record<string, AccentTheme> = {
     triggerBorderFocus: 'border-primary-500/60',
     activeSegment: 'bg-primary-500/15 border border-primary-500/40 text-primary-700 dark:text-primary-300',
     iconBox: 'bg-primary-500/15 text-primary-600 dark:text-primary-400',
-    calendarActiveTab: 'bg-primary-500 text-white shadow-xs font-bold',
-    startDay: 'bg-primary-500 text-white shadow-md shadow-primary-500/30 font-black scale-105',
+    calendarActiveTab: 'bg-primary-500 text-slate-950 shadow-xs font-bold',
+    startDay: 'bg-primary-500 text-slate-950 shadow-md shadow-primary-500/30 font-black scale-105',
     endDay: 'border-2 border-primary-500 bg-white dark:bg-[#121820] text-primary-600 dark:text-primary-400 font-black scale-105',
     rangeBand: 'bg-primary-500/15 dark:bg-primary-500/25',
-    doneBtn: 'bg-primary-500 hover:bg-primary-600 text-white shadow-sm shadow-primary-500/20',
+    doneBtn: 'bg-primary-500 hover:bg-primary-600 text-slate-950 shadow-sm shadow-primary-500/20',
     durationBadge: 'text-primary-600 dark:text-primary-400',
   }
 };

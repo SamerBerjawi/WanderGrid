@@ -2654,7 +2654,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                         <input 
                           type="checkbox" 
                           checked={isChecked}
-                          className="rounded text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                          className="rounded text-primary-800 dark:text-primary-400 focus:ring-primary-500 w-4 h-4 cursor-pointer"
                           onChange={() => {
                             const nextIds = isChecked 
                               ? activeIds.filter(id => id !== sc.id)

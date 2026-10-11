@@ -761,7 +761,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                         type="button"
                         onClick={handleSave}
                         disabled={!isValid}
-                        className="bg-primary-500 hover:bg-primary-600 text-white px-8 h-11 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-primary-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-primary-500 hover:bg-primary-600 text-slate-950 px-8 h-11 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-primary-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <span>Save {mode}</span>
                         <Check className="w-4 h-4" weight="bold" />

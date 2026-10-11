@@ -124,7 +124,7 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                                     onClick={() => setProvider(p.id as any)}
                                     className={`flex flex-col md:flex-row items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                                         provider === p.id 
-                                            ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm' 
+                                            ? 'bg-white dark:bg-dark-card text-primary-800 dark:text-primary-400 shadow-sm' 
                                             : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
                                     }`}
                                 >
@@ -155,7 +155,7 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                 {!flightData && suggestedFlight && !error && (
                     <div className="p-4 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-primary-500 text-white flex items-center justify-center shadow-md">
+                            <div className="w-10 h-10 rounded-2xl bg-primary-500 text-slate-950 flex items-center justify-center shadow-md">
                                 <AirplaneTakeoff className="w-5 h-5" />
                             </div>
                             <div>
@@ -228,21 +228,21 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                         <div className="relative flex justify-between items-center p-6 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-white/5 shadow-lg">
                             <div className="text-center z-10">
                                 <span className="text-4xl font-black text-gray-900 dark:text-white block mb-1">{flightData.departure.iata}</span>
-                                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{flightData.departure.airport}</span>
+                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{flightData.departure.airport}</span>
                             </div>
                             
                             {/* Plane Graphic */}
                             <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 flex items-center justify-center px-24 pointer-events-none opacity-20">
                                 <div className="h-0.5 w-full bg-gray-300 dark:bg-gray-600 relative">
                                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 p-2 rounded-full">
-                                        <AirplaneTilt className="w-6 h-6 transform rotate-90 text-gray-400" />
+                                        <AirplaneTilt className="w-6 h-6 transform rotate-90 text-gray-500 dark:text-gray-400" />
                                     </div>
                                 </div>
                             </div>
 
                             <div className="text-center z-10">
                                 <span className="text-4xl font-black text-gray-900 dark:text-white block mb-1">{flightData.arrival.iata}</span>
-                                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{flightData.arrival.airport}</span>
+                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{flightData.arrival.airport}</span>
                             </div>
                         </div>
 
@@ -255,7 +255,7 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                             <div className="grid grid-cols-2 gap-6">
                                 {/* Departure */}
                                 <div className="p-5 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
-                                    <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-white/10 pb-2">Departure</h4>
+                                    <h4 className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-white/10 pb-2">Departure</h4>
                                     <div className="space-y-3">
                                         <div className="flex justify-between">
                                             <span className="text-sm text-gray-500 font-medium">Scheduled</span>
@@ -267,11 +267,11 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                                         </div>
                                         <div className="pt-2 flex gap-2">
                                             <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
-                                                <span className="block text-2xs font-bold text-gray-400 uppercase">Terminal</span>
+                                                <span className="block text-2xs font-bold text-gray-500 dark:text-gray-400 uppercase">Terminal</span>
                                                 <span className="font-bold text-gray-800 dark:text-white">{flightData.departure.terminal || '-'}</span>
                                             </div>
                                             <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
-                                                <span className="block text-2xs font-bold text-gray-400 uppercase">Gate</span>
+                                                <span className="block text-2xs font-bold text-gray-500 dark:text-gray-400 uppercase">Gate</span>
                                                 <span className="font-bold text-gray-800 dark:text-white">{flightData.departure.gate || '-'}</span>
                                             </div>
                                         </div>
@@ -280,7 +280,7 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
 
                                 {/* Arrival */}
                                 <div className="p-5 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
-                                    <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-white/10 pb-2">Arrival</h4>
+                                    <h4 className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-white/10 pb-2">Arrival</h4>
                                     <div className="space-y-3">
                                         <div className="flex justify-between">
                                             <span className="text-sm text-gray-500 font-medium">Scheduled</span>
@@ -292,11 +292,11 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                                         </div>
                                         <div className="pt-2 flex gap-2">
                                             <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
-                                                <span className="block text-2xs font-bold text-gray-400 uppercase">Terminal</span>
+                                                <span className="block text-2xs font-bold text-gray-500 dark:text-gray-400 uppercase">Terminal</span>
                                                 <span className="font-bold text-gray-800 dark:text-white">{flightData.arrival.terminal || '-'}</span>
                                             </div>
                                             <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
-                                                <span className="block text-2xs font-bold text-gray-400 uppercase">Gate</span>
+                                                <span className="block text-2xs font-bold text-gray-500 dark:text-gray-400 uppercase">Gate</span>
                                                 <span className="font-bold text-gray-800 dark:text-white">{flightData.arrival.gate || '-'}</span>
                                             </div>
                                         </div>

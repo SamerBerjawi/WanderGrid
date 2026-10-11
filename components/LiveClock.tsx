@@ -33,7 +33,7 @@ export const LiveClock: React.FC<LiveClockProps> = React.memo(({ settings }) => 
       {/* Desktop / Tablet Dual Pills */}
       <div className="hidden sm:flex flex-wrap items-center gap-2">
         <GlassPanel className="wg-glass-pill rounded-xl py-1.5 px-3 shadow-xs flex items-center gap-2 border border-black/5 dark:border-white/10">
-          <CalendarBlank className="w-3.5 h-3.5 text-zinc-400 shrink-0" weight="duotone" />
+          <CalendarBlank className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0" weight="duotone" />
           <span className="text-xs font-mono font-bold text-light-text dark:text-dark-text">
             {formatDate(currentTime, 'weekday-short', settings)}
           </span>

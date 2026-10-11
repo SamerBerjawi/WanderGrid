@@ -524,7 +524,7 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="px-4 py-1.5 rounded-xl text-xs font-bold bg-primary-500 hover:bg-primary-600 text-white shadow-md shadow-primary-500/20 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                  className="px-4 py-1.5 rounded-xl text-xs font-bold bg-primary-500 hover:bg-primary-600 text-slate-950 shadow-md shadow-primary-500/20 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
                 >
                   <span>{MAP_SETTINGS_LABELS.actions.done}</span>
                   <Check className="w-3.5 h-3.5" weight="bold" />

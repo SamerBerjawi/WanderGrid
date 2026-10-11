@@ -114,7 +114,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                 </div>
                                 <div className="space-y-1">
                                     <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-none">Workspace Identity</h3>
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Global Identity & Region</p>
+                                    <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Global Identity & Region</p>
                                 </div>
                             </div>
                             <Button variant="primary" size="lg" className="!rounded-2xl shadow-xl shadow-blue-500/20" onClick={handleSaveOrgSettings} isLoading={isSavingOrg} icon={<CheckCircle weight="bold" className="text-lg" />}>Commit Changes</Button>
@@ -133,7 +133,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                     <button 
                                         key={i} 
                                         onClick={() => toggleWorkingDay(i)}
-                                        className={`w-10 h-10 rounded-xl font-black text-sm transition-all ${config.workingDays.includes(i) ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-gray-100 dark:bg-white/5 text-gray-400'}`}
+                                        className={`w-10 h-10 rounded-xl font-black text-sm transition-all ${config.workingDays.includes(i) ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400'}`}
                                     >
                                         {d}
                                     </button>
@@ -444,7 +444,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                     <div className="p-8 border-b border-gray-100 dark:border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="space-y-1">
                             <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-none">Personnel Roster</h3>
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Management of workspace inhabitants</p>
+                            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Management of workspace inhabitants</p>
                         </div>
                         <Button variant="secondary" className="!rounded-xl border-2" icon={<UserPlus weight="bold" className="text-lg" />} onClick={handleCreateUser}>Enroll New Member</Button>
                     </div>
@@ -453,7 +453,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                         {users.length === 0 ? (
                             <div className="py-16 text-center">
                                 <UserMinus weight="duotone" className="text-gray-200 dark:text-gray-800 text-6xl mx-auto" />
-                                <p className="text-gray-400 mt-4 font-bold uppercase tracking-widest text-xs">No active personnel data</p>
+                                <p className="text-gray-500 dark:text-gray-400 mt-4 font-bold uppercase tracking-widest text-xs">No active personnel data</p>
                             </div>
                         ) : (
                             <div className="flex flex-col gap-2">
@@ -469,7 +469,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                                     <div className="flex items-center gap-2 mt-1">
                                                         <span className={`text-2xs font-bold uppercase tracking-widest ${user.role === 'Partner' ? 'text-blue-500' : 'text-emerald-500'}`}>{user.role}</span>
                                                         {user.email && (
-                                                            <span className="text-2xs text-gray-400 font-bold uppercase tracking-widest px-1 border-l border-gray-300 dark:border-white/10">
+                                                            <span className="text-2xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest px-1 border-l border-gray-300 dark:border-white/10">
                                                                 {user.email}
                                                             </span>
                                                         )}
@@ -495,7 +495,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                 <Card noPadding className="rounded-3xl border-white/50 dark:border-white/10 shadow-2xl">
                     <div className="p-8 border-b border-gray-100 dark:border-white/5 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-white/5 dark:to-transparent">
                         <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-none">Data Operations</h3>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-2">Persistence & Migration</p>
+                        <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-2">Persistence & Migration</p>
                     </div>
                     
                     <div className="p-6 space-y-8">
@@ -672,7 +672,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
 
                              {/* Export / Backups Area */}
                             <div className="space-y-3 bg-slate-50 dark:bg-slate-950/40 p-5 rounded-3xl border border-slate-200/50 dark:border-white/5">
-                                <span className="text-2xs font-bold text-slate-400 uppercase tracking-widest">Roster Exports & Backups</span>
+                                <span className="text-2xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Roster Exports & Backups</span>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                                     <Button 
                                         onClick={() => handleFlightExport('xlsx')} 

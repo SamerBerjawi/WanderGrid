@@ -58,8 +58,8 @@ const ACCENT_THEMES: Record<string, AccentTheme> = {
     triggerRing: 'ring-2 ring-primary-500/35 border-primary-500/60',
     triggerBorderFocus: 'border-primary-500/60',
     iconBox: 'bg-primary-500/15 text-primary-600 dark:text-primary-400',
-    selectedDay: 'bg-primary-500 text-white shadow-md shadow-primary-500/30 font-black scale-105',
-    doneBtn: 'bg-primary-500 hover:bg-primary-600 text-white shadow-sm shadow-primary-500/20',
+    selectedDay: 'bg-primary-500 text-slate-950 shadow-md shadow-primary-500/30 font-black scale-105',
+    doneBtn: 'bg-primary-500 hover:bg-primary-600 text-slate-950 shadow-sm shadow-primary-500/20',
     durationBadge: 'text-primary-600 dark:text-primary-400',
   }
 };

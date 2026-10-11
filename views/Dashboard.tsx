@@ -1085,7 +1085,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             className="bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/15 px-3 py-1.5 rounded-xl sm:rounded-2xl border border-black/10 dark:border-white/15 flex items-center gap-2 shadow-xs min-h-[40px] cursor-pointer transition-all text-light-text dark:text-dark-text"
                             title={mapViewMode === '3d' ? 'Switch to 2D Map' : 'Switch to 3D Globe'}
                         >
-                            <Planet className={`w-4 h-4 transition-colors ${mapViewMode === '3d' ? 'text-primary-500' : 'text-zinc-400'}`} weight="duotone" />
+                            <Planet className={`w-4 h-4 transition-colors ${mapViewMode === '3d' ? 'text-primary-500' : 'text-zinc-500 dark:text-zinc-400'}`} weight="duotone" />
                             <span className="text-xs font-bold tracking-tight select-none">
                                 {mapViewMode === '3d' ? '3D' : '2D'}
                             </span>
@@ -1205,7 +1205,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         
                         {upcomingTripsList.length === 0 ? (
                             <div className="p-4 py-6 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-dashed border-black/10 dark:border-white/10 flex flex-col items-center justify-center text-center">
-                                <Compass className="w-5 h-5 text-zinc-400 mb-1" weight="duotone" />
+                                <Compass className="w-5 h-5 text-zinc-500 dark:text-zinc-400 mb-1" weight="duotone" />
                                 <p className="text-xs font-mono text-light-text-secondary dark:text-dark-text-secondary">No upcoming trips</p>
                             </div>
                         ) : (
@@ -1317,7 +1317,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         {/* Interactive Pill Filtering Bar */}
                         <GlassPanel className="wg-glass-card rounded-2xl sm:rounded-[28px] overflow-hidden p-2.5 sm:p-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 border border-black/5 dark:border-white/10">
                              <div className="relative shrink-0 sm:w-56">
-                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 w-3.5 h-3.5" />
+                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400 w-3.5 h-3.5" />
                                  <input
                                      type="text"
                                      placeholder="Search stamps..."
@@ -1329,7 +1329,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                      <button 
                                          onClick={() => setStampSearch('')} 
                                          aria-label="Clear stamp search"
-                                         className="w-6 h-6 flex items-center justify-center absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black dark:hover:text-white rounded-lg transition-colors cursor-pointer"
+                                         className="w-6 h-6 flex items-center justify-center absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400 hover:text-black dark:hover:text-white rounded-lg transition-colors cursor-pointer"
                                      >
                                          <X className="w-3.5 h-3.5" />
                                      </button>
@@ -1360,7 +1360,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         {/* Stamped Passports Compact Multi-Column Grid */}
                         {filteredVisitedData.length === 0 ? (
                             <EmptyState 
-                                icon={<Compass className="w-8 h-8 text-zinc-400" weight="duotone" />}
+                                icon={<Compass className="w-8 h-8 text-zinc-500 dark:text-zinc-400" weight="duotone" />}
                                 title="No Stamps Found"
                                 description="Try adjusting your active filter."
                             />
@@ -1444,7 +1444,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             </div>
 
                             <div className="relative">
-                                <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-400">
+                                <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500 dark:text-zinc-400">
                                     <Search className="w-3.5 h-3.5" />
                                 </span>
                                 <input

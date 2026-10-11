@@ -37,11 +37,11 @@ export const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>
   const colorClass = `wg-glass-pill-colored wg-glass-pill-${resolvedColor}`;
 
   const variantStyles = {
-    primary: `${colorClass} text-white font-bold`,
+    primary: `${colorClass} font-bold`,
     secondary: 'bg-black/5 dark:bg-white/5 text-light-text dark:text-dark-text font-bold hover:bg-black/10 dark:hover:bg-white/10',
     pill: 'text-light-text dark:text-dark-text font-semibold',
     ghost: 'bg-transparent text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text font-bold',
-    danger: 'wg-glass-pill-colored wg-glass-pill-danger text-white font-bold',
+    danger: 'wg-glass-pill-colored wg-glass-pill-danger font-bold',
     outline: 'bg-transparent border border-black/10 dark:border-white/10 text-light-text dark:text-dark-text font-bold',
     glass: 'bg-white/20 dark:bg-white/10 text-light-text dark:text-dark-text font-bold',
   }[variant] || 'text-light-text dark:text-dark-text font-bold';
@@ -72,7 +72,7 @@ export const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>
           ...overrides,
         }}
       >
-        <span className={`inline-flex items-center gap-2 justify-center leading-none text-xs uppercase tracking-wider font-sans select-none whitespace-nowrap h-full ${variant === 'primary' || variant === 'danger' ? 'text-white' : ''}`}>
+        <span className={`inline-flex items-center gap-2 justify-center leading-none text-xs uppercase tracking-wider font-sans select-none whitespace-nowrap h-full `}>
           {isLoading ? (
             <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
           ) : icon ? (

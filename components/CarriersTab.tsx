@@ -447,7 +447,7 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                         type="button"
                                         onClick={() => setViewMode('cards')}
                                         className={`min-h-[36px] px-3 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${viewMode === 'cards'
-                                                ? 'bg-white dark:bg-dark-card text-primary-500 shadow-xs'
+                                                ? 'bg-white dark:bg-dark-card text-primary-800 dark:text-primary-400 shadow-xs'
                                                 : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text'
                                             }`}
                                         aria-label="Grid view"
@@ -459,7 +459,7 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                         type="button"
                                         onClick={() => setViewMode('table')}
                                         className={`min-h-[36px] px-3 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${viewMode === 'table'
-                                                ? 'bg-white dark:bg-dark-card text-primary-500 shadow-xs'
+                                                ? 'bg-white dark:bg-dark-card text-primary-800 dark:text-primary-400 shadow-xs'
                                                 : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text'
                                             }`}
                                         aria-label="Table view"

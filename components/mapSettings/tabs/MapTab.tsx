@@ -191,7 +191,7 @@ const BasemapCard = React.memo<BasemapCardProps>(({
 
         {/* Active Selected Check Badge */}
         {isSelected && (
-          <div className="w-4 h-4 rounded-full bg-primary-500 flex items-center justify-center text-white shrink-0 z-10 shadow-xs ring-2 ring-white/60 dark:ring-dark-card animate-scaleIn">
+          <div className="w-4 h-4 rounded-full bg-primary-500 flex items-center justify-center text-slate-950 shrink-0 z-10 shadow-xs ring-2 ring-white/60 dark:ring-dark-card animate-scaleIn">
             <Check className="w-2.5 h-2.5" weight="bold" />
           </div>
         )}

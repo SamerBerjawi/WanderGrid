@@ -570,7 +570,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                 onClick={() => setSelectedDayIndex(idx)}
                                 className={`px-3.5 py-2.5 rounded-2xl flex flex-col items-center justify-center shrink-0 min-w-[72px] min-h-[58px] transition-all border cursor-pointer ${
                                     isSelected
-                                    ? 'bg-primary-500 text-white border-primary-500 shadow-md shadow-primary-500/20 scale-102'
+                                    ? 'bg-primary-500 text-slate-950 border-primary-500 shadow-md shadow-primary-500/20 scale-102'
                                     : 'bg-white/80 dark:bg-dark-card/80 border-black/10 dark:border-white/10 text-light-text dark:text-dark-text'
                                 }`}
                             >
@@ -613,7 +613,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                             <GlassPanel className="wg-glass-card rounded-3xl p-4 flex items-center justify-between" overrides={{ borderRadius: 24 }}>
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <span className="px-2.5 py-0.5 rounded-full text-2xs font-black uppercase tracking-wider bg-primary-500 text-white">
+                                        <span className="px-2.5 py-0.5 rounded-full text-2xs font-black uppercase tracking-wider bg-primary-500 text-slate-950">
                                             Day {selectedDayIndex + 1}
                                         </span>
                                         <h3 className="text-sm font-bold text-light-text dark:text-dark-text">
@@ -942,7 +942,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                         <div className="space-y-1.5">
                                             <div className="flex items-center justify-between gap-1">
                                                 <span className={`px-2 py-0.5 rounded-lg text-2xs font-black uppercase tracking-wider ${
-                                                    isToday ? 'bg-primary-500 text-white shadow-xs' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
+                                                    isToday ? 'bg-primary-500 text-slate-950 shadow-xs' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
                                                 }`}>
                                                     Day {dIdx + 1}
                                                 </span>

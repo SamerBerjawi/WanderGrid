@@ -947,7 +947,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                 {/* Header section with stepper and close button */}
                 <div className="p-5 sm:p-6 border-b border-black/5 dark:border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
                     <div className="flex items-center gap-3.5">
-                        <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-primary-500 shrink-0 shadow-md transition-transform hover:scale-105">
+                        <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-slate-950 bg-primary-500 shrink-0 shadow-md transition-transform hover:scale-105">
                             <Plane className="w-6 h-6" weight="duotone" />
                         </div>
                         <div>
@@ -961,17 +961,17 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                     <div className="flex items-center gap-3 self-stretch md:self-auto justify-between md:justify-end">
                         {/* Stepper display */}
                         <div className="flex items-center gap-1.5 sm:gap-2">
-                            <div className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${step === 1 ? 'bg-primary-500 text-white shadow-sm' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'}`}>
+                            <div className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${step === 1 ? 'bg-primary-500 text-slate-950 shadow-sm' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'}`}>
                                 <span className="w-4 h-4 rounded-full bg-white/20 text-center text-2xs leading-4 font-bold">1</span>
                                 <span>Upload</span>
                             </div>
                             <ChevronRight className="w-3.5 h-3.5 text-light-text-secondary/50 dark:text-dark-text-secondary/50" />
-                            <div className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${step === 2 ? 'bg-primary-500 text-white shadow-sm' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'}`}>
+                            <div className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${step === 2 ? 'bg-primary-500 text-slate-950 shadow-sm' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'}`}>
                                 <span className="w-4 h-4 rounded-full bg-white/20 text-center text-2xs leading-4 font-bold">2</span>
                                 <span>Mapping</span>
                             </div>
                             <ChevronRight className="w-3.5 h-3.5 text-light-text-secondary/50 dark:text-dark-text-secondary/50" />
-                            <div className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${step === 3 ? 'bg-primary-500 text-white shadow-sm' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'}`}>
+                            <div className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${step === 3 ? 'bg-primary-500 text-slate-950 shadow-sm' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'}`}>
                                 <span className="w-4 h-4 rounded-full bg-white/20 text-center text-2xs leading-4 font-bold">3</span>
                                 <span>Confirm</span>
                             </div>
@@ -1181,7 +1181,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                                 <div className="flex items-center gap-2.5 min-w-0">
                                                                     <div className={cn(
                                                                         "w-8 h-8 rounded-xl flex items-center justify-center shrink-0",
-                                                                        isChecked ? "bg-primary-500 text-white" : "bg-black/5 dark:bg-white/10 text-light-text-secondary"
+                                                                        isChecked ? "bg-primary-500 text-slate-950" : "bg-black/5 dark:bg-white/10 text-light-text-secondary"
                                                                     )}>
                                                                         {item.icon}
                                                                     </div>
@@ -1194,7 +1194,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                                 </div>
                                                                 <div className={cn(
                                                                     "w-5 h-5 rounded-md flex items-center justify-center shrink-0 border",
-                                                                    !isAvailable ? "border-black/10 opacity-30" : isChecked ? "bg-primary-500 border-primary-500 text-white" : "border-black/20 dark:border-white/20"
+                                                                    !isAvailable ? "border-black/10 opacity-30" : isChecked ? "bg-primary-500 border-primary-500 text-slate-950" : "border-black/20 dark:border-white/20"
                                                                 )}>
                                                                     {isChecked && isAvailable && <Check weight="bold" className="w-3 h-3" />}
                                                                 </div>
@@ -1356,7 +1356,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                         <span className="text-xs font-mono text-light-text-secondary dark:text-dark-text-secondary block">{f.departureTime}</span>
                                                     </div>
                                                     <div>
-                                                        <span className="text-2xs uppercase font-bold text-zinc-400 block">Aircraft / Tail</span>
+                                                        <span className="text-2xs uppercase font-bold text-zinc-500 dark:text-zinc-400 block">Aircraft / Tail</span>
                                                         <span className="text-xs font-bold text-gray-800 dark:text-zinc-200 truncate block">{f.vehicleModel || 'N/A'}</span>
                                                         {f.tailNumber && <span className="text-2xs font-mono text-zinc-500 block">{f.tailNumber}</span>}
                                                     </div>

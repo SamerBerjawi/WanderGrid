@@ -368,7 +368,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
                   ) : null}
 
                   <div className="space-y-1">
-                    <span className="text-2xs text-zinc-400 uppercase font-bold tracking-wide block">Visit Date</span>
+                    <span className="text-2xs text-zinc-500 dark:text-zinc-400 uppercase font-bold tracking-wide block">Visit Date</span>
                     <p className="text-zinc-900 dark:text-white font-bold flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-indigo-500" />
                       {formatDate(claim.claimDate, 'weekday-long')}
@@ -376,7 +376,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
                   </div>
 
                   <div className="space-y-1">
-                    <span className="text-2xs text-zinc-400 uppercase font-bold tracking-wide block">My Memories</span>
+                    <span className="text-2xs text-zinc-500 dark:text-zinc-400 uppercase font-bold tracking-wide block">My Memories</span>
                     <blockquote className="p-3 bg-zinc-100/50 dark:bg-zinc-900/60 rounded-xl italic text-zinc-700 dark:text-zinc-300 border-l-4 border-indigo-500">
                       "{claim.memo}"
                     </blockquote>

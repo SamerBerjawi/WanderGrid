@@ -419,7 +419,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                         aria-pressed={showArchived}
                         className={`min-w-[44px] min-h-[44px] px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
                             showArchived
-                                ? 'bg-primary-500 text-white border-primary-500 shadow-sm'
+                                ? 'bg-primary-500 text-slate-950 border-primary-500 shadow-sm'
                                 : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text border-black/10 dark:border-white/10'
                         }`}
                         title={showArchived ? 'Back to active trips' : 'Show archived trips'}
@@ -439,7 +439,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                         }}
                         className={`min-w-[44px] min-h-[44px] px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
                             isMultiSelectMode
-                                ? 'bg-primary-500 text-white border-primary-500 shadow-sm'
+                                ? 'bg-primary-500 text-slate-950 border-primary-500 shadow-sm'
                                 : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text border-black/10 dark:border-white/10'
                         }`}
                         title="Toggle bulk selection"
@@ -1279,7 +1279,7 @@ const TripCard: React.FC<TripCardProps> = ({
                     {!isMultiSelectMode && (
                         <div 
                             className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl flex items-center justify-center bg-black/5 dark:bg-white/[0.06] backdrop-blur-md border border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary ${stageConfig.arrowHover} transition-all duration-300 shrink-0 shadow-xs active:scale-95 cursor-pointer`}
-                            aria-label="View trip details"
+                            aria-hidden="true"
                         >
                             <ArrowUpRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" weight="bold" />
                         </div>

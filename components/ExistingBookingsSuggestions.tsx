@@ -232,7 +232,7 @@ export const ExistingBookingsSuggestions: React.FC<ExistingBookingsSuggestionsPr
                 >
                     <div className="p-3.5 sm:p-4 bg-gradient-to-r from-primary-500/10 via-emerald-500/5 to-transparent flex items-center justify-between gap-3 flex-wrap">
                         <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-9 h-9 rounded-xl bg-primary-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                            <div className="w-9 h-9 rounded-xl bg-primary-500 text-slate-950 flex items-center justify-center shadow-xs shrink-0">
                                 <Sparkle className="w-4 h-4" weight="fill" />
                             </div>
                             <div className="min-w-0">

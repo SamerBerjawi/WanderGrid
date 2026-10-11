@@ -1468,7 +1468,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                         onClick={() => setTravelClass(opt.value as any)}
                                                         className={`flex-1 min-h-[36px] py-1.5 px-1 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center ${
                                                             isSelected
-                                                                ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
+                                                                ? 'bg-white dark:bg-dark-card text-primary-800 dark:text-primary-400 shadow-sm'
                                                                 : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
                                                         }`}
                                                     >
@@ -1569,7 +1569,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                                             onClick={() => handleConnectingLegChange(legIdx, 'travelClass', opt.value as any)}
                                                                             className={`flex-1 min-h-[36px] py-1.5 px-1 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center ${
                                                                                 isSelected
-                                                                                    ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
+                                                                                    ? 'bg-white dark:bg-dark-card text-primary-800 dark:text-primary-400 shadow-sm'
                                                                                     : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
                                                                             }`}
                                                                         >
@@ -1637,7 +1637,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                         onClick={() => setReturnTravelClass(opt.value as any)}
                                                         className={`flex-1 min-h-[36px] py-1.5 px-1 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center ${
                                                             isSelected
-                                                                ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
+                                                                ? 'bg-white dark:bg-dark-card text-primary-800 dark:text-primary-400 shadow-sm'
                                                                 : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
                                                         }`}
                                                     >

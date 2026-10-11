@@ -1038,7 +1038,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         <SlidersHorizontal className={`w-4 h-4 ${isSidebarOpen ? 'text-primary-600 dark:text-primary-400' : 'text-primary-500'} transition-transform duration-300 ${isSidebarOpen ? 'rotate-90' : ''}`} />
                         <span>Controls & Appearance</span>
                         {activeFilterCount > 0 && !isSidebarOpen && (
-                            <span className="px-1.5 py-0.5 rounded-full text-2xs font-bold bg-primary-500 text-white leading-none">
+                            <span className="px-1.5 py-0.5 rounded-full text-2xs font-bold bg-primary-500 text-slate-950 leading-none">
                                 {activeFilterCount}
                             </span>
                         )}
@@ -1102,7 +1102,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 <SlidersHorizontal className={`w-3.5 h-3.5 ${isSidebarOpen ? 'text-primary-600 dark:text-primary-400' : 'text-primary-500'} transition-transform duration-300 ${isSidebarOpen ? 'rotate-90' : ''}`} />
                                 <span className="text-2xs font-bold uppercase tracking-wider">Controls</span>
                                 {activeFilterCount > 0 && !isSidebarOpen && (
-                                    <span className="px-1.5 py-0.5 rounded-full text-2xs font-bold bg-primary-500 text-white leading-none">
+                                    <span className="px-1.5 py-0.5 rounded-full text-2xs font-bold bg-primary-500 text-slate-950 leading-none">
                                         {activeFilterCount}
                                     </span>
                                 )}
