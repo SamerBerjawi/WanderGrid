@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { toast, errorMessage } from '../services/toast';
 import { 
     Gear, 
     Users, 
@@ -32,8 +33,10 @@ import {
     ShieldCheck,
     Car,
     ArrowsMerge,
-    ArrowsClockwise
+    ArrowsClockwise,
+    Key
 } from '@phosphor-icons/react';
+import { isFeatureEnabled } from '../config/featureFlags';
 import { motion, AnimatePresence } from 'motion/react';
 import GlassPanel from '../components/glass/GlassPanel';
 import { Modal, Badge, Button, Input, Select } from '../components/ui';
@@ -119,6 +122,13 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   
   // Personnel dialog controls
   const [memberToDelete, setMemberToDelete] = useState<User | null>(null);
+  const [deleteMemberError, setDeleteMemberError] = useState('');
+  const [memberFormError, setMemberFormError] = useState('');
+  const [calendarLinkError, setCalendarLinkError] = useState('');
+  const [resetCodeInfo, setResetCodeInfo] = useState<{ name: string; code: string; expiresAt: string } | null>(null);
+  const sessionUserId = useMemo(() => {
+      try { return JSON.parse(localStorage.getItem('wandergrid_session_user') || 'null')?.id || null; } catch (e) { return null; }
+  }, []);
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [editingUser, setEditingUser] = useState<Partial<User>>({});
   
@@ -229,7 +239,11 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       try {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 3500);
-        const res = await fetch(`/api/proxy/test/${providerKey}`, { signal: controller.signal });
+        const token = localStorage.getItem('wandergrid_session_token');
+        const res = await fetch(`/api/proxy/test/${providerKey}`, {
+          signal: controller.signal,
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined
+        });
         clearTimeout(timer);
         const ct = res.headers.get('content-type') || '';
         if (ct.includes('application/json')) {
@@ -379,6 +393,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           holidayWeekendRule: 'none',
           activeYears: [new Date().getFullYear()]
       });
+      setMemberFormError('');
       setIsEditingUser(true);
   };
 
@@ -386,9 +401,10 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       setEditingUser({
           ...u,
           email: u.email ?? '',
-          password: u.password ?? '',
+          password: '', // blank = keep the current password
           holidayConfigIds: u.holidayConfigIds ?? []
       }); 
+      setMemberFormError('');
       setIsEditingUser(true); 
   };
 
@@ -405,18 +421,28 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           return;
       }
 
+      if (password && password.length < 8) {
+          setMemberFormError('Password must be at least 8 characters.');
+          return;
+      }
+      if (!editingUser.id && !password) {
+          setMemberFormError('Set a password so the new member can sign in.');
+          return;
+      }
+
+      try {
       if (editingUser.id) {
           await dataService.updateUser({
               ...editingUser,
               email: finalEmail,
-              password: password || 'password'
+              password // empty keeps the member's current password
           } as User);
       } else {
           const newUser: User = {
               ...editingUser,
               id: 'u_' + Date.now(),
               email: finalEmail,
-              password: password || 'password',
+              password,
               profilePicture: editingUser.profilePicture || '',
               role: editingUser.role || 'Partner',
               leaveBalance: editingUser.leaveBalance ?? 25,
@@ -429,25 +455,48 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           } as User;
           await dataService.addUser(newUser);
       }
+      } catch (err: any) {
+          setMemberFormError(err?.message || 'Could not save this member.');
+          return;
+      }
       setIsEditingUser(false);
       refreshData();
   };
 
+  const handleIssueResetCode = async (member: User) => {
+      try {
+          const { code, expiresAt } = await dataService.createPasswordResetCode(member.id);
+          setResetCodeInfo({ name: member.name, code, expiresAt });
+      } catch (err) {
+          toast.error(`Couldn't create a reset code: ${errorMessage(err)}`);
+      }
+  };
+
   const handleConfirmDeleteMember = async () => {
       if (memberToDelete?.id) {
-          await dataService.deleteUser(memberToDelete.id);
-          setMemberToDelete(null);
-          refreshData();
+          try {
+              await dataService.deleteUser(memberToDelete.id);
+              setMemberToDelete(null);
+              setDeleteMemberError('');
+              refreshData();
+          } catch (err: any) {
+              setDeleteMemberError(err?.message || 'Could not remove this member.');
+          }
       }
   };
 
   const handleSaveOrgSettings = async () => { 
       setIsSavingOrg(true);
-      await dataService.updateWorkspaceSettings(config);
-      if (onThemeChange) onThemeChange(config.theme);
-      setIsSavingOrg(false);
-      setSaveToast(true);
-      setTimeout(() => setSaveToast(false), 2500);
+      try {
+          await dataService.updateWorkspaceSettings(config);
+          if (onThemeChange) onThemeChange(config.theme);
+          setSaveToast(true);
+          setTimeout(() => setSaveToast(false), 2500);
+      } catch (err) {
+          toast.error(`Couldn't save settings: ${errorMessage(err, 'please try again.')}`);
+      } finally {
+          setIsSavingOrg(false);
+      }
   };
 
   const toggleWorkingDay = (d: number) => { 
@@ -579,7 +628,9 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               });
           } catch (err: any) {
               setRestoreStatus('error');
-              setRestoreErrorMessage(err.message || 'Invalid or unparseable JSON file');
+              setRestoreErrorMessage(err instanceof SyntaxError
+                  ? "Invalid backup file: it isn't valid JSON. Choose a file exported from WanderGrid."
+                  : (err.message || 'Invalid or unparseable JSON file'));
           }
       };
       reader.readAsText(file);
@@ -647,19 +698,34 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       calendarService.downloadIcs(ics, `wandergrid-calendar-${new Date().toISOString().split('T')[0]}.ics`);
   };
 
-  const handleCopySubscriptionLink = async () => {
+  // The subscription URL contains a private per-user token; anyone holding it can read your trips.
+  const copyCalendarUrl = async (token: string) => {
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
-      const url = `${origin}/api/calendar.ics`;
+      await navigator.clipboard.writeText(`${origin}/api/calendar/${token}/feed.ics`);
+      setCopiedCalendar(true);
+      setTimeout(() => setCopiedCalendar(false), 2000);
+  };
+
+  const handleCopySubscriptionLink = async () => {
+      setCalendarLinkError('');
       try {
-          await navigator.clipboard.writeText(url);
-          setCopiedCalendar(true);
-          setTimeout(() => setCopiedCalendar(false), 2000);
-      } catch (e) {
-          console.warn('Clipboard write failed:', e);
+          await copyCalendarUrl(await dataService.getCalendarFeedToken());
+      } catch (e: any) {
+          console.warn('Copying the calendar link failed:', e);
+          setCalendarLinkError(e?.message || 'Could not copy the calendar link.');
       }
   };
 
-  const hasEnvKey = !!process.env.API_KEY;
+  const handleResetSubscriptionLink = async () => {
+      setCalendarLinkError('');
+      try {
+          await copyCalendarUrl(await dataService.rotateCalendarFeedToken());
+      } catch (e: any) {
+          setCalendarLinkError(e?.message || 'Could not reset the calendar link.');
+      }
+  };
+
+  const hasEnvKey = Boolean(config.configuredKeys?.googleGeminiApiKey) && !config.googleGeminiApiKey;
   const hasUserKey = !!config.googleGeminiApiKey;
   const isGeminiActive = hasEnvKey || hasUserKey;
 
@@ -875,6 +941,16 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                         <option value="auto">System Automatic (Match Device)</option>
                         <option value="light">Light Mode</option>
                         <option value="dark">Dark Mode</option>
+                      </Select>
+
+                      <Select
+                        label="Public Sign-Up"
+                        value={config.allowSelfRegistration === false ? 'closed' : 'open'}
+                        onChange={e => setConfig({ ...config, allowSelfRegistration: e.target.value === 'open' })}
+                        containerClassName="sm:col-span-2"
+                      >
+                        <option value="open">Open (anyone can create a Partner account)</option>
+                        <option value="closed">Closed (only admins add members)</option>
                       </Select>
                     </div>
                   </div>
@@ -1234,6 +1310,17 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                           </div>
 
                           <div className="flex items-center gap-1 shrink-0">
+                            {isFeatureEnabled('AUDIT_PASSWORD_RESET') && (
+                            <button
+                              type="button"
+                              onClick={() => handleIssueResetCode(user)}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-light-text-secondary hover:text-primary-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                              title="Issue password reset code"
+                              aria-label={`Issue password reset code for ${user.name}`}
+                            >
+                              <Key className="w-4 h-4" />
+                            </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => handleEditUser(user)}
@@ -1242,14 +1329,16 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                             >
                               <Edit3 className="w-4 h-4" />
                             </button>
+                            {user.id !== sessionUserId && (
                             <button
                               type="button"
-                              onClick={() => setMemberToDelete(user)}
+                              onClick={() => { setDeleteMemberError(''); setMemberToDelete(user); }}
                               className="w-8 h-8 rounded-lg flex items-center justify-center text-light-text-secondary hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
                               title="Delete member"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
+                            )}
                           </div>
                         </div>
 
@@ -1257,6 +1346,11 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                           <span className="px-2 py-0.5 rounded-full text-2xs font-mono font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
                             {user.role}
                           </span>
+                          {user.passwordResetRequired && (
+                            <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20" title="This member can't sign in until an admin sets a new password">
+                              Needs password
+                            </span>
+                          )}
                           <span className="text-2xs font-mono text-light-text-secondary/70 dark:text-dark-text-secondary/70">
                             ID: {user.id}
                           </span>
@@ -1973,6 +2067,18 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                     >
                       {copiedCalendar ? 'URL Copied to Clipboard' : 'Copy iCal Subscription URL'}
                     </Button>
+
+                    <Button
+                      variant="secondary"
+                      onClick={handleResetSubscriptionLink}
+                      className="w-full h-11 justify-center rounded-2xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer"
+                      title="Creates a new private link; the old one stops working"
+                    >
+                      Reset Subscription Link
+                    </Button>
+                    {calendarLinkError && (
+                      <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400">{calendarLinkError}</p>
+                    )}
                   </div>
                 </div>
               </GlassPanel>
@@ -2386,7 +2492,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
             <div className="text-center py-8 text-rose-500">
               <WarningCircle className="w-10 h-10 mx-auto mb-2" />
               <p className="font-bold text-sm">Restore Failed</p>
-              <p className="text-xs mt-1">{restoreErrorMessage}</p>
+              <p className="text-xs mt-1" role="alert">{restoreErrorMessage}</p>
               <button
                 type="button"
                 onClick={() => setRestoreStatus('idle')}
@@ -2476,7 +2582,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
             <Input 
               label="Portal Password"
               type="password"
-              placeholder="e.g. min 6 characters" 
+              placeholder={editingUser.id ? 'Leave blank to keep the current password' : 'At least 8 characters'} 
               value={editingUser.password || ''} 
               onChange={e => setEditingUser({ ...editingUser, password: e.target.value })} 
             />
@@ -2564,6 +2670,9 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
 
           </div>
 
+          {memberFormError && (
+            <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400">{memberFormError}</p>
+          )}
           <div className="flex gap-3 pt-4 border-t border-black/5 dark:border-white/5 shrink-0 justify-end">
             <button
               type="button"
@@ -2584,6 +2693,30 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
         </div>
       </Modal>
 
+      {/* MODAL: one-time password reset code */}
+      <Modal
+        isOpen={!!resetCodeInfo}
+        onClose={() => setResetCodeInfo(null)}
+        title="Password Reset Code"
+        subtitle={resetCodeInfo ? `For ${resetCodeInfo.name}` : ''}
+        icon="key"
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-4 text-left font-sans">
+          <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
+            Share this one-time code with {resetCodeInfo?.name}. They choose a new password from <strong>Forgot password?</strong> on the sign-in screen. It works once and expires {resetCodeInfo ? formatDate(resetCodeInfo.expiresAt, 'short-with-year', config) : ''}.
+          </p>
+          <p data-testid="reset-code" className="text-center font-mono text-2xl font-black tracking-widest text-light-text dark:text-dark-text select-all">
+            {resetCodeInfo?.code}
+          </p>
+          <div className="flex justify-end">
+            <button type="button" onClick={() => setResetCodeInfo(null)} className={`${BTN_SECONDARY_STYLE} px-4 py-2 text-xs font-bold uppercase`}>
+              Done
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       {/* MODAL: Delete member confirmation */}
       <Modal 
         isOpen={!!memberToDelete} 
@@ -2599,6 +2732,9 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               Confirm revoking membership access and deletion of account for <span className="font-bold underline text-light-text dark:text-dark-text">{memberToDelete?.name}</span>? This does not delete associated independent flights.
             </p>
           </div>
+          {deleteMemberError && (
+            <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400">{deleteMemberError}</p>
+          )}
           <div className="flex gap-3 justify-end pt-4 border-t border-black/5 dark:border-white/5">
             <button
               type="button"

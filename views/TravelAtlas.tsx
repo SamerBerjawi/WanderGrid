@@ -1696,8 +1696,10 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
       </div>
 
       {/* Unified Register Visited Country / City Add & Edit Slide Tray Dialog */}
-      <AnimatePresence>
-        {isModalOpen && createPortal(
+      {/* AnimatePresence must live inside the portal: it drops children that aren't React elements, and a portal isn't one. */}
+      {createPortal(
+        <AnimatePresence>
+        {isModalOpen && (
           <div className="fixed inset-0 z-modal flex items-center justify-center p-4 font-sans">
             <motion.div 
               initial={{ opacity: 0 }}
@@ -1992,10 +1994,11 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                 </div>
               </GlassPanel>
             </motion.div>
-          </div>,
-          document.body
+          </div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
 
     </div>
   );

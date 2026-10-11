@@ -68,7 +68,7 @@ test.describe('W33 Personnel', () => {
     await page.getByRole('button', { name: /Enroll Member/ }).click();
     await page.locator('input[placeholder="e.g. Elena Rostova"]').fill('Elena Rostova');
     await page.locator('input[placeholder="e.g. elena@wandergrid.abc"]').fill('elena@wandergrid.test');
-    await page.locator('input[placeholder="e.g. min 6 characters"]').fill('Elena!Pass1');
+    await page.locator('input[placeholder="At least 8 characters"]').fill('Elena!Pass1');
     await page.getByRole('button', { name: /^Save Member$/ }).click();
     await expect.poll(async () => (await users(request)).some((u) => u.email === 'elena@wandergrid.test'), { timeout: 10_000 }).toBe(true);
     await expect(inMain(page, 'Elena Rostova').first()).toBeVisible();
@@ -79,9 +79,15 @@ test.describe('W33 Personnel', () => {
   test('enroll requires name, email and password', async ({ page, request }) => {
     await openSettings(page, 'Personnel');
     await page.getByRole('button', { name: /Enroll Member/ }).click();
-    page.on('dialog', (d) => d.dismiss());
-    await page.getByRole('button', { name: /^Save Member$/ }).click();
-    await page.waitForTimeout(800);
+    const save = page.getByRole('button', { name: /^Save Member$/ });
+    await expect(save, 'Save is disabled until a name is entered').toBeDisabled();
+    await page.locator('input[placeholder="e.g. Elena Rostova"]').fill('No Password');
+    await page.locator('input[placeholder="e.g. elena@wandergrid.abc"]').fill('nopass@wandergrid.test');
+    await save.click();
+    await expect(page.getByRole('alert')).toContainText(/password/i);
+    await page.locator('input[type="password"] >> visible=true').last().fill('short');
+    await save.click();
+    await expect(page.getByRole('alert')).toContainText(/at least 8 characters/);
     expect((await users(request)).length).toBe(1);
   });
 
@@ -91,7 +97,7 @@ test.describe('W33 Personnel', () => {
     await page.getByRole('button', { name: /Enroll Member/ }).click();
     await page.locator('input[placeholder="e.g. Elena Rostova"]').fill('Dup');
     await page.locator('input[placeholder="e.g. elena@wandergrid.abc"]').fill(PARTNER.email);
-    await page.locator('input[placeholder="e.g. min 6 characters"]').fill('abc12345');
+    await page.locator('input[placeholder="At least 8 characters"]').fill('abc12345');
     page.on('dialog', (d) => d.dismiss());
     await page.getByRole('button', { name: /^Save Member$/ }).click();
     await page.waitForTimeout(1500);
@@ -115,6 +121,21 @@ test.describe('W33 Personnel', () => {
     await page.locator('main div', { hasText: PARTNER.name }).locator('button[title="Delete member"]').last().click();
     await page.getByRole('button', { name: /^Confirm Removal$/ }).click();
     await expect.poll(async () => (await users(request)).length, { timeout: 10_000 }).toBe(1);
+  });
+
+  test('a Partner who tries an admin-only save stays signed in and changes nothing', async ({ browser, request }) => {
+    const partner = await apiRegister(request, PARTNER);
+    const ctx = await browser.newContext({ viewport: test.info().project.use.viewport, baseURL: 'http://localhost:4173', serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    await seedSession(page, partner.token, partner.user);
+    await openSettings(page, 'Workspace');
+    await visible(page, 'input[placeholder="WanderGrid Workspace"]').first().fill('Partner Was Here');
+    await saveSettings(page).click();
+    await page.waitForTimeout(1500);
+    await expectAppShell(page);
+    expect(await page.evaluate(() => !!localStorage.getItem('wandergrid_session_token')), 'still signed in').toBe(true);
+    expect((await settings(request)).orgName).not.toBe('Partner Was Here');
+    await ctx.close();
   });
 
   test('the signed-in admin cannot remove their own account', async ({ page, request }) => {
@@ -224,8 +245,10 @@ test.describe('W38 Backup & restore', () => {
     fs.mkdirSync(info.outputDir, { recursive: true });
     fs.writeFileSync(file, '{not valid json');
     await openSettings(page, 'Data Management');
+    const before = (await apiGet(request, s.token, '/api/trips')).length;
     await page.locator('input[type="file"][accept=".json"]').first().setInputFiles(file);
-    await expect(page.getByText(/invalid|corrupt|unrecognized|could not|error/i).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('alert').filter({ hasText: /invalid|corrupt|unrecognized|could not|error/i }).first()).toBeVisible({ timeout: 10_000 });
+    expect((await apiGet(request, s.token, '/api/trips')).length).toBe(before);
   });
 });
 
@@ -249,6 +272,22 @@ test.describe('W39 Calendar export & subscription', () => {
     const res = await page.request.get(url);
     expect(res.status(), `GET ${url}`).toBe(200);
     expect(await res.text()).toContain('BEGIN:VCALENDAR');
+  });
+
+  test('Reset Subscription Link issues a new private URL and the old one stops working', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await openSettings(page, 'Data Management');
+    await page.getByRole('button', { name: /Copy iCal Subscription URL/ }).click();
+    await expect(page.getByText(/URL Copied to Clipboard/)).toBeVisible();
+    const oldUrl = await page.evaluate(() => navigator.clipboard.readText());
+    expect(oldUrl).not.toContain(ADMIN.email);
+    await expect(page.getByText(/URL Copied to Clipboard/)).toHaveCount(0, { timeout: 5000 });
+    await page.getByRole('button', { name: /Reset Subscription Link/ }).click();
+    await expect(page.getByText(/URL Copied to Clipboard/)).toBeVisible();
+    const newUrl = await page.evaluate(() => navigator.clipboard.readText());
+    expect(newUrl).not.toBe(oldUrl);
+    expect((await page.request.get(oldUrl)).status()).toBe(404);
+    expect((await page.request.get(newUrl)).status()).toBe(200);
   });
 });
 

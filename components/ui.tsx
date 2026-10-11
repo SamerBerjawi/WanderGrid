@@ -501,9 +501,11 @@ interface TabsProps {
 }
 
 export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className }) => (
-  <div className={cn("flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar py-3 px-2 -my-3 -mx-2 shrink-0", className)}>
+  // justify-start + mx-auto (not justify-center): centred when the tabs fit, but when they overflow
+  // on narrow screens the first tab stays reachable by scrolling instead of being clipped off the left.
+  <div className={cn("flex items-center justify-start overflow-x-auto sm:overflow-visible no-scrollbar py-3 px-2 -my-3 -mx-2 shrink-0", className)}>
     <GlassPanel
-      className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
+      className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0 mx-auto sm:mx-0"
       padding="4px 6px"
       overrides={{ borderRadius: 9999 }}
     >

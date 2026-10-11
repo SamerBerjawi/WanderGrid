@@ -727,42 +727,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         });
         const visitedData = finalized.sort((a, b) => a.name.localeCompare(b.name));
 
-        try {
-            const bulkSeed: any[] = [];
-            finalized.forEach(c => {
-                bulkSeed.push({
-                    id: `country_${c.code}`,
-                    type: 'country',
-                    code: c.code,
-                    name: c.name,
-                    visitDate: c.lastVisit instanceof Date ? c.lastVisit.toISOString().split('T')[0] : String(c.lastVisit),
-                    isTransit: false,
-                    isManual: false,
-                    notes: 'Auto-seeded from travel history'
-                });
-
-                Array.from(c.cities).forEach((city: any) => {
-                    bulkSeed.push({
-                        id: `city_${city.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`,
-                        type: 'city',
-                        code: city,
-                        name: city,
-                        countryCode: c.code,
-                        countryName: c.name,
-                        visitDate: c.lastVisit instanceof Date ? c.lastVisit.toISOString().split('T')[0] : String(c.lastVisit),
-                        isManual: false,
-                        notes: 'Auto-seeded city'
-                    });
-                });
-            });
-
-            if (bulkSeed.length > 0) {
-                void dataService.addVisitedBulk(bulkSeed);
-            }
-            localStorage.setItem('wandergrid_visited_seeded', 'true');
-        } catch (seedErr) {
-            console.error("Auto seeding of central Visited database failed:", seedErr);
-        }
+        // Read-only: stats are derived from trips here. Adding these footprints to the Atlas is an
+        // explicit action there (Travel Atlas › Scan), never a side effect of opening the Dashboard.
 
         setTotalCities(totalC);
         setTotalDistance(totalDistance);

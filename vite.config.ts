@@ -303,7 +303,9 @@ export default defineConfig(({ mode }) => {
     return {
       server: {
         port: 3000,
-        host: true,
+        // Loopback only by default: the dev server and its unauthenticated proxy middleware must not be
+        // reachable from the LAN unless you opt in with VITE_DEV_HOST=0.0.0.0 (SEC-018).
+        host: env.VITE_DEV_HOST || 'localhost',
         proxy: {
           '/api': {
             target: 'http://localhost:3001',
@@ -451,10 +453,7 @@ export default defineConfig(({ mode }) => {
           },
         }),
       ],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
+      // No API keys are inlined into the bundle (SEC-010): GEMINI_API_KEY is read by the server only.
       resolve: {
         alias: {
           '@': path.resolve('.'),

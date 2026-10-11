@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { EmptyState } from '../components/EmptyState';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   CalendarBlank as CalendarIcon, 
@@ -120,8 +121,8 @@ const DEFAULT_COLOR = ENTITLEMENT_COLORS.blue;
 
 export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick }) => {
   // Query state with useWanderSync
-  const { data: rawTrips, loading: tripsLoading } = useWanderSync('trips', () => dataService.getTrips());
-  const { data: users, loading: usersLoading } = useWanderSync('users', () => dataService.getUsers());
+  const { data: rawTrips, loading: tripsLoading, error: tripsError, refetch: refetchTrips } = useWanderSync('trips', () => dataService.getTrips());
+  const { data: users, loading: usersLoading, error: usersError, refetch: refetchUsers } = useWanderSync('users', () => dataService.getUsers());
   const { data: entitlements, loading: entitlementsLoading } = useWanderSync('entitlements', () => dataService.getEntitlementTypes());
   const { data: savedConfigs, loading: configsLoading } = useWanderSync('configs', () => dataService.getSavedConfigs());
   const { data: customEvents, loading: eventsLoading } = useWanderSync('events', () => dataService.getCustomEvents());
@@ -684,6 +685,21 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
   };
 
   const isLoading = tripsLoading || usersLoading || entitlementsLoading || configsLoading || eventsLoading || settingsLoading;
+
+  // A failed load must not look like an empty calendar.
+  const loadError = (tripsError && !rawTrips) || (usersError && !users) ? (tripsError || usersError) : null;
+  if (!isLoading && loadError) {
+    return (
+      <div className="w-full max-w-[1680px] mx-auto pt-12 px-4">
+        <EmptyState
+          icon="cloud_off"
+          title="Couldn't load the calendar"
+          description={loadError.message || 'The server could not be reached. Try again in a moment.'}
+          action={{ label: 'Try Again', onClick: () => { void refetchTrips(true); void refetchUsers(true); } }}
+        />
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

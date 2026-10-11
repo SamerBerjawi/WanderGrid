@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { isFeatureEnabled } from '../config/featureFlags';
 import { Button, Input } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
 import { RocketLaunch } from '@phosphor-icons/react';
@@ -10,25 +11,25 @@ interface AuthProps {
 }
 
 export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
-    const [mode, setMode] = useState<'signin' | 'signup' | 'setup_admin'>('signin');
+    const [mode, setMode] = useState<'signin' | 'signup' | 'setup_admin' | 'reset'>('signin');
+    const [info, setInfo] = useState('');
+    const [allowSignUp, setAllowSignUp] = useState(true);
     const [isCheckingSetup, setIsCheckingSetup] = useState(true);
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         password: '',
-        confirmPassword: ''
+        confirmPassword: '',
+        resetCode: ''
     });
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
-        dataService.getUsers()
-            .then(users => {
-                if (users.length === 0) {
-                    setMode('setup_admin');
-                } else {
-                    setMode('signin');
-                }
+        dataService.getSetupStatus()
+            .then(status => {
+                setAllowSignUp(status.allowSelfRegistration);
+                setMode(status.needsSetup ? 'setup_admin' : 'signin');
             })
             .catch(err => {
                 console.error("Error checking system users roster:", err);
@@ -48,8 +49,20 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         setIsLoading(true);
         setError('');
 
+        setInfo('');
         try {
-            if (mode === 'signin') {
+            if (mode === 'reset') {
+                if (formData.password !== formData.confirmPassword) {
+                    throw new Error("Passwords do not match");
+                }
+                if (formData.password.length < 8) {
+                    throw new Error("Password must be at least 8 characters");
+                }
+                await dataService.resetPassword(formData.email, formData.resetCode, formData.password);
+                setMode('signin');
+                setFormData({ ...formData, password: '', confirmPassword: '', resetCode: '' });
+                setInfo('Password updated. Sign in with your new password.');
+            } else if (mode === 'signin') {
                 const user = await dataService.login(formData.email, formData.password);
                 if (user) {
                     onLogin(user);
@@ -60,6 +73,9 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 if (formData.password !== formData.confirmPassword) {
                     throw new Error("Passwords do not match");
                 }
+                if (formData.password.length < 8) {
+                    throw new Error("Password must be at least 8 characters");
+                }
                 const user = await dataService.register(formData.name, formData.email, formData.password);
                 onLogin(user);
             } else if (mode === 'setup_admin') {
@@ -68,6 +84,9 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 }
                 if (!formData.name || !formData.email || !formData.password) {
                     throw new Error("All fields are required for initial administrator configuration");
+                }
+                if (formData.password.length < 8) {
+                    throw new Error("Password must be at least 8 characters");
                 }
                 // Automatically assign 'Admin' role as the first system administrator
                 const user = await dataService.register(formData.name, formData.email, formData.password, 'Admin');
@@ -84,6 +103,12 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         setIsLoading(true);
         setError('');
         try {
+            const serverDemoUser = await dataService.demoLogin();
+            if (serverDemoUser) {
+                onLogin(serverDemoUser);
+                return;
+            }
+            // Dev localStorage mode (no server): seed the demo locally.
             const allUsers = await dataService.getUsers();
             let user: User | null = null;
             
@@ -201,8 +226,8 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             } else {
                 setError('Failed to initialize demo session');
             }
-        } catch (e) {
-            setError('Demo mode unavailable at this moment');
+        } catch (e: any) {
+            setError(e?.message || 'Demo mode unavailable at this moment');
         } finally {
             setIsLoading(false);
         }
@@ -233,11 +258,13 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                         className="w-16 h-16 mx-auto rounded-2xl shadow-lg mb-6 object-contain" 
                     />
                     <h2 className="text-2xl font-black text-light-text dark:text-dark-text tracking-tight mb-2">
-                        {mode === 'setup_admin' ? 'Initial System Setup' : mode === 'signin' ? 'Welcome Back' : 'Join WanderGrid'}
+                        {mode === 'setup_admin' ? 'Initial System Setup' : mode === 'signin' ? 'Welcome Back' : mode === 'reset' ? 'Reset Password' : 'Join WanderGrid'}
                     </h2>
                     <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary font-medium">
                         {mode === 'setup_admin' 
                             ? 'Configure the primary Administrator account.' 
+                            : mode === 'reset'
+                            ? 'Ask a workspace administrator for a one-time reset code (Settings › Personnel), then choose a new password.'
                             : mode === 'signin' 
                                 ? 'Enter your credentials to manage coordinates.' 
                                 : 'Start your journey with a new partner profile.'}
@@ -246,7 +273,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
                 <div className="px-8 pb-8 space-y-5">
                     <form onSubmit={handleSubmit} className="space-y-5">
-                        {mode !== 'signin' && (
+                        {mode !== 'signin' && mode !== 'reset' && (
                             <div className="animate-fade-in">
                                 <Input 
                                     name="name"
@@ -269,15 +296,39 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                             required
                         />
                         
+                        {mode === 'reset' && (
+                            <Input 
+                                name="resetCode"
+                                label="Reset Code" 
+                                placeholder="XXXXX-XXXXX" 
+                                value={formData.resetCode}
+                                onChange={handleInput}
+                                autoComplete="one-time-code"
+                                required
+                            />
+                        )}
+
                         <Input 
                             name="password"
-                            label="Password" 
+                            label={mode === 'reset' ? 'New Password' : 'Password'} 
                             type="password"
                             placeholder="••••••••" 
                             value={formData.password}
                             onChange={handleInput}
                             required
                         />
+
+                        {mode === 'signin' && isFeatureEnabled('AUDIT_PASSWORD_RESET') && (
+                            <div className="flex justify-end -mt-3">
+                                <button
+                                    type="button"
+                                    onClick={() => { setMode('reset'); setError(''); setInfo(''); }}
+                                    className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer min-h-[44px] px-1"
+                                >
+                                    Forgot password?
+                                </button>
+                            </div>
+                        )}
 
                         {mode !== 'signin' && (
                             <div className="animate-fade-in">
@@ -293,8 +344,14 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                             </div>
                         )}
 
+                        {info && (
+                            <div role="status" className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold text-center">
+                                {info}
+                            </div>
+                        )}
+
                         {error && (
-                            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 text-xs font-bold text-center animate-shake">
+                            <div role="alert" className="p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 text-xs font-bold text-center animate-shake">
                                 {error}
                             </div>
                         )}
@@ -308,6 +365,8 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                             >
                                 {mode === 'setup_admin' 
                                     ? 'Provision Administrator Account' 
+                                    : mode === 'reset'
+                                    ? 'Set New Password'
                                     : mode === 'signin' 
                                         ? 'Authorize Session' 
                                         : 'Enlist Profile'}
@@ -315,7 +374,20 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                         </div>
                     </form>
 
-                    {/* Show Demo Button */}
+                    {/* Demo is offered on a fresh install, or when public sign-up is open */}
+                    {mode === 'reset' && (
+                        <div className="text-center">
+                            <button
+                                type="button"
+                                onClick={() => { setMode('signin'); setError(''); }}
+                                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer min-h-[44px] px-2"
+                            >
+                                Back to sign in
+                            </button>
+                        </div>
+                    )}
+
+                    {mode !== 'reset' && (mode === 'setup_admin' || allowSignUp) && (<>
                     <div className="relative flex items-center gap-4 my-2">
                         <div className="h-px bg-gray-200 dark:bg-white/10 flex-1"></div>
                         <span className="text-2xs font-bold text-gray-400 uppercase tracking-widest">Or</span>
@@ -332,8 +404,9 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                     >
                         Auto-Setup & Demo Run
                     </Button>
+                    </>)}
 
-                    {mode !== 'setup_admin' && (
+                    {mode !== 'setup_admin' && mode !== 'reset' && (allowSignUp || mode === 'signup') && (
                         <div className="text-center mt-4">
                             <p className="text-xs text-gray-500 dark:text-gray-400">
                                 {mode === 'signin' ? "Don't have an account? " : "Already have an account? "}

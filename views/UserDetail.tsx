@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { EmptyState } from '../components/EmptyState';
 import { Card, Button, Badge, Input, Select, Modal } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
 import { 
@@ -23,6 +24,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
 
     // Profile Edit States
     const [isEditing, setIsEditing] = useState(false);
+    const [profileError, setProfileError] = useState('');
     const [editName, setEditName] = useState('');
     const [editPassword, setEditPassword] = useState('');
     const [editWeekendRule, setEditWeekendRule] = useState<'none' | 'monday' | 'lieu'>('none');
@@ -49,16 +51,29 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
         setIsDragging(false);
     };
 
+    // Avatars are stored inside the user record, so downscale to 512px JPEG (well under the 1 MB limit).
     const processFile = (file: File) => {
-        if (file && file.type.startsWith('image/')) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                if (event.target?.result) {
-                    setEditProfilePicture(event.target.result as string);
-                }
-            };
-            reader.readAsDataURL(file);
+        if (!file || !/^image\/(png|jpe?g|webp|gif)$/.test(file.type)) {
+            setProfileError('Choose a PNG, JPEG, WebP or GIF image.');
+            return;
         }
+        setProfileError('');
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+            const scale = Math.min(1, 512 / Math.max(img.width, img.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(img.width * scale));
+            canvas.height = Math.max(1, Math.round(img.height * scale));
+            canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
+            URL.revokeObjectURL(url);
+            setEditProfilePicture(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            setProfileError('That image could not be read.');
+        };
+        img.src = url;
     };
 
     const handleDrop = (e: React.DragEvent) => {
@@ -182,7 +197,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                 if (foundUser) {
                     setUser(foundUser);
                     setEditName(foundUser.name || '');
-                    setEditPassword(foundUser.password || '');
+                    setEditPassword('');
                     setEditWeekendRule(foundUser.holidayWeekendRule || 'none');
                     setEditLeaveBalance(foundUser.leaveBalance ?? 25);
                     setEditTakenLeave(foundUser.takenLeave ?? 0);
@@ -240,6 +255,11 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
 
     const handleSaveProfile = async () => {
         if (!user || !editName.trim()) return;
+        if (editPassword.trim() && editPassword.trim().length < 8) {
+            setProfileError('Password must be at least 8 characters.');
+            return;
+        }
+        setProfileError('');
         setSaveLoading(true);
         try {
             const updatedUser: User = {
@@ -258,22 +278,39 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                 passportExpiryDate: editPassportExpiryDate
             };
             await dataService.updateUser(updatedUser);
-            setUser(updatedUser);
+            // Keep the typed password out of component state and localStorage.
+            const { password: _typedPassword, ...savedUser } = updatedUser;
+            setUser(savedUser as User);
+            setEditPassword('');
             setIsEditing(false);
             // If editing own session, update cached user
             const sessionRaw = localStorage.getItem('wandergrid_session_user');
             if (sessionRaw) {
                 const sessionUser = JSON.parse(sessionRaw);
                 if (sessionUser.id === userId) {
-                    localStorage.setItem('wandergrid_session_user', JSON.stringify(updatedUser));
+                    localStorage.setItem('wandergrid_session_user', JSON.stringify(savedUser));
                 }
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error("Failed to update user profile details", e);
+            setProfileError(e?.message || 'Could not save your profile.');
         } finally {
             setSaveLoading(false);
         }
     };
+
+    if (!loading && !user) {
+        return (
+            <div className="w-full max-w-[1680px] mx-auto pt-12 px-4">
+                <EmptyState
+                    icon="person_off"
+                    title="Traveler not found"
+                    description="This profile doesn't exist or has been removed."
+                    action={{ label: 'Return to Dashboard', onClick: onBack }}
+                />
+            </div>
+        );
+    }
 
     if (loading || !user) {
         return (
@@ -327,7 +364,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                     type="button"
                                     onClick={() => {
                                         setEditName(user.name || '');
-                                        setEditPassword(user.password || '');
+                                        setEditPassword('');
                                         setEditWeekendRule(user.holidayWeekendRule || 'none');
                                         setEditLeaveBalance(user.leaveBalance ?? 25);
                                         setEditTakenLeave(user.takenLeave ?? 0);
@@ -676,10 +713,13 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                             <Input 
                                 label="Change Portal Password" 
                                 type="password"
-                                placeholder="Type a secure password" 
+                                placeholder="Leave blank to keep it (8+ characters)" 
                                 value={editPassword} 
                                 onChange={e => setEditPassword(e.target.value)} 
                             />
+                            {profileError && (
+                                <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400">{profileError}</p>
+                            )}
                             
                             <Select 
                                 label="Holiday Weekend Rule" 

@@ -102,6 +102,16 @@ import { MAP_SETTINGS_LABELS } from './mapSettings/labels';
 // --- Country Matching Helper for Scratch Map & Overlays ---
 let geoJsonMemoryCache: any = null;
 
+// OpenAIP tiles come through our authenticated proxy, which adds the workspace key server-side.
+const OPENAIP_PROXY_TILES = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/proxy/openaip/{z}/{x}/{y}`;
+const withApiAuth = (url: string) => {
+    if (typeof window !== 'undefined' && url.startsWith(`${window.location.origin}/api/`)) {
+        const token = localStorage.getItem('wandergrid_session_token');
+        if (token) return { url, headers: { Authorization: `Bearer ${token}` } };
+    }
+    return { url };
+};
+
 const isCountryVisited = (f: any, visitedList: string[]): boolean => {
     if (!visitedList || visitedList.length === 0) return false;
     const p = f.properties || {};
@@ -461,7 +471,7 @@ export const createMapLibreStyle = (
     if (canEnableOpenAip) {
         sources[OPENAIP_AIRSPACE_SOURCE_ID] = {
             type: 'vector',
-            tiles: [`https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.pbf?apiKey=${encodeURIComponent(sanitizedOpenAipKey)}`],
+            tiles: [OPENAIP_PROXY_TILES],
             minzoom: 0,
             maxzoom: 14,
             attribution: '<a href="https://www.openaip.net" target="_blank" rel="noopener noreferrer">openAIP</a>'
@@ -685,7 +695,7 @@ const syncOpenAipOverlayOnMap = (
         try {
             map.addSource(OPENAIP_AIRSPACE_SOURCE_ID, {
                 type: 'vector',
-                tiles: [`https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.pbf?apiKey=${encodeURIComponent(sanitizedKey)}`],
+                tiles: [OPENAIP_PROXY_TILES],
                 minzoom: 0,
                 maxzoom: 14,
                 attribution: '<a href="https://www.openaip.net" target="_blank" rel="noopener noreferrer">openAIP</a>'
@@ -2538,6 +2548,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
         const map = new maplibregl.Map({
             container: mapContainerRef.current,
+            transformRequest: withApiAuth,
             style,
             center: initialCamera.center,
             zoom: initialCamera.zoom,

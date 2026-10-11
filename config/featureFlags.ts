@@ -48,6 +48,13 @@ export const FEATURE_FLAGS = {
   // P-07: Dynamic data credits popover
   GEV_P07_DATA_CREDITS: getEnvFlag('VITE_FF_GEV_P07_DATA_CREDITS', true),
 
+  // Audit remediation flows that replace broken behaviour (default ON, see CLAUDE.md "Feature work")
+  // WP-2.1: "Forgot password?" with admin-issued one-time reset codes
+  AUDIT_PASSWORD_RESET: getEnvFlag('VITE_FF_AUDIT_PASSWORD_RESET', true),
+
+  // WP-1.7: "Archived" planner view (Archive no longer deletes trips)
+  AUDIT_TRIP_ARCHIVE_VIEW: getEnvFlag('VITE_FF_AUDIT_TRIP_ARCHIVE_VIEW', true),
+
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;

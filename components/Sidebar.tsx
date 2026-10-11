@@ -11,7 +11,8 @@ import {
   Sun, 
   Desktop, 
   SidebarSimple, 
-  Compass
+  Compass,
+  SignOut
 } from '@phosphor-icons/react';
 import { APP_VERSION } from '../version';
 
@@ -317,6 +318,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         )}
                     </button>
 
+                    {/* Sign out */}
+                    {onLogout && (
+                      <button 
+                          type="button"
+                          onClick={onLogout}
+                          className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center text-zinc-500 hover:text-rose-600 dark:text-zinc-200 dark:hover:text-rose-400 hover:bg-zinc-200/30 dark:hover:bg-white/[0.08] transition-all cursor-pointer hover:scale-105 active:scale-95`}
+                          title="Sign out"
+                          aria-label="Sign out"
+                      >
+                          <SignOut weight="duotone" className="w-5 h-5" />
+                      </button>
+                    )}
+
                     {/* 3. Collapse Button (Moved from top right of sidebar) */}
                     <button 
                         onClick={toggleCollapse}
@@ -564,6 +578,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         )}
                       </button>
                     </>
+                  )}
+
+                  {onLogout && (
+                    <button
+                      type="button"
+                      onClick={() => { setIsMoreOpen(false); onLogout(); }}
+                      className="flex items-center gap-3 w-full h-11 px-3.5 rounded-2xl text-left text-xs font-bold font-sans transition-all duration-150 cursor-pointer text-rose-600 dark:text-rose-400 hover:bg-rose-500/10"
+                    >
+                      <SignOut weight="duotone" className="w-5 h-5" />
+                      <span>Sign out</span>
+                    </button>
                   )}
 
                   {/* Version Detail */}

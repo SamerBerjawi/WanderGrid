@@ -139,6 +139,32 @@ test.describe('W8 password reset', () => {
     await expect(page.getByRole('button', { name: /forgot|reset/i }).or(page.getByRole('link', { name: /forgot|reset/i }))).toBeVisible({ timeout: 3000 });
   });
 
+  test('an admin issues a reset code and the member sets a new password with it', async ({ page, browser, request }) => {
+    const admin = await apiRegister(request, ADMIN);
+    await apiRegister(request, PARTNER);
+    await seedSession(page, admin.token, admin.user);
+    await page.goto('/settings');
+    await expectAppShell(page);
+    await page.locator('main button >> visible=true').filter({ hasText: /^Personnel/ }).first().click();
+    await page.getByRole('button', { name: `Issue password reset code for ${PARTNER.name}` }).click();
+    const code = (await page.getByTestId('reset-code').innerText()).trim();
+    expect(code).toMatch(/^[A-Z2-9]{5}-[A-Z2-9]{5}$/);
+
+    const ctx = await browser.newContext({ viewport: test.info().project.use.viewport, baseURL: 'http://localhost:4173', serviceWorkers: 'block' });
+    const member = await ctx.newPage();
+    await member.goto('/');
+    await waitForAuthScreen(member);
+    await member.getByRole('button', { name: 'Forgot password?' }).click();
+    await member.locator('input[name="email"]').fill(PARTNER.email);
+    await member.locator('input[name="resetCode"]').fill(code);
+    await member.locator('input[name="password"]').fill('Brand!New8pass');
+    await member.locator('input[name="confirmPassword"]').fill('Brand!New8pass');
+    await submitButton(member).click();
+    await expect(member.getByText('Password updated. Sign in with your new password.')).toBeVisible();
+    await ctx.close();
+    expect((await request.post('/api/auth/login', { data: { email: PARTNER.email, password: 'Brand!New8pass' } })).status()).toBe(200);
+  });
+
   test('a signed-in user can change their own password from the profile', async ({ page, request }) => {
     const { token, user } = await apiRegister(request, PARTNER);
     await seedSession(page, token, user);
@@ -146,7 +172,7 @@ test.describe('W8 password reset', () => {
     await expectAppShell(page);
     await openProfile(page);
     await page.locator('main h1', { hasText: PARTNER.name }).locator('xpath=following-sibling::button[1]').click();
-    const pw = page.locator('input[placeholder="Type a secure password"]');
+    const pw = page.locator('input[placeholder^="Leave blank to keep it"]');
     await expect(pw).toBeVisible();
     await pw.fill('Changed!Pass1');
     await page.getByRole('button', { name: 'Save Changes' }).click();

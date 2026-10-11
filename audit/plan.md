@@ -269,6 +269,10 @@ Severity is the highest of the merged findings. "Sources" lists every original I
   - `docker build` uses `npm ci`.
 
 ### WP-1.1 Lock down registration and first-run setup
+- **Status: ✅ Done.**
+  - M-02 (SEC-002, SEC-003, QA-A-001, QA-A-006): register whitelists name/email/password; id = normalised email chosen by the server; first account Admin, later ones Partner; existing id/email → 409; `POST /api/users` and every generic create are plain inserts (409 instead of overwrite).
+  - SEC-017: **accepted risk** (decision): sign-up keeps the clear "already exists" message; rate limiting remains.
+  - M-27 (QA-A-004): new public `GET /api/auth/setup-status` drives the Initial System Setup screen; new admin setting "Public Sign-Up" (Open/Closed) hides Sign Up and makes register return 403 (decision: open as Partner + admin toggle).
 - **Covers:**
   - M-02 (SEC-002, SEC-003, SEC-017, QA-A-001, QA-A-006).
   - M-27 (QA-A-004).
@@ -288,6 +292,10 @@ Severity is the highest of the merged findings. "Sources" lists every original I
   - New API test: the first registration is Admin, the second is Partner, and re-registering an existing id or email does not change the stored user.
 
 ### WP-1.2a Role-based authorization (admin-only routes, self-only profile edits)
+- **Status: ✅ Done.**
+  - M-01 part 1 (SEC-001, QA-A-002): `requireAdmin` on user create/delete, settings PUT, backup, restore, wipe, `/api/jobs/*` and events/entitlements/configs writes; users may edit only their own profile and never their role; body id can't redirect a user PUT. Invalid tokens now 401 (sign out) and permission failures 403 (client shows an error, no sign-out).
+  - M-21 (QA-G-002): server refuses self-deletion and removing/demoting the last Admin; Settings hides Delete on your own row and shows server errors inline.
+  - Non-admin theme toggles are kept per browser (the workspace theme is an admin setting).
 - **Covers:**
   - M-01, part 1 (SEC-001, QA-A-002).
   - M-21 (QA-G-002).
@@ -308,6 +316,9 @@ Severity is the highest of the merged findings. "Sources" lists every original I
   - New API matrix test: Partner → 403 on each admin route; Admin → 2xx.
 
 ### WP-1.2b Ownership and privacy on trips, flights, visited and events
+- **Status: ✅ Done.** (decision: shared read, owner/admin write for logs)
+  - M-01 part 2 (SEC-001): trips readable by participants or when Public, writable by participants; admins see all; new trips always include the creator. Flights/land journeys/atlas records are readable by everyone but writable only by `ownerId` (set from the session) or an admin; ownerless legacy records are admin-managed. Enforced on GET, POST, PUT, DELETE, `/bulk` and `/api/batch`.
+  - M-52 (part): the client no longer downloads and filters other users' private trips. Events/entitlements/configs are admin-write (WP-1.2a).
 - **Covers:**
   - M-01, part 2 (SEC-001).
   - The server-side filtering half of M-52 (PERF-009).
@@ -323,6 +334,9 @@ Severity is the highest of the merged findings. "Sources" lists every original I
   - Full e2e regression of the planning, trip-detail, flights, roadtrips and explore specs.
 
 ### WP-1.3 Fix the password pipeline (and restore defaults)
+- **Status: ✅ Done.**
+  - M-04 (QA-A-003, QA-G-001, QA-A-012, SEC-008, SEC-009): the browser no longer hashes passwords in API mode; the server always hashes (`pbkdf2$sha512$…`), uses `timingSafeEqual`, enforces 8–200 characters, never stores a client-supplied hash, upgrades legacy plaintext/old-format rows on login, and strips passwords from every response (`toPublicUser`). Accounts holding old browser SHA-256 hashes are flagged `passwordResetRequired` ("Needs password" badge in Personnel).
+  - M-05 (SEC-005): restore never assigns `password`; plaintext in a file is hashed; users without one get no usable password until an admin sets one (decision C-5).
 - **Covers:**
   - M-04 (QA-A-003, QA-G-001, QA-A-012, SEC-008, SEC-009).
   - M-05 (SEC-005).
@@ -354,6 +368,7 @@ Severity is the highest of the merged findings. "Sources" lists every original I
     - After a restore without passwords, logging in with `password` fails.
 
 ### WP-1.4 Remove the XSS sink
+- **Status: ✅ Done.** M-03 (SEC-004, QA-C-001): the AI Guide renders `**bold**` and line breaks as React elements (`ChatText`); `dangerouslySetInnerHTML` no longer appears in the codebase (TripDetail2 was retired in WP-1.0).
 - **Covers:** M-03 (SEC-004, QA-C-001). Gemini output goes through the same sink, so it is covered too.
 - **Files:**
   - `views/TripDetail.tsx:418`, `:491` and `views/TripDetail2.tsx:390`, `:463`: render `**bold**` and newlines as React elements, with no `dangerouslySetInnerHTML`.
@@ -365,6 +380,7 @@ Severity is the highest of the merged findings. "Sources" lists every original I
   - e2e `trip-detail/trip-detail.spec.ts` › "W18 AI Guide greets with the trip and explains a missing API key on send" (regression).
 
 ### WP-1.5 Revocable sessions
+- **Status: ✅ Done.** M-07 (SEC-007, QA-A-010, QA-A-005): every request loads the user and checks a `tokenVersion` claim; role comes from the DB; new `POST /api/auth/logout` and `GET /api/auth/me`; password/role changes revoke other sessions (the editor gets a fresh token); sessions last 24 h (`SESSION_TTL`). On reload the app validates the session via `/auth/me` and signs out instead of switching to the Admin identity.
 - **Covers:** M-07 (SEC-007, QA-A-010, QA-A-005).
 - **Files:**
   - `backend_files/server.js`:
@@ -382,6 +398,7 @@ Severity is the highest of the merged findings. "Sources" lists every original I
   - e2e `auth/session.spec.ts` › "reload keeps a valid session" and "API 401 during use signs the user out automatically" (regressions).
 
 ### WP-1.6 Private calendar feed with a working subscription link
+- **Status: ✅ Done.** M-06 (SEC-006, QA-G-004) + ICS part of M-10: feed served at `/api/calendar/:token/feed.ics` with a random rotatable per-user token (`GET /api/calendar/token`, `POST /api/calendar/token/rotate`); RFC 5545 escaping and line folding; trips with invalid dates are skipped; Settings copies the tokenised URL and has "Reset Subscription Link"; tokens never appear in user lists or backups.
 - **Covers:**
   - M-06 (SEC-006, QA-G-004).
   - The ICS invalid-date crash from M-10/REL-011.
@@ -402,6 +419,9 @@ Severity is the highest of the merged findings. "Sources" lists every original I
     - A trip with `endDate: "2026-13-45"` doesn't 500 the feed.
 
 ### WP-1.7 Make destructive actions safe (Archive, Clear All)
+- **Status: ✅ Done.** (decision C-7: real archive + separate Delete)
+  - M-16 (QA-B-001, QA-C-002): `Trip.archived` flag; Planner "Archive Selected" archives in one bulk request; new "Archived" view with "Restore Selected"; Planner-2 hides archived trips; the edit drawer offers Archive (reversible) and a separate Delete, each with its own confirmation.
+  - M-24 (QA-C-005): "Clear All" asks for confirmation.
 - **Covers:**
   - M-16 (QA-B-001, QA-C-002).
   - M-24 (QA-C-005).
@@ -419,6 +439,7 @@ Severity is the highest of the merged findings. "Sources" lists every original I
   - e2e `trip-detail/trip-detail.spec.ts` › "W17 Gear: Clear All asks for confirmation before deleting the list".
 
 ### WP-1.8 No writes on the read path
+- **Status: ✅ Done.** M-18 (REL-003, REL-015, QA-F-002): opening a trip is read-only; standalone flights inside the trip's dates are offered via an "Add them to this trip" banner that saves atomically through `/api/batch`; config without `holidays` no longer hangs; load failures show "Couldn't load this trip" with Try Again. The Dashboard no longer seeds the Atlas on load.
 - **Covers:** M-18 (REL-003, REL-015, QA-F-002).
 - **Files:**
   - `views/TripDetail.tsx:619-693` (+ `TripDetail2`):
@@ -435,6 +456,7 @@ Severity is the highest of the merged findings. "Sources" lists every original I
   - Regression: `explore.spec.ts` › "scan finds the country of a past trip and registers it".
 
 ### WP-1.9 Atomic multi-step writes (bundle, unbundle, move)
+- **Status: ✅ Done.** M-17 (REL-002): new transactional `POST /api/batch` (upsert/delete trips and flights in one transaction, ownership-checked); bundle, unbundle and move-to-another-trip use it via `dataService.applyBatch`; failures show "Nothing was changed".
 - **Covers:** M-17 (REL-002).
 - **Files:**
   - New `POST /api/trips/bundle` and `POST /api/flights/move` in `backend_files/server.js`, using `withTransaction`.
@@ -447,6 +469,9 @@ Severity is the highest of the merged findings. "Sources" lists every original I
   - New API test: a failure injected mid-transaction rolls everything back.
 
 ### WP-1.10 Restore and wipe that can't crash or double-run
+- **Status: ✅ Done.**
+  - M-20 (REL-001): all route handlers forward async rejections to a JSON error middleware; `unhandledRejection` is logged instead of exiting; wipe runs in `withTransaction` inside `try`.
+  - M-19 (REL-004, PERF-011): restore validates synchronously then runs as a background job (202 + `/api/jobs/status/:id`, polled by the client) using chunked `bulkUpsert`; restore body limit 50 MB, other routes 5 MB (kept above 1 MB until WP-2.11 caps avatar size); the client no longer auto-retries POSTs.
 - **Covers:**
   - M-20 (REL-001).
   - M-19 (REL-004, PERF-011).
@@ -477,6 +502,7 @@ Severity is the highest of the merged findings. "Sources" lists every original I
 This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12). They don't qualify for Phase 1, and they share files with the reliability work.
 
 ### WP-2.1 Auth and session UX
+- **Status: 🟡 Code done, e2e verification pending.** M-33 (unauthorized keeps the URL), M-34 (server `POST /api/auth/demo`, decision: works in production; Partner demo on populated workspaces, hidden when sign-up is closed), M-35 (admin-issued one-time reset codes + "Forgot password?", flag `AUDIT_PASSWORD_RESET` default ON), M-43 (Sign out in sidebar and More sheet), M-44 (`%40` decoded, "Traveler not found"), M-26 auth messages (server error text and friendly network errors surfaced).
 - **Covers:**
   - M-33 (QA-A-007), M-34 (QA-A-008, see C-8) and M-35 (QA-A-009).
   - M-43 (QA-A-016) and M-44 (QA-A-017, QA-A-018).
@@ -508,6 +534,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
     - "Auto-Setup & Demo Run…", with its expectation changed to "absent in production" (C-8).
 
 ### WP-2.2 Broken features with one-line causes
+- **Status: 🟡 Code done, e2e verification pending.** M-28 (AnimatePresence moved inside the portal), M-32 (Authorization header on provider tests), M-46 (Back → Planner).
 - **Covers:** M-28 (QA-F-001), M-32 (QA-G-003), M-46 (QA-C-004).
 - **Files:**
   - `views/TravelAtlas.tsx:1698-1700`: move `AnimatePresence` inside `createPortal`.
@@ -521,6 +548,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - e2e `trip-detail/trip-detail.spec.ts` › "Back to planner returns to the Planner".
 
 ### WP-2.3 Mobile reachability
+- **Status: 🟡 Partly done.** M-30 (floating bars use `.bottom-floating-bar`, above the tab bar), M-31 (`Tabs` uses justify-start + mx-auto). M-29 (mobile flight edit/delete) still open: the mobile cards render Edit/Delete buttons, so the cause needs the mobile e2e trace.
 - **Covers:** M-29 (QA-D-002), M-30 (QA-B-002, QA-D-003; see C-11) and M-31 (QA-C-003).
 - **Files:**
   - `views/Flights.tsx`:
@@ -542,6 +570,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - Unblock and pass the currently **Blocked** mobile tests: `roadtrips.spec.ts` › "W32 bulk select and delete two journeys", `explore.spec.ts` › "Mission Control opens its tabs and closes", and "scan finds the country of a past trip".
 
 ### WP-2.4 Visible errors and save guards
+- **Status: 🟡 Code done, e2e verification pending.** Toast service + global `unhandledrejection` reporter; error states with Try Again on Planner, Calendar, Flights and Trip pages; settings save errors shown and applied locally only after the PUT succeeds; friendly invalid-backup message; ref-based save guards and stable ids for flights, bundles and journeys.
 - **Covers:** M-26 (REL-007, QA-B-003, QA-G-005, QA-G-006) and M-23 (REL-006, QA-D-001, QA-E-001).
 - **Files:**
   - Error states:
@@ -579,6 +608,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - New e2e: toggle the theme, then save Settings, and the theme persists.
 
 ### WP-2.6 Server resilience
+- **Status: ✅ Done (API tests).** M-36 (timeouts, URL encoding, status checks on AviationStack/AeroDataBox), M-25 (one dataset refresh path with a row-count floor; fixed a placeholder-index bug for skipped lines), M-37 (`BoundedMap` caches, job retention 30 min), M-41 (bounded request drain on SIGTERM), M-13 (`/api/health` returns status only).
 - **Covers:** M-36 (REL-008), M-37 (REL-010), M-25 (REL-009), M-41 (REL-016) and M-13 (SEC-015).
 - **Files:**
   - Timeouts and encoding:
@@ -601,6 +631,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - Manual check: `SIGTERM` during a slow request completes the request.
 
 ### WP-2.7 Client resilience and dev/prod parity
+- **Status: 🟡 Code done.** M-39 (explicit `VITE_LOCAL_MODE=true`, no silent mid-session fallback, "Local mode" badge), M-42 (crash reset clears only cache keys and SW caches, after confirmation).
 - **Covers:** M-39 (REL-013), M-42 (REL-017).
 - **Files:**
   - `services/mockDb.ts:545-555`: fall back only on network `TypeError` or abort, and only when `VITE_LOCAL_MODE=true`; show a "Local mode" badge.
@@ -622,6 +653,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
 - **Verify:** `npx tsc --noEmit` reports 0 errors with `strictNullChecks` on; the `any` count trends down (record it in the PR); the full e2e suite stays green.
 
 ### WP-2.9 Dependency and config hardening
+- **Status: 🟡 Partly done.** M-14 (CORS only for `CORS_ORIGINS`), M-15 (Vite dev server on localhost unless `VITE_DEV_HOST`). Still open: M-11 xlsx and the vite upgrade (deferred until no e2e run is using `node_modules`).
 - **Covers:** M-11 (SEC-013), M-14 (SEC-016), M-15 (SEC-018).
 - **Files:**
   - `package.json`: SheetJS ≥ 0.20.2 from `cdn.sheetjs.com`, or a CSV-only parser; parse in a Worker.
@@ -635,6 +667,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - A preflight from a foreign origin gets no `Access-Control-Allow-Origin`.
 
 ### WP-2.10 Keep secrets on the server
+- **Status: 🟡 Code done (API tests pass), e2e pending.** M-08: Gemini/AviationStack/AeroDataBox/OpenAIP keys are masked in `GET /api/settings`, kept on mask-PUT, injected by a `/api/proxy` middleware, excluded from backups; Gemini runs via `POST /api/ai/generate` (SDK removed from the bundle); OpenAIP tiles go through the authenticated proxy; the `define` for GEMINI_API_KEY was removed. Brandfetch/CARTO client IDs stay readable (public identifiers).
 - **Covers:**
   - M-08 (SEC-010).
   - Part of M-49 (PERF-004: Gemini moves server-side, so `@google/genai` leaves the bundle).
@@ -657,6 +690,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - `grep` the built `dist/` for `AIza` shows no matches.
 
 ### WP-2.11 Request schemas
+- **Status: 🟡 Code done (API tests pass), e2e pending.** M-10: shared `validateRecord` for every collection write (ids, ISO dates, list fields, privacy, 1 MB/2 MB size caps, avatar format/size); avatars are downscaled to 512 px JPEG in the browser.
 - **Covers:** M-10 (SEC-012, REL-011), the remaining parts after WP-1.6 and WP-1.10.
 - **Files:**
   - `backend_files/server.js`: create and update handlers `:858-907`; reject `body.id !== params.id`; per-collection zod or ajv schemas with field caps.
@@ -669,6 +703,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - Full e2e regression; the specs seed via the API, so they double as schema-compatibility checks.
 
 ### WP-2.12 One Tailwind source plus CSP
+- **Status: ⏳ Not started.** Decision recorded: the whole app uses the SF Pro system stack (UI-008).
 - **Covers:** M-09 (SEC-011, PERF-003, UI-008).
 - **Files:**
   - `index.html:36-110`: port the inline config (gray → neutral, fonts) into `tailwind.config.js` first (C-13), then delete the CDN script.

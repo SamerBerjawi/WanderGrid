@@ -23,13 +23,24 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error("Unhandled error caught by WanderGrid ErrorBoundary:", error, errorInfo);
   }
 
-  private handleReset = () => {
+  // Clears derived caches only (geocoding, routes, dashboard snapshots, service-worker caches).
+  // The session, preferences and — in local mode — the user's data are kept (REL-017).
+  private handleReset = async () => {
+    const confirmed = window.confirm('Clear cached map, route and dashboard data and reload? Your account and trips are not affected.');
+    if (!confirmed) return;
     try {
-      localStorage.clear();
-      window.location.reload();
+      const isCacheKey = (key: string) =>
+        /^wandergrid_.*(cache|_routes_|geo_db|metadata_resolved|api_status|place_registry|road_tracing)/.test(key) ||
+        key === 'flightFormDraft';
+      Object.keys(localStorage).filter(isCacheKey).forEach((key) => localStorage.removeItem(key));
+      if (typeof caches !== 'undefined') {
+        const names = await caches.keys();
+        await Promise.all(names.map((name) => caches.delete(name)));
+      }
     } catch (e) {
-      window.location.reload();
+      console.warn('Cache reset was incomplete:', e);
     }
+    window.location.reload();
   };
 
   public render() {
@@ -66,7 +77,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 onClick={this.handleReset}
                 className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-3 px-4 rounded-2xl transition duration-200 text-sm border border-slate-600/50 pointer-events-auto"
               >
-                Clear Cache & Reset
+                Clear Cached Data & Reload
               </button>
             </div>
           </div>

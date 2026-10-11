@@ -3,7 +3,8 @@ export interface User {
   id: string;
   name: string;
   email?: string; // New: Auth identifier
-  password?: string; // New: Mock password
+  password?: string; // Write-only: sent when setting a password, never returned by the API
+  passwordResetRequired?: boolean; // Set by the API when the account has no usable password
   role: 'Admin' | 'Partner' | 'Child';
   leaveBalance: number; // in days
   takenLeave: number;
@@ -193,6 +194,7 @@ export interface PackingItem {
 export interface Trip {
   id: string;
   name: string;
+  archived?: boolean; // Hidden from planning boards until restored (Archive is not Delete)
   originalName?: string;
   subtitle?: string;
   description?: string;
@@ -316,6 +318,8 @@ export interface WorkspaceSettings {
     defaultLandTransportMethod?: 'Train' | 'Bus' | 'Car Rental' | 'Personal Car';
     defaultBasemapLight?: 'liberty' | 'bright' | 'positron' | 'satellite' | 'snow' | 'vibrant' | 'ocean';
     defaultBasemapDark?: 'citylights' | 'ocean' | 'satellite' | 'onyx';
+    allowSelfRegistration?: boolean; // Public "Sign Up" after the first admin exists (default true)
+    configuredKeys?: Partial<Record<'googleGeminiApiKey' | 'aviationStackApiKey' | 'aeroDataBoxApiKey' | 'openAipApiKey', boolean>>; // Read-only, from the server
 }
 
 export enum ViewState {

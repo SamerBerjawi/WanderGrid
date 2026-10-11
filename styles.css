@@ -153,6 +153,13 @@
 .bottom-safe-menu {
   bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
 }
+/* Floating selection/bulk-action bars: above the mobile tab bar, 1.5rem from the bottom on desktop */
+.bottom-floating-bar {
+  bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  .bottom-floating-bar { bottom: 1.5rem; }
+}
 .top-safe-offset {
   top: calc(0.75rem + env(safe-area-inset-top, 0px));
 }

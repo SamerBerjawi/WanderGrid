@@ -409,12 +409,13 @@ interface CachedCarrier {
   name: string;
 }
 
+// True when the workspace has an AviationStack key (the value itself stays on the server).
 function getAviationStackApiKey(): string {
   try {
     const s = localStorage.getItem('wandergrid_settings');
     if (s) {
       const parsed = JSON.parse(s);
-      return parsed.aviationStackApiKey || '';
+      return parsed.configuredKeys?.aviationStackApiKey || parsed.aviationStackApiKey ? 'configured' : '';
     }
   } catch (e) {}
   return '';
@@ -502,13 +503,8 @@ async function triggerBackgroundAirportFetch(code: string) {
     const apiKey = getAviationStackApiKey();
     if (apiKey) {
       try {
-        let extRes: Response;
-        const isMockMode = localStorage.getItem('wandergrid_api_status') === 'unavailable';
-        if (isMockMode) {
-          extRes = await fetch(`https://api.aviationstack.com/v1/airports?access_key=${apiKey}&iata_code=${code}`);
-        } else {
-          extRes = await fetchWithAuth(`/api/proxy/airports?access_key=${apiKey}&iata_code=${code}`);
-        }
+        // The server injects the workspace's AviationStack key; it never travels from the browser.
+        const extRes = await fetchWithAuth(`/api/proxy/airports?iata_code=${encodeURIComponent(code)}`);
         if (extRes.ok) {
           const json = await extRes.json();
           if (json && json.data && Array.isArray(json.data) && json.data.length > 0) {
@@ -624,13 +620,8 @@ async function triggerBackgroundCarrierFetch(code: string) {
     const apiKey = getAviationStackApiKey();
     if (apiKey) {
       try {
-        let extRes: Response;
-        const isMockMode = localStorage.getItem('wandergrid_api_status') === 'unavailable';
-        if (isMockMode) {
-          extRes = await fetch(`https://api.aviationstack.com/v1/airlines?access_key=${apiKey}&iata_code=${code}`);
-        } else {
-          extRes = await fetchWithAuth(`/api/proxy/airlines?access_key=${apiKey}&iata_code=${code}`);
-        }
+        // The server injects the workspace's AviationStack key; it never travels from the browser.
+        const extRes = await fetchWithAuth(`/api/proxy/airlines?iata_code=${encodeURIComponent(code)}`);
         if (extRes.ok) {
           const json = await extRes.json();
           if (json && json.data && Array.isArray(json.data) && json.data.length > 0) {

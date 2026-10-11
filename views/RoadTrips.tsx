@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { 
   Plus, MagnifyingGlass as Search, CalendarBlank as Calendar, MapPin, Trash as Trash2, PencilSimple as Edit2, 
   CaretDown as ChevronDown, CaretUp as ChevronUp, Clock, CurrencyDollar as DollarSign, Compass, Car, 
@@ -166,6 +166,7 @@ const SortableWaypointItem: React.FC<SortableWaypointItemProps> = ({ waypoint, o
 };
 
 export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ onTripClick }) => {
+  const savingRef = useRef(false);
   const [roadTrips, setRoadTrips] = useState<any[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
@@ -783,11 +784,13 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
 
   const handleSaveTransport = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (savingRef.current) return; // a double click must not create two journeys (REL-006)
     if (!formOrigin.trim() || !formDestination.trim() || !formDepDate) {
       alert("Origin, destination, and departure date are required fields.");
       return;
     }
 
+    savingRef.current = true;
     try {
       setLoading(true);
 
@@ -866,6 +869,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       console.error(err);
       alert(err.message || 'Failed saving land journey record.');
     } finally {
+      savingRef.current = false;
       setLoading(false);
     }
   };
@@ -1325,7 +1329,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-sticky"
+            className="fixed bottom-floating-bar left-1/2 -translate-x-1/2 z-sticky"
           >
             <GlassPanel
               className="wg-glass-pill shadow-2xl border border-primary-500/30"
@@ -1916,7 +1920,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
             <Button variant="secondary" type="button" onClick={() => setIsModalOpen(false)} className="min-h-[44px]">
               Cancel
             </Button>
-            <Button variant="primary" type="submit" className="min-h-[44px]">
+            <Button variant="primary" type="submit" className="min-h-[44px]" disabled={loading}>
               {editingTransport ? "Save Itinerary" : "Create Journey"}
             </Button>
           </div>

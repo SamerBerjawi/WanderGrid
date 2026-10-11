@@ -31,6 +31,8 @@ import {
 } from '@phosphor-icons/react';
 import GlassPanel from '../components/glass/GlassPanel';
 import { Button } from '../components/ui';
+import { EmptyState } from '../components/EmptyState';
+import { isFeatureEnabled } from '../config/featureFlags';
 import { LiquidGlassSelect } from '../components/LiquidGlassSelect';
 import { useWanderSync } from '../hooks/useWanderSync';
 import { dataService } from '../services/mockDb';
@@ -121,7 +123,7 @@ const MONTHS = [
 
 export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: usersProp }) => {
     // 1. Reactive SWR Trips Synchronization
-    const { data: tripsData } = useWanderSync<Trip[]>(
+    const { data: tripsData, error: tripsError, refetch: refetchTrips } = useWanderSync<Trip[]>(
         'planner_trips',
         () => dataService.getTrips()
     );
@@ -158,6 +160,8 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
     // 6. Proposed Feature: Multi-Select & Bulk Actions
     const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
     const [selectedTripIds, setSelectedTripIds] = useState<Set<string>>(new Set());
+    // Archived trips are hidden from the board; this toggle shows only them so they can be restored.
+    const [showArchived, setShowArchived] = useState(false);
 
     const toggleBucket = (bucket: 'past' | 'confirmed' | 'planned') => {
         setCollapsedBuckets(prev => ({
@@ -227,6 +231,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
 
         return trips.filter(trip => {
             if (trip.status === 'Cancelled') return false;
+            if (Boolean(trip.archived) !== showArchived) return false;
 
             // Search query match
             if (q) {
@@ -270,7 +275,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
 
             return true;
         });
-    }, [trips, searchQuery, selectedYear, selectedMonth, selectedDestination]);
+    }, [trips, showArchived, searchQuery, selectedYear, selectedMonth, selectedDestination]);
 
     // Categorize filtered trips into Confirmed, Past, Planned
     const today = new Date().toISOString().split('T')[0];
@@ -351,13 +356,15 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
     const handleBulkArchive = async () => {
         if (selectedTripIds.size === 0) return;
         const count = selectedTripIds.size;
-        if (!window.confirm(`Are you sure you want to archive/remove ${count} selected expedition${count > 1 ? 's' : ''}?`)) {
+        const label = `${count} trip${count > 1 ? 's' : ''}`;
+        const message = showArchived
+            ? `Restore ${label} to the planner?`
+            : `Archive ${label}? Archived trips are hidden from the planner and can be restored from "Archived".`;
+        if (!window.confirm(message)) {
             return;
         }
 
-        for (const tripId of selectedTripIds) {
-            await dataService.deleteTrip(tripId);
-        }
+        await dataService.setTripsArchived(Array.from(selectedTripIds), !showArchived);
         setSelectedTripIds(new Set());
         setIsMultiSelectMode(false);
     };
@@ -401,6 +408,24 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
 
                 {/* Right: Actions (Aligned Right on Mobile & Desktop) */}
                 <div className="flex items-center justify-end gap-2 shrink-0">
+                    {isFeatureEnabled('AUDIT_TRIP_ARCHIVE_VIEW') && (
+                    <button
+                        type="button"
+                        onClick={() => { setShowArchived(!showArchived); setSelectedTripIds(new Set()); }}
+                        aria-pressed={showArchived}
+                        className={`min-w-[44px] min-h-[44px] px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                            showArchived
+                                ? 'bg-primary-500 text-white border-primary-500 shadow-sm'
+                                : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text border-black/10 dark:border-white/10'
+                        }`}
+                        title={showArchived ? 'Back to active trips' : 'Show archived trips'}
+                        aria-label={showArchived ? 'Back to active trips' : 'Show archived trips'}
+                    >
+                        <Archive className="w-4 h-4" weight={showArchived ? 'fill' : 'duotone'} />
+                        <span className="hidden sm:inline">Archived</span>
+                    </button>
+                    )}
+
                     {/* Proposed Multi-Select Mode Toggle Button */}
                     <button
                         type="button"
@@ -685,7 +710,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 20 }}
-                        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-sticky"
+                        className="fixed bottom-floating-bar left-1/2 -translate-x-1/2 z-sticky"
                     >
                         <GlassPanel
                             className="wg-glass-pill shadow-2xl border border-primary-500/30"
@@ -702,7 +727,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                     className="px-3 py-1.5 rounded-full bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 hover:bg-rose-600 transition-colors shadow-sm cursor-pointer"
                                 >
                                     <Archive className="w-3.5 h-3.5" weight="bold" />
-                                    <span>Archive Selected</span>
+                                    <span>{showArchived ? 'Restore Selected' : 'Archive Selected'}</span>
                                 </button>
                                 <button
                                     type="button"
@@ -720,6 +745,14 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
             {/* ========================================================================= */}
             {/* 3-COLUMN PANORAMIC BUCKETS: Past, Confirmed, Planned                      */}
             {/* ========================================================================= */}
+            {tripsError && !tripsData ? (
+                <EmptyState
+                    icon="cloud_off"
+                    title="Couldn't load your trips"
+                    description={tripsError.message || 'The server could not be reached. Your trips are safe; try again in a moment.'}
+                    action={{ label: 'Try Again', onClick: () => { void refetchTrips(true); } }}
+                />
+            ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 
                 {/* --------------------------------------------------------------------- */}
@@ -1065,6 +1098,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                 )}
 
             </div>
+            )}
 
         </div>
     );

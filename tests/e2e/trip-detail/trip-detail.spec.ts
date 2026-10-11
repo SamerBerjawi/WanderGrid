@@ -5,7 +5,7 @@
  */
 import * as fs from 'fs';
 import { test, expect, ADMIN, resetDb, apiRegister, seedSession, expectAppShell } from '../support/fixtures';
-import { seedTrip, apiTrips, nextMonthDay, visible, inMain, waitForTrip, overflowX, pickDateNextMonth, pickDateByLabel } from '../support/planning';
+import { seedTrip, apiTrips, nextMonthDay, visible, inMain, waitForTrip, overflowX, pickDateNextMonth, pickDateByLabel, seedFlight, flightRecord, apiGet } from '../support/planning';
 
 let s: { token: string; user: any };
 const TRIP_ID = 'qa-trip-c';
@@ -28,6 +28,40 @@ test.beforeEach(async ({ page, request }) => {
   s = await apiRegister(request, ADMIN);
   await seedTrip(request, s.token, BASE, ADMIN.id);
   await seedSession(page, s.token, s.user);
+});
+
+// ---------- WP-1.8: no writes on the read path ----------
+test('opening a trip with an overlapping standalone flight changes nothing until the user asks', async ({ page, request }) => {
+  await seedFlight(request, s.token, flightRecord('qa-overlap', { departureDate: BASE.startDate, arrivalDate: BASE.startDate }));
+  const writes: string[] = [];
+  page.on('request', (r) => { if (r.url().includes('/api/') && ['POST', 'PUT', 'DELETE'].includes(r.method())) writes.push(`${r.method()} ${r.url()}`); });
+  await openTrip(page);
+  await expect(page.getByText(/1 standalone flight falls within this trip/)).toBeVisible();
+  await page.waitForTimeout(1000);
+  expect(writes, 'opening a trip must not write').toEqual([]);
+  expect((await apiGet(request, s.token, '/api/flights')).map((f) => f.id)).toContain('qa-overlap');
+
+  await page.getByRole('button', { name: /Add it to this trip/ }).click();
+  await expect.poll(async () => (await getTrip(request))?.transports?.some((t) => t.id === 'qa-overlap'), { timeout: 10_000 }).toBe(true);
+  expect((await apiGet(request, s.token, '/api/flights')).map((f) => f.id)).not.toContain('qa-overlap');
+  await expect(page.getByText(/standalone flight/)).toHaveCount(0);
+});
+
+test('a saved holiday config without "holidays" does not leave the trip page loading forever', async ({ page, request }) => {
+  const r = await request.post('/api/configs', { headers: { Authorization: `Bearer ${s.token}` }, data: { id: 'broken-config', name: 'Broken', countryCode: 'GR' } });
+  expect(r.status()).toBe(201);
+  await openTrip(page);
+  await expect(page.getByText('Loading Trip Data...')).toHaveCount(0);
+});
+
+test('a failed load shows an error with Try Again instead of a blank page', async ({ page }) => {
+  let fail = true;
+  await page.route('**/api/trips', (route) => (fail && route.request().method() === 'GET' ? route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"x"}' }) : route.continue()));
+  await page.goto(`/trip/${TRIP_ID}`);
+  await expect(page.getByText("Couldn't load this trip")).toBeVisible({ timeout: 30_000 });
+  fail = false;
+  await page.getByRole('button', { name: 'Try Again' }).click();
+  await expect(inMain(page, BASE.name).first()).toBeVisible({ timeout: 15_000 });
 });
 
 // ---------- page-level ----------
@@ -102,10 +136,18 @@ test('W12/W22 "Archive" in the edit drawer archives the trip (it is not permanen
   await openTrip(page);
   await page.getByRole('button', { name: /Edit Settings|^Edit$/ }).first().click();
   await page.getByRole('button', { name: /^Archive$/ }).click();
-  await page.getByRole('button', { name: /Archive|Confirm|Delete/ }).last().click();
-  await page.waitForTimeout(1500);
-  const t = await getTrip(request);
-  expect(t, '"Archive" must keep the trip').toBeTruthy();
+  await page.getByRole('button', { name: /^Archive Trip$/ }).click();
+  await expect.poll(async () => (await getTrip(request))?.archived, { timeout: 10_000 }).toBe(true);
+  expect(await getTrip(request), '"Archive" must keep the trip').toBeTruthy();
+});
+
+test('W12 "Delete" in the edit drawer asks first, then permanently deletes the trip', async ({ page, request }) => {
+  await openTrip(page);
+  await page.getByRole('button', { name: /Edit Settings|^Edit$/ }).first().click();
+  await page.getByRole('button', { name: 'Delete trip' }).click();
+  await expect(page.getByText(/can't be undone/)).toBeVisible();
+  await page.getByRole('button', { name: /^Delete Trip$/ }).click();
+  await expect.poll(async () => await getTrip(request), { timeout: 10_000 }).toBeFalsy();
 });
 
 // ---------- W13 transport ----------

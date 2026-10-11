@@ -115,6 +115,16 @@ test('bulk select → "Archive Selected" archives (keeps) the trips, and they ca
   await expect(gone(page, UPCOMING.name)).toHaveCount(0);
   const ids = (await apiTrips(request, s.token)).map((t) => t.id);
   expect(ids, '"Archive" must not permanently delete trips').toEqual(expect.arrayContaining(['qa-up', 'qa-plan']));
+  // ...and they can be found again in the Archived view and restored.
+  await expect.poll(async () => (await apiTrips(request, s.token)).filter((t) => t.archived).length).toBe(2);
+  await page.getByRole('button', { name: 'Show archived trips' }).click();
+  await expect(card(page, UPCOMING.name)).toBeVisible();
+  await expect(gone(page, PAST.name)).toHaveCount(0);
+  await page.locator('button[title="Toggle bulk selection"]').click();
+  await page.locator('main div').filter({ has: page.locator(`text="${UPCOMING.name}"`) }).filter({ has: page.locator('button[aria-label="Select trip"]') }).last().locator('button[aria-label="Select trip"]').click();
+  page.once('dialog', (d) => d.accept());
+  await page.getByRole('button', { name: /Restore Selected/i }).click();
+  await expect.poll(async () => (await apiTrips(request, s.token)).find((t) => t.id === 'qa-up')?.archived).toBe(false);
 });
 
 test('bulk archive: dismissing the confirmation changes nothing', async ({ page, request }) => {

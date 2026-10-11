@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   MagnifyingGlass as Search, Funnel as Filter, Plus, CalendarBlank as Calendar, MapPin, Trash as Trash2, PencilSimple as Edit2, Check, Square, CheckSquare, PencilSimpleLine as Edit3, CaretRight as ChevronRight, CaretDown as ChevronDown, CaretUp as ChevronUp, WarningCircle as AlertCircle,
@@ -829,6 +829,13 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [flights, setFlights] = useState<{ flight: Transport; trip: Trip }[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // Ids for a new flight are fixed when the form opens, so a repeated submit can't create a second record.
+  const newFlightIds = useRef({ id: '', itineraryId: '' });
+  const savingRef = useRef(false); // synchronous guard: state updates land after a fast second click
+  // In-flight guards so a double click can't save twice (REL-006).
+  const [isSavingFlight, setIsSavingFlight] = useState(false);
+  const [isBundlingInFlight, setIsBundlingInFlight] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [timeFilter, setTimeFilter] = useState<'all' | 'upcoming' | 'past'>('all');
   const [classFilter, setClassFilter] = useState<string>('all');
@@ -1144,6 +1151,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
   }, []);
 
   const refreshData = () => {
+    setLoadError(null);
     Promise.all([
       dataService.getTrips(),
       dataService.getUsers(),
@@ -1206,11 +1214,13 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       setFlights(extracted);
     }).catch(err => {
       console.error("Failed to load flight lists:", err);
+      setLoadError(err?.message || 'The flight log could not be loaded.');
     });
   };
 
   // Set up form state for edit or new
   const openFlightForm = (record?: { flight: Transport; trip: Trip }) => {
+    newFlightIds.current = { id: Math.random().toString(36).substr(2, 9), itineraryId: Math.random().toString(36).substr(2, 9) };
     if (record) {
       setShowManualFields(true);
       const parentTripId = record.trip.id.startsWith('unassigned') ? 'unassigned' : record.trip.id;
@@ -1294,11 +1304,14 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
   const handleSaveFlight = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (savingRef.current) return;
     if (!formOrigin || !formDestination || !formDepartureDate) {
       alert("Please fill in Departure, Arrival, Airfields, and Dates.");
       return;
     }
 
+    savingRef.current = true;
+    setIsSavingFlight(true);
     try {
       let targetTrip: Trip | undefined;
 
@@ -1310,8 +1323,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
       const costNum = formCost ? parseFloat(formCost) : undefined;
       const flightPayload: Transport = {
-        id: editingFlight ? editingFlight.flight.id : Math.random().toString(36).substr(2, 9),
-        itineraryId: editingFlight ? editingFlight.flight.itineraryId : Math.random().toString(36).substr(2, 9),
+        id: editingFlight ? editingFlight.flight.id : newFlightIds.current.id,
+        itineraryId: editingFlight ? editingFlight.flight.itineraryId : newFlightIds.current.itineraryId,
         type: 'One-Way',
         mode: 'Flight',
         provider: formAirline,
@@ -1335,24 +1348,22 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       if (editingFlight) {
         // We might be changing the trip as well as the flight leg
         if (editingFlight.tripId !== formTripId) {
-          // Remove from old location
+          // Move: remove from the old location and add to the new one in a single transaction
+          const move: { upsertTrips: Trip[]; deleteFlights: string[]; upsertFlights: Transport[] } = { upsertTrips: [], deleteFlights: [], upsertFlights: [] };
           if (editingFlight.tripId === 'unassigned') {
-             await dataService.deleteFlight(editingFlight.flight.id);
+             move.deleteFlights.push(editingFlight.flight.id);
           } else {
              const oldTrip = trips.find(t => t.id === editingFlight.tripId);
              if (oldTrip && oldTrip.transports) {
-               oldTrip.transports = oldTrip.transports.filter(t => t.id !== editingFlight.flight.id);
-               await dataService.updateTrip(oldTrip);
+               move.upsertTrips.push({ ...oldTrip, transports: oldTrip.transports.filter(t => t.id !== editingFlight.flight.id) });
              }
           }
-          // Add to new location
           if (formTripId === 'unassigned') {
-             await dataService.addFlight(flightPayload);
+             move.upsertFlights.push(flightPayload);
           } else if (targetTrip) {
-             if (!targetTrip.transports) targetTrip.transports = [];
-             targetTrip.transports.push(flightPayload);
-             await dataService.updateTrip(targetTrip);
+             move.upsertTrips.push({ ...targetTrip, transports: [...(targetTrip.transports || []), flightPayload] });
           }
+          await dataService.applyBatch(move);
         } else {
           // Editing in place
           if (formTripId === 'unassigned') {
@@ -1388,6 +1399,9 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     } catch (e) {
       console.error(e);
       alert("Failed to save flight records.");
+    } finally {
+      savingRef.current = false;
+      setIsSavingFlight(false);
     }
   };
 
@@ -1452,11 +1466,12 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
   }, [isBundling, selectedFlightIds, flights]);
 
   const executeBundle = async () => {
-    if (!bundleName.trim()) return;
+    if (!bundleName.trim() || savingRef.current) return;
     
     // Find all selected flight objects
     const selectedRecords = flights.filter(f => selectedFlightIds.has(f.flight.id));
     if (selectedRecords.length === 0) return;
+    savingRef.current = true;
 
     // Determine startDate and endDate from selected flights
     let oldestDate = '';
@@ -1503,17 +1518,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       }
     }
 
-    // Process old trip updates sequentially
-    for (const tripId in tripsToUpdateMap) {
-      await dataService.updateTrip(tripsToUpdateMap[tripId]);
-    }
-
-    // Process independent deletions
-    for (const fid of independentFlightsToDelete) {
-      await dataService.deleteFlight(fid);
-    }
-
-    // Step 2: Save the new bundle as a Trip!
+    // Step 2: Build the new bundle Trip (saved together with the clean-up below, atomically)
     const newTrip: Trip & { isBundleOnly?: boolean; hideInPlanner?: boolean } = {
       id: newTripId,
       name: bundleName.trim(),
@@ -1527,7 +1532,21 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       hideInPlanner: !createTripInPlanner
     };
 
-    await dataService.addTrip(newTrip);
+    setIsBundlingInFlight(true);
+    try {
+      await dataService.applyBatch({
+        newTrips: [newTrip],
+        upsertTrips: Object.values(tripsToUpdateMap),
+        deleteFlights: independentFlightsToDelete
+      });
+    } catch (err: any) {
+      console.error('Bundling failed; no changes were saved', err);
+      alert(`Could not create the bundle. Nothing was changed. ${err?.message || ''}`.trim());
+      return;
+    } finally {
+      savingRef.current = false;
+      setIsBundlingInFlight(false);
+    }
 
     // Reset everything
     setSelectedFlightIds(new Set());
@@ -1572,27 +1591,24 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       flightsToAddAsIndependent.push(r.flight);
     });
 
-    // Step 2: Save independent flights to DB
-    for (const fl of flightsToAddAsIndependent) {
-      const independentFlight = {
-        ...fl,
-        itineraryId: '' // Clear custom grouping itinerary ID
-      };
-      await dataService.addFlight(independentFlight);
-    }
-
-    // Step 3: Update or delete the parent trips
+    // Step 2: Save the flights as independent records and update/delete their parent trips, atomically
+    const emptiedTripIds: string[] = [];
+    const remainingTrips: Trip[] = [];
     for (const tripId in tripsToUpdate) {
       const { trip, remainingTransports } = tripsToUpdate[tripId];
-      if (remainingTransports.length === 0) {
-        await dataService.deleteTrip(tripId);
-      } else {
-        const updatedTrip = {
-          ...trip,
-          transports: remainingTransports
-        };
-        await dataService.updateTrip(updatedTrip);
-      }
+      if (remainingTransports.length === 0) emptiedTripIds.push(tripId);
+      else remainingTrips.push({ ...trip, transports: remainingTransports });
+    }
+    try {
+      await dataService.applyBatch({
+        upsertFlights: flightsToAddAsIndependent.map(fl => ({ ...fl, itineraryId: '' })), // clear custom grouping
+        upsertTrips: remainingTrips,
+        deleteTrips: emptiedTripIds
+      });
+    } catch (err: any) {
+      console.error('Unbundling failed; no changes were saved', err);
+      alert(`Could not unbundle these flights. Nothing was changed. ${err?.message || ''}`.trim());
+      return;
     }
 
     // Reset state & refresh
@@ -2977,7 +2993,14 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       </div>
 
       {/* Flight Board Display Modes */}
-      {filteredFlights.length === 0 ? (
+      {loadError && flights.length === 0 ? (
+        <EmptyState
+          icon="cloud_off"
+          title="Couldn't load your flights"
+          description={loadError}
+          action={{ label: "Try Again", onClick: refreshData }}
+        />
+      ) : filteredFlights.length === 0 ? (
         <EmptyState
           icon={<Plane className="w-8 h-8 rotate-45 text-primary-500" />}
           title="No Flights Found"
@@ -3626,7 +3649,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
       {/* Multi-Selection Bottom Action Bar */}
       {isMultiEditing && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-sticky flex items-center gap-6 px-6 py-3.5 rounded-full bg-white/90 dark:bg-dark-card/90 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-2xl animate-scale-up">
+        <div className="fixed bottom-floating-bar left-1/2 -translate-x-1/2 z-sticky flex items-center gap-6 px-6 py-3.5 rounded-full bg-white/90 dark:bg-dark-card/90 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-2xl animate-scale-up">
           <span className="text-xs font-black font-mono text-zinc-650 dark:text-zinc-300">
             Selected: <span className="text-blue-500 font-extrabold">{selectedFlightIds.size}</span>
           </span>
@@ -3894,7 +3917,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 </button>
                 <button
                   type="button"
-                  disabled={!bundleName.trim()}
+                  disabled={!bundleName.trim() || isBundlingInFlight}
                   onClick={executeBundle}
                   className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-primary-500 hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-primary-500/20 transition-all cursor-pointer text-center"
                 >
@@ -4444,6 +4467,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   variant="primary" 
                   color="blue"
                   className="flex-1 rounded-2xl cursor-pointer"
+                  disabled={isSavingFlight}
                 >
                   Save Boarding Stub
                 </Button>

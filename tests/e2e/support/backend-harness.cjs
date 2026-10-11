@@ -35,9 +35,22 @@ const patchQuery = (target) => {
     return q(stripChecks(text), params, cb);
   };
 };
+// pg-mem's pg adapter ignores ROLLBACK; emulate it with a snapshot taken at BEGIN
+// (requests are effectively serial in e2e runs, so a whole-database snapshot is accurate).
+const patchTransactions = (client) => {
+  const q = client.query.bind(client);
+  let snapshot = null;
+  client.query = (text, params, cb) => {
+    const sql = typeof text === 'string' ? text.trim().toUpperCase() : '';
+    if (sql === 'BEGIN') snapshot = db.backup();
+    else if (sql === 'COMMIT') snapshot = null;
+    else if (sql === 'ROLLBACK' && snapshot) { snapshot.restore(); snapshot = null; }
+    return q(text, params, cb);
+  };
+};
 class Pool extends MemPool {
   constructor(...args) { super(...args); patchQuery(this); }
-  async connect(...args) { const c = await super.connect(...args); patchQuery(c); return c; }
+  async connect(...args) { const c = await super.connect(...args); patchQuery(c); patchTransactions(c); return c; }
 }
 
 const realLoad = Module._load;

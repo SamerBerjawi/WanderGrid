@@ -13,6 +13,29 @@ test.describe('W1 first-run admin setup', () => {
     await expect(authHeading(page)).toHaveText('Initial System Setup');
   });
 
+  test('completing Initial System Setup creates the first Admin and opens the app', async ({ page, request }) => {
+    await page.goto('/');
+    await waitForAuthScreen(page);
+    await expect(authHeading(page)).toHaveText('Initial System Setup');
+    await page.locator('input[name="name"]').fill('First Admin');
+    await page.locator('input[name="email"]').fill('first.admin@wandergrid.test');
+    await page.locator('input[name="password"]').fill('FirstAdmin!234');
+    await page.locator('input[name="confirmPassword"]').fill('FirstAdmin!234');
+    await submitButton(page).click();
+    await expectAppShell(page);
+    const r = await request.post('/api/auth/login', { data: { email: 'first.admin@wandergrid.test', password: 'FirstAdmin!234' } });
+    expect((await r.json()).user.role).toBe('Admin');
+  });
+
+  test('when an admin closes public sign-up, the sign-in screen hides "Sign Up"', async ({ page, request }) => {
+    const admin = await apiRegister(request, ADMIN);
+    await request.put('/api/settings', { headers: { Authorization: `Bearer ${admin.token}` }, data: { orgName: 'QA', allowSelfRegistration: false } });
+    await page.goto('/');
+    await waitForAuthScreen(page);
+    await expect(authHeading(page)).toHaveText('Welcome Back');
+    await expect(page.getByRole('button', { name: 'Sign Up', exact: true })).toHaveCount(0);
+  });
+
   test('when users exist, the sign-in form is shown', async ({ page, request }) => {
     await apiRegister(request, ADMIN);
     await page.goto('/');
@@ -22,6 +45,9 @@ test.describe('W1 first-run admin setup', () => {
 });
 
 test.describe('W2 sign up', () => {
+  // Public sign-up exists once the workspace has its first admin (an empty DB shows Initial System Setup).
+  test.beforeEach(async ({ request }) => { await apiRegister(request, ADMIN); });
+
   const openSignUp = async (page) => {
     await page.goto('/');
     await waitForAuthScreen(page);
@@ -32,7 +58,6 @@ test.describe('W2 sign up', () => {
   };
 
   test('happy path: new account is created and the app opens', async ({ page, request }) => {
-    await apiRegister(request, ADMIN); // so the page is in normal sign-in mode
     await openSignUp(page);
     await page.locator('input[name="name"]').fill('New Traveller');
     await page.locator('input[name="email"]').fill('new.traveller@wandergrid.test');

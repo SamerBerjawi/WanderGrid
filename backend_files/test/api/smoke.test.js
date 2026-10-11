@@ -15,3 +15,8 @@ test('protected routes require a token', async () => {
     const r = await srv.api('GET', '/api/trips');
     assert.equal(r.status, 401);
 });
+
+test('cross-origin requests are not granted CORS access by default (SEC-016)', async () => {
+    const r = await srv.api('OPTIONS', '/api/trips', { headers: { Origin: 'https://evil.example', 'Access-Control-Request-Method': 'GET', 'Access-Control-Request-Headers': 'authorization' } });
+    assert.equal(r.headers.get('access-control-allow-origin'), null);
+});

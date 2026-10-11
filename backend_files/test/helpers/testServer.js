@@ -23,9 +23,22 @@ function installHooks() {
             return q(stripChecks(text), params, cb);
         };
     };
+    // pg-mem's pg adapter ignores ROLLBACK; emulate it with a snapshot taken at BEGIN.
+    // Tests run one transaction at a time, so a whole-database snapshot is accurate here.
+    const patchTransactions = (client) => {
+        const q = client.query.bind(client);
+        let snapshot = null;
+        client.query = (text, params, cb) => {
+            const sql = typeof text === 'string' ? text.trim().toUpperCase() : '';
+            if (sql === 'BEGIN') snapshot = db.backup();
+            else if (sql === 'COMMIT') snapshot = null;
+            else if (sql === 'ROLLBACK' && snapshot) { snapshot.restore(); snapshot = null; }
+            return q(text, params, cb);
+        };
+    };
     class Pool extends MemPool {
         constructor(...args) { super(...args); patchQuery(this); }
-        async connect(...args) { const c = await super.connect(...args); patchQuery(c); return c; }
+        async connect(...args) { const c = await super.connect(...args); patchQuery(c); patchTransactions(c); return c; }
     }
     const realLoad = Module._load;
     Module._load = function (request, parent, isMain) {
@@ -77,8 +90,21 @@ async function startTestServer() {
         return { status: res.status, headers: res.headers, json, text: raw ? text : undefined };
     }
 
+    // POST /api/restore runs as a background job; wait for it like the client does.
+    async function restore(token, body) {
+        const started = await api('POST', '/api/restore', { token, body });
+        if (started.status !== 202) return started;
+        for (let i = 0; i < 200; i++) {
+            const job = await api('GET', `/api/jobs/status/${started.json.jobId}`, { token });
+            if (job.json?.status === 'Completed' || job.json?.status === 'Failed') return { ...job, started };
+            await new Promise((r) => setTimeout(r, 25));
+        }
+        throw new Error('restore job did not finish');
+    }
+
     return {
         ...mod,
+        restore,
         db,
         base,
         api,

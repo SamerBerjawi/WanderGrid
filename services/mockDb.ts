@@ -264,7 +264,9 @@ export const isTripAir = (t: any): boolean => {
 class DataService {
   private _importState: ImportState = { status: '', progress: 0, isActive: false };
   private _importListeners: ((state: ImportState) => void)[] = [];
-  private _useApi: boolean = true; 
+  // Dev-only explicit local mode (VITE_LOCAL_MODE=true): all data lives in this browser's localStorage.
+  // Without it, dev talks to the API exactly like production and never switches silently (REL-013).
+  private _useApi: boolean = !(!import.meta.env.PROD && import.meta.env.VITE_LOCAL_MODE === 'true'); 
   private _isSynced: boolean = false;
 
   constructor() {
@@ -290,7 +292,7 @@ class DataService {
             if (err && err.status === 401) {
                 return null;
             }
-            if (isProd) {
+            if (isProd || this._useApi) {
                 throw err;
             }
             console.warn("Server auth failed, falling back to local fallback in development:", err);
@@ -308,6 +310,100 @@ class DataService {
     return null;
   }
 
+  /** The signed-in user, validated by the server (null when the session is no longer valid). */
+  async getSessionUser(stored: { id?: string; email?: string }): Promise<User | null> {
+    const isProd = import.meta.env.PROD;
+    if (this._useApi || isProd) {
+        try {
+            const me = await this.fetch<any>('/auth/me');
+            if (me && me.id) return me as User;
+        } catch (err: any) {
+            if (err?.status === 401) return null;
+            if (isProd || this._useApi) throw err;
+        }
+    }
+    const users = await this.localFetch<User[]>('/users');
+    return users.find(u => u.id === stored.id || u.email?.toLowerCase().trim() === stored.email?.toLowerCase().trim()) || null;
+  }
+
+  async getCalendarFeedToken(): Promise<string> {
+    return (await this.fetch<{ token: string }>('/calendar/token')).token;
+  }
+
+  async rotateCalendarFeedToken(): Promise<string> {
+    return (await this.fetch<{ token: string }>('/calendar/token/rotate', { method: 'POST' })).token;
+  }
+
+  /** Poll a background job (202 + jobId) until it finishes; rejects with the job's error. */
+  async waitForJob(jobId: string, timeoutMs = 10 * 60 * 1000): Promise<any> {
+    const deadline = Date.now() + timeoutMs;
+    let delay = 300;
+    while (Date.now() < deadline) {
+        const job = await this.fetch<any>(`/jobs/status/${jobId}`);
+        if (job?.status === 'Completed') return job.result;
+        if (job?.status === 'Failed') throw new Error(job.error || 'The job failed');
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay = Math.min(delay * 1.5, 2000);
+    }
+    throw new Error('Timed out waiting for the server to finish');
+  }
+
+  /**
+   * "Auto-Setup & Demo Run" against the API: the server creates (or reuses) a demo account with
+   * sample data and returns a session. Returns null when no API is in use (dev localStorage mode).
+   */
+  async demoLogin(): Promise<User | null> {
+    if (!(this._useApi || import.meta.env.PROD)) return null;
+    const response = await this.fetch<any>('/auth/demo', { method: 'POST' });
+    if (response?.token) {
+        localStorage.setItem('wandergrid_session_token', response.token);
+        return response.user;
+    }
+    return null;
+  }
+
+  async resetPassword(email: string, code: string, password: string): Promise<void> {
+    await this.fetch('/auth/reset-password', { method: 'POST', body: JSON.stringify({ email: email.trim(), code, password }) });
+  }
+
+  async createPasswordResetCode(userId: string): Promise<{ code: string; expiresAt: string }> {
+    return this.fetch(`/users/${encodeURIComponent(userId)}/reset-code`, { method: 'POST' });
+  }
+
+  /** Ask Gemini through the server (which holds the key). Throws with the server's message on failure. */
+  async generateAI(contents: { role: 'user' | 'model'; text: string }[], responseMimeType?: 'application/json'): Promise<string> {
+    const result = await this.fetch<{ text: string }>('/ai/generate', { method: 'POST', body: JSON.stringify({ contents, responseMimeType }) });
+    return result?.text || '';
+  }
+
+  /** Revoke this session on the server. Uses a bare fetch so a 401 can't re-trigger the sign-out flow. */
+  async logout(): Promise<void> {
+    const token = localStorage.getItem('wandergrid_session_token');
+    if (!token) return;
+    try {
+        await window.fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+    } catch (e) {}
+  }
+
+  /** Which auth screen to show: first-run admin setup, and whether public sign-up is allowed. */
+  async getSetupStatus(): Promise<{ needsSetup: boolean; allowSelfRegistration: boolean }> {
+    const isProd = import.meta.env.PROD;
+    if (this._useApi || isProd) {
+        try {
+            const status = await this.fetch<any>('/auth/setup-status');
+            // In dev the fetch may have fallen back to localStorage, which doesn't know this endpoint.
+            if (status && typeof status.needsSetup === 'boolean') {
+                return { needsSetup: status.needsSetup, allowSelfRegistration: status.allowSelfRegistration !== false };
+            }
+        } catch (err) {
+            if (isProd || this._useApi) throw err;
+        }
+    }
+    const users = await this.localFetch<User[]>('/users');
+    return { needsSetup: users.length === 0, allowSelfRegistration: true };
+  }
+
+  // The server decides id and role (the first account becomes Admin); `role` only applies to the dev localStorage fallback.
   async register(name: string, email: string, pass: string, role: 'Partner' | 'Admin' = 'Partner'): Promise<User> {
     const cleanEmail = email.trim().toLowerCase();
     const isSetupAdmin = role === 'Admin';
@@ -315,20 +411,7 @@ class DataService {
     const isProd = import.meta.env.PROD;
     if (this._useApi || isProd) {
         try {
-            const userToSend = {
-                id: cleanEmail,
-                name,
-                email: cleanEmail,
-                password: pass,
-                role: role,
-                leaveBalance: isSetupAdmin ? 30 : 25,
-                takenLeave: 0,
-                allowance: isSetupAdmin ? 30 : 25,
-                lieuBalance: 0,
-                activeYears: [new Date().getFullYear(), new Date().getFullYear() + 1, new Date().getFullYear() + 2],
-                policies: [],
-                holidayConfigIds: []
-            };
+            const userToSend = { name, email: cleanEmail, password: pass };
             const response = await this.fetch<any>('/auth/register', {
                 method: 'POST',
                 body: JSON.stringify(userToSend)
@@ -339,7 +422,7 @@ class DataService {
             }
             return response;
         } catch (err) {
-            if (isProd) {
+            if (isProd || this._useApi) {
                 throw err;
             }
             console.warn("Server register failed, falling back to local registration in development:", err);
@@ -467,6 +550,7 @@ class DataService {
 
       const maxRetries = 3;
       let attempt = 0;
+      const isIdempotent = (options?.method || 'GET').toUpperCase() !== 'POST';
       let delay = 1000; // Initial delay of 1 second
 
       while (true) {
@@ -495,7 +579,8 @@ class DataService {
               
               if (!res.ok) {
                   if (res.status === 404) throw new Error("API Route Not Found");
-                  if (res.status === 401 || res.status === 403) {
+                  // 401 = missing/invalid session -> sign out. 403 = signed in but not allowed -> plain error.
+                  if (res.status === 401) {
                       try {
                           window.dispatchEvent(new CustomEvent('wandergrid-unauthorized'));
                           window.dispatchEvent(new CustomEvent('wandergrid:unauthorized'));
@@ -507,15 +592,19 @@ class DataService {
                       throw errObj;
                   }
                   
-                  // For 5xx server issues, retry unless we hit maxRetries
-                  if (res.status >= 500 && attempt < maxRetries) {
+                  // For 5xx server issues, retry idempotent requests unless we hit maxRetries
+                  if (res.status >= 500 && isIdempotent && attempt < maxRetries) {
                       console.warn(`Attempt ${attempt} failed with status ${res.status}. Retrying in ${delay}ms...`);
                       await new Promise(resolve => setTimeout(resolve, delay));
                       delay *= 2; // exponential backoff
                       continue;
                   }
                   
-                  throw new Error(`API Error: ${res.statusText}`);
+                  let serverMessage = '';
+                  try { serverMessage = (await res.json())?.error || ''; } catch (parseErr) {}
+                  const apiErr = new Error(serverMessage || `API Error: ${res.statusText}`);
+                  (apiErr as any).status = res.status;
+                  throw apiErr;
               }
 
               const contentType = res.headers.get('content-type') || '';
@@ -535,8 +624,9 @@ class DataService {
               const isAbortError = e.name === 'AbortError';
               const isNetworkError = e instanceof TypeError || e.message === 'Failed to fetch';
               
-              // Only retry on network errors, timeout aborts, or server 5xx errors
-              if ((isAbortError || isNetworkError) && attempt < maxRetries) {
+              // Only retry idempotent requests on network errors or timeout aborts. A POST that timed
+              // out may still be running on the server; re-sending it could apply it twice.
+              if ((isAbortError || isNetworkError) && isIdempotent && attempt < maxRetries) {
                   console.warn(`Attempt ${attempt} network/timeout failed. Retrying in ${delay}ms...`, e);
                   await new Promise(resolve => setTimeout(resolve, delay));
                   delay *= 2; // exponential backoff
@@ -544,15 +634,10 @@ class DataService {
               }
               
               console.warn(`Backend unavailable (${endpoint}).`, e);
-              if (isProd) {
-                  // In production, NEVER fall back to local storage. Throw the error so the user is aware of backend issues.
-                  throw e;
-              } else {
-                  // In development, fallback to LocalStorage is still allowed
-                  console.warn(`Fallback to LocalStorage active for development request: ${endpoint}`);
-                  this._useApi = false;
-                  return this.localFetch<T>(endpoint, options);
-              }
+              // Never fall back to localStorage mid-session: surface the problem instead.
+              if (isNetworkError) throw new Error("Can't reach the WanderGrid server. Check your connection and try again.");
+              if (isAbortError) throw new Error('The server took too long to respond. Please try again.');
+              throw e;
           }
       }
   }
@@ -712,8 +797,9 @@ class DataService {
                   let sessionUserInserted = false;
                   const newList = data.users.map((item: any) => {
                       const existingUser: any = existingMap.get(item.id);
-                      if (!item.password) {
-                          item = { ...item, password: (existingUser && existingUser.password) ? existingUser.password : 'password' };
+                      // Never invent a shared default password for restored users (SEC-005).
+                      if (!item.password && existingUser?.password) {
+                          item = { ...item, password: existingUser.password };
                       }
                       if (item.id === currentUserId || (item.email && item.email.toLowerCase().trim() === currentUserEmail)) {
                           sessionUserInserted = true;
@@ -736,8 +822,8 @@ class DataService {
                   for (const item of data.users) {
                       const existingUser: any = existingMap.get(item.id);
                       const merged = existingUser ? { ...existingUser, ...item } : item;
-                      if (!merged.password) {
-                          merged.password = (existingUser && existingUser.password) ? existingUser.password : 'password';
+                      if (!merged.password && existingUser?.password) {
+                          merged.password = existingUser.password;
                       }
                       mergedMap.set(item.id, merged);
                   }
@@ -885,30 +971,34 @@ class DataService {
       return this.fetch<User[]>('/users');
   }
 
-  async updateUser(user: User): Promise<void> {
+  // Against the API, passwords travel in plaintext over TLS and are hashed by the server only.
+  // The browser hash is used solely for the dev localStorage fallback, which has no server.
+  private async prepareUserForSave(user: User): Promise<User> {
       const userCopy = { ...user };
+      if (this._useApi || import.meta.env.PROD) return userCopy;
       try {
           const list = getCachedStorage<any[]>('wandergrid_users', []);
           const prev = list.find((u: any) => u.id === user.id);
-          if (prev && userCopy.password) {
-              if (userCopy.password !== prev.password) {
-                  if (!userCopy.password.includes(':')) {
-                      userCopy.password = await hashPasswordInBrowser(userCopy.password);
-                  }
-              }
-          } else if (userCopy.password && !userCopy.password.includes(':')) {
+          if (!userCopy.password) {
+              if (prev?.password) userCopy.password = prev.password;
+          } else if (!prev || userCopy.password !== prev.password) {
               userCopy.password = await hashPasswordInBrowser(userCopy.password);
           }
       } catch (e) {}
+      return userCopy;
+  }
 
-      await this.fetch(`/users/${user.id}`, { method: 'PUT', body: JSON.stringify(userCopy) });
+  async updateUser(user: User): Promise<void> {
+      const userCopy = await this.prepareUserForSave(user);
+      const saved = await this.fetch<any>(`/users/${user.id}`, { method: 'PUT', body: JSON.stringify(userCopy) });
+      // Changing your own password revokes old sessions; the server returns a token for this one.
+      if (saved && typeof saved.sessionToken === 'string') {
+          localStorage.setItem('wandergrid_session_token', saved.sessionToken);
+      }
   }
 
   async addUser(user: User): Promise<void> {
-      const userCopy = { ...user };
-      if (userCopy.password && !userCopy.password.includes(':')) {
-          userCopy.password = await hashPasswordInBrowser(userCopy.password);
-      }
+      const userCopy = await this.prepareUserForSave(user);
       await this.fetch('/users', { method: 'POST', body: JSON.stringify(userCopy) });
   }
 
@@ -1040,6 +1130,12 @@ class DataService {
       return changed ? { ...t, coordinates: tripCoords, locations: locs } : t;
     });
 
+    // The API already returns only the trips this user may see; filter here only for the dev
+    // localStorage fallback, which has no server.
+    if (this._useApi || import.meta.env.PROD) {
+      return list;
+    }
+
     if (!loggedInUser) {
       return list.filter(t => t.privacy === 'Public');
     }
@@ -1072,6 +1168,12 @@ class DataService {
   }
 
   async addTrip(trip: Trip): Promise<Trip> {
+    const intelligentTrip = await this.prepareNewTrip(trip);
+    return this.fetch<Trip>('/trips', { method: 'POST', body: JSON.stringify(intelligentTrip) });
+  }
+
+  /** Geocode a new trip, make the signed-in user a participant, and default it to Private. */
+  private async prepareNewTrip(trip: Trip): Promise<Trip> {
     const intelligentTrip = await this.processGeocoding(trip);
     
     let loggedInUser: any = null;
@@ -1093,7 +1195,31 @@ class DataService {
       intelligentTrip.privacy = 'Private'; // Default to maximum privacy
     }
 
-    return this.fetch<Trip>('/trips', { method: 'POST', body: JSON.stringify(intelligentTrip) });
+    return intelligentTrip;
+  }
+
+  /**
+   * Apply several trip/flight changes atomically (one server transaction), e.g. bundling flights
+   * into a trip. Either everything is saved or nothing is, so flights can't be lost half-way.
+   */
+  async applyBatch(changes: { newTrips?: Trip[]; upsertTrips?: Trip[]; deleteTrips?: string[]; upsertFlights?: any[]; deleteFlights?: string[] }): Promise<void> {
+    const newTrips = await Promise.all((changes.newTrips || []).map(t => this.prepareNewTrip(t)));
+    const updatedTrips = await Promise.all((changes.upsertTrips || []).map(t => this.processGeocoding(t)));
+    const payload = {
+      upsertTrips: [...updatedTrips, ...newTrips],
+      deleteTrips: changes.deleteTrips || [],
+      upsertFlights: changes.upsertFlights || [],
+      deleteFlights: changes.deleteFlights || []
+    };
+    if (this._useApi || import.meta.env.PROD) {
+      const result = await this.fetch<any>('/batch', { method: 'POST', body: JSON.stringify(payload) });
+      if (result && result.success) return;
+    }
+    // Dev localStorage fallback has no transactions; apply the steps in a loss-safe order (writes first).
+    if (payload.upsertTrips.length) await this.localFetch('/trips/bulk', { method: 'POST', body: JSON.stringify(payload.upsertTrips) });
+    if (payload.upsertFlights.length) await this.localFetch('/flights/bulk', { method: 'POST', body: JSON.stringify(payload.upsertFlights) });
+    for (const id of payload.deleteTrips) await this.localFetch(`/trips/${id}`, { method: 'DELETE' });
+    for (const id of payload.deleteFlights) await this.localFetch(`/flights/${id}`, { method: 'DELETE' });
   }
 
   async addTrips(newTrips: Trip[]): Promise<void> {
@@ -1161,6 +1287,13 @@ class DataService {
   }
 
   async deleteTrip(id: string): Promise<void> { await this.fetch(`/trips/${id}`, { method: 'DELETE' }); }
+  /** Archive (hide from planning boards, reversible) or restore trips in one bulk request. */
+  async setTripsArchived(ids: string[], archived: boolean): Promise<void> {
+    const wanted = new Set(ids);
+    const updated = (await this.getTrips()).filter(t => wanted.has(t.id)).map(t => ({ ...t, archived }));
+    if (updated.length === 0) return;
+    await this.fetch('/trips/bulk', { method: 'POST', body: JSON.stringify(updated) });
+  }
   async getCustomEvents(): Promise<TripCustomEvent[]> { return this.fetch<TripCustomEvent[]>('/events'); }
   async addCustomEvent(event: TripCustomEvent): Promise<void> { await this.fetch('/events', { method: 'POST', body: JSON.stringify(event) }); }
   async deleteCustomEvent(id: string): Promise<void> { await this.fetch(`/events/${id}`, { method: 'DELETE' }); }
@@ -1364,13 +1497,14 @@ class DataService {
     return { ...DEFAULT_WORKSPACE_SETTINGS, ...settings };
   }
   async updateWorkspaceSettings(settings: WorkspaceSettings): Promise<void> { 
+    // Save first; only a successful save updates the local copy and the UI (no false "saved" state).
+    await this.fetch('/settings', { method: 'PUT', body: JSON.stringify(settings) }); 
     safeStorage.setItem('wandergrid_workspace_settings', JSON.stringify(settings));
     safeStorage.setItem('wandergrid_settings', JSON.stringify(settings));
     try {
       window.dispatchEvent(new CustomEvent('wandergrid_settings_updated', { detail: settings }));
       window.dispatchEvent(new CustomEvent('wandergrid_db_updated', { detail: { key: 'settings' } }));
     } catch (e) {}
-    await this.fetch('/settings', { method: 'PUT', body: JSON.stringify(settings) }); 
   }
   async wipeDatabase(): Promise<void> {
       const isProd = import.meta.env.PROD;
@@ -1496,7 +1630,10 @@ class DataService {
               }
           };
 
-          await this.fetch('/restore', { method: 'POST', body: JSON.stringify(payload) });
+          const started = await this.fetch<any>('/restore', { method: 'POST', body: JSON.stringify(payload) });
+          if (started && started.jobId) {
+              await this.waitForJob(started.jobId);
+          }
 
           const selectedCats = payload.restoreOptions.selectedCategories;
           if (selectedCats.visited !== false && state.caches?.geo && Array.isArray(state.caches.geo)) {

@@ -82,7 +82,8 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
     const { data: savedConfigsData } = useWanderSync<any[]>('planner_configs', () => dataService.getSavedConfigs());
     const { data: flightsData } = useWanderSync<Transport[]>('planner_flights', () => dataService.getFlights());
 
-    const trips = useMemo(() => tripsData || [], [tripsData]);
+    // Archived trips live in the Planner's "Archived" view, not on this board.
+    const trips = useMemo(() => (tripsData || []).filter(t => !t.archived), [tripsData]);
     const users = useMemo(() => usersData || [], [usersData]);
     const settings = settingsData;
     const entitlements = useMemo(() => entitlementsData || [], [entitlementsData]);
@@ -1605,7 +1606,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         initial={{ y: 80, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: 80, opacity: 0 }}
-                        className="fixed bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:max-w-2xl z-50 pointer-events-auto"
+                        className="fixed bottom-floating-bar left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:max-w-2xl z-50 pointer-events-auto"
                     >
                         <div className="bg-gray-900/95 dark:bg-black/95 text-white backdrop-blur-2xl px-6 py-4 rounded-3xl border border-white/10 shadow-glass-modal flex flex-col md:flex-row gap-4 items-center justify-between">
                             <div className="flex items-center gap-3 min-w-0 self-start md:self-auto">

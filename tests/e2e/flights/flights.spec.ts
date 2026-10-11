@@ -124,6 +124,23 @@ test('W26 bundle two flights into an expedition', async ({ page, request }) => {
   await expect.poll(async () => (await flights(request)).length, { timeout: 10_000 }).toBe(0);
 });
 
+test('W26 a bundle that fails to save keeps every selected flight (atomic)', async ({ page, request }) => {
+  await seedFlight(request, s.token, flightRecord('a1', { origin: 'JFK', destination: 'CDG', identifier: 'AF7', departureDate: isoDaysFromNow(30) }));
+  await seedFlight(request, s.token, flightRecord('a2', { origin: 'CDG', destination: 'JFK', identifier: 'AF8', departureDate: isoDaysFromNow(37) }));
+  await page.route('**/api/batch', (r) => r.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"Failed to apply changes"}' }));
+  let alertText = '';
+  page.on('dialog', async (d) => { alertText = d.message(); await d.dismiss(); });
+  await openFlights(page);
+  await page.getByRole('button', { name: 'Edit Flights' }).click();
+  await page.getByRole('button', { name: /^Select All$/ }).click();
+  await page.getByRole('button', { name: /^Bundle \(2\)$/ }).click();
+  await page.locator('input[placeholder="e.g. Paris Getaway"]').fill('QA Doomed Bundle');
+  await page.getByRole('button', { name: /^Create Bundle$/ }).click();
+  await expect.poll(() => alertText, { timeout: 20_000 }).toMatch(/Nothing was changed/);
+  expect((await flights(request)).map((f) => f.id).sort()).toEqual(['a1', 'a2']);
+  expect((await apiTrips(request, s.token)).some((t) => t.name === 'QA Doomed Bundle')).toBe(false);
+});
+
 test('W26 unbundle returns flights to the standalone log', async ({ page, request }) => {
   const f = flightRecord('ub1', { origin: 'LIS', destination: 'MAD', identifier: 'TP1020', tripId: 'bundle-1' });
   await seedTrip(request, s.token, { id: 'bundle-1', name: 'QA Iberia Bundle', status: 'Planning', startDate: f.departureDate, endDate: f.arrivalDate, transports: [f], isBundleOnly: true, hideInPlanner: true }, ADMIN.id);

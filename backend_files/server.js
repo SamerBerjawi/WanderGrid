@@ -108,23 +108,74 @@ if (process.env.NODE_ENV === 'production') {
     }
 }
 
+// Password hashes are stored as `pbkdf2$sha512$<iterations>$<saltHex>$<hashHex>`.
+// Older rows may hold the previous `saltHex:hashHex` PBKDF2 format or legacy plaintext; both are
+// still accepted at login and transparently upgraded to the current format.
+const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MAX_LENGTH = 200;
+const PBKDF2_ITERATIONS = 100000;
+const HASH_PREFIX = 'pbkdf2$sha512$';
+const LEGACY_PBKDF2_PATTERN = /^[0-9a-f]{32}:[0-9a-f]{128}$/;
+// Hashes produced by an old client build (SHA-256 in the browser); they can never be verified.
+const BROWSER_HASH_PATTERN = /^[0-9a-f]{32}:[0-9a-f]{64}$/;
+
+const isStoredPasswordHash = (value) =>
+    typeof value === 'string' && (value.startsWith(HASH_PREFIX) || LEGACY_PBKDF2_PATTERN.test(value));
+
+// True when the account has no password that can ever be used to sign in.
+const passwordNeedsReset = (stored) => !stored || BROWSER_HASH_PATTERN.test(stored);
+
+function validatePasswordPolicy(password) {
+    if (typeof password !== 'string' || password.length < PASSWORD_MIN_LENGTH) {
+        return `Password must be at least ${PASSWORD_MIN_LENGTH} characters`;
+    }
+    if (password.length > PASSWORD_MAX_LENGTH) {
+        return `Password must be at most ${PASSWORD_MAX_LENGTH} characters`;
+    }
+    return null;
+}
+
 async function hashPassword(password) {
     if (!password) return '';
     const salt = crypto.randomBytes(16).toString('hex');
-    const derivedKey = await pbkdf2Async(password, salt, 100000, 64, 'sha512');
-    return `${salt}:${derivedKey.toString('hex')}`;
+    const derivedKey = await pbkdf2Async(password, salt, PBKDF2_ITERATIONS, 64, 'sha512');
+    return `${HASH_PREFIX}${PBKDF2_ITERATIONS}$${salt}$${derivedKey.toString('hex')}`;
 }
 
+const safeEqualHex = (a, b) => {
+    const left = Buffer.from(a, 'hex');
+    const right = Buffer.from(b, 'hex');
+    return left.length === right.length && left.length > 0 && crypto.timingSafeEqual(left, right);
+};
+
 async function verifyPassword(password, storedHash) {
-    if (!storedHash) return false;
-    if (!storedHash.includes(':')) {
-        // Compatibility mode for existing plain-text passwords
-        return password === storedHash;
+    if (!storedHash || typeof password !== 'string') return false;
+    if (storedHash.startsWith(HASH_PREFIX)) {
+        const [, , iterations, salt, hash] = storedHash.split('$');
+        const verifyHash = await pbkdf2Async(password, salt, parseInt(iterations, 10), 64, 'sha512');
+        return safeEqualHex(hash, verifyHash.toString('hex'));
     }
-    const [salt, hash] = storedHash.split(':');
-    const verifyHash = await pbkdf2Async(password, salt, 100000, 64, 'sha512');
-    return hash === verifyHash.toString('hex');
+    if (LEGACY_PBKDF2_PATTERN.test(storedHash)) {
+        const [salt, hash] = storedHash.split(':');
+        const verifyHash = await pbkdf2Async(password, salt, PBKDF2_ITERATIONS, 64, 'sha512');
+        return safeEqualHex(hash, verifyHash.toString('hex'));
+    }
+    if (BROWSER_HASH_PATTERN.test(storedHash)) return false;
+    // Legacy plaintext row: compare in constant time; it is rehashed after a successful login.
+    const a = Buffer.from(password);
+    const b = Buffer.from(storedHash);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
+
+// Strip secrets from a user record before it leaves the server.
+function toPublicUser(user) {
+    if (!user) return user;
+    const { password, tokenVersion, calendarToken, passwordReset, ...rest } = user;
+    return { ...rest, passwordResetRequired: passwordNeedsReset(password) };
+}
+
+// Paid third-party API keys never leave the server in backups (decision C-5).
+const SECRET_SETTING_KEYS_LOWER = new Set(['googlegeminiapikey', 'aviationstackapikey', 'aerodataboxapikey', 'openaipapikey']);
 
 function removeSensitiveData(obj) {
     if (obj === null || obj === undefined) {
@@ -141,8 +192,8 @@ function removeSensitiveData(obj) {
     const cleaned = {};
     for (const [key, val] of Object.entries(obj)) {
         const lowerKey = key.toLowerCase();
-        // Only redact user passwords, preserve API keys, tokens, and settings
-        if (lowerKey === 'password') {
+        // Redact user passwords and personal calendar-feed secrets; API keys and settings are kept
+        if (lowerKey === 'password' || lowerKey === 'calendartoken' || lowerKey === 'passwordreset' || SECRET_SETTING_KEYS_LOWER.has(lowerKey)) {
             continue;
         }
         
@@ -156,7 +207,10 @@ function authenticateToken(req, res, next) {
     const publicPaths = [
         '/api/health',
         '/api/auth/login',
-        '/api/auth/register'
+        '/api/auth/register',
+        '/api/auth/setup-status',
+        '/api/auth/demo',
+        '/api/auth/reset-password'
     ];
     
     const fullPath = req.baseUrl + req.path;
@@ -175,14 +229,38 @@ function authenticateToken(req, res, next) {
         return res.status(401).json({ error: 'Access token required' });
     }
     
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
-        if (err) {
-            return res.status(403).json({ error: 'Invalid or expired access token' });
-        }
-        req.user = decoded;
-        next();
-    });
+    let decoded;
+    try {
+        decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+        return res.status(401).json({ error: 'Invalid or expired access token' });
+    }
+    // The session is only as valid as the account behind it: deleted users, and tokens issued
+    // before a logout / password change / role change (tokenVersion bump), are rejected.
+    pool.query(`SELECT data FROM users WHERE id = $1`, [decoded.id])
+        .then(({ rows }) => {
+            const user = rows[0]?.data;
+            if (!user || (user.tokenVersion || 0) !== (decoded.tv || 0)) {
+                return res.status(401).json({ error: 'Session is no longer valid' });
+            }
+            req.user = { id: user.id, email: user.email, role: user.role };
+            next();
+        })
+        .catch(err => sendError(res, err, 503, 'Unable to verify session'));
 }
+
+const SESSION_TTL = process.env.SESSION_TTL || '24h';
+const signSession = (user) =>
+    jwt.sign({ id: user.id, email: user.email, role: user.role, tv: user.tokenVersion || 0 }, JWT_SECRET, { expiresIn: SESSION_TTL });
+
+// Role gate for routes that only workspace administrators may use.
+const requireRole = (...roles) => (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+        return res.status(403).json({ error: 'You do not have permission to perform this action' });
+    }
+    next();
+};
+const requireAdmin = requireRole('Admin');
 
 function sendError(res, err, status = 500, defaultMessage = 'An unexpected error occurred') {
     console.error(err);
@@ -195,12 +273,61 @@ function sendError(res, err, status = 500, defaultMessage = 'An unexpected error
     }
 }
 
+// Error carrying an HTTP status and a client-safe message (thrown inside handlers/transactions).
+class HttpError extends Error {
+    constructor(status, message) {
+        super(message);
+        this.status = status;
+    }
+}
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Express 4 does not catch rejected promises from async handlers, and Node exits on an unhandled
+// rejection — one failed `await` (e.g. the DB being unreachable) used to crash the whole API.
+// Route every handler's rejection to the error middleware registered after the routes.
+const forwardAsyncErrors = (handler) => {
+    if (typeof handler !== 'function' || handler.length > 3) return handler; // error middleware untouched
+    return function (req, res, next) {
+        try {
+            const result = handler.call(this, req, res, next);
+            if (result && typeof result.catch === 'function') result.catch(next);
+        } catch (err) {
+            next(err);
+        }
+    };
+};
+for (const method of ['get', 'post', 'put', 'patch', 'delete']) {
+    const original = app[method].bind(app);
+    app[method] = (path, ...handlers) => (handlers.length === 0 ? original(path) : original(path, ...handlers.map(forwardAsyncErrors)));
+}
+
+process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled promise rejection (process kept alive):', reason instanceof Error ? reason : new Error(String(reason)));
+});
 const FLIGHT_CACHE_TTL_MS = process.env.API_CACHE_TTL_MS 
     ? parseInt(process.env.API_CACHE_TTL_MS, 10) 
     : 5 * 60 * 1000;
-const flightCache = new Map();
+// Map with a size cap: inserting beyond `max` evicts the oldest entry, so caches keyed by user input
+// (callsigns, queries) can't grow until the process runs out of memory (REL-010).
+class BoundedMap extends Map {
+    constructor(max) {
+        super();
+        this.max = max;
+    }
+    set(key, value) {
+        if (this.has(key)) this.delete(key);
+        super.set(key, value);
+        while (this.size > this.max) this.delete(this.keys().next().value);
+        return this;
+    }
+}
+const CACHE_MAX_ENTRIES = process.env.CACHE_MAX_ENTRIES ? parseInt(process.env.CACHE_MAX_ENTRIES, 10) : 2000;
+
+const flightCache = new BoundedMap(CACHE_MAX_ENTRIES);
 const FLIGHT_FETCH_TIMEOUT_MS = process.env.FLIGHT_FETCH_TIMEOUT_MS
     ? parseInt(process.env.FLIGHT_FETCH_TIMEOUT_MS, 10)
     : 10000;
@@ -216,8 +343,8 @@ const EXTERNAL_FETCH_TIMEOUT_MS = process.env.EXTERNAL_FETCH_TIMEOUT_MS
 // Global memory caches as robust fail-safe fallbacks
 const memoryAirports = new Map();
 const memoryCarriers = new Map();
-const memoryGeocoding = new Map();
-const openSkyCache = new Map();
+const memoryGeocoding = new BoundedMap(Math.max(CACHE_MAX_ENTRIES, 5000));
+const openSkyCache = new BoundedMap(CACHE_MAX_ENTRIES);
 
 let dbReady = false;
 
@@ -241,8 +368,18 @@ app.use(helmet({
     crossOriginEmbedderPolicy: false
 }));
 app.use(compression({ threshold: 1024 }));
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+// The SPA is served from this same origin, so cross-origin access is off unless explicitly allowed
+// (comma-separated CORS_ORIGINS, e.g. for a separately hosted frontend) (SEC-016).
+const CORS_ORIGINS = (process.env.CORS_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
+if (CORS_ORIGINS.length > 0) {
+    app.use(cors({ origin: CORS_ORIGINS }));
+}
+// Restores carry whole workspaces; everything else is a single record.
+const RESTORE_BODY_LIMIT = process.env.RESTORE_BODY_LIMIT || '50mb';
+const DEFAULT_BODY_LIMIT = process.env.BODY_LIMIT || '5mb';
+const parseRestoreBody = express.json({ limit: RESTORE_BODY_LIMIT });
+const parseDefaultBody = express.json({ limit: DEFAULT_BODY_LIMIT });
+app.use((req, res, next) => (req.path === '/api/restore' ? parseRestoreBody : parseDefaultBody)(req, res, next));
 app.use(express.static(path.join(__dirname, 'client_build'), {
     maxAge: '1y',
     immutable: true,
@@ -471,7 +608,7 @@ const loadGlobalData = async () => {
     // If table is empty or query fails, run the Raw GitHub fetch in the background as a fail-safe fallback
     try {
         console.log('Fetching & parsing global carriers from GitHub (fail-safe recovery)...');
-        const carrierResponse = await fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/carrier_data_full_processed.jsonl');
+        const carrierResponse = await fetch(GLOBAL_DATASETS.carriers.url, { signal: AbortSignal.timeout(DATASET_FETCH_TIMEOUT_MS) });
         if (carrierResponse.ok) {
           const text = await carrierResponse.text();
           const lines = text.split('\n').filter(Boolean);
@@ -491,7 +628,7 @@ const loadGlobalData = async () => {
         }
         
         console.log('Fetching & parsing global airports from GitHub (fail-safe recovery)...');
-        const airResponse = await fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/airport_data_full_processed.jsonl');
+        const airResponse = await fetch(GLOBAL_DATASETS.airports.url, { signal: AbortSignal.timeout(DATASET_FETCH_TIMEOUT_MS) });
         if (airResponse.ok) {
           const text = await airResponse.text();
           const lines = text.split('\n').filter(Boolean);
@@ -515,6 +652,89 @@ const loadGlobalData = async () => {
   }
 };
 
+// --- Global airport / carrier datasets ---
+// One download -> validate -> replace path, shared by first-run prepopulation, the weekly scheduler
+// and POST /api/jobs/refresh. A refresh never commits an empty or truncated table (REL-009): the
+// parsed row count must reach a floor before the transactional TRUNCATE + INSERT runs.
+const DATASET_FETCH_TIMEOUT_MS = process.env.DATASET_FETCH_TIMEOUT_MS ? parseInt(process.env.DATASET_FETCH_TIMEOUT_MS, 10) : 60000;
+const GLOBAL_DATASETS = {
+    airports: {
+        url: 'https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/airport_data_full_processed.jsonl',
+        table: 'global_airports',
+        columns: ['iata', 'city_name', 'airport_name'],
+        toRow: (item) => [String(item.iata || '').trim().toUpperCase(), item.city_name || '', item.airport_name || ''],
+        minRows: () => parseInt(process.env.DATASET_MIN_AIRPORTS || '5000', 10),
+    },
+    carriers: {
+        url: 'https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/carrier_data_full_processed.jsonl',
+        table: 'global_carriers',
+        columns: ['iata', 'company_name', 'country_or_territory'],
+        toRow: (item) => [String(item.iata || '').trim().toUpperCase(), item.company_name || '', item.country_or_territory || ''],
+        minRows: () => parseInt(process.env.DATASET_MIN_CARRIERS || '500', 10),
+    },
+};
+
+function parseDatasetLines(dataset, text) {
+    const rows = [];
+    let skipped = 0;
+    for (const line of String(text).split('\n')) {
+        if (!line.trim()) continue;
+        try {
+            const row = dataset.toRow(JSON.parse(line));
+            if (row[0]) rows.push(row); else skipped++;
+        } catch (err) {
+            skipped++;
+        }
+    }
+    return { rows, skipped };
+}
+
+async function downloadDataset(dataset) {
+    const response = await fetch(dataset.url, { signal: AbortSignal.timeout(DATASET_FETCH_TIMEOUT_MS) });
+    if (!response.ok) throw new Error(`${dataset.table} download failed with HTTP ${response.status}`);
+    return parseDatasetLines(dataset, await response.text());
+}
+
+async function replaceDataset(dataset, rows) {
+    const { rows: countRows } = await pool.query(`SELECT COUNT(*) AS count FROM ${dataset.table}`);
+    const current = Number(countRows[0].count);
+    const floor = Math.max(dataset.minRows(), Math.floor(current * 0.9));
+    if (rows.length < floor) {
+        throw new Error(`Refusing to replace ${dataset.table}: parsed ${rows.length} rows, need at least ${floor} (currently ${current})`);
+    }
+    await withTransaction(async (client) => {
+        await client.query(`TRUNCATE TABLE ${dataset.table} RESTART IDENTITY`);
+        const width = dataset.columns.length;
+        for (let i = 0; i < rows.length; i += 500) {
+            const chunk = rows.slice(i, i + 500);
+            // Placeholders follow the rows actually inserted (skipped lines never shift them).
+            const values = chunk.map((_, r) => `(${dataset.columns.map((__, c) => `$${r * width + c + 1}`).join(', ')})`);
+            await client.query(`INSERT INTO ${dataset.table} (${dataset.columns.join(', ')}) VALUES ${values.join(', ')}`, chunk.flat());
+        }
+    });
+}
+
+async function refreshGlobalDataset(name, { onlyIfEmpty = false } = {}) {
+    const dataset = GLOBAL_DATASETS[name];
+    if (onlyIfEmpty) {
+        const { rows } = await pool.query(`SELECT COUNT(*) AS count FROM ${dataset.table}`);
+        if (Number(rows[0].count) > 0) return { name, skippedRefresh: true };
+    }
+    const { rows, skipped } = await downloadDataset(dataset);
+    if (skipped > 0) console.warn(`[DATASETS] ${dataset.table}: skipped ${skipped} malformed or empty lines`);
+    await replaceDataset(dataset, rows);
+    console.log(`[DATASETS] ${dataset.table} replaced with ${rows.length} rows.`);
+    return { name, rows: rows.length, skipped };
+}
+
+async function refreshAllGlobalDatasets(options) {
+    const results = [];
+    for (const name of Object.keys(GLOBAL_DATASETS)) {
+        results.push(await refreshGlobalDataset(name, options));
+    }
+    return results;
+}
+
 // Scheduled weekly background dataset synchronization task
 let schedulerInterval;
 
@@ -531,201 +751,25 @@ const startBackgroundScheduler = () => {
   schedulerInterval = setInterval(async () => {
     console.log('[SCHEDULER] Running background datasets synchronization task...');
     try {
-      const response = await fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/airport_data_full_processed.jsonl');
-      if (response.ok) {
-        const text = await response.text();
-        const lines = text.split('\n').filter(Boolean);
-        const client = await pool.connect();
-        try {
-          await client.query('BEGIN');
-          // Truncate and rewrite to keep them completely updated cleanly
-          await client.query('TRUNCATE TABLE global_airports RESTART IDENTITY');
-          const chunkSize = 500;
-          for (let i = 0; i < lines.length; i += chunkSize) {
-            const chunk = lines.slice(i, i + chunkSize);
-            const values = [];
-            const params = [];
-            chunk.forEach((line, idx) => {
-              try {
-                const item = JSON.parse(line);
-                if (item.iata) {
-                  values.push(`($${idx * 3 + 1}, $${idx * 3 + 2}, $${idx * 3 + 3})`);
-                  params.push(item.iata.trim().toUpperCase(), item.city_name || '', item.airport_name || '');
-                }
-              } catch (err) {}
-            });
-            if (values.length > 0) {
-              await client.query(`INSERT INTO global_airports (iata, city_name, airport_name) VALUES ${values.join(', ')}`, params);
-            }
-          }
-          await client.query('COMMIT');
-          console.log('[SCHEDULER] global_airports table synchronized successfully.');
-        } finally {
-          client.release();
-        }
-      }
-      
-      // Sync carriers too
-      const carrierRes = await fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/carrier_data_full_processed.jsonl');
-      if (carrierRes.ok) {
-        const text = await carrierRes.text();
-        const lines = text.split('\n').filter(Boolean);
-        const client = await pool.connect();
-        try {
-          await client.query('BEGIN');
-          await client.query('TRUNCATE TABLE global_carriers RESTART IDENTITY');
-          const chunkSize = 500;
-          for (let i = 0; i < lines.length; i += chunkSize) {
-            const chunk = lines.slice(i, i + chunkSize);
-            const values = [];
-            const params = [];
-            chunk.forEach((line, idx) => {
-              try {
-                const item = JSON.parse(line);
-                if (item.iata) {
-                  values.push(`($${idx * 3 + 1}, $${idx * 3 + 2}, $${idx * 3 + 3})`);
-                  params.push(item.iata.trim().toUpperCase(), item.company_name || '', item.country_or_territory || '');
-                }
-              } catch (err) {}
-            });
-            if (values.length > 0) {
-              await client.query(`INSERT INTO global_carriers (iata, company_name, country_or_territory) VALUES ${values.join(', ')}`, params);
-            }
-          }
-          await client.query('COMMIT');
-          console.log('[SCHEDULER] global_carriers table synchronized successfully.');
-        } finally {
-          client.release();
-        }
-      }
-      
+      await refreshAllGlobalDatasets();
       // Reload updated records back into RAM memory caches safely
       await loadGlobalData();
       console.log('[SCHEDULER] Background dataset synchronization complete and RAM caches reloaded.');
     } catch (err) {
-      console.error('[SCHEDULER] Failed scheduled synchronization run:', err.message);
+      console.error('[SCHEDULER] Failed scheduled synchronization run (existing data kept):', err.message);
     }
   }, refreshIntervalMs);
+  if (schedulerInterval.unref) schedulerInterval.unref();
 };
 
 const prepopulateDatabases = async () => {
-  let client;
-  try {
-    client = await pool.connect();
-    
-    // Check if airports table is empty
-    const airportsCount = await client.query('SELECT COUNT(*) FROM global_airports');
-    const countAirports = parseInt(airportsCount.rows[0].count, 10);
-    
-    if (countAirports === 0) {
-      console.log('Prepopulating global_airports from GitHub...');
-      const response = await fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/airport_data_full_processed.jsonl');
-      if (response.ok) {
-        const text = await response.text();
-        const lines = text.split('\n').filter(Boolean);
-        console.log(`Downloaded ${lines.length} airports; parsing & inserting chunks...`);
-        
-        await client.query('BEGIN');
-        const chunkSize = 500;
-        for (let i = 0; i < lines.length; i += chunkSize) {
-          const chunk = lines.slice(i, i + chunkSize);
-          const values = [];
-          const params = [];
-          
-          chunk.forEach((line, idx) => {
-            try {
-              const item = JSON.parse(line);
-              if (item.iata) {
-                const iata = item.iata.trim().toUpperCase();
-                const city = item.city_name || '';
-                const airport = item.airport_name || '';
-                values.push(`($${idx * 3 + 1}, $${idx * 3 + 2}, $${idx * 3 + 3})`);
-                params.push(iata, city, airport);
-              }
-            } catch (err) {}
-          });
-          
-          if (values.length > 0) {
-            await client.query(`
-              INSERT INTO global_airports (iata, city_name, airport_name)
-              VALUES ${values.join(', ')}
-            `, params);
-          }
-        }
-        await client.query('COMMIT');
-        
-        console.log('Creating database indexes on global_airports...');
-        await client.query('CREATE INDEX IF NOT EXISTS idx_airports_iata ON global_airports(iata)');
-        await client.query('CREATE INDEX IF NOT EXISTS idx_airports_city_name ON global_airports(city_name)');
-        await client.query('CREATE INDEX IF NOT EXISTS idx_airports_airport_name ON global_airports(airport_name)');
-        console.log('Successfully pre-populated global_airports!');
-      } else {
-        console.error('Failed to download airports file from GitHub. Status:', response.status);
-      }
-    } else {
-      console.log(`global_airports already pre-populated with ${countAirports} records.`);
+  // First run: fill empty dataset tables (existing data is left alone).
+  for (const name of Object.keys(GLOBAL_DATASETS)) {
+    try {
+      await refreshGlobalDataset(name, { onlyIfEmpty: true });
+    } catch (err) {
+      console.error(`Error pre-populating ${GLOBAL_DATASETS[name].table}:`, err);
     }
-    
-    // Check if carriers table is empty
-    const carriersCount = await client.query('SELECT COUNT(*) FROM global_carriers');
-    const countCarriers = parseInt(carriersCount.rows[0].count, 10);
-    
-    if (countCarriers === 0) {
-      console.log('Prepopulating global_carriers from GitHub...');
-      const response = await fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/carrier_data_full_processed.jsonl');
-      if (response.ok) {
-        const text = await response.text();
-        const lines = text.split('\n').filter(Boolean);
-        console.log(`Downloaded ${lines.length} carriers; parsing & inserting chunks...`);
-        
-        await client.query('BEGIN');
-        const chunkSize = 500;
-        for (let i = 0; i < lines.length; i += chunkSize) {
-          const chunk = lines.slice(i, i + chunkSize);
-          const values = [];
-          const params = [];
-          
-          chunk.forEach((line, idx) => {
-            try {
-              const item = JSON.parse(line);
-              const iata = (item.iata || '').trim().toUpperCase();
-              const name = item.company_name || '';
-              const country = item.country_or_territory || '';
-              if (iata || name) {
-                values.push(`($${idx * 3 + 1}, $${idx * 3 + 2}, $${idx * 3 + 3})`);
-                params.push(iata, name, country);
-              }
-            } catch (err) {}
-          });
-          
-          if (values.length > 0) {
-            await client.query(`
-              INSERT INTO global_carriers (iata, company_name, country_or_territory)
-              VALUES ${values.join(', ')}
-            `, params);
-          }
-        }
-        await client.query('COMMIT');
-        
-        console.log('Creating database indexes on global_carriers...');
-        await client.query('CREATE INDEX IF NOT EXISTS idx_carriers_iata ON global_carriers(iata)');
-        await client.query('CREATE INDEX IF NOT EXISTS idx_carriers_company_name ON global_carriers(company_name)');
-        console.log('Successfully pre-populated global_carriers!');
-      } else {
-        console.error('Failed to download carriers file from GitHub. Status:', response.status);
-      }
-    } else {
-      console.log(`global_carriers already pre-populated with ${countCarriers} records.`);
-    }
-  } catch (err) {
-    if (client) {
-      try {
-        await client.query('ROLLBACK');
-      } catch (e) {}
-    }
-    console.error('Error pre-populating global databases:', err);
-  } finally {
-    if (client) client.release();
   }
 };
 
@@ -775,6 +819,128 @@ async function withTransaction(callback) {
       client.release();
     }
   }
+}
+
+// --- Request validation (SEC-012, REL-011) ---
+// Every collection write is checked for shape before it is stored, so one malformed record can't
+// break readers (calendar feed, trip page) and clients can't smuggle oversized documents.
+const RECORD_ID_PATTERN = /^[^\s/\\?#]{1,200}$/;
+const ISO_DAY_OR_EMPTY = /^(\d{4}-\d{2}-\d{2}([T ].*)?)?$/;
+const MAX_RECORD_BYTES = { users: 2 * 1024 * 1024, default: 1024 * 1024 };
+const MAX_AVATAR_CHARS = Math.ceil((1024 * 1024 * 4) / 3) + 64; // ~1 MB decoded
+const AVATAR_PATTERN = /^(data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+|https:\/\/\S+)?$/;
+
+const isValidDayOrEmpty = (v) => v === undefined || v === null || (typeof v === 'string' && ISO_DAY_OR_EMPTY.test(v) && (v === '' || !isNaN(new Date(v.slice(0, 10)).getTime())));
+const isArrayOrMissing = (v) => v === undefined || v === null || Array.isArray(v);
+const isStringOrMissing = (v, max = 2000) => v === undefined || v === null || (typeof v === 'string' && v.length <= max);
+
+const RECORD_RULES = {
+    trips: (r) => {
+        if (!isStringOrMissing(r.name, 500)) return 'name must be text (max 500 characters)';
+        if (!isValidDayOrEmpty(r.startDate) || !isValidDayOrEmpty(r.endDate)) return 'startDate/endDate must be YYYY-MM-DD dates';
+        for (const field of ['participants', 'transports', 'accommodations', 'activities', 'locations', 'packingList']) {
+            if (!isArrayOrMissing(r[field])) return `${field} must be a list`;
+        }
+        if (Array.isArray(r.participants) && !r.participants.every(p => typeof p === 'string')) return 'participants must be user ids';
+        if (r.privacy !== undefined && r.privacy !== null && !['Private', 'Public', 'Shared'].includes(r.privacy)) return 'privacy must be Private, Public or Shared';
+        return null;
+    },
+    flights: (r) => {
+        if (!isValidDayOrEmpty(r.departureDate) || !isValidDayOrEmpty(r.arrivalDate)) return 'departureDate/arrivalDate must be YYYY-MM-DD dates';
+        for (const field of ['origin', 'destination', 'provider', 'identifier', 'mode']) {
+            if (!isStringOrMissing(r[field], 500)) return `${field} must be text`;
+        }
+        return null;
+    },
+    visited: (r) => (!isStringOrMissing(r.type, 50) || !isStringOrMissing(r.code, 100) ? 'type/code must be text' : null),
+    configs: (r) => (!isArrayOrMissing(r.holidays) ? 'holidays must be a list' : null),
+    users: (r) => {
+        if (!isStringOrMissing(r.name, 200)) return 'name must be text (max 200 characters)';
+        if (r.email !== undefined && r.email !== null && (typeof r.email !== 'string' || (r.email && !EMAIL_PATTERN.test(r.email.trim())))) return 'email is not valid';
+        if (r.profilePicture !== undefined && r.profilePicture !== null) {
+            if (typeof r.profilePicture !== 'string' || r.profilePicture.length > MAX_AVATAR_CHARS || !AVATAR_PATTERN.test(r.profilePicture)) {
+                return 'profilePicture must be a PNG, JPEG, WebP or GIF image under 1 MB';
+            }
+        }
+        return null;
+    },
+};
+
+function validateRecord(table, record) {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) return 'Record must be a JSON object';
+    if (typeof record.id !== 'string' || !RECORD_ID_PATTERN.test(record.id)) return 'Record id must be 1–200 characters without spaces or slashes';
+    const limit = MAX_RECORD_BYTES[table] || MAX_RECORD_BYTES.default;
+    if (Buffer.byteLength(JSON.stringify(record)) > limit) return `Record is too large (max ${Math.round(limit / 1024)} KB)`;
+    const rule = RECORD_RULES[table];
+    return rule ? rule(record) : null;
+}
+
+const assertValidRecords = (table, records) => {
+    for (const record of records) {
+        const problem = validateRecord(table, record);
+        if (problem) throw new HttpError(400, `Invalid ${table} record${record && typeof record.id === 'string' ? ` "${record.id.slice(0, 60)}"` : ''}: ${problem}`);
+    }
+};
+
+// --- Record ownership (SEC-001) ---
+// Trips: readable by participants (or anyone when Public), writable by participants; admins see all.
+// Flights / land journeys / atlas records: a shared household log that everyone can read, but only
+// the record's owner (ownerId) or an admin may change; records without an owner are admin-managed.
+const normKey = (v) => String(v ?? '').toLowerCase().trim();
+const isAdminUser = (user) => user?.role === 'Admin';
+const isTripParticipant = (trip, user) => {
+    const keys = new Set([user.id, user.email].filter(Boolean).map(normKey));
+    return Array.isArray(trip?.participants) && trip.participants.some(p => keys.has(normKey(p)));
+};
+const OWNERSHIP = {
+    trips: {
+        canRead: (trip, user) => isAdminUser(user) || trip.privacy === 'Public' || isTripParticipant(trip, user),
+        canWrite: (trip, user) => isAdminUser(user) || isTripParticipant(trip, user),
+        // A new trip always includes its creator, so they can't lock themselves out of it.
+        prepareNew: (trip, user) => (isAdminUser(user) || isTripParticipant(trip, user))
+            ? trip
+            : { ...trip, participants: [...(Array.isArray(trip.participants) ? trip.participants : []), user.id] },
+        prepareUpdate: (incoming) => incoming,
+    },
+    flights: {
+        canRead: () => true,
+        canWrite: (rec, user) => isAdminUser(user) || (!!rec.ownerId && rec.ownerId === user.id),
+        prepareNew: (rec, user) => ({ ...rec, ownerId: user.id }),
+        prepareUpdate: (incoming, existing) => ({ ...incoming, ownerId: existing.ownerId }),
+    },
+};
+OWNERSHIP.visited = OWNERSHIP.flights;
+
+const forbidden = () => new HttpError(403, 'You do not have permission to change this record');
+
+// Upserts records after checking the caller may change each existing one (new ones get an owner).
+async function guardedBulkUpsert(client, table, items, user) {
+    if (!Array.isArray(items)) throw new HttpError(400, 'Body must be a list of records');
+    assertValidRecords(table, items);
+    const policy = OWNERSHIP[table];
+    if (!policy) return bulkUpsert(client, table, items);
+    const ids = items.filter(i => i && i.id).map(i => i.id);
+    const existing = new Map();
+    for (const id of ids) {
+        const { rows } = await client.query(`SELECT data FROM ${table} WHERE id = $1`, [id]);
+        if (rows.length > 0) existing.set(id, rows[0].data);
+    }
+    const prepared = items.filter(i => i && i.id).map(item => {
+        const prev = existing.get(item.id);
+        if (!prev) return policy.prepareNew(item, user);
+        if (!policy.canWrite(prev, user)) throw forbidden();
+        return policy.prepareUpdate(item, prev);
+    });
+    return bulkUpsert(client, table, prepared);
+}
+
+async function guardedDelete(client, table, id, user) {
+    const policy = OWNERSHIP[table];
+    if (policy) {
+        const { rows } = await client.query(`SELECT data FROM ${table} WHERE id = $1`, [id]);
+        if (rows.length > 0 && !policy.canWrite(rows[0].data, user)) throw forbidden();
+    }
+    await client.query(`DELETE FROM ${table} WHERE id = $1`, [id]);
 }
 
 const getResources = (table) => async (req, res) => {
@@ -844,7 +1010,9 @@ const getResources = (table) => async (req, res) => {
     }
 
     const { rows } = await pool.query(query, params);
-    res.json(rows.map(r => r.data));
+    const policy = OWNERSHIP[table];
+    const records = rows.map(r => r.data);
+    res.json(policy ? records.filter(r => policy.canRead(r, req.user)) : records);
   } catch (err) {
     sendError(res, err, 500, `Failed to retrieve ${table}`);
   }
@@ -855,6 +1023,8 @@ const getResources = (table) => async (req, res) => {
  */
 async function bulkUpsert(client, table, items, chunkSize = 500) {
   if (!items || !Array.isArray(items) || items.length === 0) return 0;
+  // Postgres rejects a multi-row upsert that touches the same id twice; the last copy wins.
+  items = Array.from(new Map(items.filter(item => item && item.id).map(item => [item.id, item])).values());
   let count = 0;
   for (let i = 0; i < items.length; i += chunkSize) {
     const chunk = items.slice(i, i + chunkSize).filter(item => item && item.id);
@@ -877,51 +1047,105 @@ async function bulkUpsert(client, table, items, chunkSize = 500) {
 
 const createResource = (table) => async (req, res) => {
   const resource = req.body;
-  if (!resource.id) return res.status(400).json({ error: 'ID is required' });
+  if (!resource || typeof resource !== 'object' || !resource.id) return res.status(400).json({ error: 'ID is required' });
+  let created = resource;
+  const problem = validateRecord(table, resource);
+  if (problem) return res.status(400).json({ error: `Invalid ${table} record: ${problem}` });
   
   try {
     await withTransaction(async (client) => {
-      await client.query(
-        `INSERT INTO ${table} (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
-        [resource.id, JSON.stringify(resource)]
-      );
+      // Creating never overwrites an existing record; updates go through PUT /:id.
+      const { rows } = await client.query(`SELECT 1 FROM ${table} WHERE id = $1`, [resource.id]);
+      if (rows.length > 0) throw new HttpError(409, `A record with id ${resource.id} already exists`);
+      created = OWNERSHIP[table] ? OWNERSHIP[table].prepareNew(resource, req.user) : resource;
+      await client.query(`INSERT INTO ${table} (id, data) VALUES ($1, $2)`, [created.id, JSON.stringify(created)]);
     });
-    res.status(201).json(resource);
+    res.status(201).json(created);
   } catch (err) {
+    if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
+    if (err.code === '23505') return res.status(409).json({ error: `A record with id ${resource.id} already exists` });
     sendError(res, err, 500, `Failed to create ${table}`);
   }
 };
 
 const updateResource = (table) => async (req, res) => {
   const { id } = req.params;
-  const resource = req.body;
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    return res.status(400).json({ error: 'Body must be a JSON object' });
+  }
+  // The URL decides which record is written; a different body id is ignored (REL-011).
+  const resource = { ...req.body, id };
   
   try {
-    await withTransaction(async (client) => {
-      await client.query(
-        `INSERT INTO ${table} (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
-        [id, JSON.stringify(resource)]
-      );
+    const saved = await withTransaction(async (client) => {
+      const [record] = await guardedBulkUpsertOne(client, table, resource, req.user);
+      return record;
     });
-    res.json(resource);
+    res.json(saved);
   } catch (err) {
+    if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
     sendError(res, err, 500, `Failed to update ${table}`);
   }
 };
+
+// Single-record variant of guardedBulkUpsert that returns the stored record.
+async function guardedBulkUpsertOne(client, table, record, user) {
+  assertValidRecords(table, [record]);
+  const policy = OWNERSHIP[table];
+  let prepared = record;
+  if (policy) {
+    const { rows } = await client.query(`SELECT data FROM ${table} WHERE id = $1`, [record.id]);
+    if (rows.length === 0) prepared = policy.prepareNew(record, user);
+    else if (!policy.canWrite(rows[0].data, user)) throw forbidden();
+    else prepared = policy.prepareUpdate(record, rows[0].data);
+  }
+  await client.query(
+    `INSERT INTO ${table} (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
+    [prepared.id, JSON.stringify(prepared)]
+  );
+  return [prepared];
+}
 
 const deleteResource = (table) => async (req, res) => {
   const { id } = req.params;
   try {
     await withTransaction(async (client) => {
-      await client.query(`DELETE FROM ${table} WHERE id = $1`, [id]);
+      await guardedDelete(client, table, id, req.user);
     });
     res.json({ success: true });
   } catch (err) {
+    if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
     sendError(res, err, 500, `Failed to delete ${table}`);
   }
 };
 
 // --- Routes ---
+
+// Proxies receive the workspace's keys here, so browsers never need (or see) them.
+const PROXY_KEY_HEADERS = { 'x-aviationstack-key': 'aviationStackApiKey', 'x-aerodatabox-key': 'aeroDataBoxApiKey', 'x-openaip-key': 'openAipApiKey' };
+app.use('/api/proxy', async (req, res, next) => {
+    try {
+        for (const [header, key] of Object.entries(PROXY_KEY_HEADERS)) {
+            const sent = String(req.headers[header] || '').trim();
+            if (!sent || sent === SECRET_MASK) {
+                const value = await workspaceSecret(key);
+                if (value) req.headers[header] = value; else delete req.headers[header];
+            }
+        }
+        // Legacy query-string keys (AviationStack airports/airlines)
+        if (req.query && (!req.query.access_key || req.query.access_key === SECRET_MASK)) {
+            const value = await workspaceSecret('aviationStackApiKey');
+            const query = { ...req.query };
+            if (value) query.access_key = value; else delete query.access_key;
+            // req.query is a lazily-computed getter in recent Express versions; replace it outright.
+            Object.defineProperty(req, 'query', { value: query, writable: true, configurable: true, enumerable: true });
+        }
+        next();
+    } catch (err) {
+        next(err);
+    }
+});
+
 
 // AviationStack proxies keep API calls server-side to avoid browser CORS and mixed-content failures.
 const getAviationStackKey = (req) => {
@@ -1060,10 +1284,11 @@ app.get('/api/proxy/airports', async (req, res) => {
         return res.status(400).json({ error: 'Missing access_key' });
     }
     try {
-        let url = `http://api.aviationstack.com/v1/airports?access_key=${access_key}`;
-        if (iata_code) url += `&iata_code=${iata_code}`;
-        if (search) url += `&search=${search}`;
-        const response = await fetch(url);
+        const params = new URLSearchParams({ access_key: String(access_key) });
+        if (iata_code) params.set('iata_code', String(iata_code));
+        if (search) params.set('search', String(search));
+        const response = await fetch(`http://api.aviationstack.com/v1/airports?${params}`, { signal: AbortSignal.timeout(FLIGHT_FETCH_TIMEOUT_MS) });
+        if (!response.ok) return res.status(502).json({ error: `AviationStack returned HTTP ${response.status}` });
         const data = await response.json();
         res.json(data);
     } catch (err) {
@@ -1079,10 +1304,11 @@ app.get('/api/proxy/airlines', async (req, res) => {
         return res.status(400).json({ error: 'Missing access_key' });
     }
     try {
-        let url = `http://api.aviationstack.com/v1/airlines?access_key=${access_key}`;
-        if (iata_code) url += `&iata_code=${iata_code}`;
-        if (search) url += `&search=${search}`;
-        const response = await fetch(url);
+        const params = new URLSearchParams({ access_key: String(access_key) });
+        if (iata_code) params.set('iata_code', String(iata_code));
+        if (search) params.set('search', String(search));
+        const response = await fetch(`http://api.aviationstack.com/v1/airlines?${params}`, { signal: AbortSignal.timeout(FLIGHT_FETCH_TIMEOUT_MS) });
+        if (!response.ok) return res.status(502).json({ error: `AviationStack returned HTTP ${response.status}` });
         const data = await response.json();
         res.json(data);
     } catch (err) {
@@ -1094,7 +1320,7 @@ app.get('/api/proxy/airlines', async (req, res) => {
 // ==========================================
 // AERODATABOX PROXY (FLIGHT LOOKUPS & AIRCRAFT)
 // ==========================================
-const aeroDataBoxCache = new Map();
+const aeroDataBoxCache = new BoundedMap(CACHE_MAX_ENTRIES);
 const AERODATABOX_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 const AERODATABOX_ENDPOINTS = {
@@ -1208,7 +1434,7 @@ app.get('/api/proxy/aerodatabox/aircrafts/reg/:reg', async (req, res) => {
         const headers = { [config.authHeader]: apiKey };
         if (endpointMode === 'rapidapi') headers['x-rapidapi-host'] = 'aerodatabox.p.rapidapi.com';
 
-        const upstream = await fetch(upstreamUrl, { headers });
+        const upstream = await fetch(upstreamUrl, { headers, signal: AbortSignal.timeout(FLIGHT_FETCH_TIMEOUT_MS) });
         if (upstream.status === 204) return res.json(null);
         if (!upstream.ok) return res.status(upstream.status).json({ error: 'Aircraft lookup failed.' });
 
@@ -1224,7 +1450,7 @@ app.get('/api/proxy/aerodatabox/aircrafts/reg/:reg', async (req, res) => {
 // ==========================================
 // KEYLESS FLIGHT LOOKUP (ADSBdb & adsb.lol)
 // ==========================================
-const adsbLolCache = new Map();
+const adsbLolCache = new BoundedMap(CACHE_MAX_ENTRIES);
 
 // P-01: ADSBdb Callsign Route Lookup (Cached 24h, 8s timeout, host gate 200ms)
 const handleAdsbDbCallsign = async (req, res) => {
@@ -1424,7 +1650,11 @@ app.get('/api/proxy/opensky/states', async (req, res) => {
 // ==========================================
 app.get('/api/proxy/openaip/:z/:x/:y', async (req, res) => {
     const { z, x, y } = req.params;
-    const apiKey = (req.get('X-OpenAIP-Key') || req.query.key || process.env.INTEGRATIONS_OPEN_AIP_KEY || '').trim();
+    // Only numeric tile coordinates reach the upstream URL (no path/query injection).
+    if (!/^\d{1,2}$/.test(z) || !/^\d{1,7}$/.test(x) || !/^\d{1,7}(\.pbf)?$/.test(y)) {
+        return res.status(400).json({ error: 'Invalid tile coordinates' });
+    }
+    const apiKey = (req.get('X-OpenAIP-Key') || process.env.INTEGRATIONS_OPEN_AIP_KEY || '').trim();
     if (!apiKey) {
         return res.status(403).json({ error: 'OpenAIP API key not configured.' });
     }
@@ -2016,67 +2246,137 @@ app.get('/api/carriers/search', async (req, res) => {
 });
 
 // Calendar Sync Endpoint (iCal Feed)
-app.get('/api/calendar/:userId/feed.ics', async (req, res) => {
-    const { userId } = req.params;
-    try {
-        // Query trips where userId is in the participants array
-        const { rows } = await pool.query(`
-            SELECT data FROM trips 
-            WHERE data->'participants' ? $1
-            AND (data->>'status' = 'Upcoming' OR data->>'status' = 'Past')
-        `, [userId]);
-        
-        const trips = rows.map(r => r.data);
-        
-        // --- ICS Generation Logic (Backend Version) ---
-        const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-        const formatDate = (dateStr) => dateStr.replace(/-/g, '');
-        const getExclusiveEndDate = (dateStr) => {
-            const date = new Date(dateStr);
-            date.setDate(date.getDate() + 1);
-            return date.toISOString().split('T')[0].replace(/-/g, '');
-        };
+// --- Calendar subscription feed ---
+// The feed URL carries a random, rotatable per-user token instead of the (guessable) user id, so
+// knowing someone's email no longer reveals their travel plans. Text is escaped per RFC 5545.
+const CALENDAR_TOKEN_PATTERN = /^[0-9a-f]{48}$/;
+const newCalendarToken = () => crypto.randomBytes(24).toString('hex');
 
-        const events = trips.map(trip => {
-            const start = formatDate(trip.startDate);
-            const end = getExclusiveEndDate(trip.endDate);
-            const summary = `${trip.icon || '✈️'} ${trip.name}`;
-            const location = trip.location || '';
-            const uid = `${trip.id}@wandergrid.app`;
-            
-            let description = `Status: ${trip.status}\\n`;
-            if (trip.transports && trip.transports.length > 0) {
-                description += `\\nTransports:${trip.transports.map(t => `\\n- ${t.mode}: ${t.provider} (${t.departureTime})`).join('')}`;
+const icsEscape = (value) => String(value ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\;')
+    .replace(/,/g, '\\,')
+    .replace(/\r\n|\r|\n/g, '\\n');
+
+// Fold content lines longer than 75 octets (RFC 5545 §3.1) without splitting UTF-8 characters.
+const icsFold = (line) => {
+    const parts = [];
+    let current = '';
+    let bytes = 0;
+    for (const ch of line) {
+        const len = Buffer.byteLength(ch);
+        if (bytes + len > (parts.length === 0 ? 75 : 74)) {
+            parts.push(current);
+            current = '';
+            bytes = 0;
+        }
+        current += ch;
+        bytes += len;
+    }
+    parts.push(current);
+    return parts.join('\r\n ');
+};
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}/;
+const isValidDay = (value) => typeof value === 'string' && ISO_DAY.test(value) && !isNaN(new Date(value.slice(0, 10)).getTime());
+
+function buildIcsCalendar(trips) {
+    const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const formatDate = (dateStr) => dateStr.slice(0, 10).replace(/-/g, '');
+    const getExclusiveEndDate = (dateStr) => {
+        const date = new Date(dateStr.slice(0, 10));
+        date.setDate(date.getDate() + 1);
+        return date.toISOString().split('T')[0].replace(/-/g, '');
+    };
+
+    const events = trips
+        .filter(trip => isValidDay(trip.startDate) && isValidDay(trip.endDate)) // one bad record must not break the feed
+        .map(trip => {
+            let description = `Status: ${trip.status}\n`;
+            if (Array.isArray(trip.transports) && trip.transports.length > 0) {
+                description += `\nTransports:${trip.transports.map(t => `\n- ${t.mode}: ${t.provider} (${t.departureTime})`).join('')}`;
             }
-
             return [
                 'BEGIN:VEVENT',
-                `UID:${uid}`,
+                `UID:${icsEscape(trip.id)}@wandergrid.app`,
                 `DTSTAMP:${now}`,
-                `DTSTART;VALUE=DATE:${start}`,
-                `DTEND;VALUE=DATE:${end}`,
-                `SUMMARY:${summary}`,
-                `LOCATION:${location}`,
-                `DESCRIPTION:${description}`,
+                `DTSTART;VALUE=DATE:${formatDate(trip.startDate)}`,
+                `DTEND;VALUE=DATE:${getExclusiveEndDate(trip.endDate)}`,
+                `SUMMARY:${icsEscape(`${trip.icon || '✈️'} ${trip.name}`)}`,
+                `LOCATION:${icsEscape(trip.location || '')}`,
+                `DESCRIPTION:${icsEscape(description)}`,
                 'END:VEVENT'
-            ].join('\r\n');
+            ].map(icsFold).join('\r\n');
         });
 
-        const icsContent = [
-            'BEGIN:VCALENDAR',
-            'VERSION:2.0',
-            'PRODID:-//WanderGrid//Travel Calendar//EN',
-            'CALSCALE:GREGORIAN',
-            'METHOD:PUBLISH',
-            'X-WR-CALNAME:WanderGrid Trips',
-            ...events,
-            'END:VCALENDAR'
-        ].join('\r\n');
+    return [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//WanderGrid//Travel Calendar//EN',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+        'X-WR-CALNAME:WanderGrid Trips',
+        ...events,
+        'END:VCALENDAR'
+    ].join('\r\n');
+}
+
+// Returns (creating on first use) the signed-in user's feed token.
+app.get('/api/calendar/token', async (req, res) => {
+    try {
+        const token = await withTransaction(async (client) => {
+            const { rows } = await client.query(`SELECT data FROM users WHERE id = $1`, [req.user.id]);
+            if (rows.length === 0) throw new HttpError(404, 'User not found');
+            const user = rows[0].data;
+            if (CALENDAR_TOKEN_PATTERN.test(user.calendarToken || '')) return user.calendarToken;
+            const updated = { ...user, calendarToken: newCalendarToken() };
+            await client.query(`UPDATE users SET data = $2 WHERE id = $1`, [user.id, JSON.stringify(updated)]);
+            return updated.calendarToken;
+        });
+        res.json({ token });
+    } catch (err) {
+        if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
+        sendError(res, err, 500, 'Failed to read calendar link');
+    }
+});
+
+// Invalidates the previous feed URL (e.g. after sharing it by mistake).
+app.post('/api/calendar/token/rotate', async (req, res) => {
+    try {
+        const token = await withTransaction(async (client) => {
+            const { rows } = await client.query(`SELECT data FROM users WHERE id = $1`, [req.user.id]);
+            if (rows.length === 0) throw new HttpError(404, 'User not found');
+            const updated = { ...rows[0].data, calendarToken: newCalendarToken() };
+            await client.query(`UPDATE users SET data = $2 WHERE id = $1`, [updated.id, JSON.stringify(updated)]);
+            return updated.calendarToken;
+        });
+        res.json({ token });
+    } catch (err) {
+        if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
+        sendError(res, err, 500, 'Failed to reset calendar link');
+    }
+});
+
+// Public (token-authenticated) feed for calendar apps.
+app.get('/api/calendar/:token/feed.ics', async (req, res) => {
+    const { token } = req.params;
+    if (!CALENDAR_TOKEN_PATTERN.test(token)) return res.status(404).send('Not found');
+    try {
+        const { rows: userRows } = await pool.query(`SELECT data FROM users WHERE data->>'calendarToken' = $1 LIMIT 1`, [token]);
+        if (userRows.length === 0) return res.status(404).send('Not found');
+        const userId = userRows[0].data.id;
+
+        const { rows } = await pool.query(`
+            SELECT data FROM trips
+            WHERE (data->>'status' = 'Upcoming' OR data->>'status' = 'Past')
+        `);
+        const trips = rows.map(r => r.data)
+            .filter(t => Array.isArray(t.participants) && t.participants.includes(userId));
 
         res.set('Content-Type', 'text/calendar;charset=utf-8');
         res.set('Content-Disposition', 'inline; filename="wandergrid.ics"');
-        res.send(icsContent);
-
+        res.set('Cache-Control', 'private, no-store');
+        res.send(buildIcsCalendar(trips));
     } catch (err) {
         console.error("Calendar Feed Error", err);
         res.status(500).send("Error generating calendar");
@@ -2084,31 +2384,15 @@ app.get('/api/calendar/:userId/feed.ics', async (req, res) => {
 });
 
 // Health Check
+// Public liveness/readiness probe: status only. Connection errors and pool statistics are logged,
+// never returned to anonymous callers (SEC-015).
 app.get('/api/health', async (req, res) => {
     try {
         await pool.query('SELECT 1');
-        res.json({ 
-            status: dbReady ? 'ok' : 'initializing', 
-            database: 'connected', 
-            dbReady,
-            pool: {
-                totalConnections: pool.totalCount,
-                idleConnections: pool.idleCount,
-                waitingQueries: pool.waitingCount
-            }
-        });
+        res.json({ status: dbReady ? 'ok' : 'initializing' });
     } catch (err) {
-        res.status(500).json({ 
-            status: 'error', 
-            database: 'disconnected', 
-            dbReady: false,
-            message: err.message,
-            pool: {
-                totalConnections: pool.totalCount,
-                idleConnections: pool.idleCount,
-                waitingQueries: pool.waitingCount
-            }
-        });
+        console.error('Health check: database unreachable', err);
+        res.status(503).json({ status: 'error' });
     }
 });
 
@@ -2132,12 +2416,15 @@ app.post('/api/auth/login', async (req, res) => {
         if (!isPasswordValid) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
+        if (!user.password.startsWith(HASH_PREFIX)) {
+            // Upgrade legacy plaintext / old-format hashes now that we know the password.
+            user.password = await hashPassword(password);
+            await pool.query(`UPDATE users SET data = $2 WHERE id = $1`, [user.id, JSON.stringify(user)]);
+        }
         
-        const responseUser = { ...user };
-        delete responseUser.password;
+        const responseUser = toPublicUser(user);
         
-        const tokenUser = { id: responseUser.id, email: responseUser.email, role: responseUser.role };
-        const token = jwt.sign(tokenUser, JWT_SECRET, { expiresIn: '7d' });
+        const token = signSession(user);
         
         res.json({ user: responseUser, token });
     } catch (err) {
@@ -2145,37 +2432,226 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-app.post('/api/auth/register', async (req, res) => {
-    const user = req.body;
-    if (!user.email || !user.password || !user.id) {
-        return res.status(400).json({ error: 'User ID, Email, and Password are required' });
-    }
+// Server-side defaults for new accounts; clients cannot choose id, role or other privileged fields.
+const newUserRecord = ({ id, name, email, role, password }) => {
+    const year = new Date().getFullYear();
+    const allowance = role === 'Admin' ? 30 : 25;
+    return {
+        id, name, email, role, password,
+        leaveBalance: allowance, takenLeave: 0, allowance, lieuBalance: 0,
+        activeYears: [year, year + 1, year + 2], policies: [], holidayConfigIds: []
+    };
+};
+
+const readWorkspaceSettings = async (client = pool) => {
+    const { rows } = await client.query(`SELECT data FROM settings WHERE key = 'workspace'`);
+    return rows.length > 0 ? rows[0].data : {};
+};
+
+// Public: lets the sign-in screen decide between first-run setup, sign-in and sign-up.
+app.get('/api/auth/setup-status', async (req, res) => {
     try {
-        const { rows } = await pool.query(
-            `SELECT 1 FROM users WHERE LOWER(data->>'email') = LOWER($1) LIMIT 1`,
-            [user.email.trim()]
-        );
-        if (rows.length > 0) {
-            return res.status(400).json({ error: 'User already exists' });
-        }
-        
-        user.password = await hashPassword(user.password);
-        
-        await withTransaction(async (client) => {
-            await client.query(
-                `INSERT INTO users (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
-                [user.id, JSON.stringify(user)]
-            );
+        const { rows } = await pool.query(`SELECT COUNT(*) AS count FROM users`);
+        const settings = await readWorkspaceSettings();
+        res.json({
+            needsSetup: Number(rows[0].count) === 0,
+            allowSelfRegistration: settings.allowSelfRegistration !== false
         });
-        const responseUser = { ...user };
-        delete responseUser.password;
-        
-        const tokenUser = { id: responseUser.id, email: responseUser.email, role: responseUser.role };
-        const token = jwt.sign(tokenUser, JWT_SECRET, { expiresIn: '7d' });
-        
+    } catch (err) {
+        sendError(res, err, 500, 'Failed to read setup status');
+    }
+});
+
+app.post('/api/auth/register', async (req, res) => {
+    const { name, email, password } = req.body || {};
+    if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    if (!EMAIL_PATTERN.test(cleanEmail)) {
+        return res.status(400).json({ error: 'Please enter a valid email address' });
+    }
+    const policyError = validatePasswordPolicy(password);
+    if (policyError) return res.status(400).json({ error: policyError });
+    const cleanName = (typeof name === 'string' ? name.trim() : '').slice(0, 200) || cleanEmail.split('@')[0];
+    try {
+        const passwordHash = await hashPassword(password);
+        const user = await withTransaction(async (client) => {
+            const { rows: countRows } = await client.query(`SELECT COUNT(*) AS count FROM users`);
+            const isFirstUser = Number(countRows[0].count) === 0;
+            if (!isFirstUser) {
+                const settings = await readWorkspaceSettings(client);
+                if (settings.allowSelfRegistration === false) {
+                    throw new HttpError(403, 'Self-registration is disabled. Ask an administrator to add you.');
+                }
+            }
+            const { rows: existing } = await client.query(
+                `SELECT 1 FROM users WHERE id = $1 OR LOWER(data->>'email') = $1 LIMIT 1`,
+                [cleanEmail]
+            );
+            if (existing.length > 0) {
+                throw new HttpError(409, 'An account with this email already exists');
+            }
+            // The very first account becomes the workspace administrator; everyone else is a Partner.
+            const record = newUserRecord({ id: cleanEmail, name: cleanName, email: cleanEmail, role: isFirstUser ? 'Admin' : 'Partner', password: passwordHash });
+            await client.query(`INSERT INTO users (id, data) VALUES ($1, $2)`, [record.id, JSON.stringify(record)]);
+            return record;
+        });
+        const responseUser = toPublicUser(user);
+
+        const token = signSession(user);
+
         res.status(201).json({ user: responseUser, token });
     } catch (err) {
+        if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
         sendError(res, err, 500, 'Registration failed');
+    }
+});
+
+// --- "Auto-Setup & Demo Run" ---
+// On a fresh install the demo creates the first (Admin) account; on a populated workspace it is only
+// available when public sign-up is open, and then signs in a Partner demo account that can see no
+// more than any self-registered user. Demo accounts have a random, never-shared password.
+const DEMO_EMAIL = 'demo@wandergrid.app';
+const demoSampleTrip = (ownerId) => ({
+    id: `trip-demo-${crypto.randomBytes(4).toString('hex')}`,
+    name: 'Grand Intercontinental Expedition',
+    location: 'Paris, France',
+    startDate: '2025-06-01',
+    endDate: '2025-06-25',
+    status: 'Past',
+    privacy: 'Private',
+    participants: [ownerId],
+    transports: [
+        { id: `tr-demo-1-${ownerId}`, itineraryId: 'itin-demo-1', type: 'One-Way', mode: 'Flight', provider: 'Air France', identifier: 'AF007', origin: 'JFK', destination: 'CDG', originLat: 40.6413, originLng: -73.7781, destLat: 49.0097, destLng: 2.5479, departureDate: '2025-06-01', departureTime: '18:30', arrivalDate: '2025-06-02', arrivalTime: '08:00', travelClass: 'Business' },
+        { id: `tr-demo-2-${ownerId}`, itineraryId: 'itin-demo-2', type: 'One-Way', mode: 'Train', provider: 'Eurostar', identifier: 'ES9310', origin: 'Paris', destination: 'Amsterdam', originLat: 48.8566, originLng: 2.3522, destLat: 52.3676, destLng: 4.9041, departureDate: '2025-06-06', departureTime: '10:20', arrivalDate: '2025-06-06', arrivalTime: '13:45', travelClass: 'First' },
+        { id: `tr-demo-3-${ownerId}`, itineraryId: 'itin-demo-3', type: 'One-Way', mode: 'Flight', provider: 'KLM', identifier: 'KL861', origin: 'AMS', destination: 'NRT', originLat: 52.3105, originLng: 4.7683, destLat: 35.772, destLng: 140.3929, departureDate: '2025-06-12', departureTime: '14:40', arrivalDate: '2025-06-13', arrivalTime: '08:50', travelClass: 'Economy' }
+    ]
+});
+const DEMO_VISITED = [
+    { id: 'country_US', type: 'country', code: 'US', name: 'United States', residenceStatus: 'lived_current' },
+    { id: 'country_FR', type: 'country', code: 'FR', name: 'France', residenceStatus: 'visited' },
+    { id: 'country_NL', type: 'country', code: 'NL', name: 'Netherlands', residenceStatus: 'visited' },
+    { id: 'country_JP', type: 'country', code: 'JP', name: 'Japan', residenceStatus: 'visited' },
+    { id: 'country_GB', type: 'country', code: 'GB', name: 'United Kingdom', residenceStatus: 'lived_past' }
+];
+
+app.post('/api/auth/demo', async (req, res) => {
+    try {
+        const user = await withTransaction(async (client) => {
+            const { rows: countRows } = await client.query(`SELECT COUNT(*) AS count FROM users`);
+            const isFresh = Number(countRows[0].count) === 0;
+            if (!isFresh) {
+                const settings = await readWorkspaceSettings(client);
+                if (settings.allowSelfRegistration === false) {
+                    throw new HttpError(403, 'Demo access is turned off for this workspace.');
+                }
+            }
+            let { rows } = await client.query(`SELECT data FROM users WHERE id = $1`, [DEMO_EMAIL]);
+            let demoUser = rows[0]?.data;
+            if (!demoUser) {
+                demoUser = newUserRecord({
+                    id: DEMO_EMAIL, name: 'Demo Traveller', email: DEMO_EMAIL,
+                    role: isFresh ? 'Admin' : 'Partner',
+                    password: await hashPassword(crypto.randomBytes(24).toString('hex'))
+                });
+                demoUser.isDemo = true;
+                await client.query(`INSERT INTO users (id, data) VALUES ($1, $2)`, [demoUser.id, JSON.stringify(demoUser)]);
+            }
+            const { rows: tripRows } = await client.query(`SELECT data FROM trips`);
+            if (!tripRows.some(r => isTripParticipant(r.data, demoUser))) {
+                const trip = demoSampleTrip(demoUser.id);
+                await client.query(`INSERT INTO trips (id, data) VALUES ($1, $2)`, [trip.id, JSON.stringify(trip)]);
+            }
+            // Only an empty workspace gets sample atlas records; never write into a real household's atlas.
+            if (isFresh) await bulkUpsert(client, 'visited', DEMO_VISITED.map(v => ({ ...v, ownerId: demoUser.id })));
+            return demoUser;
+        });
+        res.json({ user: toPublicUser(user), token: signSession(user) });
+    } catch (err) {
+        if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
+        sendError(res, err, 500, 'Demo mode is unavailable');
+    }
+});
+
+// --- Password reset (no email service): an admin issues a one-time code, the member redeems it ---
+const RESET_CODE_TTL_MS = 24 * 60 * 60 * 1000;
+const RESET_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
+const sha256Hex = (value) => crypto.createHash('sha256').update(value).digest('hex');
+const newResetCode = () => {
+    const bytes = crypto.randomBytes(10);
+    const chars = Array.from(bytes, b => RESET_CODE_ALPHABET[b % RESET_CODE_ALPHABET.length]).join('');
+    return `${chars.slice(0, 5)}-${chars.slice(5)}`;
+};
+const normaliseResetCode = (code) => String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+app.post('/api/users/:id/reset-code', requireAdmin, async (req, res) => {
+    try {
+        const result = await withTransaction(async (client) => {
+            const { rows } = await client.query(`SELECT data FROM users WHERE id = $1`, [req.params.id]);
+            if (rows.length === 0) throw new HttpError(404, 'User not found');
+            const code = newResetCode();
+            const expiresAt = new Date(Date.now() + RESET_CODE_TTL_MS).toISOString();
+            const updated = { ...rows[0].data, passwordReset: { codeHash: sha256Hex(normaliseResetCode(code)), expiresAt } };
+            await client.query(`UPDATE users SET data = $2 WHERE id = $1`, [updated.id, JSON.stringify(updated)]);
+            return { code, expiresAt };
+        });
+        res.json(result);
+    } catch (err) {
+        if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
+        sendError(res, err, 500, 'Failed to create a reset code');
+    }
+});
+
+// Public: redeem a reset code. Every failure gives the same answer so codes and emails can't be probed.
+app.post('/api/auth/reset-password', async (req, res) => {
+    const { email, code, password } = req.body || {};
+    const invalid = () => res.status(400).json({ error: 'That reset code is invalid or has expired. Ask an administrator for a new one.' });
+    if (typeof email !== 'string' || typeof code !== 'string') return invalid();
+    const policyError = validatePasswordPolicy(password);
+    if (policyError) return res.status(400).json({ error: policyError });
+    try {
+        const ok = await withTransaction(async (client) => {
+            const { rows } = await client.query(`SELECT data FROM users WHERE LOWER(data->>'email') = LOWER($1) LIMIT 1`, [email.trim()]);
+            const user = rows[0]?.data;
+            const reset = user?.passwordReset;
+            if (!reset || !reset.codeHash || new Date(reset.expiresAt).getTime() < Date.now()) return false;
+            if (!safeEqualHex(reset.codeHash, sha256Hex(normaliseResetCode(code)))) return false;
+            const { passwordReset, ...rest } = user;
+            const updated = { ...rest, password: await hashPassword(password), tokenVersion: (user.tokenVersion || 0) + 1 };
+            await client.query(`UPDATE users SET data = $2 WHERE id = $1`, [user.id, JSON.stringify(updated)]);
+            return true;
+        });
+        if (!ok) return invalid();
+        res.json({ success: true });
+    } catch (err) {
+        sendError(res, err, 500, 'Failed to reset the password');
+    }
+});
+
+// The signed-in user's own record (used to restore a session on page load).
+app.get('/api/auth/me', async (req, res) => {
+    try {
+        const { rows } = await pool.query(`SELECT data FROM users WHERE id = $1`, [req.user.id]);
+        if (rows.length === 0) return res.status(401).json({ error: 'Session is no longer valid' });
+        res.json(toPublicUser(rows[0].data));
+    } catch (err) {
+        sendError(res, err, 500, 'Failed to load the current user');
+    }
+});
+
+// Ends every session of the current user by bumping their token version.
+app.post('/api/auth/logout', async (req, res) => {
+    try {
+        await withTransaction(async (client) => {
+            const { rows } = await client.query(`SELECT data FROM users WHERE id = $1`, [req.user.id]);
+            if (rows.length === 0) return;
+            const user = { ...rows[0].data, tokenVersion: (rows[0].data.tokenVersion || 0) + 1 };
+            await client.query(`UPDATE users SET data = $2 WHERE id = $1`, [user.id, JSON.stringify(user)]);
+        });
+        res.json({ success: true });
+    } catch (err) {
+        sendError(res, err, 500, 'Failed to sign out');
     }
 });
 
@@ -2183,69 +2659,162 @@ app.post('/api/auth/register', async (req, res) => {
 app.get('/api/users', async (req, res) => {
     try {
         const { rows } = await pool.query(`SELECT data FROM users`);
-        const users = rows.map(r => {
-            const u = { ...r.data };
-            delete u.password; // Strip passwords to prevent credential leaks over API
-            return u;
-        });
+        const users = rows.map(r => toPublicUser(r.data)); // never send password hashes
         res.json(users);
     } catch (err) {
         sendError(res, err, 500, 'Failed to fetch users');
     }
 });
 
-app.post('/api/users', async (req, res) => {
+app.post('/api/users', requireAdmin, async (req, res) => {
     const user = req.body;
-    if (!user.id) return res.status(400).json({ error: 'ID is required' });
+    const problem = validateRecord('users', user);
+    if (problem) return res.status(400).json({ error: `Invalid user: ${problem}` });
     
     try {
-        if (user.password && !user.password.includes(':')) {
+        delete user.tokenVersion;
+        delete user.calendarToken;
+        delete user.passwordReset;
+        delete user.passwordResetRequired;
+        if (user.password) {
+            const policyError = validatePasswordPolicy(user.password);
+            if (policyError) return res.status(400).json({ error: policyError });
             user.password = await hashPassword(user.password);
+        } else {
+            delete user.password;
         }
         await withTransaction(async (client) => {
-            await client.query(
-                `INSERT INTO users (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
-                [user.id, JSON.stringify(user)]
+            const { rows: existing } = await client.query(
+                `SELECT 1 FROM users WHERE id = $1 OR ($2::text IS NOT NULL AND LOWER(data->>'email') = LOWER($2)) LIMIT 1`,
+                [user.id, typeof user.email === 'string' ? user.email.trim() : null]
             );
+            if (existing.length > 0) throw new HttpError(409, 'An account with this email already exists');
+            await client.query(`INSERT INTO users (id, data) VALUES ($1, $2)`, [user.id, JSON.stringify(user)]);
         });
-        res.status(201).json(user);
+        res.status(201).json(toPublicUser(user));
     } catch (err) {
+        if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
         sendError(res, err, 500, 'Failed to insert user');
     }
 });
 
+const countAdmins = async (client) => {
+    const { rows } = await client.query(`SELECT COUNT(*) AS count FROM users WHERE data->>'role' = 'Admin'`);
+    return Number(rows[0].count);
+};
+
+// Admins may edit anyone; everyone else may edit only their own profile and never their own role.
 app.put('/api/users/:id', async (req, res) => {
     const { id } = req.params;
-    const updatedUser = req.body;
+    const isAdmin = req.user.role === 'Admin';
+    if (!isAdmin && req.user.id !== id) {
+        return res.status(403).json({ error: 'You can only edit your own profile' });
+    }
+    const updatedUser = { ...(req.body || {}), id };
+    const problem = validateRecord('users', updatedUser);
+    if (problem) return res.status(400).json({ error: `Invalid user: ${problem}` });
     try {
-        const { rows } = await pool.query(`SELECT data FROM users WHERE id = $1`, [id]);
-        if (rows.length > 0) {
+        const saved = await withTransaction(async (client) => {
+            const { rows } = await client.query(`SELECT data FROM users WHERE id = $1`, [id]);
+            if (rows.length === 0) throw new HttpError(404, 'User not found');
             const prevUser = rows[0].data;
-            if (!updatedUser.password || updatedUser.password.trim() === '') {
-                updatedUser.password = prevUser.password;
-            } else if (updatedUser.password !== prevUser.password) {
-                if (!updatedUser.password.includes(':')) {
-                    updatedUser.password = await hashPassword(updatedUser.password);
-                }
+
+            if (!isAdmin) updatedUser.role = prevUser.role;
+            if (prevUser.role === 'Admin' && updatedUser.role !== 'Admin' && await countAdmins(client) <= 1) {
+                throw new HttpError(409, 'The workspace needs at least one administrator');
             }
-        } else if (updatedUser.password && !updatedUser.password.includes(':')) {
-            updatedUser.password = await hashPassword(updatedUser.password);
-        }
-        await withTransaction(async (client) => {
-            await client.query(
-                `INSERT INTO users (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
-                [id, JSON.stringify(updatedUser)]
-            );
+            if (typeof updatedUser.email === 'string' && updatedUser.email.trim().toLowerCase() !== String(prevUser.email || '').toLowerCase()) {
+                const { rows: clash } = await client.query(
+                    `SELECT 1 FROM users WHERE id <> $1 AND LOWER(data->>'email') = LOWER($2) LIMIT 1`,
+                    [id, updatedUser.email.trim()]
+                );
+                if (clash.length > 0) throw new HttpError(409, 'An account with this email already exists');
+            }
+
+            // An empty password keeps the current one; anything else is a new password (never a raw hash).
+            if (typeof updatedUser.password !== 'string' || updatedUser.password.trim() === '' || updatedUser.password === prevUser.password) {
+                updatedUser.password = prevUser.password;
+            } else {
+                const policyError = validatePasswordPolicy(updatedUser.password);
+                if (policyError) throw new HttpError(400, policyError);
+                updatedUser.password = await hashPassword(updatedUser.password);
+            }
+            if (!updatedUser.password) delete updatedUser.password;
+            // Clients never set the token version; a password or role change signs out other sessions.
+            updatedUser.tokenVersion = prevUser.tokenVersion || 0;
+            // Server-managed fields are never taken from the client.
+            delete updatedUser.passwordResetRequired;
+            delete updatedUser.sessionToken;
+            if (prevUser.calendarToken) updatedUser.calendarToken = prevUser.calendarToken;
+            else delete updatedUser.calendarToken;
+            // An outstanding reset code survives profile edits but not a password change.
+            if (prevUser.passwordReset && updatedUser.password === prevUser.password) updatedUser.passwordReset = prevUser.passwordReset;
+            else delete updatedUser.passwordReset;
+            if (updatedUser.password !== prevUser.password || updatedUser.role !== prevUser.role) {
+                updatedUser.tokenVersion += 1;
+            }
+            await client.query(`UPDATE users SET data = $2 WHERE id = $1`, [id, JSON.stringify(updatedUser)]);
+            return updatedUser;
         });
-        res.json(updatedUser);
+        // Editing your own password/role revokes your other sessions; hand this one a fresh token.
+        const body = toPublicUser(saved);
+        if (id === req.user.id) body.sessionToken = signSession(saved);
+        res.json(body);
     } catch (err) {
+        if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
         sendError(res, err, 500, 'Failed to update user');
     }
 });
 
-app.delete('/api/users/:id', deleteResource('users'));
+app.delete('/api/users/:id', requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    if (id === req.user.id) {
+        return res.status(409).json({ error: "You can't delete your own account" });
+    }
+    try {
+        await withTransaction(async (client) => {
+            const { rows } = await client.query(`SELECT data FROM users WHERE id = $1`, [id]);
+            if (rows.length > 0 && rows[0].data.role === 'Admin' && await countAdmins(client) <= 1) {
+                throw new HttpError(409, 'The workspace needs at least one administrator');
+            }
+            await client.query(`DELETE FROM users WHERE id = $1`, [id]);
+        });
+        res.json({ success: true });
+    } catch (err) {
+        if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
+        sendError(res, err, 500, 'Failed to delete users');
+    }
+});
 
 // Trips
+// Applies a multi-record change (e.g. bundling flights into a trip, moving a flight) in ONE
+// transaction, so a failure part-way can never leave flights deleted but not re-saved.
+const BATCH_KEYS = { upsertTrips: 'trips', deleteTrips: 'trips', upsertFlights: 'flights', deleteFlights: 'flights' };
+app.post('/api/batch', async (req, res) => {
+    const body = req.body || {};
+    for (const key of Object.keys(BATCH_KEYS)) {
+        const list = body[key];
+        if (list === undefined) continue;
+        const isDelete = key.startsWith('delete');
+        const valid = Array.isArray(list) && list.every(item => isDelete
+            ? typeof item === 'string' && item
+            : item && typeof item === 'object' && typeof item.id === 'string' && item.id);
+        if (!valid) return res.status(400).json({ error: `${key} must be an array of ${isDelete ? 'ids' : 'records with an id'}` });
+    }
+    try {
+        await withTransaction(async (client) => {
+            if (body.upsertTrips) await guardedBulkUpsert(client, 'trips', body.upsertTrips, req.user);
+            if (body.upsertFlights) await guardedBulkUpsert(client, 'flights', body.upsertFlights, req.user);
+            for (const id of body.deleteTrips || []) await guardedDelete(client, 'trips', id, req.user);
+            for (const id of body.deleteFlights || []) await guardedDelete(client, 'flights', id, req.user);
+        });
+        res.json({ success: true });
+    } catch (err) {
+        if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
+        sendError(res, err, 500, 'Failed to apply changes');
+    }
+});
+
 app.get('/api/trips', getResources('trips'));
 app.post('/api/trips', createResource('trips'));
 app.post('/api/trips/bulk', async (req, res) => {
@@ -2256,10 +2825,11 @@ app.post('/api/trips/bulk', async (req, res) => {
     try {
         let count = 0;
         await withTransaction(async (client) => {
-            count = await bulkUpsert(client, 'trips', list);
+            count = await guardedBulkUpsert(client, 'trips', list, req.user);
         });
         res.status(201).json({ success: true, count });
     } catch (err) {
+        if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
         sendError(res, err, 500, 'Failed to perform bulk trip upsert');
     }
 });
@@ -2268,21 +2838,21 @@ app.delete('/api/trips/:id', deleteResource('trips'));
 
 // Events (Custom Events)
 app.get('/api/events', getResources('events'));
-app.post('/api/events', createResource('events'));
-app.put('/api/events/:id', updateResource('events'));
-app.delete('/api/events/:id', deleteResource('events'));
+app.post('/api/events', requireAdmin, createResource('events'));
+app.put('/api/events/:id', requireAdmin, updateResource('events'));
+app.delete('/api/events/:id', requireAdmin, deleteResource('events'));
 
 // Entitlements
 app.get('/api/entitlements', getResources('entitlements'));
-app.post('/api/entitlements', createResource('entitlements'));
-app.put('/api/entitlements/:id', updateResource('entitlements'));
-app.delete('/api/entitlements/:id', deleteResource('entitlements'));
+app.post('/api/entitlements', requireAdmin, createResource('entitlements'));
+app.put('/api/entitlements/:id', requireAdmin, updateResource('entitlements'));
+app.delete('/api/entitlements/:id', requireAdmin, deleteResource('entitlements'));
 
 // Configs (Saved Holiday Configs)
 app.get('/api/configs', getResources('configs'));
-app.post('/api/configs', createResource('configs'));
-app.put('/api/configs/:id', updateResource('configs'));
-app.delete('/api/configs/:id', deleteResource('configs'));
+app.post('/api/configs', requireAdmin, createResource('configs'));
+app.put('/api/configs/:id', requireAdmin, updateResource('configs'));
+app.delete('/api/configs/:id', requireAdmin, deleteResource('configs'));
 
 // Flights
 app.get('/api/flights', getResources('flights'));
@@ -2295,10 +2865,11 @@ app.post('/api/flights/bulk', async (req, res) => {
     try {
         let count = 0;
         await withTransaction(async (client) => {
-            count = await bulkUpsert(client, 'flights', list);
+            count = await guardedBulkUpsert(client, 'flights', list, req.user);
         });
         res.status(201).json({ success: true, count });
     } catch (err) {
+        if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
         sendError(res, err, 500, 'Failed to perform bulk flight upsert');
     }
 });
@@ -2316,10 +2887,11 @@ app.post('/api/visited/bulk', async (req, res) => {
     try {
         let count = 0;
         await withTransaction(async (client) => {
-            count = await bulkUpsert(client, 'visited', list);
+            count = await guardedBulkUpsert(client, 'visited', list, req.user);
         });
         res.status(201).json({ success: true, count });
     } catch (err) {
+        if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
         sendError(res, err, 500, 'Failed to perform bulk visited upsert');
     }
 });
@@ -2327,30 +2899,111 @@ app.put('/api/visited/:id', updateResource('visited'));
 app.delete('/api/visited/:id', deleteResource('visited'));
 
 // Settings (Singleton)
+// --- Workspace settings & third-party secrets (SEC-010) ---
+// Paid API keys are write-only for clients: GET returns a mask when a key is set, PUT keeps the
+// stored key when it receives the mask, and the /api/proxy/* routes inject keys server-side.
+// (Brandfetch and CARTO keys are public client identifiers used in image/tile URLs and stay readable.)
+const SECRET_SETTING_KEYS = ['googleGeminiApiKey', 'aviationStackApiKey', 'aeroDataBoxApiKey', 'openAipApiKey'];
+const SECRET_MASK = '••••••••';
+const SECRET_ENV_FALLBACKS = {
+    aviationStackApiKey: 'INTEGRATIONS_AVIATION_STACK_KEY',
+    aeroDataBoxApiKey: 'INTEGRATIONS_AERO_DATA_BOX_KEY',
+    openAipApiKey: 'INTEGRATIONS_OPEN_AIP_KEY',
+    googleGeminiApiKey: 'GEMINI_API_KEY',
+};
+
+const maskSettings = (settings) => {
+    const masked = { ...settings };
+    const configuredKeys = {};
+    for (const key of SECRET_SETTING_KEYS) {
+        const hasKey = Boolean(settings[key] || process.env[SECRET_ENV_FALLBACKS[key]]);
+        configuredKeys[key] = hasKey;
+        masked[key] = hasKey ? SECRET_MASK : '';
+    }
+    masked.configuredKeys = configuredKeys;
+    return masked;
+};
+
+let secretsCache = { value: null, expiresAt: 0 };
+const invalidateSecretsCache = () => { secretsCache = { value: null, expiresAt: 0 }; };
+async function workspaceSecret(key) {
+    if (!secretsCache.value || secretsCache.expiresAt < Date.now()) {
+        secretsCache = { value: await readWorkspaceSettings(), expiresAt: Date.now() + 30000 };
+    }
+    return String(secretsCache.value[key] || process.env[SECRET_ENV_FALLBACKS[key]] || '').trim();
+}
+
 app.get('/api/settings', async (req, res) => {
     try {
-        const { rows } = await pool.query(`SELECT data FROM settings WHERE key = 'workspace'`);
-        res.json(rows.length > 0 ? rows[0].data : {});
+        res.json(maskSettings(await readWorkspaceSettings()));
     } catch (err) {
         sendError(res, err, 500, 'Failed to retrieve workspace settings');
     }
 });
 
-app.put('/api/settings', async (req, res) => {
+app.put('/api/settings', requireAdmin, async (req, res) => {
     try {
-        const settings = req.body;
-        await pool.query(
-            `INSERT INTO settings (key, data) VALUES ('workspace', $1) ON CONFLICT (key) DO UPDATE SET data = $1`,
-            [JSON.stringify(settings)]
-        );
-        res.json(settings);
+        const incoming = { ...(req.body || {}) };
+        delete incoming.configuredKeys;
+        const saved = await withTransaction(async (client) => {
+            const current = await readWorkspaceSettings(client);
+            for (const key of SECRET_SETTING_KEYS) {
+                // The mask (or an absent field) means "unchanged"; an empty string clears the key.
+                if (incoming[key] === undefined || incoming[key] === SECRET_MASK) {
+                    if (current[key]) incoming[key] = current[key]; else delete incoming[key];
+                }
+            }
+            await client.query(
+                `INSERT INTO settings (key, data) VALUES ('workspace', $1) ON CONFLICT (key) DO UPDATE SET data = $1`,
+                [JSON.stringify(incoming)]
+            );
+            return incoming;
+        });
+        invalidateSecretsCache();
+        res.json(maskSettings(saved));
     } catch (err) {
         sendError(res, err, 500, 'Failed to update workspace settings');
     }
 });
 
+// Gemini runs server-side: the key never reaches the browser and the SDK isn't shipped to clients.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
+app.post('/api/ai/generate', async (req, res) => {
+    const { contents, responseMimeType } = req.body || {};
+    if (!Array.isArray(contents) || contents.length === 0 || contents.length > 50) {
+        return res.status(400).json({ error: 'contents must be a non-empty array of messages' });
+    }
+    const apiKey = await workspaceSecret('googleGeminiApiKey');
+    if (!apiKey) return res.status(412).json({ error: 'Please configure a Google Gemini API key in Settings › Integrations.' });
+    try {
+        const upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+            body: JSON.stringify({
+                contents: contents.map(c => ({ role: c.role === 'model' ? 'model' : 'user', parts: [{ text: String(c.text || '').slice(0, 20000) }] })),
+                ...(responseMimeType === 'application/json' ? { generationConfig: { responseMimeType: 'application/json' } } : {})
+            }),
+            signal: AbortSignal.timeout(30000)
+        });
+        const data = await upstream.json().catch(() => ({}));
+        if (!upstream.ok) {
+            return res.status(502).json({ error: data?.error?.message ? `Gemini: ${data.error.message}` : `Gemini returned HTTP ${upstream.status}` });
+        }
+        const text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
+        res.json({ text });
+    } catch (err) {
+        sendError(res, err, 502, 'The AI service could not be reached');
+    }
+});
+
 // --- Background Job Manager & Supervisor Engine ---
-const activeJobs = new Map();
+// Finished jobs (and their results, e.g. a whole backup) are kept for a while for polling, then dropped.
+const JOB_RETENTION_MS = process.env.JOB_RETENTION_MS ? parseInt(process.env.JOB_RETENTION_MS, 10) : 30 * 60 * 1000;
+const activeJobs = new BoundedMap(100);
+const scheduleJobCleanup = (jobId) => {
+    const timer = setTimeout(() => activeJobs.delete(jobId), JOB_RETENTION_MS);
+    if (timer.unref) timer.unref();
+};
 
 function runBackgroundJob(jobType, taskFn) {
     const jobId = crypto.randomUUID();
@@ -2384,6 +3037,7 @@ function runBackgroundJob(jobType, taskFn) {
                 job.result = result;
                 activeJobs.set(jobId, job);
             }
+            scheduleJobCleanup(jobId);
         } catch (err) {
             console.error(`Background Job [${jobId}] failed:`, err.message);
             const job = activeJobs.get(jobId);
@@ -2393,6 +3047,7 @@ function runBackgroundJob(jobType, taskFn) {
                 job.error = err.message;
                 activeJobs.set(jobId, job);
             }
+            scheduleJobCleanup(jobId);
         }
     });
     
@@ -2400,6 +3055,9 @@ function runBackgroundJob(jobType, taskFn) {
 }
 
 // Background Task Status Endpoint
+// Background jobs (backup, dataset refresh) are administrator tools.
+app.use('/api/jobs', requireAdmin);
+
 app.get('/api/jobs/status/:jobId', (req, res) => {
     const { jobId } = req.params;
     const job = activeJobs.get(jobId);
@@ -2453,85 +3111,11 @@ app.post('/api/jobs/backup', (req, res) => {
 app.post('/api/jobs/refresh', (req, res) => {
     const jobId = runBackgroundJob('GLOBAL_DATA_REFRESH', async (progress) => {
         progress(20);
-        
-        // Re-fetch and update airports
-        const response = await fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/airport_data_full_processed.jsonl');
-        if (response.ok) {
-            const text = await response.text();
-            const lines = text.split('\n').filter(Boolean);
-            const client = await pool.connect();
-            try {
-                await client.query('BEGIN');
-                await client.query('TRUNCATE TABLE global_airports RESTART IDENTITY');
-                const chunkSize = 500;
-                for (let i = 0; i < lines.length; i += chunkSize) {
-                    const chunk = lines.slice(i, i + chunkSize);
-                    const values = [];
-                    const params = [];
-                    chunk.forEach((line, idx) => {
-                        try {
-                            const item = JSON.parse(line);
-                            if (item.iata) {
-                                values.push(`($${idx * 3 + 1}, $${idx * 3 + 2}, $${idx * 3 + 3})`);
-                                params.push(item.iata.trim().toUpperCase(), item.city_name || '', item.airport_name || '');
-                            }
-                        } catch (err) {}
-                    });
-                    if (values.length > 0) {
-                        await client.query(`INSERT INTO global_airports (iata, city_name, airport_name) VALUES ${values.join(', ')}`, params);
-                    }
-                }
-                await client.query('COMMIT');
-            } catch (err) {
-                await client.query('ROLLBACK');
-                throw err;
-            } finally {
-                client.release();
-            }
-        }
-        
-        progress(60);
-        
-        // Sync carriers too
-        const carrierRes = await fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/carrier_data_full_processed.jsonl');
-        if (carrierRes.ok) {
-            const text = await carrierRes.text();
-            const lines = text.split('\n').filter(Boolean);
-            const client = await pool.connect();
-            try {
-                await client.query('BEGIN');
-                await client.query('TRUNCATE TABLE global_carriers RESTART IDENTITY');
-                const chunkSize = 500;
-                for (let i = 0; i < lines.length; i += chunkSize) {
-                    const chunk = lines.slice(i, i + chunkSize);
-                    const values = [];
-                    const params = [];
-                    chunk.forEach((line, idx) => {
-                        try {
-                            const item = JSON.parse(line);
-                            if (item.iata) {
-                                values.push(`($${idx * 3 + 1}, $${idx * 3 + 2}, $${idx * 3 + 3})`);
-                                params.push(item.iata.trim().toUpperCase(), item.company_name || '', item.country_or_territory || '');
-                            }
-                        } catch (err) {}
-                    });
-                    if (values.length > 0) {
-                        await client.query(`INSERT INTO global_carriers (iata, company_name, country_or_territory) VALUES ${values.join(', ')}`, params);
-                    }
-                }
-                await client.query('COMMIT');
-            } catch (err) {
-                await client.query('ROLLBACK');
-                throw err;
-            } finally {
-                client.release();
-            }
-        }
-        
+        const datasets = await refreshAllGlobalDatasets();
         progress(90);
         await loadGlobalData();
         progress(100);
-        return { message: 'Database global datasets successfully refreshed and memory maps synced.' };
+        return { message: 'Database global datasets successfully refreshed and memory maps synced.', datasets };
     });
     
     res.status(202).json({
@@ -2550,7 +3134,7 @@ app.post('/api/jobs/refresh-global-data', (req, res) => {
 });
 
 // Import/Export Full State
-app.get('/api/backup', async (req, res) => {
+app.get('/api/backup', requireAdmin, async (req, res) => {
     try {
         const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited'];
         const backup = {};
@@ -2570,7 +3154,16 @@ app.get('/api/backup', async (req, res) => {
     }
 });
 
-app.post('/api/restore', async (req, res) => {
+// Restored accounts keep their current password, accept a stored hash, or hash a plaintext value.
+// A user with none gets no usable password (an admin must set one) — never a shared default.
+async function restoredPassword(incoming, existing) {
+    if (typeof incoming === 'string' && incoming) {
+        return isStoredPasswordHash(incoming) ? incoming : hashPassword(incoming);
+    }
+    return (existing && existing.password) || '';
+}
+
+app.post('/api/restore', requireAdmin, async (req, res) => {
     const rawBody = req.body || {};
     const data = (rawBody.data && typeof rawBody.data === 'object') ? rawBody.data : rawBody;
     
@@ -2628,9 +3221,9 @@ app.post('/api/restore', async (req, res) => {
         return transports.some(tr => !tr.mode || tr.mode === 'Flight');
     };
 
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
+    // Runs as a background job (202 + poll /api/jobs/status/:id): large restores outlive the
+    // client's request timeout, and clients therefore never resend the same restore.
+    const jobId = runBackgroundJob('restore', () => withTransaction(async (client) => {
         
         // 1. RESTORE USERS (With Active Session Safety)
         if (selected.users !== false && data.users && Array.isArray(data.users)) {
@@ -2654,14 +3247,12 @@ app.post('/api/restore', async (req, res) => {
                 let sessionUserInserted = false;
                 for (const item of data.users) {
                     const existing = existingUserMap.get(item.id);
-                    if (!item.password) {
-                        item.password = (existing && existing.password) ? existing.password : await hashPassword('password');
-                    }
+                    item.password = await restoredPassword(item.password, existing);
                     if (item.id === currentUserId || (item.email && item.email.toLowerCase().trim() === currentUserEmail)) {
                         sessionUserInserted = true;
                     }
-                    await client.query('INSERT INTO users (id, data) VALUES ($1, $2)', [item.id, JSON.stringify(item)]);
                 }
+                await bulkUpsert(client, 'users', data.users);
                 // Guarantee active user is never deleted
                 if (!sessionUserInserted && activeUserRecord) {
                     await client.query(
@@ -2671,17 +3262,14 @@ app.post('/api/restore', async (req, res) => {
                 }
             } else {
                 // Merge users
+                const mergedUsers = [];
                 for (const item of data.users) {
                     const existing = existingUserMap.get(item.id);
                     const mergedUser = existing ? { ...existing, ...item } : item;
-                    if (!mergedUser.password) {
-                        mergedUser.password = (existing && existing.password) ? existing.password : await hashPassword('password');
-                    }
-                    await client.query(
-                        'INSERT INTO users (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2',
-                        [item.id, JSON.stringify(mergedUser)]
-                    );
+                    mergedUser.password = await restoredPassword(item.password, existing);
+                    mergedUsers.push(mergedUser);
                 }
+                await bulkUpsert(client, 'users', mergedUsers);
             }
         }
 
@@ -2712,19 +3300,13 @@ app.post('/api/restore', async (req, res) => {
                 incomingTrips.forEach(t => tripsToKeep.set(t.id, t));
 
                 await client.query('TRUNCATE TABLE trips');
-                for (const t of tripsToKeep.values()) {
-                    await client.query('INSERT INTO trips (id, data) VALUES ($1, $2)', [t.id, JSON.stringify(t)]);
-                }
+                await bulkUpsert(client, 'trips', Array.from(tripsToKeep.values()));
             } else {
                 // Merge
-                for (const t of incomingTrips) {
+                await bulkUpsert(client, 'trips', incomingTrips.map(t => {
                     const existing = existingTripsMap.get(t.id);
-                    const merged = existing ? { ...existing, ...t } : t;
-                    await client.query(
-                        'INSERT INTO trips (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2',
-                        [t.id, JSON.stringify(merged)]
-                    );
-                }
+                    return existing ? { ...existing, ...t } : t;
+                }));
             }
         }
 
@@ -2751,36 +3333,19 @@ app.post('/api/restore', async (req, res) => {
                 incomingFlights.forEach(f => flightsToKeep.set(f.id, f));
 
                 await client.query('TRUNCATE TABLE flights');
-                for (const f of flightsToKeep.values()) {
-                    await client.query('INSERT INTO flights (id, data) VALUES ($1, $2)', [f.id, JSON.stringify(f)]);
-                }
+                await bulkUpsert(client, 'flights', Array.from(flightsToKeep.values()));
             } else {
-                for (const f of incomingFlights) {
+                await bulkUpsert(client, 'flights', incomingFlights.map(f => {
                     const existing = existingFlightsMap.get(f.id);
-                    const merged = existing ? { ...existing, ...f } : f;
-                    await client.query(
-                        'INSERT INTO flights (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2',
-                        [f.id, JSON.stringify(merged)]
-                    );
-                }
+                    return existing ? { ...existing, ...f } : f;
+                }));
             }
         }
 
         // 4. RESTORE VISITED PLACES
         if (selected.visited !== false && data.visited && Array.isArray(data.visited)) {
-            if (mode === 'replace') {
-                await client.query('TRUNCATE TABLE visited');
-                for (const item of data.visited) {
-                    await client.query('INSERT INTO visited (id, data) VALUES ($1, $2)', [item.id, JSON.stringify(item)]);
-                }
-            } else {
-                for (const item of data.visited) {
-                    await client.query(
-                        'INSERT INTO visited (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2',
-                        [item.id, JSON.stringify(item)]
-                    );
-                }
-            }
+            if (mode === 'replace') await client.query('TRUNCATE TABLE visited');
+            await bulkUpsert(client, 'visited', data.visited);
         }
 
         // 5. RESTORE CALENDAR / EVENTS / ENTITLEMENTS / CONFIGS
@@ -2788,19 +3353,8 @@ app.post('/api/restore', async (req, res) => {
             const calTables = ['events', 'entitlements', 'configs'];
             for (const table of calTables) {
                 if (data[table] && Array.isArray(data[table])) {
-                    if (mode === 'replace') {
-                        await client.query(`TRUNCATE TABLE ${table}`);
-                        for (const item of data[table]) {
-                            await client.query(`INSERT INTO ${table} (id, data) VALUES ($1, $2)`, [item.id, JSON.stringify(item)]);
-                        }
-                    } else {
-                        for (const item of data[table]) {
-                            await client.query(
-                                `INSERT INTO ${table} (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
-                                [item.id, JSON.stringify(item)]
-                            );
-                        }
-                    }
+                    if (mode === 'replace') await client.query(`TRUNCATE TABLE ${table}`);
+                    await bulkUpsert(client, table, data[table]);
                 }
             }
         }
@@ -2823,7 +3377,9 @@ app.post('/api/restore', async (req, res) => {
                 : { ...data.workspaceSettings };
                 
             const keysToCheck = ['aviationStackApiKey', 'aeroDataBoxApiKey', 'aeroDataBoxEndpoint', 'openAipApiKey', 'brandfetchApiKey', 'googleGeminiApiKey', 'cartoApiKey'];
+            delete mergedSettings.configuredKeys;
             keysToCheck.forEach(k => {
+                if (mergedSettings[k] === SECRET_MASK) delete mergedSettings[k]; // masked values are never real keys
                 if (!mergedSettings[k] && currentSettings && currentSettings[k]) {
                     mergedSettings[k] = currentSettings[k];
                 }
@@ -2835,35 +3391,34 @@ app.post('/api/restore', async (req, res) => {
             );
         }
         
-        await client.query('COMMIT');
-        res.json({ success: true, mode, selected });
+        invalidateSecretsCache();
+        return { success: true, mode, selected };
+    }));
+    res.status(202).json({ jobId, status: 'Processing' });
+});
+
+app.post('/api/wipe', requireAdmin, async (req, res) => {
+    try {
+        await withTransaction(async (client) => {
+            const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited', 'settings'];
+            for (const table of tables) {
+                await client.query(`TRUNCATE TABLE ${table} CASCADE`);
+            }
+        });
+        res.json({ success: true });
     } catch (err) {
-        await client.query('ROLLBACK');
-        sendError(res, err, 500, 'Failed to restore database backup');
-    } finally {
-        client.release();
+        sendError(res, err, 500, 'Failed to wipe database content');
     }
 });
 
-app.post('/api/wipe', async (req, res) => {
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-        
-        // Truncate all tables
-        const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited', 'settings'];
-        for (const table of tables) {
-            await client.query(`TRUNCATE TABLE ${table} CASCADE`);
-        }
-        
-        await client.query('COMMIT');
-        res.json({ success: true });
-    } catch (err) {
-        await client.query('ROLLBACK');
-        sendError(res, err, 500, 'Failed to wipe database content');
-    } finally {
-        client.release();
-    }
+// Last-resort error handler: async failures and body-parser errors become JSON responses
+// instead of hung requests or a crashed process.
+app.use('/api', (err, req, res, next) => {
+    if (res.headersSent) return next(err);
+    const status = Number(err.status || err.statusCode) || 500;
+    if (status === 413) return res.status(413).json({ error: 'Request is too large' });
+    if (status === 400 && err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Request body is not valid JSON' });
+    sendError(res, err, status >= 400 && status < 600 ? status : 500, 'An unexpected error occurred');
 });
 
 // Serve React App
@@ -2897,10 +3452,22 @@ const gracefulShutdown = async (signal) => {
         console.log('[SYSTEM] Background scheduler dataset refresh timer cleared.');
     }
 
-    // Close the Express HTTP Server first so we stop taking new incoming traffic
+    // Stop accepting new connections and wait (bounded) for in-flight requests to finish before the
+    // pool is closed, so a deploy doesn't cut off a restore or multi-step save mid-way (REL-016).
     if (server) {
-        server.close(() => {
-            console.log('[SYSTEM] Active HTTP server sessions closed.');
+        const drainMs = process.env.SHUTDOWN_DRAIN_MS ? parseInt(process.env.SHUTDOWN_DRAIN_MS, 10) : 10000;
+        await new Promise((resolve) => {
+            const timer = setTimeout(() => {
+                console.warn(`[SYSTEM] Requests still open after ${drainMs}ms; closing them.`);
+                server.closeAllConnections?.();
+                resolve();
+            }, drainMs);
+            server.close(() => {
+                clearTimeout(timer);
+                console.log('[SYSTEM] Active HTTP server sessions closed.');
+                resolve();
+            });
+            server.closeIdleConnections?.();
         });
     }
 
@@ -2919,3 +3486,7 @@ const gracefulShutdown = async (signal) => {
 // Listen for lifecycle signals emitted by modern orchestration engines (e.g., Kubernetes, Cloud Run, Docker)
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+module.exports.gracefulShutdown = gracefulShutdown;
+// Internals exercised directly by the API test-suite.
+module.exports.__test = { BoundedMap, GLOBAL_DATASETS, parseDatasetLines, refreshGlobalDataset, activeJobs };

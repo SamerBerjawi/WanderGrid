@@ -7,7 +7,6 @@ import {
   Backpack, Sparkle, Plus, Check, X, TShirt, Drop, 
   DeviceMobile, FileText, FirstAid, SquaresFour 
 } from '@phosphor-icons/react';
-import { GoogleGenAI, Type } from "@google/genai";
 import { dataService } from '../services/mockDb';
 
 interface PackingListProps {
@@ -90,17 +89,6 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
     const handleAiGenerate = async () => {
         setIsGenerating(true);
         try {
-            const settings = await dataService.getWorkspaceSettings();
-            const apiKey = settings.googleGeminiApiKey || process.env.API_KEY;
-            
-            if (!apiKey) {
-                alert("Please configure Google Gemini API Key in Settings.");
-                setIsGenerating(false);
-                return;
-            }
-
-            const ai = new GoogleGenAI({ apiKey });
-            
             const prompt = `
                 Generate a comprehensive packing list for a trip to ${trip.location}.
                 Dates: ${trip.startDate} to ${trip.endDate}.
@@ -108,28 +96,12 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                 Accommodation: ${trip.accommodations?.map(a => a.type).join(', ') || 'Hotel'}.
                 
                 Provide a list of 15-20 essential items grouped by category (Clothing, Toiletries, Electronics, Documents, Health, Misc).
-                Return ONLY JSON.
+                Return ONLY a JSON array of objects with "category" and "item" string fields.
             `;
 
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: prompt,
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                category: { type: Type.STRING },
-                                item: { type: Type.STRING }
-                            }
-                        }
-                    }
-                }
-            });
-
-            const rawJson = JSON.parse(response.text || '[]');
+            // Gemini runs on the server, which holds the API key.
+            const text = await dataService.generateAI([{ role: 'user', text: prompt }], 'application/json');
+            const rawJson = JSON.parse(text || '[]');
             
             const newItems: PackingItem[] = rawJson.map((entry: any) => ({
                 id: Math.random().toString(36).substr(2, 9),
@@ -141,9 +113,9 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
             // Merge with existing
             onUpdate([...items, ...newItems]);
 
-        } catch (e) {
+        } catch (e: any) {
             console.error("AI Generation failed", e);
-            alert("Could not generate list. Please try again.");
+            alert(e?.message || "Could not generate list. Please try again.");
         } finally {
             setIsGenerating(false);
         }
@@ -187,7 +159,10 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
 
                 <div className="relative z-10 w-full md:w-auto mt-6 md:mt-0 flex gap-3 flex-wrap justify-end">
                     <Button 
-                        onClick={() => onUpdate([])} 
+                        onClick={() => {
+                            if (items.length === 0) return;
+                            if (window.confirm(`Remove all ${items.length} item${items.length === 1 ? '' : 's'} from this packing list? This can't be undone.`)) onUpdate([]);
+                        }} 
                         variant="ghost" 
                         className="text-white/70 hover:text-white hover:bg-white/10"
                     >

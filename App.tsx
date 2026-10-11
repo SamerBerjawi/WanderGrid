@@ -22,6 +22,13 @@ const VacationCalendar = lazy(() => import('./views/VacationCalendar').then(m =>
 const Auth = lazy(() => import('./views/Auth').then(m => ({ default: m.Auth })));
 
 import { PWAInstallBanner } from './components/PWAInstallBanner';
+import { Toaster } from './components/Toaster';
+import { toast, errorMessage } from './services/toast';
+
+// Ids in URLs may arrive percent-encoded (e.g. `@` as %40 from mail/chat apps).
+const safeDecode = (value: string) => {
+    try { return decodeURIComponent(value); } catch (e) { return value; }
+};
 
 const getUrlState = () => {
     try {
@@ -41,10 +48,10 @@ const getUrlState = () => {
         if (path === '/calendar' || path === '/vacation-calendar' || queryView === 'calendar') return { view: ViewState.VACATION_CALENDAR };
         
         const userMatch = path.match(/^\/user\/([^/]+)$/);
-        if (userMatch) return { view: ViewState.USER_DETAIL, userId: userMatch[1] };
+        if (userMatch) return { view: ViewState.USER_DETAIL, userId: safeDecode(userMatch[1]) };
 
         const tripMatch = path.match(/^\/trip(?:-2)?\/([^/]+)$/);
-        if (tripMatch) return { view: ViewState.TRIP_DETAIL, tripId: tripMatch[1] };
+        if (tripMatch) return { view: ViewState.TRIP_DETAIL, tripId: safeDecode(tripMatch[1]) };
     } catch (e) {
         console.warn("Failed to parse URL state", e);
     }
@@ -118,7 +125,10 @@ export default function App() {
 
   useEffect(() => {
     const applySettings = (settings: any) => {
-      if (settings?.theme) setTheme(settings.theme);
+      let personal: string | null = null;
+      try { personal = localStorage.getItem('wandergrid_theme_preference'); } catch (e) {}
+      if (personal === 'light' || personal === 'dark' || personal === 'auto') setTheme(personal);
+      else if (settings?.theme) setTheme(settings.theme);
     };
 
     dataService.getWorkspaceSettings().then(applySettings).catch(err => {
@@ -146,19 +156,12 @@ export default function App() {
     if (storedUserStr) {
         try {
             const parsedUser = JSON.parse(storedUserStr);
-            dataService.getUsers().then(users => {
-                const matched = users.find(u => u.id === parsedUser.id || u.email?.toLowerCase().trim() === parsedUser.email?.toLowerCase().trim());
+            dataService.getSessionUser(parsedUser).then(matched => {
                 if (matched) {
                     setCurrentUser(matched);
                     localStorage.setItem('wandergrid_session_user', JSON.stringify(matched));
-                } else if (users.length > 0) {
-                    // Safety: If restoring a backup or switching rosters where parsedUser is not present,
-                    // smoothly reconcile to the primary restored admin/user instead of kicking to login screen!
-                    const fallbackUser = users.find(u => u.role === 'Admin') || users[0];
-                    console.info("Session user reconciled to restored roster:", fallbackUser.email);
-                    setCurrentUser(fallbackUser);
-                    localStorage.setItem('wandergrid_session_user', JSON.stringify(fallbackUser));
                 } else {
+                    // The account is gone or the session was revoked: sign out (never switch identity).
                     setCurrentUser(null);
                     localStorage.removeItem('wandergrid_session_user');
                     localStorage.removeItem('wandergrid_session_token');
@@ -212,8 +215,13 @@ export default function App() {
     }
   }, [theme]);
 
+  // The workspace theme is an admin setting; other users keep their choice in this browser only.
   const handleThemeChange = (newTheme: 'light' | 'dark' | 'auto') => {
       setTheme(newTheme);
+      if (currentUser?.role !== 'Admin') {
+          try { localStorage.setItem('wandergrid_theme_preference', newTheme); } catch (e) {}
+          return;
+      }
       dataService.getWorkspaceSettings().then(s => {
           dataService.updateWorkspaceSettings({ ...s, theme: newTheme });
       });
@@ -224,16 +232,31 @@ export default function App() {
       localStorage.setItem('wandergrid_session_user', JSON.stringify(user));
   };
 
-  const handleLogout = () => {
+  // Explicit sign-out returns to the Dashboard; an expired/invalid session keeps the current URL so
+  // signing in again lands on the page the user was trying to open.
+  const handleLogout = (options?: { keepLocation?: boolean }) => {
+      void dataService.logout(); // reads the token synchronously before it is cleared below
       setCurrentUser(null);
       localStorage.removeItem('wandergrid_session_user');
       localStorage.removeItem('wandergrid_session_token');
-      navigate(ViewState.DASHBOARD);
+      if (!options?.keepLocation) navigate(ViewState.DASHBOARD);
   };
+
+  // Async failures in event handlers bypass error boundaries; surface them instead of failing silently.
+  useEffect(() => {
+    const onUnhandled = (event: PromiseRejectionEvent) => {
+      const reason: any = event.reason;
+      if (reason?.name === 'AbortError' || reason?.status === 401) return; // aborted requests / sign-out flow
+      console.error('Unhandled async error:', reason);
+      toast.error(errorMessage(reason, 'Something went wrong. Please try again.'));
+    };
+    window.addEventListener('unhandledrejection', onUnhandled);
+    return () => window.removeEventListener('unhandledrejection', onUnhandled);
+  }, []);
 
   useEffect(() => {
     const handleUnauthorized = () => {
-        handleLogout();
+        handleLogout({ keepLocation: true });
     };
     window.addEventListener('wandergrid-unauthorized', handleUnauthorized);
     window.addEventListener('wandergrid:unauthorized', handleUnauthorized);
@@ -275,13 +298,13 @@ export default function App() {
       case ViewState.SETTINGS:
         return <Settings onThemeChange={setTheme} />;
       case ViewState.USER_DETAIL:
-        return <UserDetail userId={selectedUserId!} onBack={() => navigate(ViewState.DASHBOARD)} onLogout={handleLogout} />;
+        return <UserDetail userId={selectedUserId!} onBack={() => navigate(ViewState.DASHBOARD)} onLogout={() => handleLogout()} />;
       case ViewState.PLANNER:
         return <PlannerView onTripClick={handleTripClick} />;
       case ViewState.PLANNER_2:
         return <VacationPlanner onTripClick={handleTripClick} />;
       case ViewState.TRIP_DETAIL:
-        return <TripDetail tripId={selectedTripId!} onBack={() => navigate(ViewState.DASHBOARD)} />;
+        return <TripDetail tripId={selectedTripId!} onBack={() => navigate(ViewState.PLANNER)} />;
       case ViewState.MAP:
         return <ExpeditionMapView onTripClick={handleTripClick} isSidebarCollapsed={isSidebarCollapsed} />;
       case ViewState.GAMIFICATION:
@@ -345,7 +368,7 @@ export default function App() {
           onNavigate={(v, id) => navigate(v, id)} 
           theme={theme}
           onThemeToggle={handleThemeChange}
-          onLogout={handleLogout}
+          onLogout={() => handleLogout()}
           currentUser={currentUser}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -373,6 +396,12 @@ export default function App() {
           </AnimatePresence>
         </main>
         <PWAInstallBanner />
+        <Toaster />
+        {!dataService.isDatabaseMode() && (
+          <div className="fixed top-safe-offset right-3 z-toast px-3 py-1.5 rounded-full bg-amber-500 text-black text-xs font-bold shadow-lg pointer-events-none" role="status">
+            Local mode · data stays in this browser
+          </div>
+        )}
       </div>
     </IconContext.Provider>
   );
