@@ -538,7 +538,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                 <Button 
                                     onClick={() => setIsResetModalOpen(true)} 
                                     variant="danger" 
-                                    className="h-14 !rounded-2xl border-2 border-red-200 dark:border-red-900/40 bg-red-50/50 hover:bg-red-100 text-red-600 dark:bg-red-505/10 dark:text-red-400 font-bold flex items-center justify-center gap-2" 
+                                    className="h-14 !rounded-2xl border-2 border-red-200 dark:border-red-900/40 bg-red-50/50 hover:bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400 font-bold flex items-center justify-center gap-2" 
                                     icon={<Trash weight="fill" className="text-lg" />}
                                 >
                                     Wipe & Reset Application Data
@@ -723,7 +723,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                             <Warning weight="fill" className="text-red-500 text-lg mt-0.5" />
                             <div className="space-y-1">
                                 <p className="text-sm font-black text-red-800 dark:text-red-400 uppercase tracking-wider">Dangerous Action</p>
-                                <p className="text-xs text-red-700/80 dark:text-red-350/60 leading-relaxed font-semibold">
+                                <p className="text-xs text-red-700/80 dark:text-red-300/60 leading-relaxed font-semibold">
                                     This operation is permanent. It will irreversibly delete all listed trips, independent flights (even independent ones), user records, custom configurations, and assets.
                                 </p>
                             </div>
@@ -733,7 +733,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase ml-1">Confirm deletion</label>
                         <p className="text-xs text-gray-400 dark:text-gray-500 leading-normal ml-1 mb-2">
-                            Type <span className="font-extrabold text-red-600 dark:text-red-400 select-all border border-red-200 dark:border-red-905 px-1 bg-red-50 dark:bg-black/20 rounded">DELETE</span> to unlock the wipes process.
+                            Type <span className="font-extrabold text-red-600 dark:text-red-400 select-all border border-red-200 dark:border-red-900 px-1 bg-red-50 dark:bg-black/20 rounded">DELETE</span> to unlock the wipes process.
                         </p>
                         <Input 
                             placeholder="Type DELETE here" 

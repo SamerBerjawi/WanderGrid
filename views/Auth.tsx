@@ -253,7 +253,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             <GlassPanel className="w-full max-w-md z-10 wg-glass-card rounded-[28px] overflow-hidden shadow-2xl">
                 <div className="p-8 text-center">
                     <img 
-                        src="/app-icon.png" 
+                        src="/app-icon-192.png" 
                         alt="WanderGrid" 
                         className="w-16 h-16 mx-auto rounded-2xl shadow-lg mb-6 object-contain" 
                     />

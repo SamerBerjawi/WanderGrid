@@ -204,7 +204,7 @@ export const TravelerLeaderboard: React.FC<TravelerLeaderboardProps> = ({
                     {isTop3 ? medals[idx] : `#${idx + 1}`}
                   </div>
 
-                  <div className="w-10 h-10 rounded-xl bg-zinc-150 dark:bg-zinc-850 flex items-center justify-center text-xl shadow-inner shrink-0 font-black">
+                  <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xl shadow-inner shrink-0 font-black">
                     {comp.avatarEmoji}
                   </div>
 
@@ -227,11 +227,11 @@ export const TravelerLeaderboard: React.FC<TravelerLeaderboardProps> = ({
                   <div className="hidden sm:flex gap-6 text-xs font-semibold text-zinc-500">
                     <div className="text-center">
                       <span className="block text-2xs uppercase tracking-wide opacity-65">Stamps</span>
-                      <span className="font-bold text-gray-850 dark:text-white">{comp.countriesCount}</span>
+                      <span className="font-bold text-gray-800 dark:text-white">{comp.countriesCount}</span>
                     </div>
                     <div className="text-center">
                       <span className="block text-2xs uppercase tracking-wide opacity-65">Stickers</span>
-                      <span className="font-bold text-gray-850 dark:text-white">{comp.stickersCount}</span>
+                      <span className="font-bold text-gray-800 dark:text-white">{comp.stickersCount}</span>
                     </div>
                   </div>
 
@@ -283,7 +283,7 @@ export const TravelerLeaderboard: React.FC<TravelerLeaderboardProps> = ({
                 </div>
               </div>
 
-              <p className="text-xs text-zinc-505 dark:text-zinc-400 mt-5 font-semibold leading-relaxed border-t border-b border-zinc-100 dark:border-white/5 py-4">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-5 font-semibold leading-relaxed border-t border-b border-zinc-100 dark:border-white/5 py-4">
                 {selectedCompetitor.bio}
               </p>
 
@@ -336,7 +336,7 @@ export const TravelerLeaderboard: React.FC<TravelerLeaderboardProps> = ({
             <div className="flex gap-2">
               <button
                 onClick={() => setSelectedCompetitor(null)}
-                className="w-full py-2.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-850 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-350 font-black text-xs uppercase tracking-widest rounded-xl transition-colors cursor-pointer"
+                className="w-full py-2.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-black text-xs uppercase tracking-widest rounded-xl transition-colors cursor-pointer"
               >
                 Clear Explorer
               </button>
@@ -344,7 +344,7 @@ export const TravelerLeaderboard: React.FC<TravelerLeaderboardProps> = ({
           </div>
         ) : (
             <div className="flex flex-col items-center justify-center text-center h-full text-zinc-300 dark:text-zinc-700 p-6">
-              <Compass className="w-16 h-16 stroke-1 mb-3 text-zinc-200 dark:text-zinc-820 animate-spin-slow" />
+              <Compass className="w-16 h-16 stroke-1 mb-3 text-zinc-200 dark:text-zinc-800 animate-spin-slow" />
               <h4 className="text-xs font-black uppercase tracking-wider">Spotlight Selection Empty</h4>
               <p className="text-xs text-zinc-400 mt-1 pb-16">
                 Click any participant profile from the leaderboard registry to load full historic details!

@@ -77,7 +77,7 @@ export class AppErrorBoundary extends Component<Props, State> {
               <button
                 id="app-error-boundary-retry-btn"
                 onClick={this.handleLocalReset}
-                className="flex-1 bg-zinc-805 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-800 dark:text-gray-100 font-semibold py-3 px-4 rounded-2xl transition-all duration-200 text-sm flex items-center justify-center gap-2 border border-slate-300 dark:border-zinc-700 pointer-events-auto shadow-sm"
+                className="flex-1 bg-zinc-800 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-800 dark:text-gray-100 font-semibold py-3 px-4 rounded-2xl transition-all duration-200 text-sm flex items-center justify-center gap-2 border border-slate-300 dark:border-zinc-700 pointer-events-auto shadow-sm"
               >
                 <RotateCcw className="w-4 h-4" />
                 Try Again
@@ -87,7 +87,7 @@ export class AppErrorBoundary extends Component<Props, State> {
                 <button
                   id="app-error-boundary-dashboard-btn"
                   onClick={this.props.onResetToDashboard}
-                  className="flex-1 bg-sky-500 hover:bg-sky-450 dark:bg-sky-600 dark:hover:bg-sky-500 text-white font-semibold py-3 px-4 rounded-2xl transition-all duration-200 text-sm flex items-center justify-center gap-2 shadow-lg shadow-sky-500/20 pointer-events-auto border border-sky-400/20 dark:border-sky-500/20"
+                  className="flex-1 bg-sky-500 hover:bg-sky-400 dark:bg-sky-600 dark:hover:bg-sky-500 text-white font-semibold py-3 px-4 rounded-2xl transition-all duration-200 text-sm flex items-center justify-center gap-2 shadow-lg shadow-sky-500/20 pointer-events-auto border border-sky-400/20 dark:border-sky-500/20"
                 >
                   <LayoutGrid className="w-4 h-4" />
                   Return to Dashboard

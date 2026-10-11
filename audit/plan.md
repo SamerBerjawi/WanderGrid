@@ -927,6 +927,13 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
 
 ## 7. Quick wins (high value, effort S)
 
+**Status: ✅ All 20 done.** Items 1–11 and 14–17 shipped with their Phase 1/2 packages. The rest were done as quick wins:
+- #12 (PERF-001): Vite's preload helper has its own chunk; initial JS went from 721 KB to 221 KB gzip, and `vendor-deckgl` is no longer preloaded. The `vendor-icons` chunk was also removed (PERF-005).
+- #13 (UI-001): pinch-zoom is re-enabled.
+- #18 (UI-004, QA-D-004): `GlassInput`/`GlassSelect` connect labels with `useId`/`htmlFor` and wire `aria-describedby` to errors; Track Flight has an `aria-label`.
+- #19 (PERF-006/007): the precache is the app shell only (151 entries / 9.7 MB → 20 / 1.5 MB), and route chunks are cached on first use. The 170–230 KB favicons were dropped, and the login and sidebar logos use the 192 px icon.
+- #20 (UI-009, UI-014 part): 155 invalid Tailwind shades fixed, "Airward" → "Airborne", "1 Trip Plotted".
+
 Each can ship on its own in under half a day, with no dependency on a larger package except where noted. Doing these first removes the worst user-visible and security exposure while the Phase 1 L-sized packages are in progress.
 
 | # | Fix | Closes | Verify (test) |

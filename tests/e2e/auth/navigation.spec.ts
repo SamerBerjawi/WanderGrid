@@ -94,6 +94,25 @@ test('retired "-2" URLs open the main Flights, Road Trips and Trip pages', async
   await expect(page.locator('main h1').first()).toContainText('QA Legacy Trip', { timeout: 20_000 });
 });
 
+test('quick wins: pinch-zoom allowed, map stack not preloaded, small favicons and precache', async ({ request }) => {
+  const html = await (await request.get('/')).text();
+  expect(html, 'UI-001').not.toMatch(/user-scalable=no|maximum-scale=1/);
+  expect(html, 'PERF-001').not.toMatch(/modulepreload[^>]*vendor-deckgl/);
+  expect(html, 'PERF-005').not.toMatch(/modulepreload[^>]*vendor-icons/);
+  expect(html, 'PERF-007').not.toMatch(/rel="icon"[^>]*(app-icon\.png|icon\.svg)/);
+  const sw = await (await request.get('/sw.js')).text();
+  const precached = [...sw.matchAll(/url:"([^"]+)"/g)].map((m) => m[1]);
+  expect(precached.length, 'PERF-006 precache is the app shell only').toBeLessThan(40);
+  expect(precached.some((u) => /vendor-deckgl|airportRunwayDataset|app-icon-original/.test(u))).toBe(false);
+});
+
+test('form labels focus their field (UI-004)', async ({ page }) => {
+  await page.goto('/settings');
+  await expectAppShell(page);
+  await page.getByText('Workspace Name', { exact: true }).first().click();
+  await expect(page.getByLabel('Workspace Name')).toBeFocused();
+});
+
 test('unknown path falls back to the Dashboard', async ({ page }) => {
   await page.goto('/this-page-does-not-exist');
   await expectAppShell(page);

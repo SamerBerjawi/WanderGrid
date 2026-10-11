@@ -450,7 +450,7 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
         </div>
         <div className="p-1.5 bg-white/40 dark:bg-white/[0.04] rounded-xl border border-black/5 dark:border-white/5 text-center">
           <span className="block text-3xs font-extrabold uppercase text-light-text-secondary dark:text-dark-text-secondary">
-            Airward
+            Airborne
           </span>
           <span className="text-xs font-black text-light-text dark:text-dark-text font-mono mt-0.5 block truncate">
             {daysHour}d {remHours}h

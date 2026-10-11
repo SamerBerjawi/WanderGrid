@@ -87,8 +87,8 @@ const ENTITLEMENT_COLORS: Record<string, { bg: string; text: string; border: str
     bg: 'bg-indigo-50/70 dark:bg-indigo-950/20', 
     text: 'text-indigo-700 dark:text-indigo-300', 
     border: 'border-indigo-200/50 dark:border-indigo-800/30', 
-    dot: 'bg-indigo-505',
-    hover: 'hover:bg-indigo-150 dark:hover:bg-indigo-950/40',
+    dot: 'bg-indigo-500',
+    hover: 'hover:bg-indigo-100 dark:hover:bg-indigo-950/40',
     accent: 'bg-indigo-500/20'
   },
   pink: { 
@@ -368,9 +368,9 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
               colorClass: {
                 bg: 'bg-amber-100/50 dark:bg-amber-950/15',
                 text: 'text-amber-800 dark:text-amber-400',
-                border: 'border-amber-250/30 dark:border-amber-900/20',
+                border: 'border-amber-200/30 dark:border-amber-900/20',
                 dot: 'bg-amber-400',
-                hover: 'hover:bg-amber-150'
+                hover: 'hover:bg-amber-100'
               },
               meta: holiday
             });
@@ -473,11 +473,11 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
             endDateObj: hDate,
             isMultiDay: false,
             colorClass: {
-              bg: 'bg-amber-100/50 dark:bg-amber-955/15 hover:bg-amber-150',
-              text: 'text-amber-850 dark:text-amber-400',
-              border: 'border-amber-250/30 dark:border-amber-900/20',
+              bg: 'bg-amber-100/50 dark:bg-amber-950/15 hover:bg-amber-100',
+              text: 'text-amber-800 dark:text-amber-400',
+              border: 'border-amber-200/30 dark:border-amber-900/20',
               dot: 'bg-amber-400',
-              hover: 'hover:bg-amber-250/30'
+              hover: 'hover:bg-amber-200/30'
             },
             meta: holiday,
             countdownDays
@@ -506,10 +506,10 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
             isMultiDay: false,
             colorClass: {
               bg: 'bg-indigo-50/70 dark:bg-indigo-950/10 hover:bg-indigo-100',
-              text: 'text-indigo-850 dark:text-indigo-400',
+              text: 'text-indigo-800 dark:text-indigo-400',
               border: 'border-indigo-200/50 dark:border-indigo-900/10',
               dot: 'bg-indigo-400',
-              hover: 'hover:bg-indigo-150'
+              hover: 'hover:bg-indigo-100'
             },
             meta: event,
             countdownDays
@@ -1003,7 +1003,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
             
             <div className="px-3 text-right">
               <span className="px-2.5 py-1 rounded-full text-2xs font-mono font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
-                {filteredTrips.length} Trips Plotted
+                {filteredTrips.length} {filteredTrips.length === 1 ? 'Trip' : 'Trips'} Plotted
               </span>
             </div>
           </div>
@@ -1049,7 +1049,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                             <div 
                               key={`day-col-${fileIndex}`} 
                               className={`flex-1 min-w-[20px] text-center p-1 rounded-lg ${
-                                isToday ? 'bg-indigo-500/10 border border-indigo-505/30' : ''
+                                isToday ? 'bg-indigo-500/10 border border-indigo-500/30' : ''
                               }`}
                             >
                               <span className={`block text-xs font-bold uppercase tracking-wide leading-none ${
@@ -1076,7 +1076,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                         <div key={user.id} className="flex py-3.5 items-center bg-white/30 dark:bg-transparent hover:bg-zinc-100/[0.02]">
                           <div className="w-36 px-4 shrink-0 flex items-center gap-2.5 min-w-0">
                             <div className={`w-8 h-8 rounded-full text-xs font-bold text-white flex items-center justify-center shrink-0 shadow-sm ${
-                              user.role === 'Partner' ? 'bg-[#fa9a1d]' : user.role === 'Admin' ? 'bg-sky-505' : 'bg-emerald-505'
+                              user.role === 'Partner' ? 'bg-[#fa9a1d]' : user.role === 'Admin' ? 'bg-sky-500' : 'bg-emerald-500'
                             }`}>
                               {user.name.charAt(0)}
                             </div>
@@ -1126,7 +1126,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                                     title={`${trip.name}: ${trip.startDate} to ${trip.endDate}`}
                                   >
                                     {isStart && (
-                                      <span className="absolute left-1 flex items-center gap-1.5 pointer-events-none z-10 text-xs font-bold truncate max-w-[130px] select-none text-gray-850 dark:text-white leading-none">
+                                      <span className="absolute left-1 flex items-center gap-1.5 pointer-events-none z-10 text-xs font-bold truncate max-w-[130px] select-none text-gray-800 dark:text-white leading-none">
                                         <span className="filter drop-shadow-xs leading-none shrink-0">{trip.icon || '✈️'}</span>
                                         <span className="hidden md:inline leading-none truncate whitespace-nowrap">{trip.name}</span>
                                       </span>
@@ -1140,8 +1140,8 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                                   key={cellKey}
                                   className={`flex-1 min-w-[20px] rounded-md transition-all text-center flex flex-col items-center justify-center relative p-0.5 border border-transparent ${
                                     isWeekend 
-                                      ? 'bg-amber-100/10 dark:bg-amber-955/5 hover:bg-amber-200/20' 
-                                      : 'bg-zinc-150/10 dark:bg-zinc-950/20 hover:bg-zinc-150/30 dark:hover:bg-zinc-800/20'
+                                      ? 'bg-amber-100/10 dark:bg-amber-950/5 hover:bg-amber-200/20' 
+                                      : 'bg-zinc-100/10 dark:bg-zinc-950/20 hover:bg-zinc-100/30 dark:hover:bg-zinc-800/20'
                                   }`}
                                 >
                                   {globalOverlay && (
@@ -1214,7 +1214,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                               ? 'bg-indigo-50/50 dark:bg-indigo-950/10 border-indigo-500/40 ring-4 ring-indigo-500/10 shadow-lg'
                               : isWeekend
                               ? 'bg-[#fa9a1d]/5 dark:bg-[#fa9a1d]/10 border-[#fa9a1d]/20 hover:border-[#fa9a1d]/40'
-                              : 'bg-white/30 dark:bg-zinc-950/25 border-zinc-150/30 dark:border-white/5 hover:border-zinc-300 dark:hover:border-zinc-800'
+                              : 'bg-white/30 dark:bg-zinc-950/25 border-zinc-100/30 dark:border-white/5 hover:border-zinc-300 dark:hover:border-zinc-800'
                           }`}
                         >
                           {/* Date label header inside cell */}
@@ -1290,7 +1290,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                       return (
                         <motion.div 
                           key={`${event.type}-${event.id}`}
-                          className={`relative bg-white/50 dark:bg-zinc-900/50 p-5 rounded-2xl border shadow-xs hover:shadow-lg transition-all border-zinc-150/20 dark:border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${
+                          className={`relative bg-white/50 dark:bg-zinc-900/50 p-5 rounded-2xl border shadow-xs hover:shadow-lg transition-all border-zinc-100/20 dark:border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${
                             hasEnded ? 'opacity-65' : ''
                           }`}
                           whileHover={{ scale: 1.01 }}
@@ -1324,7 +1324,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                             {isTripType && (
                               <div className="text-xs font-bold text-gray-500 dark:text-zinc-400 mt-1 flex items-center gap-1.5 flex-wrap">
                                 <span className="flex items-center gap-0.5"><MapPin className="w-3.5 h-3.5 text-indigo-500" /> {event.meta.location}</span>
-                                <span className="w-1 h-1 rounded-full bg-zinc-350 dark:bg-zinc-800" />
+                                <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-800" />
                                 <span>{event.daysCount} Days</span>
                               </div>
                             )}
@@ -1342,7 +1342,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                                   return (
                                     <div 
                                       key={pid} 
-                                      className="w-7 h-7 rounded-full bg-indigo-505 border-2 border-white dark:border-zinc-900 text-2xs font-bold text-white flex items-center justify-center capitalize cursor-help shrink-0 shadow-sm"
+                                      className="w-7 h-7 rounded-full bg-indigo-500 border-2 border-white dark:border-zinc-900 text-2xs font-bold text-white flex items-center justify-center capitalize cursor-help shrink-0 shadow-sm"
                                       title={pObj.name}
                                     >
                                       {pObj.name.charAt(0)}
@@ -1356,10 +1356,10 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                             <div className="text-right">
                               {event.countdownDays > 0 ? (
                                 <p className="text-xs font-black text-gray-500 dark:text-zinc-400">
-                                  In <span className="text-sm font-extrabold text-indigo-505">{event.countdownDays}</span> Days
+                                  In <span className="text-sm font-extrabold text-indigo-500">{event.countdownDays}</span> Days
                                 </p>
                               ) : hasEnded ? (
-                                <p className="text-xs font-bold text-gray-400 dark:text-zinc-650 italic">Completed</p>
+                                <p className="text-xs font-bold text-gray-400 dark:text-zinc-600 italic">Completed</p>
                               ) : (
                                 <p className="text-xs font-black text-emerald-500">Happening now</p>
                               )}
@@ -1395,14 +1395,14 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                 <div className="p-6 bg-gradient-to-r from-amber-500/10 via-[#fa9a1d]/10 to-indigo-500/10 rounded-3xl border border-amber-500/20 dark:border-amber-500/10 flex flex-col md:flex-row items-center gap-5 justify-between">
                   <div className="space-y-1 max-w-xl text-center md:text-left">
                     <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center justify-center md:justify-start gap-2">
-                      <Sparkles className="w-5 h-5 text-amber-505" />
+                      <Sparkles className="w-5 h-5 text-amber-500" />
                       <span>Smart Bridge Leaving Optimizer</span>
                     </h3>
                     <p className="text-xs font-medium text-gray-500 dark:text-zinc-400">
                       We scanned the regional calendars for upcoming official public holidays that land near weekends. Merging these allows you to book ultra-long vacay spells by claiming minimal annual balance days!
                     </p>
                   </div>
-                  <div className="bg-white/80 dark:bg-zinc-805 px-4 py-2.5 rounded-2xl shadow-sm text-center shrink-0 border border-zinc-200/50">
+                  <div className="bg-white/80 dark:bg-zinc-800 px-4 py-2.5 rounded-2xl shadow-sm text-center shrink-0 border border-zinc-200/50">
                     <span className="text-2xs font-bold uppercase block tracking-wider text-gray-400">Average Bridge Savings</span>
                     <span className="text-2xl font-black text-emerald-500 block leading-none mt-1">+4 Days Off</span>
                   </div>
@@ -1424,9 +1424,9 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                           key={guide.id}
                           className={`p-5 rounded-3xl border flex flex-col justify-between gap-4 transition-all relative ${
                             isBridge 
-                              ? 'bg-amber-400/[0.04] dark:bg-amber-400/[0.02] border-amber-302/50 dark:border-amber-900/20' 
+                              ? 'bg-amber-400/[0.04] dark:bg-amber-400/[0.02] border-amber-300/50 dark:border-amber-900/20' 
                               : isSandwich
-                              ? 'bg-purple-400/[0.04] dark:bg-purple-400/[0.02] border-purple-302/50 dark:border-purple-900/20'
+                              ? 'bg-purple-400/[0.04] dark:bg-purple-400/[0.02] border-purple-300/50 dark:border-purple-900/20'
                               : 'bg-zinc-50/50 dark:bg-zinc-950/20 border-zinc-200/50 dark:border-zinc-800'
                           }`}
                         >
@@ -1457,14 +1457,14 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                           </div>
 
                           {/* Footer stats row of optimal block */}
-                          <div className="flex justify-between items-center bg-white/70 dark:bg-zinc-950/45 p-3 rounded-2xl border border-zinc-150/40 dark:border-white/5 mt-2">
+                          <div className="flex justify-between items-center bg-white/70 dark:bg-zinc-950/45 p-3 rounded-2xl border border-zinc-100/40 dark:border-white/5 mt-2">
                             <div>
                               <span className="text-2xs font-bold uppercase text-gray-400 block tracking-wider">Span duration</span>
                               <span className="text-xs font-black text-gray-900 dark:text-white block mt-0.5">{guide.spanText}</span>
                             </div>
                             <div className="text-right">
                               <span className="text-2xs font-bold uppercase text-gray-400 block tracking-wider">Rested time</span>
-                              <span className="text-sm font-black text-indigo-505 block mt-0.5">{guide.totalDaysRested} Days Consecutive</span>
+                              <span className="text-sm font-black text-indigo-500 block mt-0.5">{guide.totalDaysRested} Days Consecutive</span>
                             </div>
                           </div>
 
@@ -1481,7 +1481,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
 
           {/* Quick Stats overview panel */}
           <div className="bg-white/40 dark:bg-zinc-900/30 rounded-3xl border border-zinc-100 dark:border-white/5 p-6 space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-wider text-indigo-550 dark:text-indigo-400 flex items-center gap-1.5">
+            <h3 className="text-xs font-black uppercase tracking-wider text-indigo-500 dark:text-indigo-400 flex items-center gap-1.5">
               <Users className="w-4 h-4" />
               <span>Leave Summary Allocation ({activeYear})</span>
             </h3>
@@ -1513,7 +1513,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                     <div className="flex justify-between text-2xs font-bold text-gray-400 pt-0.5">
                       <span>Taken: {stat.takenDays} d</span>
                       <span>Planned: {stat.plannedDays} d</span>
-                      <span className="text-indigo-550 dark:text-indigo-400">Remaining: {stat.remainingDays} d</span>
+                      <span className="text-indigo-500 dark:text-indigo-400">Remaining: {stat.remainingDays} d</span>
                     </div>
                   </div>
                 </div>

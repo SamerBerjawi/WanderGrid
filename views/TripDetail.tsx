@@ -351,7 +351,7 @@ const getWeatherVibeStyle = (code: number | undefined): WeatherVibe => {
         border: "border-gray-200/50 dark:border-white/5",
         icon: "cloud",
         label: "Weather loading...",
-        pillBg: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-250 dark:border-blue-500/10"
+        pillBg: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/10"
     };
 
     if (code <= 1) return { // Clear/Sunny
@@ -370,10 +370,10 @@ const getWeatherVibeStyle = (code: number | undefined): WeatherVibe => {
     };
     if (code <= 48) return { // Foggy
         bg: "from-zinc-400/15 via-teal-300/[0.06] to-transparent dark:from-zinc-700/10 dark:via-teal-950/[0.03] dark:to-transparent",
-        border: "border-zinc-300/50 dark:border-zinc-650/10",
+        border: "border-zinc-300/50 dark:border-zinc-600/10",
         icon: "foggy",
         label: "Foggy",
-        pillBg: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-300/50 dark:border-zinc-650/10"
+        pillBg: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-300/50 dark:border-zinc-600/10"
     };
     if (code <= 67 || (code >= 80 && code <= 82)) return { // Rainy/Showers
         bg: "from-sky-500/20 via-indigo-400/[0.08] to-transparent dark:from-sky-950/25 dark:via-indigo-950/[0.05] dark:to-transparent",
@@ -391,10 +391,10 @@ const getWeatherVibeStyle = (code: number | undefined): WeatherVibe => {
     };
     if (code <= 99) return { // Thunderstorm
         bg: "from-purple-500/20 via-fuchsia-400/[0.06] to-transparent dark:from-purple-950/25 dark:via-fuchsia-950/[0.04] dark:to-transparent",
-        border: "border-purple-200/60 dark:border-purple-550/10",
+        border: "border-purple-200/60 dark:border-purple-500/10",
         icon: "thunderstorm",
         label: "Thunderstorm",
-        pillBg: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200/60 dark:border-purple-550/10"
+        pillBg: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200/60 dark:border-purple-500/10"
     };
 
     return {

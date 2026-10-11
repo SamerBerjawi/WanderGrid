@@ -41,7 +41,7 @@ const ThemeClasses: Record<string, { gradient: string; shadow: string; border: s
     border: 'border-sky-200', 
     ring: 'ring-sky-500/20', 
     text: 'text-slate-950',
-    bgSoft: 'bg-sky-500/10 text-sky-455'
+    bgSoft: 'bg-sky-500/10 text-sky-400'
   },
   rose: { 
     gradient: 'from-rose-400 to-pink-500', 
@@ -94,7 +94,7 @@ const ThemeClasses: Record<string, { gradient: string; shadow: string; border: s
   slate: { 
     gradient: 'from-slate-400 to-zinc-600', 
     shadow: 'shadow-zinc-500/20', 
-    border: 'border-slate-350', 
+    border: 'border-slate-300', 
     ring: 'ring-slate-500/20', 
     text: 'text-slate-950',
     bgSoft: 'bg-slate-500/10 text-slate-300'
@@ -213,7 +213,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
         )}
 
         {/* Die-Cut sticker outer white/grey border ring */}
-        <div className={`w-full flex justify-between items-center ${isUnlocked ? theme.text : 'text-zinc-400 dark:text-zinc-650'}`}>
+        <div className={`w-full flex justify-between items-center ${isUnlocked ? theme.text : 'text-zinc-400 dark:text-zinc-600'}`}>
           <span className="text-2xs font-mono tracking-widest font-bold uppercase opacity-65">
             {sticker.category.slice(0, 13)}
           </span>
@@ -241,7 +241,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
             <h4 className={`text-sm font-black tracking-tight leading-tight uppercase ${isUnlocked ? theme.text : 'text-zinc-600 dark:text-zinc-300'}`}>
               {sticker.name}
             </h4>
-            <p className={`text-xs font-semibold tracking-wide ${isUnlocked ? 'text-black/60 dark:text-white/60' : 'text-zinc-450 dark:text-zinc-500'}`}>
+            <p className={`text-xs font-semibold tracking-wide ${isUnlocked ? 'text-black/60 dark:text-white/60' : 'text-zinc-400 dark:text-zinc-500'}`}>
               {sticker.location}
             </p>
           </div>
@@ -279,7 +279,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
             {isUnlocked && (
               <div className="absolute right-0 top-0 w-48 h-48 bg-white/10 rounded-full blur-[40px] pointer-events-none -translate-y-1/3 translate-x-1/3" />
             )}
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 ${isUnlocked ? 'bg-white/40 text-black/90' : 'bg-zinc-200 dark:bg-zinc-850 text-zinc-500 dark:text-zinc-400'} text-3xl shadow`}>
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 ${isUnlocked ? 'bg-white/40 text-black/90' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'} text-3xl shadow`}>
               {isUnlocked ? sticker.emojis.split(' ')[0] : '🔒'}
             </div>
             <div>
@@ -368,7 +368,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
                   ) : null}
 
                   <div className="space-y-1">
-                    <span className="text-2xs text-zinc-450 uppercase font-bold tracking-wide block">Visit Date</span>
+                    <span className="text-2xs text-zinc-400 uppercase font-bold tracking-wide block">Visit Date</span>
                     <p className="text-zinc-900 dark:text-white font-bold flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-indigo-500" />
                       {formatDate(claim.claimDate, 'weekday-long')}
@@ -376,7 +376,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
                   </div>
 
                   <div className="space-y-1">
-                    <span className="text-2xs text-zinc-450 uppercase font-bold tracking-wide block">My Memories</span>
+                    <span className="text-2xs text-zinc-400 uppercase font-bold tracking-wide block">My Memories</span>
                     <blockquote className="p-3 bg-zinc-100/50 dark:bg-zinc-900/60 rounded-xl italic text-zinc-700 dark:text-zinc-300 border-l-4 border-indigo-500">
                       "{claim.memo}"
                     </blockquote>

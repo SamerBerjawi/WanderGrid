@@ -152,7 +152,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className={`p-6 ${isCollapsed ? 'px-2' : 'px-6'} pb-4`}>
                 <div className={`flex items-center gap-3.5 mb-8 ${isCollapsed ? 'justify-center' : ''}`}>
                   <img 
-                    src="/app-icon.png" 
+                    src="/app-icon-192.png" 
                     alt="WanderGrid" 
                     className="w-10 h-10 rounded-xl object-contain shrink-0 shadow-md transition-transform group-hover:scale-105" 
                   />
@@ -241,7 +241,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </div>
                     </GlassPanel>
                   ) : (
-                    <div className="p-4 rounded-2xl bg-white/5 dark:bg-white/[0.08] border border-dashed border-zinc-250 dark:border-white/20 text-center">
+                    <div className="p-4 rounded-2xl bg-white/5 dark:bg-white/[0.08] border border-dashed border-zinc-200 dark:border-white/20 text-center">
                       <Compass size={22} weight="duotone" className="w-5 h-5 text-zinc-400 dark:text-zinc-300 mx-auto mb-1.5" />
                       <p className="text-xs font-bold text-zinc-500 dark:text-zinc-300 uppercase tracking-widest leading-none">No trips planned</p>
                       <button 

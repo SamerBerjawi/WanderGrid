@@ -1,4 +1,4 @@
-import React, { forwardRef, ReactNode } from 'react';
+import React, { forwardRef, ReactNode, useId } from 'react';
 import GlassPanel from './GlassPanel';
 import { CaretDown } from '@phosphor-icons/react';
 
@@ -27,10 +27,13 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(({
   children,
   ...props
 }, ref) => {
+  // The visible label names the select for assistive tech (UI-004: axe select-name).
+  const generatedId = useId();
+  const selectId = props.id || generatedId;
   return (
     <div className={`flex flex-col gap-1.5 w-full ${containerClassName}`}>
       {label && (
-        <label className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+        <label htmlFor={selectId} className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
           {label}
         </label>
       )}
@@ -51,6 +54,7 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(({
               disabled={disabled}
               className={`w-full bg-transparent text-xs font-bold text-light-text dark:text-dark-text focus:outline-none appearance-none cursor-pointer pr-7 py-2.5 ${className}`}
               {...props}
+              id={selectId}
             >
               {options 
                 ? options.map(opt => (

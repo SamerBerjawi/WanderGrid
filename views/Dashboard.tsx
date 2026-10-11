@@ -932,6 +932,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     className="shrink-0 min-h-[44px]"
                     onClick={() => setIsFlightTrackerOpen(true)}
                     icon={<AirplaneTakeoff className="w-4 h-4" weight="bold" />}
+                    aria-label="Track Flight"
                 >
                     <span className="hidden xs:inline sm:inline">Track Flight</span>
                     <span className="xs:hidden sm:hidden">Track</span>
