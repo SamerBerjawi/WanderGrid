@@ -1,5 +1,6 @@
 // Airport Detailed Runway & Markings Geometry Generator for WanderGrid
 import type { PhysicalRunway } from './airportRunwayDataset';
+import { RUNWAY_DATASET_URL } from './airportRunwayDataset';
 import { STATIC_GEO_DATA, formatProperLocationName } from './geocoding';
 import type { AirportCategory } from '../types/mapAppearance';
 import { TOP_AIRPORTS_BY_IATA } from '../utils/topAviationData';
@@ -15,10 +16,19 @@ let runwayLoadingPromise: Promise<Record<string, PhysicalRunway[]>> | null = nul
 export async function getPhysicalRunways(): Promise<Record<string, PhysicalRunway[]>> {
     if (runwayDatasetCache) return runwayDatasetCache;
     if (!runwayLoadingPromise) {
-        runwayLoadingPromise = import('./airportRunwayDataset').then(m => {
-            runwayDatasetCache = m.GLOBAL_PHYSICAL_RUNWAYS;
-            return m.GLOBAL_PHYSICAL_RUNWAYS;
-        });
+        runwayLoadingPromise = fetch(RUNWAY_DATASET_URL)
+            .then(res => {
+                if (!res.ok) throw new Error(`Runway dataset unavailable (HTTP ${res.status})`);
+                return res.json() as Promise<Record<string, PhysicalRunway[]>>;
+            })
+            .then(data => {
+                runwayDatasetCache = data;
+                return data;
+            })
+            .catch(err => {
+                runwayLoadingPromise = null; // allow a retry later
+                throw err;
+            });
     }
     return runwayLoadingPromise;
 }

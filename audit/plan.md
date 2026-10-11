@@ -722,6 +722,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
 ## 5. Phase 3: Performance
 
 ### WP-3.1 Initial-load bundle
+- **Status: ✅ Done (one target missed).** M-47/M-50/M-49: preload helper in its own chunk, no `vendor-icons`, lazy Sidebar, lazy geocoding in `dataService`, sea routing (`searoute-js`) only when a sea leg is drawn (`multiModalRouting` 543 KB → 8 KB), Dashboard and Road Trips charts lazy, an unused recharts import removed from Flights, and the Auth chunk is fetched immediately for signed-out visitors. Initial JS: 721 → **163 KB gzip**. Lighthouse mobile on `/` with the API running: **80–81** (was 58), LCP 9.2 s → **4.4 s** (target <4 s not reached: render delay waiting on the entry and Auth dependency chain under simulated slow 4G). Flights still loads recharts for its above-the-fold hero chart.
 - **Covers:** M-47 (PERF-001), M-50 (PERF-005), and the rest of M-49 (PERF-004: xlsx, searoute/turf, recharts).
 - **Files:**
   - `vite.config.ts` `manualChunks`: skip `\0` virtual modules (the preload helper) and remove the `vendor-icons` chunk.
@@ -738,6 +739,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - Full e2e regression.
 
 ### WP-3.2 Static assets and PWA precache
+- **Status: ✅ Done.** M-51: shell-only precache (151 entries / 9.7 MB → 20 / 1.5 MB) with route chunks cached on first use; 170–230 KB favicons dropped from `index.html` and the manifest; login/sidebar logos use the 192 px icon; the runway dataset is `public/data/airport-runways.json` (1.2 MB JSON fetched on demand instead of a 2.2 MB JS module).
 - **Covers:** M-51 (PERF-006, PERF-007, PERF-014).
 - **Files:**
   - `vite.config.ts` `VitePWA`: precache the shell only; runtime-cache chunks.

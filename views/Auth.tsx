@@ -14,7 +14,6 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     const [mode, setMode] = useState<'signin' | 'signup' | 'setup_admin' | 'reset'>('signin');
     const [info, setInfo] = useState('');
     const [allowSignUp, setAllowSignUp] = useState(true);
-    const [isCheckingSetup, setIsCheckingSetup] = useState(true);
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -33,9 +32,6 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             })
             .catch(err => {
                 console.error("Error checking system users roster:", err);
-            })
-            .finally(() => {
-                setIsCheckingSetup(false);
             });
     }, []);
 
@@ -233,17 +229,8 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         }
     };
 
-    if (isCheckingSetup) {
-        return (
-            <div className="flex min-h-screen items-center justify-center p-6 bg-light-bg dark:bg-dark-bg">
-                <div className="text-center space-y-4">
-                    <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-light-text-secondary dark:text-dark-text-secondary">Checking Security Database...</p>
-                </div>
-            </div>
-        );
-    }
-
+    // The sign-in form renders immediately; if the server reports an empty workspace the screen switches to
+    // Initial System Setup. (Waiting for that request first delayed the login page's LCP by ~1 s, PERF-001.)
     return (
         <div className="flex min-h-screen items-center justify-center p-6 relative overflow-hidden">
             {/* Background elements */}
