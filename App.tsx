@@ -14,12 +14,9 @@ const UserDetail = lazy(() => import('./views/UserDetail').then(m => ({ default:
 const PlannerView = lazy(() => import('./views/PlannerView').then(m => ({ default: m.PlannerView })));
 const VacationPlanner = lazy(() => import('./views/VacationPlanner').then(m => ({ default: m.VacationPlanner })));
 const TripDetail = lazy(() => import('./views/TripDetail').then(m => ({ default: m.TripDetail })));
-const TripDetail2 = lazy(() => import('./views/TripDetail2').then(m => ({ default: m.TripDetail2 })));
 const ExpeditionMapView = lazy(() => import('./views/ExpeditionMapView').then(m => ({ default: m.ExpeditionMapView })));
 const Flights = lazy(() => import('./views/Flights').then(m => ({ default: m.Flights })));
-const Flights2 = lazy(() => import('./views/Flights2').then(m => ({ default: m.Flights2 })));
 const RoadTrips = lazy(() => import('./views/RoadTrips').then(m => ({ default: m.RoadTrips })));
-const RoadTrips2 = lazy(() => import('./views/RoadTrips2').then(m => ({ default: m.RoadTrips2 })));
 const TravelAtlas = lazy(() => import('./views/TravelAtlas').then(m => ({ default: m.TravelAtlas })));
 const VacationCalendar = lazy(() => import('./views/VacationCalendar').then(m => ({ default: m.VacationCalendar })));
 const Auth = lazy(() => import('./views/Auth').then(m => ({ default: m.Auth })));
@@ -37,21 +34,17 @@ const getUrlState = () => {
         if (path === '/planner-2' || path === '/planner2' || queryView === 'planner-2') return { view: ViewState.PLANNER_2 };
         if (path === '/map' || queryView === 'map') return { view: ViewState.MAP };
         if (path === '/gamification' || queryView === 'gamification') return { view: ViewState.DASHBOARD };
-        if (path === '/flights' || queryView === 'flights') return { view: ViewState.FLIGHTS };
-        if (path === '/flights-2' || path === '/flights2' || queryView === 'flights-2') return { view: ViewState.FLIGHTS_2 };
-        if (path === '/roadtrips' || queryView === 'roadtrips') return { view: ViewState.ROADTRIPS };
-        if (path === '/roadtrips-2' || path === '/roadtrips2' || queryView === 'roadtrips-2') return { view: ViewState.ROADTRIPS_2 };
+        // Legacy "-2" URLs of the retired duplicate views resolve to the main pages.
+        if (path === '/flights' || path === '/flights-2' || path === '/flights2' || queryView === 'flights' || queryView === 'flights-2') return { view: ViewState.FLIGHTS };
+        if (path === '/roadtrips' || path === '/roadtrips-2' || path === '/roadtrips2' || queryView === 'roadtrips' || queryView === 'roadtrips-2') return { view: ViewState.ROADTRIPS };
         if (path === '/atlas' || path === '/travel-atlas' || queryView === 'atlas') return { view: ViewState.TRAVEL_ATLAS };
         if (path === '/calendar' || path === '/vacation-calendar' || queryView === 'calendar') return { view: ViewState.VACATION_CALENDAR };
         
         const userMatch = path.match(/^\/user\/([^/]+)$/);
         if (userMatch) return { view: ViewState.USER_DETAIL, userId: userMatch[1] };
 
-        const tripMatch = path.match(/^\/trip\/([^/]+)$/);
+        const tripMatch = path.match(/^\/trip(?:-2)?\/([^/]+)$/);
         if (tripMatch) return { view: ViewState.TRIP_DETAIL, tripId: tripMatch[1] };
-
-        const trip2Match = path.match(/^\/trip-2\/([^/]+)$/);
-        if (trip2Match) return { view: ViewState.TRIP_DETAIL_2, tripId: trip2Match[1] };
     } catch (e) {
         console.warn("Failed to parse URL state", e);
     }
@@ -90,14 +83,11 @@ export default function App() {
           case ViewState.MAP: path = '/map'; break;
           case ViewState.GAMIFICATION: path = '/gamification'; break;
           case ViewState.FLIGHTS: path = '/flights'; break;
-          case ViewState.FLIGHTS_2: path = '/flights-2'; break;
           case ViewState.ROADTRIPS: path = '/roadtrips'; break;
-          case ViewState.ROADTRIPS_2: path = '/roadtrips-2'; break;
           case ViewState.TRAVEL_ATLAS: path = '/atlas'; break;
           case ViewState.VACATION_CALENDAR: path = '/calendar'; break;
           case ViewState.USER_DETAIL: path = id ? `/user/${id}` : '/'; break;
           case ViewState.TRIP_DETAIL: path = id ? `/trip/${id}` : '/'; break;
-          case ViewState.TRIP_DETAIL_2: path = id ? `/trip-2/${id}` : '/'; break;
           case ViewState.DASHBOARD: 
           default: path = '/'; break;
       }
@@ -112,7 +102,7 @@ export default function App() {
       
       setView(newView);
       if (newView === ViewState.USER_DETAIL && id) setSelectedUserId(id);
-      if ((newView === ViewState.TRIP_DETAIL || newView === ViewState.TRIP_DETAIL_2) && id) setSelectedTripId(id);
+      if (newView === ViewState.TRIP_DETAIL && id) setSelectedTripId(id);
   };
 
   useEffect(() => {
@@ -271,8 +261,6 @@ export default function App() {
         return `view-user-${selectedUserId || 'none'}`;
       case ViewState.TRIP_DETAIL:
         return `view-trip-${selectedTripId || 'none'}`;
-      case ViewState.TRIP_DETAIL_2:
-        return `view-trip-2-${selectedTripId || 'none'}`;
       default:
         return `view-${view}`;
     }
@@ -294,20 +282,14 @@ export default function App() {
         return <VacationPlanner onTripClick={handleTripClick} />;
       case ViewState.TRIP_DETAIL:
         return <TripDetail tripId={selectedTripId!} onBack={() => navigate(ViewState.DASHBOARD)} />;
-      case ViewState.TRIP_DETAIL_2:
-        return <TripDetail2 tripId={selectedTripId!} onBack={() => navigate(ViewState.DASHBOARD)} />;
       case ViewState.MAP:
         return <ExpeditionMapView onTripClick={handleTripClick} isSidebarCollapsed={isSidebarCollapsed} />;
       case ViewState.GAMIFICATION:
         return <Dashboard onUserClick={handleUserClick} onTripClick={handleTripClick} />;
       case ViewState.FLIGHTS:
         return <Flights onTripClick={handleTripClick} />;
-      case ViewState.FLIGHTS_2:
-        return <Flights2 onTripClick={handleTripClick} />;
       case ViewState.ROADTRIPS:
         return <RoadTrips onTripClick={handleTripClick} />;
-      case ViewState.ROADTRIPS_2:
-        return <RoadTrips2 onTripClick={handleTripClick} />;
       case ViewState.TRAVEL_ATLAS:
         return <TravelAtlas onTripClick={handleTripClick} />;
       case ViewState.VACATION_CALENDAR:

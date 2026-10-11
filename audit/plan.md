@@ -245,6 +245,10 @@ Severity is the highest of the merged findings. "Sources" lists every original I
 **Goal:** close every Critical issue and every data-loss path. Do WP-1.0 first, then WP-1.1 and WP-1.2a. The rest can run in parallel after that, respecting the listed dependencies.
 
 ### WP-1.0 Safety net: tests in CI, reproducible builds (do first)
+- **Status: ✅ Done.**
+  - M-40 (REL-014): `server.js` exports `app`/`start()` and listens only when run directly; new `test/helpers/testServer.js` runs the real server on pg-mem for API tests (`test/api/`); fixed the stale routing assertion; CI gains a `test` job (tsc, backend tests, e2e) that gates the image build.
+  - M-12 (SEC-014): `compression` → 1.8.2 (`npm audit` clean); Dockerfile copies lockfiles and uses `npm ci` in both stages.
+  - C-10: `Flights2`, `RoadTrips2`, `TripDetail2` deleted; `/flights-2`, `/roadtrips-2`, `/trip-2/:id` resolve to the main pages (e2e `navigation.spec.ts` › "retired -2 URLs…").
 - **Covers:**
   - M-40 (REL-014).
   - M-12 (SEC-014).

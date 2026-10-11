@@ -325,13 +325,10 @@ export enum ViewState {
   PLANNER = 'planner',
   PLANNER_2 = 'planner_2',
   TRIP_DETAIL = 'trip_detail',
-  TRIP_DETAIL_2 = 'trip_detail_2',
   MAP = 'map',
   GAMIFICATION = 'gamification',
   FLIGHTS = 'flights',
-  FLIGHTS_2 = 'flights_2',
   ROADTRIPS = 'roadtrips',
-  ROADTRIPS_2 = 'roadtrips_2',
   TRAVEL_ATLAS = 'travel_atlas',
   VACATION_CALENDAR = 'vacation_calendar'
 }

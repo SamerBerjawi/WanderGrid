@@ -3,6 +3,7 @@
  * theme toggle, sidebar collapse, next-trip widget, profile chip, back/forward, refresh, unknown routes.
  */
 import { test, expect, ADMIN, resetDb, apiRegister, seedSession, expectAppShell, isMobile } from '../support/fixtures';
+import { seedTrip, isoDaysFromNow } from '../support/planning';
 
 const PAGES: { label: string; path: string; mobile: 'bar' | 'more' }[] = [
   { label: 'Dashboard', path: '/', mobile: 'bar' },
@@ -80,6 +81,17 @@ test('legacy URL aliases resolve (/travel-atlas, /vacation-calendar, /planner2)'
     await expectAppShell(page);
     await expect(page.locator('main h1').first(), alias).toContainText(h1);
   }
+});
+
+test('retired "-2" URLs open the main Flights, Road Trips and Trip pages', async ({ page, request }) => {
+  await seedTrip(request, session.token, { id: 'legacy-trip', name: 'QA Legacy Trip', status: 'Upcoming', startDate: isoDaysFromNow(10), endDate: isoDaysFromNow(15) }, ADMIN.id);
+  for (const [alias, h1] of [['/flights-2', /Flight/i], ['/roadtrips-2', /Road|Land|Journey/i]] as const) {
+    await page.goto(alias);
+    await expectAppShell(page);
+    await expect(page.locator('main h1').first(), alias).toContainText(h1);
+  }
+  await page.goto('/trip-2/legacy-trip');
+  await expect(page.locator('main h1').first()).toContainText('QA Legacy Trip', { timeout: 20_000 });
 });
 
 test('unknown path falls back to the Dashboard', async ({ page }) => {

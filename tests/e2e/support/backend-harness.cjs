@@ -1,7 +1,7 @@
 /**
  * E2E test harness (test-only; not shipped).
  *
- * Boots the real, unmodified backend_files/server.js with an in-memory Postgres (pg-mem)
+ * Boots the real backend_files/server.js (via its exported start()) with an in-memory Postgres (pg-mem)
  * substituted for the `pg` driver, and exposes a small control server for tests:
  *   GET  :3099/health  -> 200 once the DB schema is initialised and a clean snapshot exists
  *   POST :3099/reset   -> restore the clean snapshot (empty DB, schema only)
@@ -66,7 +66,7 @@ process.env.PORT = API_PORT;
 process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgres://e2e@memory/e2e';
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'e2e_test_secret_not_for_production';
-require(path.resolve(__dirname, '../../../backend_files/server.js'));
+require(path.resolve(__dirname, '../../../backend_files/server.js')).start();
 
 // ---- control server ----------------------------------------------------------
 let snapshot = null;

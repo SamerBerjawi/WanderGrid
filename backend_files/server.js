@@ -518,7 +518,9 @@ const loadGlobalData = async () => {
 // Scheduled weekly background dataset synchronization task
 let schedulerInterval;
 
+let backgroundTasksStopped = false;
 const startBackgroundScheduler = () => {
+  if (backgroundTasksStopped) return;
   const defaultInterval = 7 * 24 * 60 * 60 * 1000;
   const refreshIntervalMs = process.env.GLOBAL_DATA_REFRESH_MS
     ? parseInt(process.env.GLOBAL_DATA_REFRESH_MS, 10)
@@ -727,7 +729,7 @@ const prepopulateDatabases = async () => {
   }
 };
 
-initDb().then(() => {
+const ready = initDb().then(() => {
   prepopulateDatabases()
     .then(() => {
       loadGlobalData()
@@ -2871,9 +2873,19 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'client_build', 'index.html'));
 });
 
-const server = app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+// Listen only when run directly (`node server.js`); tests import `app` and listen themselves.
+let server = null;
+const start = (port = PORT) => {
+    server = app.listen(port, () => {
+        console.log(`Server running on port ${server.address().port}`);
+    });
+    return server;
+};
+if (require.main === module) start();
+
+const stopBackgroundTasks = () => { backgroundTasksStopped = true; if (schedulerInterval) clearInterval(schedulerInterval); };
+
+module.exports = { app, pool, ready, start, stopBackgroundTasks };
 
 // --- Graceful Shutdown Handler ---
 const gracefulShutdown = async (signal) => {

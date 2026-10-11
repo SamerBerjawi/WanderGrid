@@ -29,7 +29,7 @@ npm run build                    # = bump-version + vite build. SIDE EFFECT: rew
 npm run preview                  # serve dist/
 
 cd backend_files && npm install
-npm test                         # node --test test/*.test.js : 28 tests, 27 pass, 1 FAILS (see Fragile)
+npm test                         # unit tests + API integration tests (test/api/, real server.js on in-memory pg-mem)
 PORT=3001 DATABASE_URL=postgres://wandergrid:wandergrid_password@localhost:5432/wandergrid node server.js
 docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT_SECRET in .env (copy .env.example)
 ```
@@ -37,14 +37,15 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 - The backend defaults to `PORT=3000`, and that clashes with Vite. Set `PORT=3001` locally so the Vite proxy reaches it. I verified that it boots and that `/api/health` responds. Running it against a live Postgres was **not verified** because no Postgres or Docker was available.
 - Without a backend, `npm run dev` still works. In dev mode the data layer falls back to localStorage (see Data flow).
 - **There is no seed script.** The schema is created at startup by `initDb()` in `server.js` (`CREATE TABLE IF NOT EXISTS`, retried 10×/3s). `backend_files/schema.sql` mirrors it but nothing executes it. The global airport and carrier tables are populated automatically from external datasets. To get sample data, register a user in the UI or restore a backup JSON in Settings.
-- No frontend tests exist.
+- Frontend: no unit tests. End-to-end: `cd tests/e2e && npm install && npx playwright test` (production build + real server on pg-mem, desktop and mobile projects, ~45 min). CI runs tsc, backend tests and e2e before building the image.
+- A git `pre-commit` hook runs `scripts/bump-version.cjs`, so every commit also bumps `version.ts`/`package.json`.
 
 ## Directory map
 
 | Path | Responsibility |
 |---|---|
 | `index.tsx`, `App.tsx` | Entry point. `App` does view switching on `ViewState` with a `switch`; there is no router library. Views are `React.lazy`-loaded |
-| `views/` | Top-level pages (Dashboard, PlannerView, VacationPlanner, VacationCalendar, ExpeditionMapView, Flights/Flights2, RoadTrips/RoadTrips2, TripDetail/TripDetail2, TravelAtlas, Settings, UserDetail, Auth) |
+| `views/` | Top-level pages (Dashboard, PlannerView, VacationPlanner, VacationCalendar, ExpeditionMapView, Flights, RoadTrips, TripDetail, TravelAtlas, Settings, UserDetail, Auth) |
 | `components/` | Feature components (configurators, drawers, map, passport/stamps). `ui.tsx` has the shared Card, Button and similar components |
 | `components/glass/` | Liquid-glass primitives: GlassPanel, GlassButton, GlassInput, GlassSelect, GlassDatePicker, GlassToggle, GlassSegmented, GlassSlider, SettingRow |
 | `components/ui/` | Icon wrapper, date pickers, bento grid, virtual list item |
@@ -103,12 +104,11 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
   - Server responses go through `sendError(res, err, status, msg)`, which sanitizes messages in production. Logs are structured JSON when `NODE_ENV=production` or `STRUCTURED_LOGGING=true`.
   - On the client, `ErrorBoundary` wraps the root (`index.tsx`) and `AppErrorBoundary` wraps views.
   - External calls fail fast and return empty results rather than throwing to the UI.
-- **Feature work:** new user-facing features go behind a flag in `config/featureFlags.ts`, default OFF. Record GEV ports in `docs/gev-changes.md`.
+- **Feature work:** new user-facing features go behind a flag in `config/featureFlags.ts`, default OFF. Record GEV ports in `docs/gev-changes.md`. Exception: bug and security fixes are never flagged, and new flows that replace broken behaviour (e.g. password reset, trip archive) are flagged but default ON.
 
 ## Fragile, legacy, or out of scope
 
-- **Failing test:** `test/route.test.js` "normalizes supported routing profiles" expects no `costing` key, but `routeProxy.js` now returns `costing: 'auto'`.
-- **Duplicate "v2" views:** `Flights`/`Flights2`, `RoadTrips`/`RoadTrips2` and `TripDetail`/`TripDetail2` are all routed (`ViewState.*_2`). Confirm which one the user means before editing, and keep any shared changes in sync.
+- **Retired "v2" views:** `Flights2`, `RoadTrips2` and `TripDetail2` were deleted; their legacy URLs (`/flights-2`, `/roadtrips-2`, `/trip-2/:id`) resolve to the main pages. `VacationPlanner` ("Planner-2") is still a separate, routed board.
 - **`services/mockDb.ts`** (~1.5k lines) is the real production data client, despite its name. It contains the API client, the localStorage fallback, backup/restore and trip↔flight sync. Edit it carefully. Restore assigns the password `password` to users that have none.
 - **`verifyPassword`** accepts plaintext stored passwords (legacy, no `:` salt separator). This is a legacy compatibility path, so do not extend it.
 - **`backend_files/server.js`** is a ~2.9k-line monolith, and `initDb()` is the real schema. Keep `schema.sql` in sync manually if you touch tables.
