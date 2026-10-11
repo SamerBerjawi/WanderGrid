@@ -502,7 +502,7 @@ Severity is the highest of the merged findings. "Sources" lists every original I
 This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12). They don't qualify for Phase 1, and they share files with the reliability work.
 
 ### WP-2.1 Auth and session UX
-- **Status: 🟡 Code done, e2e verification pending.** M-33 (unauthorized keeps the URL), M-34 (server `POST /api/auth/demo`, decision: works in production; Partner demo on populated workspaces, hidden when sign-up is closed), M-35 (admin-issued one-time reset codes + "Forgot password?", flag `AUDIT_PASSWORD_RESET` default ON), M-43 (Sign out in sidebar and More sheet), M-44 (`%40` decoded, "Traveler not found"), M-26 auth messages (server error text and friendly network errors surfaced).
+- **Status: ✅ Done.** M-33 (unauthorized keeps the URL), M-34 (server `POST /api/auth/demo`, decision: works in production; Partner demo on populated workspaces, hidden when sign-up is closed), M-35 (admin-issued one-time reset codes + "Forgot password?", flag `AUDIT_PASSWORD_RESET` default ON), M-43 (Sign out in sidebar and More sheet), M-44 (`%40` decoded, "Traveler not found"), M-26 auth messages. Verified by the auth e2e suites (jargon wording is WP-4.8).
 - **Covers:**
   - M-33 (QA-A-007), M-34 (QA-A-008, see C-8) and M-35 (QA-A-009).
   - M-43 (QA-A-016) and M-44 (QA-A-017, QA-A-018).
@@ -534,7 +534,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
     - "Auto-Setup & Demo Run…", with its expectation changed to "absent in production" (C-8).
 
 ### WP-2.2 Broken features with one-line causes
-- **Status: 🟡 Code done, e2e verification pending.** M-28 (AnimatePresence moved inside the portal), M-32 (Authorization header on provider tests), M-46 (Back → Planner).
+- **Status: ✅ Done.** M-28 (AnimatePresence inside the portal), M-32 (Authorization header on provider tests), M-46 (Back → Planner); e2e green.
 - **Covers:** M-28 (QA-F-001), M-32 (QA-G-003), M-46 (QA-C-004).
 - **Files:**
   - `views/TravelAtlas.tsx:1698-1700`: move `AnimatePresence` inside `createPortal`.
@@ -548,7 +548,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - e2e `trip-detail/trip-detail.spec.ts` › "Back to planner returns to the Planner".
 
 ### WP-2.3 Mobile reachability
-- **Status: 🟡 Partly done.** M-30 (floating bars use `.bottom-floating-bar`, above the tab bar), M-31 (`Tabs` uses justify-start + mx-auto). M-29 (mobile flight edit/delete) still open: the mobile cards render Edit/Delete buttons, so the cause needs the mobile e2e trace.
+- **Status: ✅ Done.** M-30: floating bars use `.bottom-floating-bar`; full-page map controls sit above the tab bar and view-mode pill. M-31: `Tabs` justify-start + mx-auto. M-29: **re-classified** — the mobile flight cards always had Edit/Delete; rows were never mounted because `VirtualListItem` observed the viewport instead of the scrolling `<main>` (fixed: scroll-root-aware observer), which also unblocked Planner-2 mobile merges. Atlas scan info cards switched to CSS glass (they overlapped the Register button). Previously Blocked mobile tests (bulk delete, Mission Control, Atlas scan, Planner-2 merge, W27 filters) now pass.
 - **Covers:** M-29 (QA-D-002), M-30 (QA-B-002, QA-D-003; see C-11) and M-31 (QA-C-003).
 - **Files:**
   - `views/Flights.tsx`:
@@ -570,7 +570,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - Unblock and pass the currently **Blocked** mobile tests: `roadtrips.spec.ts` › "W32 bulk select and delete two journeys", `explore.spec.ts` › "Mission Control opens its tabs and closes", and "scan finds the country of a past trip".
 
 ### WP-2.4 Visible errors and save guards
-- **Status: 🟡 Code done, e2e verification pending.** Toast service + global `unhandledrejection` reporter; error states with Try Again on Planner, Calendar, Flights and Trip pages; settings save errors shown and applied locally only after the PUT succeeds; friendly invalid-backup message; ref-based save guards and stable ids for flights, bundles and journeys.
+- **Status: ✅ Done.** Toast service + global `unhandledrejection` reporter; error states with Try Again (Planner, Calendar, Flights, Trip); settings save errors shown and applied only after success; friendly invalid-backup message; ref-based save guards and stable ids (flights, bundles, journeys); packing-list AI errors shown as toasts.
 - **Covers:** M-26 (REL-007, QA-B-003, QA-G-005, QA-G-006) and M-23 (REL-006, QA-D-001, QA-E-001).
 - **Files:**
   - Error states:
@@ -608,7 +608,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - New e2e: toggle the theme, then save Settings, and the theme persists.
 
 ### WP-2.6 Server resilience
-- **Status: ✅ Done (API tests).** M-36 (timeouts, URL encoding, status checks on AviationStack/AeroDataBox), M-25 (one dataset refresh path with a row-count floor; fixed a placeholder-index bug for skipped lines), M-37 (`BoundedMap` caches, job retention 30 min), M-41 (bounded request drain on SIGTERM), M-13 (`/api/health` returns status only).
+- **Status: ✅ Done.** M-22: every trip/flight/atlas/user record has a server `version`; stale writes (PUT, bulk, batch) get 409 "changed by someone else" and the view reloads; the client rebases its own successive saves; `PATCH /api/settings` + Settings sends only edited fields, so the sidebar theme and the Settings page no longer overwrite each other. (Conflicts are detected and refused rather than auto-merged.)
 - **Covers:** M-36 (REL-008), M-37 (REL-010), M-25 (REL-009), M-41 (REL-016) and M-13 (SEC-015).
 - **Files:**
   - Timeouts and encoding:
@@ -631,7 +631,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - Manual check: `SIGTERM` during a slow request completes the request.
 
 ### WP-2.7 Client resilience and dev/prod parity
-- **Status: 🟡 Code done.** M-39 (explicit `VITE_LOCAL_MODE=true`, no silent mid-session fallback, "Local mode" badge), M-42 (crash reset clears only cache keys and SW caches, after confirmation).
+- **Status: ✅ Done.** M-39 (explicit `VITE_LOCAL_MODE=true`, no silent mid-session fallback, "Local mode" badge), M-42 (crash reset clears only cache keys and SW caches, after confirmation).
 - **Covers:** M-39 (REL-013), M-42 (REL-017).
 - **Files:**
   - `services/mockDb.ts:545-555`: fall back only on network `TypeError` or abort, and only when `VITE_LOCAL_MODE=true`; show a "Local mode" badge.
@@ -653,7 +653,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
 - **Verify:** `npx tsc --noEmit` reports 0 errors with `strictNullChecks` on; the `any` count trends down (record it in the PR); the full e2e suite stays green.
 
 ### WP-2.9 Dependency and config hardening
-- **Status: 🟡 Partly done.** M-14 (CORS only for `CORS_ORIGINS`), M-15 (Vite dev server on localhost unless `VITE_DEV_HOST`). Still open: M-11 xlsx and the vite upgrade (deferred until no e2e run is using `node_modules`).
+- **Status: ✅ Done.** M-11: SheetJS 0.20.3 from cdn.sheetjs.com (no longer in `npm audit`); vite 6.4.4; M-14 CORS only for `CORS_ORIGINS`; M-15 dev server on localhost unless `VITE_DEV_HOST`. Remaining audit entries are the deck.gl/loaders/protobuf items judged unreachable in the security review. (Parsing xlsx in a Worker was not done.)
 - **Covers:** M-11 (SEC-013), M-14 (SEC-016), M-15 (SEC-018).
 - **Files:**
   - `package.json`: SheetJS ≥ 0.20.2 from `cdn.sheetjs.com`, or a CSV-only parser; parse in a Worker.
@@ -667,7 +667,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - A preflight from a foreign origin gets no `Access-Control-Allow-Origin`.
 
 ### WP-2.10 Keep secrets on the server
-- **Status: 🟡 Code done (API tests pass), e2e pending.** M-08: Gemini/AviationStack/AeroDataBox/OpenAIP keys are masked in `GET /api/settings`, kept on mask-PUT, injected by a `/api/proxy` middleware, excluded from backups; Gemini runs via `POST /api/ai/generate` (SDK removed from the bundle); OpenAIP tiles go through the authenticated proxy; the `define` for GEMINI_API_KEY was removed. Brandfetch/CARTO client IDs stay readable (public identifiers).
+- **Status: ✅ Done.** M-08: Gemini/AviationStack/AeroDataBox/OpenAIP keys masked in `GET /api/settings`, kept on mask-PUT, injected by a `/api/proxy` middleware, excluded from backups; Gemini via `POST /api/ai/generate` (SDK removed from the bundle); OpenAIP tiles via the authenticated proxy; GEMINI_API_KEY no longer inlined. Brandfetch/CARTO client IDs stay readable (public identifiers). Test expectation changed: the Settings e2e now asserts the key is masked + configured instead of returned.
 - **Covers:**
   - M-08 (SEC-010).
   - Part of M-49 (PERF-004: Gemini moves server-side, so `@google/genai` leaves the bundle).
@@ -690,7 +690,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - `grep` the built `dist/` for `AIza` shows no matches.
 
 ### WP-2.11 Request schemas
-- **Status: 🟡 Code done (API tests pass), e2e pending.** M-10: shared `validateRecord` for every collection write (ids, ISO dates, list fields, privacy, 1 MB/2 MB size caps, avatar format/size); avatars are downscaled to 512 px JPEG in the browser.
+- **Status: ✅ Done.** M-10: shared `validateRecord` on every collection write (ids, ISO dates, list fields, privacy, 1 MB/2 MB caps, avatar format/size); avatars are downscaled to 512 px JPEG in the browser.
 - **Covers:** M-10 (SEC-012, REL-011), the remaining parts after WP-1.6 and WP-1.10.
 - **Files:**
   - `backend_files/server.js`: create and update handlers `:858-907`; reject `body.id !== params.id`; per-collection zod or ajv schemas with field caps.

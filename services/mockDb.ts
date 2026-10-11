@@ -971,6 +971,44 @@ class DataService {
       return this.fetch<User[]>('/users');
   }
 
+  // --- Optimistic concurrency (REL-005) ---
+  // The server rejects writes based on an outdated `version` (409). Components often save again from
+  // the snapshot they already hold, so remember the versions this tab produced: if a write is based on
+  // one of them it is rebased onto our latest; a version written by someone else still conflicts.
+  private versionLineage = new Map<string, { seen: Set<number>; latest: number }>();
+
+  private rebaseVersion<T extends { id?: string; version?: number }>(collection: string, record: T): T {
+    const entry = record?.id ? this.versionLineage.get(`${collection}:${record.id}`) : undefined;
+    if (entry && record.version !== undefined && entry.seen.has(Number(record.version))) {
+      return { ...record, version: entry.latest };
+    }
+    return record;
+  }
+
+  private rememberVersion(collection: string, id: string | undefined, sentVersion: number | undefined, savedVersion: number | undefined) {
+    if (!id || typeof savedVersion !== 'number') return;
+    const key = `${collection}:${id}`;
+    const entry = this.versionLineage.get(key) || { seen: new Set<number>(), latest: savedVersion };
+    if (typeof sentVersion === 'number') entry.seen.add(sentVersion);
+    entry.seen.add(savedVersion);
+    entry.latest = savedVersion;
+    this.versionLineage.set(key, entry);
+  }
+
+  private async versionedPut<T extends { id?: string; version?: number }>(collection: string, record: T): Promise<any> {
+    const body = this.rebaseVersion(collection, record);
+    try {
+      const saved = await this.fetch<any>(`/${collection}/${record.id}`, { method: 'PUT', body: JSON.stringify(body) });
+      this.rememberVersion(collection, record.id, body.version, saved?.version);
+      return saved;
+    } catch (err: any) {
+      if (err?.status === 409) {
+        try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {} // let views reload the latest copy
+      }
+      throw err;
+    }
+  }
+
   // Against the API, passwords travel in plaintext over TLS and are hashed by the server only.
   // The browser hash is used solely for the dev localStorage fallback, which has no server.
   private async prepareUserForSave(user: User): Promise<User> {
@@ -990,7 +1028,7 @@ class DataService {
 
   async updateUser(user: User): Promise<void> {
       const userCopy = await this.prepareUserForSave(user);
-      const saved = await this.fetch<any>(`/users/${user.id}`, { method: 'PUT', body: JSON.stringify(userCopy) });
+      const saved = await this.versionedPut('users', userCopy);
       // Changing your own password revokes old sessions; the server returns a token for this one.
       if (saved && typeof saved.sessionToken === 'string') {
           localStorage.setItem('wandergrid_session_token', saved.sessionToken);
@@ -1108,7 +1146,18 @@ class DataService {
       if (stored) loggedInUser = JSON.parse(stored);
     } catch (e) {}
 
-    const rawList = Array.isArray(allTrips) ? allTrips : [];
+    // Runtime guard at the API boundary: list fields that readers iterate are always arrays, even for
+    // old or hand-edited records (REL-012).
+    const asArray = (v: any) => (Array.isArray(v) ? v : []);
+    const rawList = (Array.isArray(allTrips) ? allTrips : [])
+      .filter((t: any) => t && typeof t === 'object' && typeof t.id === 'string')
+      .map((t: any) => ({
+        ...t,
+        participants: asArray(t.participants),
+        transports: asArray(t.transports),
+        accommodations: asArray(t.accommodations),
+        activities: asArray(t.activities),
+      })) as Trip[];
     const list = rawList.map(t => {
       let changed = false;
       let tripCoords = t.coordinates;
@@ -1206,14 +1255,18 @@ class DataService {
     const newTrips = await Promise.all((changes.newTrips || []).map(t => this.prepareNewTrip(t)));
     const updatedTrips = await Promise.all((changes.upsertTrips || []).map(t => this.processGeocoding(t)));
     const payload = {
-      upsertTrips: [...updatedTrips, ...newTrips],
+      upsertTrips: [...updatedTrips.map(t => this.rebaseVersion('trips', t)), ...newTrips],
       deleteTrips: changes.deleteTrips || [],
-      upsertFlights: changes.upsertFlights || [],
+      upsertFlights: (changes.upsertFlights || []).map(f => this.rebaseVersion('flights', f)),
       deleteFlights: changes.deleteFlights || []
     };
     if (this._useApi || import.meta.env.PROD) {
       const result = await this.fetch<any>('/batch', { method: 'POST', body: JSON.stringify(payload) });
-      if (result && result.success) return;
+      if (result && result.success) {
+        for (const t of payload.upsertTrips) this.rememberVersion('trips', t.id, t.version, result.versions?.trips?.[t.id]);
+        for (const f of payload.upsertFlights) this.rememberVersion('flights', f.id, f.version, result.versions?.flights?.[f.id]);
+        return;
+      }
     }
     // Dev localStorage fallback has no transactions; apply the steps in a loss-safe order (writes first).
     if (payload.upsertTrips.length) await this.localFetch('/trips/bulk', { method: 'POST', body: JSON.stringify(payload.upsertTrips) });
@@ -1283,7 +1336,7 @@ class DataService {
 
   async updateTrip(trip: Trip): Promise<Trip> {
     const intelligentTrip = await this.processGeocoding(trip);
-    return this.fetch<Trip>(`/trips/${trip.id}`, { method: 'PUT', body: JSON.stringify(intelligentTrip) });
+    return this.versionedPut('trips', intelligentTrip);
   }
 
   async deleteTrip(id: string): Promise<void> { await this.fetch(`/trips/${id}`, { method: 'DELETE' }); }
@@ -1292,7 +1345,8 @@ class DataService {
     const wanted = new Set(ids);
     const updated = (await this.getTrips()).filter(t => wanted.has(t.id)).map(t => ({ ...t, archived }));
     if (updated.length === 0) return;
-    await this.fetch('/trips/bulk', { method: 'POST', body: JSON.stringify(updated) });
+    const result = await this.fetch<any>('/trips/bulk', { method: 'POST', body: JSON.stringify(updated) });
+    for (const t of updated) this.rememberVersion('trips', t.id, t.version, result?.versions?.[t.id]);
   }
   async getCustomEvents(): Promise<TripCustomEvent[]> { return this.fetch<TripCustomEvent[]>('/events'); }
   async addCustomEvent(event: TripCustomEvent): Promise<void> { await this.fetch('/events', { method: 'POST', body: JSON.stringify(event) }); }
@@ -1484,25 +1538,34 @@ class DataService {
   }
   async addFlight(flight: any): Promise<void> { await this.fetch('/flights', { method: 'POST', body: JSON.stringify(flight) }); }
   async addFlights(flights: any[]): Promise<void> { await this.fetch('/flights/bulk', { method: 'POST', body: JSON.stringify(flights) }); }
-  async updateFlight(flight: any): Promise<void> { await this.fetch(`/flights/${flight.id}`, { method: 'PUT', body: JSON.stringify(flight) }); }
+  async updateFlight(flight: any): Promise<void> { await this.versionedPut('flights', flight); }
   async deleteFlight(id: string): Promise<void> { await this.fetch(`/flights/${id}`, { method: 'DELETE' }); }
 
   async getVisited(): Promise<any[]> { return this.fetch<any[]>('/visited'); }
   async addVisited(item: any): Promise<void> { await this.fetch('/visited', { method: 'POST', body: JSON.stringify(item) }); }
   async addVisitedBulk(items: any[]): Promise<void> { await this.fetch('/visited/bulk', { method: 'POST', body: JSON.stringify(items) }); }
-  async updateVisited(item: any): Promise<void> { await this.fetch(`/visited/${item.id}`, { method: 'PUT', body: JSON.stringify(item) }); }
+  async updateVisited(item: any): Promise<void> { await this.versionedPut('visited', item); }
   async deleteVisited(id: string): Promise<void> { await this.fetch(`/visited/${id}`, { method: 'DELETE' }); }
   async getWorkspaceSettings(): Promise<WorkspaceSettings> {
     const settings = await this.fetch<WorkspaceSettings>('/settings');
     return { ...DEFAULT_WORKSPACE_SETTINGS, ...settings };
   }
-  async updateWorkspaceSettings(settings: WorkspaceSettings): Promise<void> { 
-    // Save first; only a successful save updates the local copy and the UI (no false "saved" state).
-    await this.fetch('/settings', { method: 'PUT', body: JSON.stringify(settings) }); 
-    safeStorage.setItem('wandergrid_workspace_settings', JSON.stringify(settings));
-    safeStorage.setItem('wandergrid_settings', JSON.stringify(settings));
+  /**
+   * Save workspace settings. Only the fields passed are changed (PATCH), so the sidebar theme toggle and
+   * the Settings page can't overwrite each other's edits (REL-005). The UI updates only after success.
+   */
+  async updateWorkspaceSettings(changes: Partial<WorkspaceSettings>): Promise<void> { 
+    let saved: WorkspaceSettings;
+    if (this._useApi || import.meta.env.PROD) {
+      saved = await this.fetch<WorkspaceSettings>('/settings', { method: 'PATCH', body: JSON.stringify(changes) });
+    } else {
+      saved = { ...(await this.getWorkspaceSettings()), ...changes } as WorkspaceSettings;
+      await this.localFetch('/settings', { method: 'PUT', body: JSON.stringify(saved) });
+    }
+    safeStorage.setItem('wandergrid_workspace_settings', JSON.stringify(saved));
+    safeStorage.setItem('wandergrid_settings', JSON.stringify(saved));
     try {
-      window.dispatchEvent(new CustomEvent('wandergrid_settings_updated', { detail: settings }));
+      window.dispatchEvent(new CustomEvent('wandergrid_settings_updated', { detail: saved }));
       window.dispatchEvent(new CustomEvent('wandergrid_db_updated', { detail: { key: 'settings' } }));
     } catch (e) {}
   }

@@ -913,6 +913,19 @@ OWNERSHIP.visited = OWNERSHIP.flights;
 
 const forbidden = () => new HttpError(403, 'You do not have permission to change this record');
 
+// --- Optimistic concurrency (REL-005) ---
+// Every stored record carries an integer `version`. A write that names a version must match the
+// stored one (otherwise someone else changed it: 409); every successful write increments it.
+// Writes without a version (older clients, imports) are accepted and still bump it.
+const conflict = (table, id) => new HttpError(409, `This ${table === 'trips' ? 'trip' : 'record'} was changed by someone else. Reload to see the latest version, then try again.`);
+function withNextVersion(table, incoming, existing) {
+    const current = Number(existing?.version) || 0;
+    if (existing && incoming.version !== undefined && incoming.version !== null && Number(incoming.version) !== current) {
+        throw conflict(table, incoming.id);
+    }
+    return { ...incoming, version: current + 1 };
+}
+
 // Upserts records after checking the caller may change each existing one (new ones get an owner).
 async function guardedBulkUpsert(client, table, items, user) {
     if (!Array.isArray(items)) throw new HttpError(400, 'Body must be a list of records');
@@ -927,12 +940,16 @@ async function guardedBulkUpsert(client, table, items, user) {
     }
     const prepared = items.filter(i => i && i.id).map(item => {
         const prev = existing.get(item.id);
-        if (!prev) return policy.prepareNew(item, user);
+        if (!prev) return withNextVersion(table, policy.prepareNew(item, user), null);
         if (!policy.canWrite(prev, user)) throw forbidden();
-        return policy.prepareUpdate(item, prev);
+        return withNextVersion(table, policy.prepareUpdate(item, prev), prev);
     });
-    return bulkUpsert(client, table, prepared);
+    await bulkUpsert(client, table, prepared);
+    return prepared;
 }
+
+// { id: version } map so clients can continue editing without tripping their own version checks.
+const versionMap = (records) => Object.fromEntries((records || []).map(r => [r.id, r.version]));
 
 async function guardedDelete(client, table, id, user) {
     const policy = OWNERSHIP[table];
@@ -1057,7 +1074,7 @@ const createResource = (table) => async (req, res) => {
       // Creating never overwrites an existing record; updates go through PUT /:id.
       const { rows } = await client.query(`SELECT 1 FROM ${table} WHERE id = $1`, [resource.id]);
       if (rows.length > 0) throw new HttpError(409, `A record with id ${resource.id} already exists`);
-      created = OWNERSHIP[table] ? OWNERSHIP[table].prepareNew(resource, req.user) : resource;
+      created = withNextVersion(table, OWNERSHIP[table] ? OWNERSHIP[table].prepareNew(resource, req.user) : resource, null);
       await client.query(`INSERT INTO ${table} (id, data) VALUES ($1, $2)`, [created.id, JSON.stringify(created)]);
     });
     res.status(201).json(created);
@@ -1093,12 +1110,14 @@ async function guardedBulkUpsertOne(client, table, record, user) {
   assertValidRecords(table, [record]);
   const policy = OWNERSHIP[table];
   let prepared = record;
+  const { rows } = await client.query(`SELECT data FROM ${table} WHERE id = $1`, [record.id]);
+  const existing = rows[0]?.data || null;
   if (policy) {
-    const { rows } = await client.query(`SELECT data FROM ${table} WHERE id = $1`, [record.id]);
-    if (rows.length === 0) prepared = policy.prepareNew(record, user);
-    else if (!policy.canWrite(rows[0].data, user)) throw forbidden();
-    else prepared = policy.prepareUpdate(record, rows[0].data);
+    if (!existing) prepared = policy.prepareNew(record, user);
+    else if (!policy.canWrite(existing, user)) throw forbidden();
+    else prepared = policy.prepareUpdate(record, existing);
   }
+  prepared = withNextVersion(table, prepared, existing);
   await client.query(
     `INSERT INTO ${table} (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
     [prepared.id, JSON.stringify(prepared)]
@@ -2437,7 +2456,7 @@ const newUserRecord = ({ id, name, email, role, password }) => {
     const year = new Date().getFullYear();
     const allowance = role === 'Admin' ? 30 : 25;
     return {
-        id, name, email, role, password,
+        id, name, email, role, password, version: 1,
         leaveBalance: allowance, takenLeave: 0, allowance, lieuBalance: 0,
         activeYears: [year, year + 1, year + 2], policies: [], holidayConfigIds: []
     };
@@ -2673,6 +2692,7 @@ app.post('/api/users', requireAdmin, async (req, res) => {
     
     try {
         delete user.tokenVersion;
+        user.version = 1;
         delete user.calendarToken;
         delete user.passwordReset;
         delete user.passwordResetRequired;
@@ -2719,6 +2739,7 @@ app.put('/api/users/:id', async (req, res) => {
             if (rows.length === 0) throw new HttpError(404, 'User not found');
             const prevUser = rows[0].data;
 
+            Object.assign(updatedUser, withNextVersion('users', updatedUser, prevUser));
             if (!isAdmin) updatedUser.role = prevUser.role;
             if (prevUser.role === 'Admin' && updatedUser.role !== 'Admin' && await countAdmins(client) <= 1) {
                 throw new HttpError(409, 'The workspace needs at least one administrator');
@@ -2801,14 +2822,15 @@ app.post('/api/batch', async (req, res) => {
             : item && typeof item === 'object' && typeof item.id === 'string' && item.id);
         if (!valid) return res.status(400).json({ error: `${key} must be an array of ${isDelete ? 'ids' : 'records with an id'}` });
     }
+    const versions = {};
     try {
         await withTransaction(async (client) => {
-            if (body.upsertTrips) await guardedBulkUpsert(client, 'trips', body.upsertTrips, req.user);
-            if (body.upsertFlights) await guardedBulkUpsert(client, 'flights', body.upsertFlights, req.user);
+            if (body.upsertTrips) versions.trips = versionMap(await guardedBulkUpsert(client, 'trips', body.upsertTrips, req.user));
+            if (body.upsertFlights) versions.flights = versionMap(await guardedBulkUpsert(client, 'flights', body.upsertFlights, req.user));
             for (const id of body.deleteTrips || []) await guardedDelete(client, 'trips', id, req.user);
             for (const id of body.deleteFlights || []) await guardedDelete(client, 'flights', id, req.user);
         });
-        res.json({ success: true });
+        res.json({ success: true, versions });
     } catch (err) {
         if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
         sendError(res, err, 500, 'Failed to apply changes');
@@ -2824,10 +2846,13 @@ app.post('/api/trips/bulk', async (req, res) => {
     }
     try {
         let count = 0;
+        let versions = {};
         await withTransaction(async (client) => {
-            count = await guardedBulkUpsert(client, 'trips', list, req.user);
+            const saved = await guardedBulkUpsert(client, 'trips', list, req.user);
+            count = saved.length;
+            versions = versionMap(saved);
         });
-        res.status(201).json({ success: true, count });
+        res.status(201).json({ success: true, count, versions });
     } catch (err) {
         if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
         sendError(res, err, 500, 'Failed to perform bulk trip upsert');
@@ -2864,10 +2889,13 @@ app.post('/api/flights/bulk', async (req, res) => {
     }
     try {
         let count = 0;
+        let versions = {};
         await withTransaction(async (client) => {
-            count = await guardedBulkUpsert(client, 'flights', list, req.user);
+            const saved = await guardedBulkUpsert(client, 'flights', list, req.user);
+            count = saved.length;
+            versions = versionMap(saved);
         });
-        res.status(201).json({ success: true, count });
+        res.status(201).json({ success: true, count, versions });
     } catch (err) {
         if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
         sendError(res, err, 500, 'Failed to perform bulk flight upsert');
@@ -2886,10 +2914,13 @@ app.post('/api/visited/bulk', async (req, res) => {
     }
     try {
         let count = 0;
+        let versions = {};
         await withTransaction(async (client) => {
-            count = await guardedBulkUpsert(client, 'visited', list, req.user);
+            const saved = await guardedBulkUpsert(client, 'visited', list, req.user);
+            count = saved.length;
+            versions = versionMap(saved);
         });
-        res.status(201).json({ success: true, count });
+        res.status(201).json({ success: true, count, versions });
     } catch (err) {
         if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
         sendError(res, err, 500, 'Failed to perform bulk visited upsert');
@@ -2966,6 +2997,28 @@ app.put('/api/settings', requireAdmin, async (req, res) => {
     }
 });
 
+// Partial update: only the fields sent are changed, so two admins (or the sidebar theme toggle and the
+// Settings page) editing different fields can't silently undo each other (REL-005).
+app.patch('/api/settings', requireAdmin, async (req, res) => {
+    try {
+        const changes = { ...(req.body || {}) };
+        delete changes.configuredKeys;
+        for (const key of SECRET_SETTING_KEYS) if (changes[key] === SECRET_MASK) delete changes[key];
+        const saved = await withTransaction(async (client) => {
+            const merged = { ...(await readWorkspaceSettings(client)), ...changes };
+            await client.query(
+                `INSERT INTO settings (key, data) VALUES ('workspace', $1) ON CONFLICT (key) DO UPDATE SET data = $1`,
+                [JSON.stringify(merged)]
+            );
+            return merged;
+        });
+        invalidateSecretsCache();
+        res.json(maskSettings(saved));
+    } catch (err) {
+        sendError(res, err, 500, 'Failed to update workspace settings');
+    }
+});
+
 // Gemini runs server-side: the key never reaches the browser and the SDK isn't shipped to clients.
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
 app.post('/api/ai/generate', async (req, res) => {
@@ -2974,7 +3027,7 @@ app.post('/api/ai/generate', async (req, res) => {
         return res.status(400).json({ error: 'contents must be a non-empty array of messages' });
     }
     const apiKey = await workspaceSecret('googleGeminiApiKey');
-    if (!apiKey) return res.status(412).json({ error: 'Please configure a Google Gemini API key in Settings › Integrations.' });
+    if (!apiKey) return res.status(412).json({ error: 'Please configure Google Gemini API Key in Settings › Integrations.' });
     try {
         const upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`, {
             method: 'POST',

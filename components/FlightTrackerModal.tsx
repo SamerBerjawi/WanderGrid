@@ -86,7 +86,7 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
         }
     };
 
-    const getStatusColor = (status: string) => {
+    const getStatusColor = (status?: string) => {
         switch (status) {
             case 'active': return 'bg-emerald-500 text-white shadow-emerald-500/40';
             case 'landed': return 'bg-blue-500 text-white shadow-blue-500/40';

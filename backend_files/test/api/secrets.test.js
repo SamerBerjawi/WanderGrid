@@ -76,7 +76,7 @@ test('the AI endpoint explains a missing key', async () => {
     await srv.api('PUT', '/api/settings', { token: admin.token, body: { googleGeminiApiKey: '' } });
     const r = await srv.api('POST', '/api/ai/generate', { token: partner.token, body: { contents: [{ role: 'user', text: 'hi' }] } });
     assert.equal(r.status, 412);
-    assert.match(r.json.error, /Gemini API key/);
+    assert.match(r.json.error, /Gemini API Key/);
 });
 
 test('OpenAIP tile proxy only accepts numeric coordinates', async () => {

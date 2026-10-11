@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { toast } from '../services/toast';
 import { Trip, PackingItem, WorkspaceSettings } from '../types';
 import { Button, Input, Select, Badge } from './ui';
 import { EmptyState } from './EmptyState';
@@ -115,7 +116,7 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
 
         } catch (e: any) {
             console.error("AI Generation failed", e);
-            alert(e?.message || "Could not generate list. Please try again.");
+            toast.error(e?.message || "Could not generate list. Please try again.");
         } finally {
             setIsGenerating(false);
         }

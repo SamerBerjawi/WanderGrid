@@ -1488,7 +1488,9 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                   {/* Controls / Info */}
                   <div className="lg:col-span-4 space-y-6">
-                    <Card className="!bg-gradient-to-b from-indigo-500//5 to-blue-500/5 border border-indigo-500/10 !rounded-3xl">
+                    {/* CSS glass (not liquid-glass Card): the measured glass wrapper mis-sized these on phones and the
+                        text spilled over the Register button (decision C-1: liquid glass for hero surfaces only). */}
+                    <div className="bg-white/70 dark:bg-white/[0.08] backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-glass-light-card dark:shadow-glass-card rounded-3xl p-5">
                       <h3 className="font-black text-lg tracking-tight mb-2">Automated Scanner</h3>
                       <p className="text-xs text-gray-500 leading-relaxed mb-4">
                         WanderGrid scans all historical details across flight paths and georoute itineraries to extract visited territory candidates.
@@ -1522,9 +1524,9 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                           </>
                         )}
                       </Button>
-                    </Card>
+                    </div>
 
-                    <Card className="!rounded-3xl border border-gray-100 dark:border-white/5">
+                    <div className="bg-white/70 dark:bg-white/[0.08] backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-glass-light-card dark:shadow-glass-card rounded-3xl p-5">
                       <div className="flex items-start gap-2.5">
                         <Info className="w-5 h-5 text-indigo-500 shrink-0" />
                         <div className="text-xs leading-relaxed text-gray-500">
@@ -1532,7 +1534,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                           When layovers are discovered, WanderGrid marks them as transits so your map does not highlight countries you did not actively explore. Uncheck anything you want to omit before importing.
                         </div>
                       </div>
-                    </Card>
+                    </div>
                   </div>
 
                   {/* Scanned Candidates results */}

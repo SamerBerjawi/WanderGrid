@@ -35,6 +35,17 @@ export const VirtualListItem: React.FC<VirtualListItemProps> = React.memo(({
       return;
     }
 
+    // Observe against the nearest scrolling ancestor (the app scrolls <main>, not the window). With the
+    // viewport as root, ancestor clipping made rootMargin useless: rows just below the fold were never
+    // mounted, so they were invisible to find-in-page, screen readers and automation.
+    const findScrollRoot = (node: HTMLElement | null): Element | null => {
+      for (let n = node?.parentElement; n; n = n.parentElement) {
+        const overflowY = getComputedStyle(n).overflowY;
+        if ((overflowY === 'auto' || overflowY === 'scroll') && n.scrollHeight > n.clientHeight) return n;
+      }
+      return null;
+    };
+
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
@@ -47,7 +58,7 @@ export const VirtualListItem: React.FC<VirtualListItemProps> = React.memo(({
           setIsVisible(false);
         }
       },
-      { rootMargin }
+      { root: findScrollRoot(el), rootMargin }
     );
 
     observer.observe(el);

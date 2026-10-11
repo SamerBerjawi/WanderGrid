@@ -974,7 +974,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
 
     const moveSegmentToLeg = (fromLegId: string, segmentId: string, toLegId: string) => {
         setLegs(prevLegs => {
-            let movingSeg: RouteSegment | null = null;
+            let movingSeg = null as RouteSegment | null; // assigned inside the map callback below
             const updatedLegs = prevLegs.map(leg => {
                 if (leg.id === fromLegId) {
                     const seg = leg.segments.find(s => s.id === segmentId);
@@ -990,7 +990,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
             if (!movingSeg) return prevLegs;
 
             const detachedSeg: RouteSegment = {
-                ...movingSeg,
+                ...(movingSeg as RouteSegment),
                 linkStartToPrevDest: false,
                 linkDateToPrevDate: false
             };

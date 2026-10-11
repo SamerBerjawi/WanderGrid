@@ -3658,7 +3658,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             )}
 
             {/* Zoom & View Navigation Controls with Liquid Glass (Bottom Left) */}
-            <div className={`absolute bottom-3 md:bottom-6 z-20 flex flex-col gap-2 pointer-events-auto transition-all duration-300 ${isEmbedded ? 'left-3' : (sidebarCollapsed ? 'left-3 md:left-28' : 'left-3 md:left-80')}`}>
+            {/* Full-page maps on phones sit under the tab bar and the map's view-mode pill; lift the controls above both (M-30). */}
+            <div className={`absolute ${isEmbedded ? 'bottom-3 md:bottom-6' : 'bottom-[calc(9rem+env(safe-area-inset-bottom,0px))] md:bottom-6'} z-20 flex flex-col gap-2 pointer-events-auto transition-all duration-300 ${isEmbedded ? 'left-3' : (sidebarCollapsed ? 'left-3 md:left-28' : 'left-3 md:left-80')}`}>
                 <GlassPanel
                     padding="0px"
                     overrides={{ borderRadius: 20 }}

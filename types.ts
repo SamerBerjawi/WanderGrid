@@ -5,6 +5,7 @@ export interface User {
   email?: string; // New: Auth identifier
   password?: string; // Write-only: sent when setting a password, never returned by the API
   passwordResetRequired?: boolean; // Set by the API when the account has no usable password
+  version?: number; // Server-managed edit counter for conflict detection
   role: 'Admin' | 'Partner' | 'Child';
   leaveBalance: number; // in days
   takenLeave: number;
@@ -195,6 +196,7 @@ export interface Trip {
   id: string;
   name: string;
   archived?: boolean; // Hidden from planning boards until restored (Archive is not Delete)
+  version?: number; // Server-managed edit counter for conflict detection
   originalName?: string;
   subtitle?: string;
   description?: string;

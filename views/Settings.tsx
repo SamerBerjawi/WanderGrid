@@ -133,6 +133,8 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   const [editingUser, setEditingUser] = useState<Partial<User>>({});
   
   // Workspace Config States
+  // Snapshot of the settings as loaded, so a save sends only the fields edited on this page.
+  const loadedConfigRef = useRef<WorkspaceSettings | null>(null);
   const [config, setConfig] = useState<WorkspaceSettings>({
       orgName: '',
       currency: 'USD',
@@ -370,6 +372,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
         setEntitlements(ents);
         setSavedConfigs(configs);
         setConfig(settings);
+        loadedConfigRef.current = settings;
         setTrips(t || []);
         setVisitedCount(Array.isArray(v) ? v.length : 0);
         setLoading(false);
@@ -488,8 +491,14 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   const handleSaveOrgSettings = async () => { 
       setIsSavingOrg(true);
       try {
-          await dataService.updateWorkspaceSettings(config);
-          if (onThemeChange) onThemeChange(config.theme);
+          const loaded = loadedConfigRef.current;
+          const changes = loaded
+              ? (Object.fromEntries(Object.entries(config).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify((loaded as any)[k]))) as Partial<WorkspaceSettings>)
+              : config;
+          delete (changes as any).configuredKeys;
+          await dataService.updateWorkspaceSettings(changes);
+          loadedConfigRef.current = config;
+          if (onThemeChange && 'theme' in changes) onThemeChange(config.theme);
           setSaveToast(true);
           setTimeout(() => setSaveToast(false), 2500);
       } catch (err) {

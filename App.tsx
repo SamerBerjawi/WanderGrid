@@ -222,8 +222,8 @@ export default function App() {
           try { localStorage.setItem('wandergrid_theme_preference', newTheme); } catch (e) {}
           return;
       }
-      dataService.getWorkspaceSettings().then(s => {
-          dataService.updateWorkspaceSettings({ ...s, theme: newTheme });
+      dataService.updateWorkspaceSettings({ theme: newTheme }).catch(err => {
+          toast.error(`Couldn't save the theme: ${errorMessage(err)}`);
       });
   };
 

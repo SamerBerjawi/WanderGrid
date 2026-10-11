@@ -15,7 +15,18 @@ test.beforeEach(async ({ page, request }) => {
 });
 
 const flights = (request) => apiGet(request, s.token, '/api/flights');
-async function openFlights(page) { await page.goto('/flights'); await expectAppShell(page); }
+async function openFlights(page) {
+  await page.goto('/flights');
+  await expectAppShell(page);
+  await revealList(page);
+}
+/** Flight rows are virtualised (mounted when scrolled into view); on phones the board starts below the fold. */
+async function revealList(page) {
+  if (!isMobile(page)) return;
+  await page.waitForTimeout(300);
+  await page.locator('main').evaluate((m) => m.scrollTo(0, m.scrollHeight)).catch(() => {});
+  await page.waitForTimeout(400);
+}
 async function fillFlightForm(page, o: { from: string; to: string; day: number }) {
   await visible(page, 'input[placeholder="e.g. JFK or New York"]').first().fill(o.from);
   await page.keyboard.press('Escape');
@@ -26,6 +37,12 @@ async function fillFlightForm(page, o: { from: string; to: string; day: number }
 const saveStub = (page) => page.getByRole('button', { name: /Save Boarding Stub/ });
 /** Text inside the flight list itself (desktop table / mobile list), not the hero stats. */
 const inList = (page, re: string) => page.locator(`${isMobile(page) ? 'main' : 'main table'} >> text=/${re}/ >> visible=true`);
+/** "Not listed": on desktop the code is absent from the table; on mobile the always-visible passport hero
+ *  repeats the next flight, so check the board's own count instead. */
+async function expectNotListed(page, re: string, boardCount: number) {
+  if (isMobile(page)) await expect(page.getByText(new RegExp(`Flight Board \\(${boardCount}\\)`)).first()).toBeVisible();
+  else await expect(inList(page, re)).toHaveCount(0);
+}
 
 test('empty flight log shows an empty state with an Add Flight action', async ({ page }) => {
   await openFlights(page);
@@ -157,11 +174,13 @@ test('W27 Upcoming / Past tabs filter the log', async ({ page, request }) => {
   await seedFlight(request, s.token, flightRecord('past', { identifier: 'PA200', origin: 'DXB', destination: 'BKK', departureDate: '2024-04-01', arrivalDate: '2024-04-01' }));
   await openFlights(page);
   await page.locator('main button[title="Upcoming"] >> visible=true').first().click();
+  await revealList(page);
   await expect(inList(page, '^SIN$').first()).toBeVisible();
-  await expect(inList(page, '^DXB$')).toHaveCount(0);
+  await expectNotListed(page, '^DXB$', 1);
   await page.locator('main button[title="Past"] >> visible=true').first().click();
+  await revealList(page);
   await expect(inList(page, '^DXB$').first()).toBeVisible();
-  await expect(inList(page, '^SIN$')).toHaveCount(0);
+  await expectNotListed(page, '^SIN$', 1);
 });
 
 test('W27 search narrows the log and Reset restores it', async ({ page, request }) => {
@@ -169,9 +188,11 @@ test('W27 search narrows the log and Reset restores it', async ({ page, request 
   await seedFlight(request, s.token, flightRecord('s2', { identifier: 'QF1', provider: 'Qantas', origin: 'SYD', destination: 'LHR' }));
   await openFlights(page);
   await visible(page, 'input[placeholder^="Search by airline"]').first().fill('lufthansa');
+  await revealList(page);
   await expect(inList(page, '^FRA$').first()).toBeVisible();
-  await expect(inList(page, '^SYD$')).toHaveCount(0);
+  await expectNotListed(page, '^SYD$', 1);
   await page.getByRole('button', { name: 'Reset all filters' }).click();
+  await revealList(page);
   await expect(inList(page, '^SYD$').first()).toBeVisible();
 });
 

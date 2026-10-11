@@ -230,6 +230,21 @@ test('W17 Gear: add, check off and delete a packing item', async ({ page, reques
   await expect.poll(async () => (await getTrip(request))?.packingList?.some((i) => i.text === 'Snorkel mask')).toBe(false);
 });
 
+test('two tabs editing the same trip: the stale save is refused instead of silently overwriting (REL-005)', async ({ page, browser, request }) => {
+  const tabB = await (await browser.newContext({ viewport: test.info().project.use.viewport, baseURL: 'http://localhost:4173', serviceWorkers: 'block' })).newPage();
+  await seedSession(tabB, s.token, s.user);
+  await openTrip(page, 'Gear');
+  await openTrip(tabB, 'Gear'); // both tabs now hold the same trip version
+  await visible(page, 'input[placeholder="Add new item..."]').first().fill('Socks');
+  await page.getByRole('button', { name: 'Add packing item' }).click();
+  await expect.poll(async () => (await getTrip(request))?.packingList?.map((i) => i.text)).toEqual(['Socks']);
+  await visible(tabB, 'input[placeholder="Add new item..."]').first().fill('Hat');
+  await tabB.getByRole('button', { name: 'Add packing item' }).click();
+  await expect(tabB.getByText(/changed by someone else/).first()).toBeVisible({ timeout: 15_000 });
+  expect((await getTrip(request))?.packingList?.map((i) => i.text), "tab A's item is not lost").toContain('Socks');
+  await tabB.context().close();
+});
+
 test('W17 Gear: an empty item cannot be added', async ({ page, request }) => {
   await openTrip(page, 'Gear');
   await page.getByRole('button', { name: 'Add packing item' }).click();

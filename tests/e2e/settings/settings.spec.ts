@@ -35,6 +35,16 @@ test.describe('W34 Workspace preferences', () => {
     await expect(visible(page, 'input[placeholder="WanderGrid Workspace"]').first()).toHaveValue('QA Travel Co');
   });
 
+  test('saving Settings does not undo a theme changed elsewhere meanwhile (REL-005)', async ({ page, request }) => {
+    await openSettings(page, 'Workspace');
+    // Another tab (or the sidebar toggle) switches the theme after this page loaded its snapshot.
+    await request.patch('/api/settings', { headers: { Authorization: `Bearer ${s.token}` }, data: { theme: 'light' } });
+    await visible(page, 'input[placeholder="WanderGrid Workspace"]').first().fill('QA Concurrency Co');
+    await saveSettings(page).click();
+    await expect.poll(async () => (await settings(request)).orgName, { timeout: 10_000 }).toBe('QA Concurrency Co');
+    expect((await settings(request)).theme).toBe('light');
+  });
+
   test('working-day toggles save', async ({ page, request }) => {
     await openSettings(page, 'Workspace');
     const before = (await settings(request)).workingDays ?? [1, 2, 3, 4, 5];
@@ -45,7 +55,7 @@ test.describe('W34 Workspace preferences', () => {
 
   test('save failure (500) shows an error and the button recovers', async ({ page }) => {
     await openSettings(page, 'Workspace');
-    await page.route('**/api/settings', (r) => (r.request().method() === 'PUT' ? r.fulfill({ status: 500, body: '{"error":"x"}', contentType: 'application/json' }) : r.continue()));
+    await page.route('**/api/settings', (r) => (r.request().method() !== 'GET' ? r.fulfill({ status: 500, body: '{"error":"x"}', contentType: 'application/json' }) : r.continue()));
     await visible(page, 'input[placeholder="WanderGrid Workspace"]').first().fill('Will Not Save');
     await saveSettings(page).click();
     await expect(page.getByText(/fail|error|could not|couldn.t|try again/i).first()).toBeVisible({ timeout: 20_000 });
@@ -159,7 +169,9 @@ test.describe('W35 Integrations', () => {
     await key.fill('qa-test-key-123');
     expect(await key.getAttribute('type')).toBe('password');
     await saveSettings(page).click();
-    await expect.poll(async () => (await settings(request)).aviationStackApiKey, { timeout: 10_000 }).toBe('qa-test-key-123');
+    // SEC-010: the key is stored server-side but never returned; clients only see a mask + "configured".
+    await expect.poll(async () => (await settings(request)).configuredKeys?.aviationStackApiKey, { timeout: 10_000 }).toBe(true);
+    expect((await settings(request)).aviationStackApiKey).not.toBe('qa-test-key-123');
   });
 
   test('"Test All Services" reports a result for each provider (no auth errors)', async ({ page }) => {
@@ -235,7 +247,7 @@ test.describe('W38 Backup & restore', () => {
     fs.writeFileSync(file, JSON.stringify({ trips: [{ id: 'rs-trip', name: 'QA Restored Trip', status: 'Planning', startDate: '2026-12-10', endDate: '2026-12-12', participants: [ADMIN.id], privacy: 'Private' }], users: [], flights: [], visited: [] }));
     await openSettings(page, 'Data Management');
     await page.locator('input[type="file"][accept=".json"]').first().setInputFiles(file);
-    await page.getByRole('button', { name: /^Merge$/ }).first().click().catch(() => {});
+    await page.getByRole('button', { name: /^Merge with Existing$/i }).click();
     await page.getByRole('button', { name: /Merge Selected Categories|Overwrite Selected Categories/ }).click();
     await expect.poll(async () => (await apiGet(request, s.token, '/api/trips')).some((t) => t.id === 'rs-trip'), { timeout: 15_000 }).toBe(true);
   });

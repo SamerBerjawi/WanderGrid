@@ -2068,7 +2068,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     const isSelected = selectedFlightIds.has(flight.id);
     
     // Calculate days remaining
-    let daysRemaining = null;
+    let daysRemaining: number | null = null;
     if (isFuture) {
        const depDate = getFlightDepartureUtcDate(flight);
        const today = new Date();
@@ -2077,7 +2077,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     }
 
     // Check if there is a connecting layover to the next flight in this journey
-    let layoverStr = null;
+    let layoverStr: string | null = null;
     if (idx < legsList.length - 1) {
       const nextFlight = legsList[idx + 1];
       if (flight.destination && nextFlight.origin && flight.destination === nextFlight.origin) {
@@ -2529,7 +2529,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           {/* Flights list */}
           <div className="flex flex-col gap-3">
             {legs.map((flight, idx) => {
-              const elements = [];
+              const elements: React.ReactNode[] = [];
               elements.push(renderFlightyLegRow(flight, idx, legs, trip));
               
               // Layover connector pill between this leg and next
@@ -2565,7 +2565,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
   };
 
   const renderTableRow = (flight: Transport, idx: number, legsList: Transport[], trip: Trip) => {
-    let layoverStr = null;
+    let layoverStr: string | null = null;
     if (idx < legsList.length - 1) {
       const nextFlight = legsList[idx + 1];
       const arrDate = getFlightArrivalUtcDate(flight);

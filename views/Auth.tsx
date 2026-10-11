@@ -121,7 +121,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                     || allUsers.find(u => u.role === 'Admin')
                     || allUsers[0];
                 try {
-                    user = await dataService.login(targetUser.email, targetUser.password || 'password');
+                    user = await dataService.login(targetUser.email || '', targetUser.password || 'password');
                 } catch {
                     user = targetUser;
                 }
