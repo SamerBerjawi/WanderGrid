@@ -349,7 +349,7 @@ export const Modal: React.FC<ModalProps> = ({
       />
 
       {/* 2. Elevated Liquid Glass Modal Container */}
-      <GlassPanel
+      <GlassPanel liquid
         ref={modalRef}
         className={cn(
           "wg-glass-card w-full shadow-2xl overflow-hidden transform transition-all duration-300 max-h-[calc(90dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] flex flex-col min-h-0 z-10",
@@ -504,7 +504,7 @@ export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className
   // justify-start + mx-auto (not justify-center): centred when the tabs fit, but when they overflow
   // on narrow screens the first tab stays reachable by scrolling instead of being clipped off the left.
   <div className={cn("flex items-center justify-start overflow-x-auto sm:overflow-visible no-scrollbar py-3 px-2 -my-3 -mx-2 shrink-0", className)}>
-    <GlassPanel
+    <GlassPanel liquid
       className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0 mx-auto sm:mx-0"
       padding="4px 6px"
       overrides={{ borderRadius: 9999 }}

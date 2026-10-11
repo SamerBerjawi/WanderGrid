@@ -755,6 +755,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - Full e2e regression; service workers are blocked in e2e, so also run a manual offline reload check.
 
 ### WP-3.3 Liquid-glass budget
+- **Status: ✅ Done.** M-48 (PERF-002, decision C-1): `GlassPanel` renders CSS glass by default (same DOM nesting, translucent fill, blur, specular rim); `<GlassPanel liquid>` is used only on the sidebar, mobile tab bar/More sheet, `Modal`, `StandardDrawer`, the trip drawer and the shared `Tabs` pill; reduced-motion/transparency users always get CSS glass. A/B on the same data (1440×900, 120 Hz): Dashboard p95 frame 25.2 → **9.3 ms**, Atlas 25.0 → **8.9 ms**, displacement filters 60 → 6, DOM nodes 1,201 → 627. AGENTS.md §9.1 and Design.md updated; e2e guards the filter count.
 - **Covers:** M-48 (PERF-002).
 - **Files:**
   - `components/glass/GlassPanel.tsx:115-138` and `components/ui.tsx` (`Card`, `Button`): a CSS-glass variant for list items; a shared `mouseContainer`; reduced-motion and reduced-transparency support.

@@ -122,7 +122,7 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
             isVisible ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
-          <GlassPanel
+          <GlassPanel liquid
             ref={modalRef}
             className="wg-glass-card w-full h-full flex flex-col shadow-2xl overflow-hidden"
             padding="0px"

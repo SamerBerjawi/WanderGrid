@@ -59,6 +59,15 @@ test.describe('W42 Dashboard', () => {
     expect(writes, 'opening the Dashboard should not POST/PUT/DELETE').toEqual([]);
   });
 
+  test('liquid glass is limited to hero surfaces (PERF-002 frame budget)', async ({ page }) => {
+    await page.goto('/');
+    await expectAppShell(page);
+    await page.waitForTimeout(1500);
+    const filters = await page.locator('feDisplacementMap').count();
+    expect(filters, 'SVG displacement filters on the Dashboard').toBeLessThanOrEqual(12);
+    expect(await page.locator('.wg-glass-lite').count()).toBeGreaterThan(0);
+  });
+
   test('no horizontal overflow on the Dashboard', async ({ page }) => {
     await page.goto('/');
     await expectAppShell(page);

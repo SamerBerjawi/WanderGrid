@@ -591,7 +591,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                         isVisible ? 'translate-x-0' : 'translate-x-full'
                     }`}
                 >
-                    <GlassPanel
+                    <GlassPanel liquid
                         className="wg-glass-card w-full h-full flex flex-col shadow-2xl overflow-hidden"
                         padding="0px"
                         overrides={{ borderRadius: 28 }}

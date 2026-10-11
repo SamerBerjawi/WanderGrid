@@ -7,7 +7,7 @@ This document establishes the official design system, component standards, visua
 ## 1. Core Principles & Aesthetic Foundation
 
 WanderGrid's design language is built on three immutable pillars:
-1. **Liquid Glass Everywhere**: Every card, floating pill, modal, dropdown, and button leverages Apple-inspired Liquid Glass (`@nkzw/liquid-glass` via the standardized `<GlassPanel />` and `<GlassButton />` wrappers).
+1. **Glass Everywhere, Liquid Where It Counts**: Every card, floating pill, modal, dropdown, and button is a glass surface via the standardized `<GlassPanel />` and `<GlassButton />` wrappers. Content surfaces use the lightweight CSS glass; full Apple-inspired Liquid Glass (`@nkzw/liquid-glass`, `<GlassPanel liquid>`) is reserved for hero surfaces — navigation, dialogs/drawers and the floating tab pill — to keep scrolling at full frame rate.
 2. **The Planner Standard**: The page layout, typography, icon treatment, action buttons, tab switcher, and multi-column grid established in `PlannerView.tsx` serves as the universal template for all views across WanderGrid.
 3. **Radical Simplicity (Zero Text Clutter)**: The interface must remain clean, direct, and uncluttered. Obvious explanatory text, wordy helper paragraphs, and generic informational clutter are strictly prohibited. Every string must be purposeful and straight to the point.
 4. **Fluid Mobile Responsiveness**: Every screen adapts seamlessly to mobile devices—compact horizontal gutters, centered hero headers, 44px Apple HIG touch targets, and natural column stacking.

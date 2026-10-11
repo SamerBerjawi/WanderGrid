@@ -819,3 +819,47 @@
 }
 
 
+
+/* ==========================================================================
+   CSS-only glass (default GlassPanel rendering; liquid glass is reserved for hero
+   surfaces — PERF-002 / decision C-1). Same nesting as LiquidGlass:
+   .wg-glass-wrapper > .wg-glass-panel.wg-glass-lite > .wg-glass-lite-body > .wg-glass-lite-content
+   ========================================================================== */
+.wg-glass-wrapper > .wg-glass-lite {
+  overflow: hidden;
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+}
+:root:not(.dark) .wg-glass-wrapper > .wg-glass-lite {
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.45) !important;
+}
+.dark .wg-glass-wrapper > .wg-glass-lite {
+  background: rgba(255, 255, 255, 0.06);
+  /* specular rim, standing in for the liquid-glass edge highlight */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), inset 0 0 0 1px rgba(255, 255, 255, 0.12) !important;
+}
+/* Coloured pills/cards bring their own tint on the wrapper */
+.wg-glass-wrapper[class*="wg-glass-pill-"] > .wg-glass-lite,
+.wg-glass-wrapper[class*="wg-glass-card-"] > .wg-glass-lite {
+  background: transparent;
+}
+/* Undo the LiquidGlass layer resets for the lite body (it is in-flow content, not a decoration layer) */
+.wg-glass-wrapper > .wg-glass-lite > .wg-glass-lite-body {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: auto !important;
+}
+.wg-glass-lite-content {
+  width: 100%;
+  height: 100%;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .wg-glass-wrapper > .wg-glass-lite {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  :root:not(.dark) .wg-glass-wrapper > .wg-glass-lite { background: rgba(255, 255, 255, 0.96); }
+  .dark .wg-glass-wrapper > .wg-glass-lite { background: rgba(28, 28, 30, 0.96); }
+}

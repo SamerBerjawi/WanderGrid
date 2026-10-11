@@ -142,7 +142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Desktop Fixed Sidebar with Liquid Glass */}
       <aside className={`hidden md:flex flex-shrink-0 flex-col fixed top-4 left-4 bottom-4 z-40 transition-all duration-300 pointer-events-none ${isCollapsed ? 'w-20' : 'w-72'}`}>
         <div className="relative w-full h-full pointer-events-auto">
-          <GlassPanel
+          <GlassPanel liquid
             className="wg-glass-card shadow-2xl h-full flex flex-col"
             overrides={{ borderRadius: 28 }}
             padding="0px"
@@ -357,7 +357,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Mobile Bottom Navigation with Liquid Glass */}
       <div className="flex md:hidden fixed bottom-safe-nav left-0 right-0 z-50 items-center justify-center px-3 pointer-events-none safe-x">
-        <GlassPanel
+        <GlassPanel liquid
           className="wg-glass-pill shadow-2xl pointer-events-auto w-full max-w-md"
           overrides={{ borderRadius: 28 }}
           padding="4px 10px"
@@ -456,7 +456,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               transition={{ type: "spring", stiffness: 450, damping: 32 }}
               className="md:hidden fixed bottom-safe-menu right-4 w-60 z-modal safe-right"
             >
-              <GlassPanel
+              <GlassPanel liquid
                 className="wg-glass-card shadow-2xl overflow-hidden"
                 overrides={{ borderRadius: 24 }}
                 padding="0px"
