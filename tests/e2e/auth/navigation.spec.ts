@@ -105,6 +105,28 @@ test('quick wins: pinch-zoom allowed, map stack not preloaded, small favicons an
   expect(precached.some((u) => /vendor-deckgl|airportRunwayDataset|app-icon-original/.test(u))).toBe(false);
 });
 
+test('no visible text renders below 11px (UI-002)', async ({ page }) => {
+  for (const path of ['/', '/flights', '/settings', '/planner']) {
+    await page.goto(path);
+    await expectAppShell(page);
+    await page.waitForTimeout(1200);
+    const tiny = await page.evaluate(() => {
+      const out: string[] = [];
+      for (const el of Array.from(document.querySelectorAll('body *'))) {
+        if (el.closest('svg, canvas, .maplibregl-map, [aria-hidden="true"]')) continue;
+        const own = Array.from(el.childNodes).some((n) => n.nodeType === 3 && (n.textContent || '').trim());
+        if (!own) continue;
+        const r = (el as HTMLElement).getBoundingClientRect();
+        const cs = getComputedStyle(el);
+        if (r.width === 0 || r.height === 0 || r.bottom < 0 || cs.visibility === 'hidden' || cs.display === 'none') continue;
+        if (parseFloat(cs.fontSize) < 10.5) out.push(`${parseFloat(cs.fontSize)}px "${(el.textContent || '').trim().slice(0, 30)}"`);
+      }
+      return out;
+    });
+    expect(tiny, path).toEqual([]);
+  }
+});
+
 test('form labels focus their field (UI-004)', async ({ page }) => {
   await page.goto('/settings');
   await expectAppShell(page);

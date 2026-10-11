@@ -847,7 +847,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                       {tab.label}
                     </span>
                     {tab.badge !== undefined && (
-                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold border transition-colors ${
+                      <span className={`text-2xs font-mono px-2 py-0.5 rounded-full font-bold border transition-colors ${
                         isSelected
                           ? 'bg-primary-500/20 text-primary-700 dark:text-primary-300 border-primary-500/30'
                           : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border-black/5 dark:border-white/10 hidden sm:inline'

@@ -979,14 +979,14 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                             <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden sm:inline'} ${isSelected ? config.activeText : config.color}`}>
                                                 {config.label}
                                             </span>
-                                            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold border transition-colors ${config.badgeStyle} ${isSelected
+                                            <span className={`text-2xs font-mono px-2 py-0.5 rounded-full font-bold border transition-colors ${config.badgeStyle} ${isSelected
                                                     ? 'inline shadow-xs'
                                                     : 'hidden sm:inline opacity-90 hover:opacity-100'
                                                 }`}>
                                                 {metrics.count}
                                             </span>
                                         </span>
-                                        <span className="text-[10px] font-mono tracking-tight font-bold text-light-text dark:text-dark-text">
+                                        <span className="text-2xs font-mono tracking-tight font-bold text-light-text dark:text-dark-text">
                                             {metrics.distanceStr}
                                         </span>
                                     </span>
@@ -1038,7 +1038,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         <SlidersHorizontal className={`w-4 h-4 ${isSidebarOpen ? 'text-primary-600 dark:text-primary-400' : 'text-primary-500'} transition-transform duration-300 ${isSidebarOpen ? 'rotate-90' : ''}`} />
                         <span>Controls & Appearance</span>
                         {activeFilterCount > 0 && !isSidebarOpen && (
-                            <span className="px-1.5 py-0.5 rounded-full text-3xs font-bold bg-primary-500 text-white leading-none">
+                            <span className="px-1.5 py-0.5 rounded-full text-2xs font-bold bg-primary-500 text-white leading-none">
                                 {activeFilterCount}
                             </span>
                         )}
@@ -1102,7 +1102,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 <SlidersHorizontal className={`w-3.5 h-3.5 ${isSidebarOpen ? 'text-primary-600 dark:text-primary-400' : 'text-primary-500'} transition-transform duration-300 ${isSidebarOpen ? 'rotate-90' : ''}`} />
                                 <span className="text-2xs font-bold uppercase tracking-wider">Controls</span>
                                 {activeFilterCount > 0 && !isSidebarOpen && (
-                                    <span className="px-1.5 py-0.5 rounded-full text-3xs font-bold bg-primary-500 text-white leading-none">
+                                    <span className="px-1.5 py-0.5 rounded-full text-2xs font-bold bg-primary-500 text-white leading-none">
                                         {activeFilterCount}
                                     </span>
                                 )}
@@ -1149,7 +1149,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         <span className="relative z-10 flex flex-col items-center justify-center truncate px-0.5">
                                             <span className="flex items-center gap-1 truncate">
                                                 <IconComponent className={`w-3.5 h-3.5 shrink-0 transition-colors duration-200 ${config.color}`} weight="duotone" />
-                                                <span className={`text-[11px] font-bold tracking-tight ${isSelected ? config.activeText : config.color}`}>{config.shortLabel}</span>
+                                                <span className={`text-2xs font-bold tracking-tight ${isSelected ? config.activeText : config.color}`}>{config.shortLabel}</span>
                                                 <span className={`text-[8.5px] font-mono px-1 py-0.2 rounded-full font-bold border transition-colors ${config.badgeStyle}`}>
                                                     {metrics.count}
                                                 </span>
@@ -1267,7 +1267,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             </label>
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <span className="text-3xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-0.5">From</span>
+                                    <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-0.5">From</span>
                                     <GlassDatePicker
                                         value={dateFrom}
                                         onChange={setDateFrom}
@@ -1276,7 +1276,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     />
                                 </div>
                                 <div>
-                                    <span className="text-3xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-0.5">To</span>
+                                    <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-0.5">To</span>
                                     <GlassDatePicker
                                         value={dateTo}
                                         onChange={setDateTo}

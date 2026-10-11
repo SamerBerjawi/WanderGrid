@@ -805,6 +805,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
 ## 6. Phase 4: UI consistency and accessibility
 
 ### WP-4.1 Zoom and type scale
+- **Status: ✅ Done.** M-56: pinch-zoom enabled (quick win #13). M-57 (decision C-2): the 95% root size is removed; `text-2xs` is 11 px; `text-3xs` (57 uses) and arbitrary 7–11 px sizes (49 uses) are mapped to it; chart axis labels raised to 11 px; Design.md gets a "Type Scale Floor" section. An e2e check confirms no visible HTML text below 11 px on Dashboard, Flights, Settings and Planner.
 - **Covers:** M-56 (UI-001), M-57 (UI-002); see C-2.
 - **Files:**
   - `index.html:6`: viewport.

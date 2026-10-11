@@ -154,8 +154,8 @@ export const PassportStamp: React.FC<PassportStampProps> = ({ country }) => {
                         <div className="absolute inset-0.5 rounded-full border border-dashed border-current opacity-70" />
                         <div className="w-full h-full rounded-full border border-current flex flex-col items-center justify-center font-mono">
                             <span className="text-base sm:text-xl leading-none mb-0.5">{country.flag}</span>
-                            <span className="text-[8px] sm:text-[10px] tracking-tight font-black uppercase text-center leading-none truncate max-w-[50px] sm:max-w-[62px]">{country.name}</span>
-                            <span className="text-[7px] sm:text-[8px] font-mono font-bold mt-0.5 tracking-tight opacity-75">{formattedDate}</span>
+                            <span className="text-2xs sm:text-2xs tracking-tight font-black uppercase text-center leading-none truncate max-w-[50px] sm:max-w-[62px]">{country.name}</span>
+                            <span className="text-2xs sm:text-2xs font-mono font-bold mt-0.5 tracking-tight opacity-75">{formattedDate}</span>
                         </div>
                     </div>
                 ) : shapeIndex === 1 ? (
@@ -169,10 +169,10 @@ export const PassportStamp: React.FC<PassportStampProps> = ({ country }) => {
                     >
                         <div className="absolute inset-0.5 rounded-lg border border-dotted border-current opacity-70" />
                         <div className="w-full h-full rounded-md border border-current flex flex-col items-center justify-center font-mono">
-                            <span className="text-[7px] sm:text-[8px] font-bold tracking-widest uppercase leading-none opacity-70 scale-90">ENTRY</span>
+                            <span className="text-2xs sm:text-2xs font-bold tracking-widest uppercase leading-none opacity-70 scale-90">ENTRY</span>
                             <span className="text-base sm:text-xl leading-none my-0.5">{country.flag}</span>
-                            <span className="text-[8px] sm:text-[10px] font-black tracking-tight uppercase leading-none truncate max-w-[50px] sm:max-w-[62px]">{country.name}</span>
-                            <span className="text-[7px] sm:text-[8px] font-bold tracking-tight block leading-none mt-0.5 opacity-75">{formattedDate}</span>
+                            <span className="text-2xs sm:text-2xs font-black tracking-tight uppercase leading-none truncate max-w-[50px] sm:max-w-[62px]">{country.name}</span>
+                            <span className="text-2xs sm:text-2xs font-bold tracking-tight block leading-none mt-0.5 opacity-75">{formattedDate}</span>
                         </div>
                     </div>
                 ) : (
@@ -186,19 +186,19 @@ export const PassportStamp: React.FC<PassportStampProps> = ({ country }) => {
                     >
                         <div className="absolute inset-0.5 rounded-lg border-t border-b border-dashed border-current opacity-70" />
                         <div className="w-full h-full rounded-lg flex flex-col items-center justify-center font-mono">
-                            <span className="text-[7px] sm:text-[8px] font-bold tracking-widest uppercase leading-none opacity-70 scale-90">PORT</span>
+                            <span className="text-2xs sm:text-2xs font-bold tracking-widest uppercase leading-none opacity-70 scale-90">PORT</span>
                             <div className="flex items-center gap-1 my-0.5 justify-center">
                                 <span className="text-sm sm:text-base leading-none">{country.flag}</span>
-                                <span className="text-[10px] sm:text-xs font-bold tracking-tight block leading-none">{country.code}</span>
+                                <span className="text-2xs sm:text-xs font-bold tracking-tight block leading-none">{country.code}</span>
                             </div>
-                            <span className="text-[7px] sm:text-[8px] font-bold tracking-tight opacity-75">{formattedDate}</span>
+                            <span className="text-2xs sm:text-2xs font-bold tracking-tight opacity-75">{formattedDate}</span>
                         </div>
                     </div>
                 )}
             </div>
 
             {/* Micro Floating Tooltip on Hover */}
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2 z-30 px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-black/85 dark:bg-white/90 text-white dark:text-black whitespace-nowrap shadow-md flex items-center gap-1">
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2 z-30 px-2 py-0.5 rounded-full text-2xs font-mono font-bold bg-black/85 dark:bg-white/90 text-white dark:text-black whitespace-nowrap shadow-md flex items-center gap-1">
                 <span>{country.name}</span>
                 <span className="opacity-60">•</span>
                 <span>{country.tripCount}x</span>

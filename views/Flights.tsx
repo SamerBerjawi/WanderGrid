@@ -535,7 +535,7 @@ const BundleJourneyTimeline: React.FC<BundleJourneyTimelineProps> = React.memo((
                               {arrTime}
                             </span>
                             {dateDiff > 0 && (
-                              <span className="text-3xs font-mono font-bold text-rose-500 dark:text-rose-400 bg-rose-500/10 px-1 py-0.2 rounded">
+                              <span className="text-2xs font-mono font-bold text-rose-500 dark:text-rose-400 bg-rose-500/10 px-1 py-0.2 rounded">
                                 +{dateDiff}d
                               </span>
                             )}
@@ -546,7 +546,7 @@ const BundleJourneyTimeline: React.FC<BundleJourneyTimelineProps> = React.memo((
 
                           {/* Layover chip below destination if there's a subsequent connecting leg in the same journey */}
                           {layoverMinutes > 0 && (
-                            <span className="mt-2 px-2.5 py-0.5 rounded-full text-3xs font-mono font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center gap-1 shadow-2xs whitespace-nowrap">
+                            <span className="mt-2 px-2.5 py-0.5 rounded-full text-2xs font-mono font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center gap-1 shadow-2xs whitespace-nowrap">
                               <Clock className="w-2.5 h-2.5" />
                               {formatFlightDuration(layoverMinutes)} layover
                             </span>
@@ -674,7 +674,7 @@ const BundleJourneyTimeline: React.FC<BundleJourneyTimelineProps> = React.memo((
                                 {getCityName(flight.origin) || flight.origin}
                               </span>
                               {flight.departureTerminal && (
-                                <span className="text-3xs font-mono text-zinc-400 dark:text-zinc-500 mt-0.5">
+                                <span className="text-2xs font-mono text-zinc-400 dark:text-zinc-500 mt-0.5">
                                   T{flight.departureTerminal}
                                 </span>
                               )}
@@ -686,7 +686,7 @@ const BundleJourneyTimeline: React.FC<BundleJourneyTimelineProps> = React.memo((
                                 <div className="w-full h-[1.5px] bg-gradient-to-r from-sky-500/20 via-sky-500 to-sky-500/20 dark:from-sky-400/20 dark:via-sky-400 dark:to-sky-400/20" />
                                 <Plane className="w-3.5 h-3.5 text-sky-500 absolute -top-1.5 rotate-45" />
                               </div>
-                              <span className="text-3xs font-mono text-zinc-400 dark:text-zinc-500 uppercase mt-2">
+                              <span className="text-2xs font-mono text-zinc-400 dark:text-zinc-500 uppercase mt-2">
                                 {flightDuration}
                               </span>
                             </div>
@@ -698,7 +698,7 @@ const BundleJourneyTimeline: React.FC<BundleJourneyTimelineProps> = React.memo((
                                   {arrTime}
                                 </span>
                                 {dateDiff > 0 && (
-                                  <span className="text-3xs font-mono font-bold text-rose-500 dark:text-rose-400 bg-rose-500/10 px-1 py-0.2 rounded">
+                                  <span className="text-2xs font-mono font-bold text-rose-500 dark:text-rose-400 bg-rose-500/10 px-1 py-0.2 rounded">
                                     +{dateDiff}d
                                   </span>
                                 )}
@@ -710,7 +710,7 @@ const BundleJourneyTimeline: React.FC<BundleJourneyTimelineProps> = React.memo((
                                 {getCityName(flight.destination) || flight.destination}
                               </span>
                               {flight.arrivalTerminal && (
-                                <span className="text-3xs font-mono text-zinc-400 dark:text-zinc-500 mt-0.5">
+                                <span className="text-2xs font-mono text-zinc-400 dark:text-zinc-500 mt-0.5">
                                   T{flight.arrivalTerminal}
                                 </span>
                               )}
@@ -726,7 +726,7 @@ const BundleJourneyTimeline: React.FC<BundleJourneyTimelineProps> = React.memo((
                               <span className="font-mono text-xs">{formatFlightDuration(layoverMinutes)} layover</span>
                               <span className="opacity-75 font-normal text-2xs truncate">in {getCityName(flight.destination) || flight.destination}</span>
                             </div>
-                            <span className="text-3xs font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 shrink-0">
+                            <span className="text-2xs font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 shrink-0">
                               Connection
                             </span>
                           </div>
@@ -748,7 +748,7 @@ const BundleJourneyTimeline: React.FC<BundleJourneyTimelineProps> = React.memo((
                       {destinationStayInfo.label}
                     </span>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-3xs font-bold uppercase tracking-wider bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 shrink-0">
+                  <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 shrink-0">
                     Destination Stay
                   </span>
                 </div>

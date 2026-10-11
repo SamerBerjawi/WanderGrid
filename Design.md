@@ -279,3 +279,10 @@ Every component and view must pass this mobile checklist:
 ---
 
 *This specification is active and binding for all development on WanderGrid.*
+
+## Type Scale Floor (accessibility)
+- The root font size is the browser default (no `html { font-size }` override).
+- `text-2xs` is **11px** and is the smallest size in the system — status pills, badges and counters only.
+- Informational text (labels, helper text, table metadata) uses `text-xs` (12px) or larger.
+- `text-3xs` and arbitrary `text-[Npx]` sizes below 11px are not used.
+- Pinch-zoom is never disabled (`user-scalable=no` / `maximum-scale` are forbidden in the viewport meta).

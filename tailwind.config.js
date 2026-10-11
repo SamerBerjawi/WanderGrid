@@ -26,8 +26,9 @@ export default {
         sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"SF Pro Display"', '"SF Pro"', 'sans-serif'],
       },
       fontSize: {
-        '3xs': ['0.5625rem', { lineHeight: '0.75rem' }],
-        '2xs': ['0.625rem', { lineHeight: '0.875rem' }],
+        // Smallest size in the system: 11px, for pills and counters only (UI-002, decision C-2).
+        // Informational text uses text-xs (12px) or larger. text-3xs was retired.
+        '2xs': ['0.6875rem', { lineHeight: '1rem' }],
       },
       zIndex: {
         'dropdown': '30',

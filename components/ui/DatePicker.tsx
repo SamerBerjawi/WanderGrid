@@ -497,7 +497,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                   {/* Weekday Header Row */}
                   <div className="grid grid-cols-7 gap-1 text-center py-2">
                     {WEEKDAYS.map((w, idx) => (
-                      <div key={idx} className="text-3xs font-extrabold text-light-text-secondary dark:text-dark-text-secondary">
+                      <div key={idx} className="text-2xs font-extrabold text-light-text-secondary dark:text-dark-text-secondary">
                         {w}
                       </div>
                     ))}

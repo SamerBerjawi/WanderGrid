@@ -224,7 +224,7 @@ export const AchievementMilestones: React.FC<AchievementMilestonesProps> = ({
               </div>
 
               <div className="space-y-1.5 relative z-10">
-                <div className="flex justify-between items-end text-3xs sm:text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary">
+                <div className="flex justify-between items-end text-2xs sm:text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary">
                   <span className="uppercase">
                     {isUnlocked ? 'Unlocked' : 'In Progress'}
                   </span>

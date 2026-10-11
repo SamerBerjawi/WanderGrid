@@ -207,7 +207,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
           <button
             type="button"
             onClick={togglePeriod}
-            className="px-2 py-1 rounded-xl text-3xs font-black uppercase tracking-wider transition-all cursor-pointer bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-primary-600 dark:text-primary-400 border border-primary-500/20 shadow-2xs hover:scale-105 active:scale-95 select-none"
+            className="px-2 py-1 rounded-xl text-2xs font-black uppercase tracking-wider transition-all cursor-pointer bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-primary-600 dark:text-primary-400 border border-primary-500/20 shadow-2xs hover:scale-105 active:scale-95 select-none"
             title={`Click to switch to ${isPm ? 'AM' : 'PM'}`}
             aria-label={`Toggle period, currently ${isPm ? 'PM' : 'AM'}`}
           >

@@ -4149,7 +4149,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                                             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-normal flex items-center gap-2 flex-wrap">
                                                                 <span>{hasCustomProvider ? f.provider : legMode}</span>
                                                                 {hasCustomProvider && (
-                                                                    <span className="px-1.5 py-0.2 rounded text-3xs font-semibold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-gray-400">
+                                                                    <span className="px-1.5 py-0.2 rounded text-2xs font-semibold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-gray-400">
                                                                         {legMode}
                                                                     </span>
                                                                 )}
@@ -4207,7 +4207,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                         <span className="text-xs font-extrabold uppercase tracking-wider text-primary-600 dark:text-primary-400">
                                             Route
                                         </span>
-                                        <span className="px-1.5 py-0.5 rounded-md text-3xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary ml-1">
+                                        <span className="px-1.5 py-0.5 rounded-md text-2xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary ml-1">
                                             {summary.singleActivityLabel}
                                         </span>
                                     </div>

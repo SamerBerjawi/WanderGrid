@@ -219,7 +219,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           <p className="text-2xs font-bold text-zinc-500 dark:text-zinc-300 uppercase tracking-widest">
                             {nextTrip.status === 'Planning' ? 'Planned Trip' : 'Coming Up Next'}
                           </p>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                          <span className={`text-2xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
                             nextTrip.status === 'Planning' 
                               ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20' 
                               : 'bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/20'
@@ -344,7 +344,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {/* Version Detail */}
                 <div 
                     className={`pt-2 font-mono font-medium text-zinc-400 dark:text-zinc-500 text-center select-none truncate transition-all ${
-                        isCollapsed ? 'text-[9px] tracking-tight' : 'text-xs tracking-wider opacity-70'
+                        isCollapsed ? 'text-2xs tracking-tight' : 'text-xs tracking-wider opacity-70'
                     }`}
                     title={`WanderGrid ${APP_VERSION}`}
                 >
@@ -386,7 +386,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }`}
                 >
                   <Icon name={item.icon} className={`text-xl leading-none ${isActive ? itemTheme.color : ''}`} />
-                  <span className={`text-[10px] font-bold uppercase tracking-tight mt-1 text-center leading-tight max-w-full truncate font-sans ${isActive ? itemTheme.color : ''}`}>
+                  <span className={`text-2xs font-bold uppercase tracking-tight mt-1 text-center leading-tight max-w-full truncate font-sans ${isActive ? itemTheme.color : ''}`}>
                     {item.shortLabel || item.label}
                   </span>
                   {isActive && (
@@ -418,7 +418,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }`}
                 >
                   <Icon name="more_horiz" className={`text-xl leading-none ${isMoreActive ? moreTheme?.color : ''}`} />
-                  <span className={`text-[10px] font-bold uppercase tracking-tight mt-1 text-center leading-tight font-sans ${isMoreActive ? moreTheme?.color : ''}`}>More</span>
+                  <span className={`text-2xs font-bold uppercase tracking-tight mt-1 text-center leading-tight font-sans ${isMoreActive ? moreTheme?.color : ''}`}>More</span>
                   {isMoreActive && (
                     <motion.div 
                       layoutId="mobileActiveIndicatorDot"
@@ -591,7 +591,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   )}
 
                   {/* Version Detail */}
-                  <div className="pt-2 pb-1 text-center font-mono text-[10px] font-medium text-zinc-400 dark:text-zinc-500 select-none tracking-wider opacity-70">
+                  <div className="pt-2 pb-1 text-center font-mono text-2xs font-medium text-zinc-400 dark:text-zinc-500 select-none tracking-wider opacity-70">
                     {APP_VERSION}
                   </div>
                 </div>

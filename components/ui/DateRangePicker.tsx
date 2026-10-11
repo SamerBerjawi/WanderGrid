@@ -359,7 +359,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             }`}
           >
             <div className="min-w-0 flex-1">
-              <span className="text-3xs uppercase font-extrabold tracking-wider text-light-text-secondary/60 dark:text-dark-text-secondary/60 block leading-tight">
+              <span className="text-2xs uppercase font-extrabold tracking-wider text-light-text-secondary/60 dark:text-dark-text-secondary/60 block leading-tight">
                 {startLabel}
               </span>
               <span className="text-xs font-bold text-light-text dark:text-dark-text truncate block leading-tight">
@@ -385,7 +385,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 }`}
               >
                 <div className="min-w-0 flex-1">
-                  <span className="text-3xs uppercase font-extrabold tracking-wider text-light-text-secondary/60 dark:text-dark-text-secondary/60 block leading-tight">
+                  <span className="text-2xs uppercase font-extrabold tracking-wider text-light-text-secondary/60 dark:text-dark-text-secondary/60 block leading-tight">
                     {endLabel}
                   </span>
                   <span className="text-xs font-bold text-light-text dark:text-dark-text truncate block leading-tight">
@@ -581,7 +581,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   {/* Weekday Header Row */}
                   <div className="grid grid-cols-7 gap-1 text-center py-1">
                     {WEEKDAYS.map((w, idx) => (
-                      <div key={idx} className="text-3xs font-extrabold text-light-text-secondary/60 dark:text-dark-text-secondary/60">
+                      <div key={idx} className="text-2xs font-extrabold text-light-text-secondary/60 dark:text-dark-text-secondary/60">
                         {w}
                       </div>
                     ))}

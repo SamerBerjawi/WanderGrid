@@ -2163,17 +2163,17 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                                 key={wp.id || wIdx}
                                                                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-light-text dark:text-dark-text shadow-2xs"
                                                                             >
-                                                                                <span className="w-4 h-4 rounded-full bg-amber-500 text-white font-bold text-3xs flex items-center justify-center shrink-0">
+                                                                                <span className="w-4 h-4 rounded-full bg-amber-500 text-white font-bold text-2xs flex items-center justify-center shrink-0">
                                                                                     {wIdx + 1}
                                                                                 </span>
                                                                                 <span className="font-bold text-amber-800 dark:text-amber-200">{wp.name}</span>
                                                                                 {wp.type && wp.type !== 'Stop' && (
-                                                                                    <span className="text-3xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 uppercase font-mono font-bold">
+                                                                                    <span className="text-2xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 uppercase font-mono font-bold">
                                                                                         {wp.type}
                                                                                     </span>
                                                                                 )}
                                                                                 {wp.addToVisited !== false && (
-                                                                                    <span className="text-3xs text-emerald-600 dark:text-emerald-400 font-bold ml-0.5" title="Added to Visited Places">
+                                                                                    <span className="text-2xs text-emerald-600 dark:text-emerald-400 font-bold ml-0.5" title="Added to Visited Places">
                                                                                         ✓ Visited
                                                                                     </span>
                                                                                 )}
@@ -2322,7 +2322,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                         </div>
                                                         <div className="w-1.5 h-1.5 rounded-full bg-amber-500 border border-amber-400 shrink-0"></div>
                                                     </div>
-                                                    <span className="text-3xs font-mono font-bold uppercase tracking-wider text-light-text-secondary/70 dark:text-dark-text-secondary/70 mt-1.5">
+                                                    <span className="text-2xs font-mono font-bold uppercase tracking-wider text-light-text-secondary/70 dark:text-dark-text-secondary/70 mt-1.5">
                                                         {formatDateRange(stay.checkInDate, stay.checkOutDate, settings)}
                                                     </span>
                                                 </div>
@@ -2504,7 +2504,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                     </svg>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                                         <span className="text-xl font-black text-light-text dark:text-dark-text">{formatCurrency(totalCost)}</span>
-                                        <span className="text-3xs uppercase tracking-widest font-bold text-light-text-secondary dark:text-dark-text-secondary">Total Spend</span>
+                                        <span className="text-2xs uppercase tracking-widest font-bold text-light-text-secondary dark:text-dark-text-secondary">Total Spend</span>
                                     </div>
                                 </div>
 

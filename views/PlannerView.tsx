@@ -474,7 +474,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                             <Compass className="w-5 h-5" weight="duotone" />
                         </div>
                         <div className="min-w-0">
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary block truncate">
+                            <span className="text-2xs uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary block truncate">
                                 Expeditions
                             </span>
                             <span className="text-base sm:text-lg font-black text-light-text dark:text-dark-text font-mono">
@@ -494,7 +494,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                             <CalendarBlank className="w-5 h-5" weight="duotone" />
                         </div>
                         <div className="min-w-0">
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary block truncate">
+                            <span className="text-2xs uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary block truncate">
                                 Days on Road
                             </span>
                             <span className="text-base sm:text-lg font-black text-light-text dark:text-dark-text font-mono">
@@ -514,7 +514,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                             <MapPin className="w-5 h-5" weight="duotone" />
                         </div>
                         <div className="min-w-0">
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary block truncate">
+                            <span className="text-2xs uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary block truncate">
                                 Destinations
                             </span>
                             <span className="text-base sm:text-lg font-black text-light-text dark:text-dark-text font-mono">
@@ -534,7 +534,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                             <Clock className="w-5 h-5" weight="duotone" />
                         </div>
                         <div className="min-w-0">
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary block truncate">
+                            <span className="text-2xs uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary block truncate">
                                 Ahead
                             </span>
                             <span className="text-base sm:text-lg font-black text-light-text dark:text-dark-text font-mono">
@@ -597,7 +597,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                             <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden sm:inline'}`}>
                                                 {config.label}
                                             </span>
-                                            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold border transition-colors ${config.badgeStyle} ${
+                                            <span className={`text-2xs font-mono px-2 py-0.5 rounded-full font-bold border transition-colors ${config.badgeStyle} ${
                                                 isSelected 
                                                     ? 'inline shadow-xs' 
                                                     : 'hidden sm:inline opacity-90 hover:opacity-100'
@@ -1297,7 +1297,7 @@ const TripCard: React.FC<TripCardProps> = ({
                     {durationDays && (
                         <span 
                             style={{ WebkitBackdropFilter: 'blur(8px)' }}
-                            className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border backdrop-blur-md shadow-xs ${stageConfig.durationBadge}`}
+                            className={`text-2xs font-mono font-bold px-2.5 py-0.5 rounded-full border backdrop-blur-md shadow-xs ${stageConfig.durationBadge}`}
                         >
                             {durationDays} {durationDays === 1 ? 'day' : 'days'}
                         </span>
@@ -1342,7 +1342,7 @@ const TripCard: React.FC<TripCardProps> = ({
                                 <span 
                                     style={{ WebkitBackdropFilter: 'blur(8px)' }}
                                     title={destinationsList.slice(2).join(', ')}
-                                    className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 backdrop-blur-md shadow-xs shrink-0 cursor-default"
+                                    className="text-2xs font-mono font-bold px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 backdrop-blur-md shadow-xs shrink-0 cursor-default"
                                 >
                                     +{destinationsList.length - 2}
                                 </span>

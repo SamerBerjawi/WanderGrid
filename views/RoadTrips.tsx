@@ -145,7 +145,7 @@ const SortableWaypointItem: React.FC<SortableWaypointItemProps> = ({ waypoint, o
           <DotsSixVertical className="w-4 h-4" />
         </button>
         <span className="font-semibold text-light-text dark:text-dark-text truncate">{waypoint.name}</span>
-        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary-500/10 text-primary-600 dark:text-primary-400 shrink-0">
+        <span className="text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary-500/10 text-primary-600 dark:text-primary-400 shrink-0">
           {waypoint.type}
         </span>
         {waypoint.notes && (

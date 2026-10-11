@@ -1991,16 +1991,16 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             <span className="font-bold text-xs text-light-text dark:text-dark-text truncate">
                                                 {t.origin} &rarr; {t.destination}
                                             </span>
-                                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary">
+                                            <span className="px-1.5 py-0.2 rounded text-2xs font-bold uppercase bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary">
                                                 {t.mode}
                                             </span>
                                             {isConnecting && (
-                                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                                                <span className="px-1.5 py-0.2 rounded text-2xs font-bold uppercase bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
                                                     Connecting
                                                 </span>
                                             )}
                                             {isBeingEdited && (
-                                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-500/30">
+                                                <span className="px-1.5 py-0.2 rounded text-2xs font-bold uppercase bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-500/30">
                                                     Editing
                                                 </span>
                                             )}
@@ -2075,11 +2075,11 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             <span className="font-bold text-xs text-light-text dark:text-dark-text truncate">
                                                 {a.name}
                                             </span>
-                                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                            <span className="px-1.5 py-0.2 rounded text-2xs font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400">
                                                 {a.type}
                                             </span>
                                             {isBeingEdited && (
-                                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                                                <span className="px-1.5 py-0.2 rounded text-2xs font-bold uppercase bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                                                     Editing
                                                 </span>
                                             )}
@@ -2160,7 +2160,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         overrides={{ borderRadius: 9999 }}
                     >
                         <div className="flex items-center gap-2 h-11 leading-none">
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                            <span className="text-2xs uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
                                 Est. Total
                             </span>
                             <span className="text-xs font-mono font-black text-primary-600 dark:text-primary-400">
@@ -2252,7 +2252,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                         <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden sm:inline'}`}>
                                             {config.label}
                                         </span>
-                                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold border transition-colors ${config.badgeStyle} ${
+                                        <span className={`text-2xs font-mono px-2 py-0.5 rounded-full font-bold border transition-colors ${config.badgeStyle} ${
                                             isSelected 
                                                 ? 'inline shadow-xs' 
                                                 : 'hidden sm:inline opacity-90 hover:opacity-100'
@@ -2445,7 +2445,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                         {u.profilePicture ? (
                                                             <img src={u.profilePicture} alt={u.name} className="w-4 h-4 rounded-full object-cover" />
                                                         ) : (
-                                                            <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-[9px] font-bold">
+                                                            <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-2xs font-bold">
                                                                 {u.name.charAt(0)}
                                                             </div>
                                                         )}
@@ -2536,7 +2536,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             }`}
                                         >
                                             <IconM className="w-4 h-4 mb-0.5" weight={isSel ? "duotone" : "regular"} />
-                                            <span className="text-[10px] font-semibold uppercase tracking-tight leading-tight">{m.label}</span>
+                                            <span className="text-2xs font-semibold uppercase tracking-tight leading-tight">{m.label}</span>
                                         </button>
                                     );
                                 })}
@@ -2698,7 +2698,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             }`}
                                             title={t}
                                         >
-                                            <span className="text-[10px] font-semibold uppercase tracking-tight leading-tight truncate w-full">{t}</span>
+                                            <span className="text-2xs font-semibold uppercase tracking-tight leading-tight truncate w-full">{t}</span>
                                         </button>
                                     );
                                 })}
@@ -2720,7 +2720,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                         <MapPin className="w-3.5 h-3.5 text-amber-500" />
                                         <span>Address / Google Maps Location</span>
                                     </label>
-                                    <span className="text-[10px] text-amber-500 font-semibold">Live Lookup</span>
+                                    <span className="text-2xs text-amber-500 font-semibold">Live Lookup</span>
                                 </div>
                                 <Autocomplete 
                                     placeholder="Street address, hotel name, or paste Google Maps link..." 
@@ -2977,7 +2977,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                     {u.profilePicture ? (
                                                         <img src={u.profilePicture} alt={u.name} className="w-4 h-4 rounded-full object-cover" />
                                                     ) : (
-                                                        <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-[9px] font-bold">
+                                                        <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-2xs font-bold">
                                                             {u.name.charAt(0)}
                                                         </div>
                                                     )}
@@ -3061,7 +3061,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                 }`}
                                             >
                                                 <IconM className="w-5 h-5 mb-1" />
-                                                <span className="text-[10px] font-semibold uppercase tracking-tight leading-tight">{m.label}</span>
+                                                <span className="text-2xs font-semibold uppercase tracking-tight leading-tight">{m.label}</span>
                                             </button>
                                         );
                                     })}
@@ -3214,7 +3214,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                 }`}
                                                 title={t}
                                             >
-                                                <span className="text-[10px] font-semibold uppercase tracking-tight leading-tight truncate w-full">{t}</span>
+                                                <span className="text-2xs font-semibold uppercase tracking-tight leading-tight truncate w-full">{t}</span>
                                             </button>
                                         );
                                     })}
@@ -3230,7 +3230,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             <MapPin className="w-3.5 h-3.5 text-amber-500" />
                                             <span>Address / Google Maps Location</span>
                                         </label>
-                                        <span className="text-[10px] text-amber-500 font-semibold">Live Lookup</span>
+                                        <span className="text-2xs text-amber-500 font-semibold">Live Lookup</span>
                                     </div>
                                     <Autocomplete 
                                         placeholder="Street address, hotel name, or paste Google Maps link..." 

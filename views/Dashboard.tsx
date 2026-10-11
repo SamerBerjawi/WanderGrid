@@ -978,7 +978,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             <h2 className="text-sm sm:text-base font-bold text-light-text dark:text-dark-text tracking-tight truncate">
                                 Welcome, {currentUser?.name || currentUser?.email?.split('@')[0] || 'Explorer'}
                             </h2>
-                            <span className="px-1.5 py-0.5 rounded-full text-3xs sm:text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 inline-flex items-center gap-1 shrink-0">
+                            <span className="px-1.5 py-0.5 rounded-full text-2xs sm:text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 inline-flex items-center gap-1 shrink-0">
                                 <Shield className="w-2.5 h-2.5 sm:w-3 sm:h-3" weight="duotone" /> Active
                             </span>
                         </div>
@@ -1159,13 +1159,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             {/* Cardholder Footnote */}
                             <div className="flex justify-between items-end border-t border-black/10 dark:border-white/10 pt-2">
                                 <div>
-                                    <span className="block text-3xs font-mono text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-widest">Cardholder</span>
+                                    <span className="block text-2xs font-mono text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-widest">Cardholder</span>
                                     <span className="text-xs font-bold text-light-text dark:text-dark-text uppercase tracking-wider truncate max-w-[130px] block">
                                         {currentUser?.name ? currentUser.name : currentUser?.email ? currentUser.email.split('@')[0] : 'EXPLORER'}
                                     </span>
                                 </div>
                                 <div className="text-right">
-                                    <span className="block text-3xs font-mono text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-widest">Tier</span>
+                                    <span className="block text-2xs font-mono text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-widest">Tier</span>
                                     <span className="text-xs font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider">
                                         {currentLevel.name}
                                     </span>
@@ -1223,7 +1223,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                             </div>
                                             <div className="min-w-0">
                                                 <span className="block text-xs font-bold text-light-text dark:text-dark-text truncate">{t.name}</span>
-                                                <span className="block text-3xs font-mono text-light-text-secondary dark:text-dark-text-secondary uppercase truncate">{t.location}</span>
+                                                <span className="block text-2xs font-mono text-light-text-secondary dark:text-dark-text-secondary uppercase truncate">{t.location}</span>
                                             </div>
                                         </div>
                                         
@@ -1289,7 +1289,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                             {tab.label}
                                         </span>
                                         {tab.count !== undefined && (
-                                            <span className="text-3xs font-mono px-1.5 py-0.2 rounded-full font-bold border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10">
+                                            <span className="text-2xs font-mono px-1.5 py-0.2 rounded-full font-bold border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10">
                                                 {tab.count}
                                             </span>
                                         )}

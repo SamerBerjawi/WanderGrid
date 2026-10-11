@@ -31,7 +31,7 @@ export const TransitFootprintChart: React.FC<{ data: any[]; isDark: boolean }> =
             return null;
           }}
         />
-        <Legend wrapperStyle={{ fontSize: '10px' }} />
+        <Legend wrapperStyle={{ fontSize: '11px' }} />
         <Bar yAxisId="left" dataKey="Distance" fill="#3b82f6" name="Distance (km)" radius={[4, 4, 0, 0]} />
         <Bar yAxisId="right" dataKey="Duration" fill="#10b981" name="Duration (hrs)" radius={[4, 4, 0, 0]} />
       </BarChart>

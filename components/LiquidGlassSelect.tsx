@@ -366,7 +366,7 @@ export const LiquidGlassMultiSelect: React.FC<LiquidGlassMultiSelectProps> = ({
                         )}
                         <span className="truncate text-left">{displayLabel}</span>
                         {value.length > 1 && (
-                            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                            <span className="px-1.5 py-0.2 rounded-full text-2xs font-mono font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
                                 {value.length}
                             </span>
                         )}

@@ -206,11 +206,11 @@ const BasemapCard = React.memo<BasemapCardProps>(({
         </div>
         <div className="mt-0.5 truncate">
           {item.isDarkOnly && !isDark ? (
-            <span className="text-3xs font-semibold text-amber-600 dark:text-amber-400 truncate block">
+            <span className="text-2xs font-semibold text-amber-600 dark:text-amber-400 truncate block">
               {MAP_SETTINGS_LABELS.mapTab.oceanDarkOnlyHelper}
             </span>
           ) : item.subtitle ? (
-            <span className="text-3xs font-medium text-light-text-secondary dark:text-dark-text-secondary truncate block">
+            <span className="text-2xs font-medium text-light-text-secondary dark:text-dark-text-secondary truncate block">
               {item.subtitle}
             </span>
           ) : null}

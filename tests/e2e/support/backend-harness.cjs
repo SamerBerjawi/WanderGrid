@@ -74,6 +74,10 @@ if (BLOCK_EXTERNAL) {
   };
 }
 
+// Keep test output readable: the blocked dataset downloads at startup are expected, not errors.
+const stderrWrite = process.stderr.write.bind(process.stderr);
+process.stderr.write = (chunk, ...rest) => (String(chunk).includes('external network blocked') ? true : stderrWrite(chunk, ...rest));
+
 // ---- boot the real server ----------------------------------------------------
 process.env.PORT = API_PORT;
 process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgres://e2e@memory/e2e';
