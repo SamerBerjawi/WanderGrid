@@ -703,7 +703,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - Full e2e regression; the specs seed via the API, so they double as schema-compatibility checks.
 
 ### WP-2.12 One Tailwind source plus CSP
-- **Status: ⏳ Not started.** Decision recorded: the whole app uses the SF Pro system stack (UI-008).
+- **Status: ✅ Done.** M-09 (SEC-011, PERF-003, UI-008): Tailwind Play CDN and its inline config removed; `gray`→neutral ported into `tailwind.config.js`; runtime accent classes in `DashboardWidgets` safelisted; Google Fonts removed and the whole app uses the SF Pro system stack (decision); body colour uses the `light-text` token. Helmet CSP enabled (`script-src 'self' 'wasm-unsafe-eval' blob:`, no inline/third-party script, `object-src 'none'`); `vite preview` sends the same header and every e2e test fails on a CSP violation. MapLibre's RTL plugin is served as an ES module (`public/vendor/mapbox-gl-rtl-text.mjs`) so no `'unsafe-eval'` is needed.
 - **Covers:** M-09 (SEC-011, PERF-003, UI-008).
 - **Files:**
   - `index.html:36-110`: port the inline config (gray → neutral, fonts) into `tailwind.config.js` first (C-13), then delete the CDN script.

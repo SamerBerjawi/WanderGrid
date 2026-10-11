@@ -301,6 +301,27 @@ function viteDevApiPlugin() {
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
+      // `vite preview` (used by the e2e suite) sends the same Content-Security-Policy as the Express server
+      // (backend_files/server.js CSP_DIRECTIVES), so policy breakages show up in tests. Keep them in sync.
+      preview: {
+        headers: {
+          'Content-Security-Policy': [
+            "default-src 'self'",
+            "script-src 'self' 'wasm-unsafe-eval' blob:",
+            "worker-src 'self' blob:",
+            "child-src 'self' blob:",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: blob: https:",
+            "font-src 'self' data:",
+            "connect-src 'self' https: data: blob:",
+            "media-src 'self' data: blob: https:",
+            "object-src 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+            "frame-ancestors 'self'",
+          ].join('; '),
+        },
+      },
       server: {
         port: 3000,
         // Loopback only by default: the dev server and its unauthenticated proxy middleware must not be

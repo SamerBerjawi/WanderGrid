@@ -20,3 +20,12 @@ test('cross-origin requests are not granted CORS access by default (SEC-016)', a
     const r = await srv.api('OPTIONS', '/api/trips', { headers: { Origin: 'https://evil.example', 'Access-Control-Request-Method': 'GET', 'Access-Control-Request-Headers': 'authorization' } });
     assert.equal(r.headers.get('access-control-allow-origin'), null);
 });
+
+test('responses carry a Content-Security-Policy that forbids inline and third-party scripts (SEC-011)', async () => {
+    const r = await srv.api('GET', '/api/health');
+    const csp = r.headers.get('content-security-policy') || '';
+    assert.match(csp, /script-src 'self'/);
+    assert.doesNotMatch(csp, /script-src[^;]*'unsafe-inline'/);
+    assert.doesNotMatch(csp, /script-src[^;]*https:/);
+    assert.match(csp, /object-src 'none'/);
+});

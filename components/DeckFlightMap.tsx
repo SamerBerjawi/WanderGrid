@@ -40,8 +40,8 @@ try {
             : 'unavailable';
         if (rtlStatus === 'unavailable') {
             const pluginUrl = typeof window !== 'undefined' && window.location?.origin
-                ? `${window.location.origin}/vendor/mapbox-gl-rtl-text.min.js`
-                : '/vendor/mapbox-gl-rtl-text.min.js';
+                ? `${window.location.origin}/vendor/mapbox-gl-rtl-text.mjs`
+                : '/vendor/mapbox-gl-rtl-text.mjs'; // .mjs => loaded via import(), no eval (CSP)
             (maplibregl as any).setRTLTextPlugin(pluginUrl, false);
         }
     }

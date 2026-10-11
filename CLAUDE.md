@@ -7,7 +7,7 @@ WanderGrid is a self-hosted travel planner, flight log and leave manager. It has
 
 **Frontend (root `package.json`, ESM)**
 - React 19.2 / react-dom 19.2, TypeScript ~5.8, Vite 6.2 with `@vitejs/plugin-react` 5, `vite-plugin-pwa` 1.3 (Workbox generateSW)
-- Tailwind CSS 3.4 + PostCSS/autoprefixer; `clsx`, `tailwind-merge`; global CSS in `styles.css`
+- Tailwind CSS 3.4 + PostCSS/autoprefixer (single compiled config; no CDN); `clsx`, `tailwind-merge`; global CSS in `styles.css`. Classes built at runtime must be safelisted in `tailwind.config.js`
 - UI: `@nkzw/liquid-glass` 1.3 (glass surfaces), `@phosphor-icons/react` 2.1, `motion` 12 (`motion/react`), `@number-flow/react`, `@dnd-kit/*`
 - Maps/geo: `maplibre-gl` 6.4, `deck.gl` 9.3, `pmtiles` 4.5, `leaflet` 1.9.4, `react-simple-maps` 3, `d3` 7, `topojson-client`, `searoute-js`, `@mapbox/mapbox-gl-rtl-text`
 - Charts: `recharts` 3.8. Data I/O: `xlsx` 0.18, `html2canvas` 1.4.1. AI: `@google/genai` 1.34
@@ -112,6 +112,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 - **`services/mockDb.ts`** (~1.5k lines) is the real production data client, despite its name. It contains the API client, the localStorage fallback, backup/restore and trip↔flight sync. Edit it carefully. Restore assigns the password `password` to users that have none.
 - **`verifyPassword`** accepts plaintext stored passwords (legacy, no `:` salt separator). This is a legacy compatibility path, so do not extend it.
 - **`backend_files/server.js`** is a ~2.9k-line monolith, and `initDb()` is the real schema. Keep `schema.sql` in sync manually if you touch tables.
+- **Content-Security-Policy:** defined in `backend_files/server.js` (`CSP_DIRECTIVES`) and mirrored in `vite.config.ts` `preview.headers` for the e2e suite; keep them in sync. No inline scripts, `eval`, or third-party script hosts.
 - **Dev proxy duplication:** `vite.config.ts` duplicates the backend route, rail and test proxy logic. A change to one copy is not reflected in the other.
 - **PWA/service worker:** the app auto-reloads on `controllerchange` and on `vite:preloadError`. Stale caches can mask changes, so hard-reload or unregister the SW when testing builds.
 - **Version bumps:** `npm run build` bumps the version and creates a diff in `version.ts` and `package.json`.

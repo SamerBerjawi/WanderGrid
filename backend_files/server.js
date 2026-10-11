@@ -363,8 +363,27 @@ pool.on('error', (err) => {
 });
 
 // Middleware & Security Headers
+// Content-Security-Policy (SEC-011): scripts only from this origin (no inline or third-party script),
+// which contains any future HTML-injection bug. Maps, tiles, geocoding and routing fall-backs still
+// talk to third-party HTTPS hosts from the browser, and map libraries use blob: workers.
+const CSP_DIRECTIVES = {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'", "'wasm-unsafe-eval'", 'blob:'],
+    workerSrc: ["'self'", 'blob:'],
+    childSrc: ["'self'", 'blob:'],
+    styleSrc: ["'self'", "'unsafe-inline'"],
+    imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+    fontSrc: ["'self'", 'data:'],
+    connectSrc: ["'self'", 'https:', 'data:', 'blob:'],
+    mediaSrc: ["'self'", 'data:', 'blob:', 'https:'],
+    objectSrc: ["'none'"],
+    baseUri: ["'self'"],
+    formAction: ["'self'"],
+    frameAncestors: ["'self'"],
+    upgradeInsecureRequests: null,
+};
 app.use(helmet({
-    contentSecurityPolicy: false, // Turned off for seamless loading inside the preview sandbox iframe
+    contentSecurityPolicy: { useDefaults: false, directives: CSP_DIRECTIVES },
     crossOriginEmbedderPolicy: false
 }));
 app.use(compression({ threshold: 1024 }));

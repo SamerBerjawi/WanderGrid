@@ -1,3 +1,5 @@
+import colors from 'tailwindcss/colors';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: 'class',
@@ -12,6 +14,11 @@ export default {
     "./utils/**/*.{js,ts,jsx,tsx}",
     "./services/**/*.{js,ts,jsx,tsx}",
     "./types/**/*.{js,ts,jsx,tsx}"
+  ],
+  // DashboardWidgets builds accent classes at runtime (`bg-${color}-500/10`); the removed Play CDN used to
+  // generate them on the fly, so the accents it can receive are safelisted here.
+  safelist: [
+    { pattern: /^(bg|text|border)-(blue|amber|indigo|rose|emerald|purple|sky|cyan|violet|teal|orange)-(400|500|600)(\/(5|10|15|20|25|30))?$/, variants: ['dark', 'group-hover'] },
   ],
   theme: {
     extend: {
@@ -32,6 +39,9 @@ export default {
         'tooltip': '90',
       },
       colors: {
+        // `gray` renders as Tailwind's neutral scale (previously remapped by the removed Play CDN config,
+        // which is what users saw) — now decided in the one compiled config (UI-008, C-13).
+        gray: colors.neutral,
         primary: {
           50: '#fef8f0',
           100: '#fdeed9',

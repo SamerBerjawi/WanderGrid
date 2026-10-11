@@ -59,5 +59,13 @@ export async function expectAppShell(page: Page) {
 
 export const isMobile = (page: Page) => (page.viewportSize()?.width ?? 1440) < 768;
 
-export const test = base.extend<{}>({});
+/** Every test fails if the page reports a Content-Security-Policy violation (WP-2.12). */
+export const test = base.extend<{}>({
+  page: async ({ page }, use) => {
+    const violations: string[] = [];
+    page.on('console', (m) => { if (/Content Security Policy|Refused to (load|execute|connect|create)/i.test(m.text())) violations.push(m.text()); });
+    await use(page);
+    expect(violations, 'Content-Security-Policy violations').toEqual([]);
+  },
+});
 export { expect };
