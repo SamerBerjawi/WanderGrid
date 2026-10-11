@@ -474,20 +474,23 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
 
     try {
       setLoading(true);
-      for (const id of selectedTripIds) {
+      // One atomic request: delete the journeys and strip them from each linked trip exactly once
+      // (the per-item loop re-saved the same trip from a stale copy and undid earlier removals).
+      const ids = Array.from(selectedTripIds);
+      const removedByTrip: Record<string, string[]> = {};
+      for (const id of ids) {
         const item = roadTrips.find(r => r.id === id);
-        await dataService.deleteFlight(id);
-        if (item?.tripId) {
-          const linkedTrip = trips.find(t => t.id === item.tripId);
-          if (linkedTrip && linkedTrip.transports) {
-            const updated = linkedTrip.transports.filter(tx => tx.id !== id);
-            await dataService.updateTrip({ ...linkedTrip, transports: updated });
-          }
-        }
+        if (item?.tripId) (removedByTrip[item.tripId] = removedByTrip[item.tripId] || []).push(id);
       }
+      const upsertTrips = Object.entries(removedByTrip)
+        .map(([tripId, removed]) => {
+          const linkedTrip = trips.find(t => t.id === tripId);
+          return linkedTrip ? { ...linkedTrip, transports: (linkedTrip.transports || []).filter(tx => !removed.includes(tx.id)) } : null;
+        })
+        .filter(Boolean) as typeof trips;
+      await dataService.applyBatch({ deleteFlights: ids, upsertTrips });
       setSelectedTripIds(new Set());
       setIsMultiEditing(false);
-      window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
       await loadData();
     } catch (err: any) {
       console.error(err);

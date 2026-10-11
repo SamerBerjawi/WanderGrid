@@ -15,6 +15,18 @@ export interface WanderSyncResult<T> {
 export interface WanderSyncOptions {
     ttlMs?: number;
     enabled?: boolean;
+    /** API collections this query reads (e.g. ['trips']); it then refetches only when one of them changes. */
+    collections?: string[];
+}
+
+/**
+ * True when a `wandergrid_db_updated` event concerns any of `collections`. Events without a collection list
+ * (older dispatchers, manual invalidations) affect everything (PERF-008).
+ */
+export function affectsCollections(event: Event | undefined, collections: string[]): boolean {
+    const changed: string[] | undefined = (event as CustomEvent)?.detail?.collections;
+    if (!Array.isArray(changed) || changed.length === 0) return true;
+    return changed.some(c => collections.includes(c));
 }
 
 /**
@@ -120,13 +132,19 @@ export function useWanderSync<T>(
     useEffect(() => {
         if (!isEnabled) return;
 
+        // Mutations arrive in bursts (bulk actions, batches); coalesce them into one refetch.
+        let debounceTimer: ReturnType<typeof setTimeout> | null = null;
         const handleDbUpdate = (event?: Event) => {
             const customEv = event as CustomEvent;
             // Support selective invalidation if a specific query key was passed in event detail
             if (customEv?.detail?.key && customEv.detail.key !== queryKey) {
                 return;
             }
-            executeFetch(true).catch(() => {});
+            if (options?.collections && !affectsCollections(event, options.collections)) {
+                return;
+            }
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => { executeFetch(true).catch(() => {}); }, 100);
         };
 
         const handleSettingsUpdate = () => {
@@ -138,10 +156,12 @@ export function useWanderSync<T>(
         window.addEventListener('wandergrid_db_updated', handleDbUpdate);
         window.addEventListener('wandergrid_settings_updated', handleSettingsUpdate);
         return () => {
+            if (debounceTimer) clearTimeout(debounceTimer);
             window.removeEventListener('wandergrid_db_updated', handleDbUpdate);
             window.removeEventListener('wandergrid_settings_updated', handleSettingsUpdate);
         };
-    }, [executeFetch, queryKey, isEnabled]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [executeFetch, queryKey, isEnabled, (options?.collections || []).join(',')]);
 
     const refetch = useCallback((force = true) => executeFetch(force), [executeFetch]);
 

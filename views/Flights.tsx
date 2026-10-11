@@ -1426,20 +1426,26 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
   };
 
   const executeMultiDelete = async () => {
+    // One atomic request (PERF-008): standalone flights are deleted, and each parent trip is saved once with
+    // all of its selected legs removed (the old per-flight loop re-saved trips from stale copies).
     const idsToDelete = Array.from(selectedFlightIds);
+    const standaloneIds: string[] = [];
+    const removedByTrip: Record<string, string[]> = {};
     for (const fid of idsToDelete) {
        const record = flights.find(f => f.flight.id === fid);
-       if (record) {
-         if (record.trip.id === 'unassigned' || record.trip.id.startsWith('unassigned')) {
-            await dataService.deleteFlight(fid);
-         } else {
-            const targetTrip = { ...record.trip };
-            if (targetTrip.transports) {
-              targetTrip.transports = targetTrip.transports.filter(t => t.id !== fid);
-              await dataService.updateTrip(targetTrip);
-            }
-         }
-       }
+       if (!record) continue;
+       if (record.trip.id === 'unassigned' || record.trip.id.startsWith('unassigned')) standaloneIds.push(fid);
+       else (removedByTrip[record.trip.id] = removedByTrip[record.trip.id] || []).push(fid);
+    }
+    const upsertTrips = Object.entries(removedByTrip).map(([tripId, removed]) => {
+       const trip = trips.find(t => t.id === tripId) || flights.find(f => f.trip.id === tripId)!.trip;
+       return { ...trip, transports: (trip.transports || []).filter(t => !removed.includes(t.id)) };
+    });
+    try {
+       await dataService.applyBatch({ deleteFlights: standaloneIds, upsertTrips });
+    } catch (err: any) {
+       alert(`Could not delete the selected flights. Nothing was changed. ${err?.message || ''}`.trim());
+       return;
     }
     setSelectedFlightIds(new Set());
     setIsMultiEditing(false);

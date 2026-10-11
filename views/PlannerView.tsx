@@ -125,14 +125,18 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
     // 1. Reactive SWR Trips Synchronization
     const { data: tripsData, error: tripsError, refetch: refetchTrips } = useWanderSync<Trip[]>(
         'planner_trips',
-        () => dataService.getTrips()
+        () => dataService.getTrips(),
+        [],
+        { collections: ['trips'] }
     );
 
     const trips = useMemo(() => tripsData || [], [tripsData]);
 
     const { data: usersData } = useWanderSync<User[]>(
         'planner_users',
-        () => dataService.getUsers()
+        () => dataService.getUsers(),
+        [],
+        { collections: ['users'] }
     );
 
     const users = useMemo(() => usersProp || usersData || [], [usersProp, usersData]);

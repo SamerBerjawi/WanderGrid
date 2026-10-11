@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
+import { affectsCollections } from '../hooks/useWanderSync';
 import {
     Compass,
     Globe,
@@ -639,8 +640,8 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
         processGeoData();
 
-        const handleDbUpdate = () => {
-            processGeoData();
+        const handleDbUpdate = (e: Event) => {
+            if (affectsCollections(e, ['visited', 'trips', 'flights'])) processGeoData();
         };
         window.addEventListener('wandergrid_db_updated', handleDbUpdate);
         return () => window.removeEventListener('wandergrid_db_updated', handleDbUpdate);

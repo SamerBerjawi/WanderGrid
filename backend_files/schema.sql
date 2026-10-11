@@ -69,11 +69,6 @@ CREATE TABLE IF NOT EXISTS cached_routes (
 );
 
 -- 4. Database Core Performance & Search GIN Indexes
-CREATE INDEX IF NOT EXISTS idx_trips_data ON trips USING gin (data);
-CREATE INDEX IF NOT EXISTS idx_users_data ON users USING gin (data);
-CREATE INDEX IF NOT EXISTS idx_flights_data ON flights USING gin (data);
-CREATE INDEX IF NOT EXISTS idx_events_data ON events USING gin (data);
-CREATE INDEX IF NOT EXISTS idx_configs_data ON configs USING gin (data);
 
 -- 5. Strict Unique Functional User Email Index (Unique user email index)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users ((LOWER(data->>'email'))) WHERE (data->>'email' IS NOT NULL);

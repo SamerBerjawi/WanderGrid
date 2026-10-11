@@ -811,7 +811,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     const { data: workspaceSettings } = useWanderSync<WorkspaceSettings>(
         'settings',
         () => dataService.getWorkspaceSettings(),
-        []
+        [],
+        { collections: ['settings'] }
     );
 
     // Synchronous & Reactive CARTO API Key Management

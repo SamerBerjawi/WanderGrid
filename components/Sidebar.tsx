@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { affectsCollections } from '../hooks/useWanderSync';
 import { ViewState, Trip, User } from '../types';
 import { dataService } from '../services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';
@@ -99,8 +100,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     loadNextTrip();
 
-    const handleDbUpdate = () => {
-      loadNextTrip();
+    const handleDbUpdate = (e: Event) => {
+      if (affectsCollections(e, ['trips'])) loadNextTrip();
     };
     window.addEventListener('wandergrid_db_updated', handleDbUpdate);
     return () => window.removeEventListener('wandergrid_db_updated', handleDbUpdate);

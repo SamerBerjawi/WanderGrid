@@ -768,6 +768,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - Screenshots are reviewed by the design owner.
 
 ### WP-3.4 Data fetching
+- **Status: ✅ Done (one item skipped).** M-52 (PERF-008): mutations announce the collections they changed and `useWanderSync` (plus the Dashboard, Sidebar, Atlas and Map listeners) refetch only for those, debounced 100 ms; bulk deletes in Flights and Road Trips are one atomic `/api/batch` request (this also fixed per-item loops that re-saved the same trip from a stale copy). PERF-009: server-side trip filtering came with WP-1.2b. M-53: the remaining sequential geocoding path on the Dashboard now resolves unique places in parallel. **Skipped:** `GET /api/trips/:id`, because the trip page also needs the full trip list for its related-trip suggestions, so it would add a request without removing one.
 - **Covers:** M-52 (PERF-008; PERF-009 after WP-1.2b) and M-53 (PERF-010).
 - **Files:**
   - `services/mockDb.ts:526-531`: the event carries a collection key.
@@ -784,6 +785,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - Full e2e regression.
 
 ### WP-3.5 Database query and index cleanup
+- **Status: ✅ Done.** M-55: airport and carrier search answer from the in-memory maps first, so the database is only used before they load. M-54: the five whole-document GIN indexes and the duplicate iata indexes are dropped at startup (`DROP INDEX IF EXISTS`) and removed from `schema.sql`. No participants index was added: ownership filtering runs in the application, so no query would use it.
 - **Covers:** M-54 (PERF-012), M-55 (PERF-013).
 - **Files:**
   - `backend_files/server.js:361-365`: drop the `gin (data)` indexes.

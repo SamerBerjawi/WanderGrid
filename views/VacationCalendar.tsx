@@ -121,12 +121,12 @@ const DEFAULT_COLOR = ENTITLEMENT_COLORS.blue;
 
 export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick }) => {
   // Query state with useWanderSync
-  const { data: rawTrips, loading: tripsLoading, error: tripsError, refetch: refetchTrips } = useWanderSync('trips', () => dataService.getTrips());
-  const { data: users, loading: usersLoading, error: usersError, refetch: refetchUsers } = useWanderSync('users', () => dataService.getUsers());
-  const { data: entitlements, loading: entitlementsLoading } = useWanderSync('entitlements', () => dataService.getEntitlementTypes());
-  const { data: savedConfigs, loading: configsLoading } = useWanderSync('configs', () => dataService.getSavedConfigs());
-  const { data: customEvents, loading: eventsLoading } = useWanderSync('events', () => dataService.getCustomEvents());
-  const { data: settings, loading: settingsLoading } = useWanderSync('settings', () => dataService.getWorkspaceSettings());
+  const { data: rawTrips, loading: tripsLoading, error: tripsError, refetch: refetchTrips } = useWanderSync('trips', () => dataService.getTrips(), [], { collections: ['trips'] });
+  const { data: users, loading: usersLoading, error: usersError, refetch: refetchUsers } = useWanderSync('users', () => dataService.getUsers(), [], { collections: ['users'] });
+  const { data: entitlements, loading: entitlementsLoading } = useWanderSync('entitlements', () => dataService.getEntitlementTypes(), [], { collections: ['entitlements'] });
+  const { data: savedConfigs, loading: configsLoading } = useWanderSync('configs', () => dataService.getSavedConfigs(), [], { collections: ['configs'] });
+  const { data: customEvents, loading: eventsLoading } = useWanderSync('events', () => dataService.getCustomEvents(), [], { collections: ['events'] });
+  const { data: settings, loading: settingsLoading } = useWanderSync('settings', () => dataService.getWorkspaceSettings(), [], { collections: ['settings'] });
 
   // Date controls
   const [currentDate, setCurrentDate] = useState<Date>(new Date(2026, 5, 7)); // Default to June 2026 as per local clock

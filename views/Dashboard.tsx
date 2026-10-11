@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
+import { affectsCollections } from '../hooks/useWanderSync';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '../components/ui';
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
@@ -211,8 +212,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   }, []);
 
   useEffect(() => {
-    const handleDbUpdate = () => {
-      refreshData();
+    const handleDbUpdate = (e: Event) => {
+      if (affectsCollections(e, ['trips', 'flights', 'visited', 'users', 'entitlements', 'configs'])) refreshData();
     };
     window.addEventListener('wandergrid_db_updated', handleDbUpdate);
     return () => {
@@ -370,6 +371,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                           }
                           return c;
                       };
+
+                      // Resolve each unknown place once, in parallel (PERF-010); the loop below then reads the cache.
+                      const missing = new Set<string>();
+                      for (const trip of combinedState) {
+                          for (const tr of trip.transports || []) {
+                              if (tr.origin && (!tr.originLat || !tr.originLng)) missing.add(tr.origin);
+                              if (tr.destination && (!tr.destLat || !tr.destLng)) missing.add(tr.destination);
+                          }
+                      }
+                      await mapWithConcurrency(Array.from(missing), resolveCoordsAsync, GEO_CONCURRENCY_LIMIT);
 
                       let updated = false;
                       for (const trip of combinedState) {

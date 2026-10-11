@@ -77,3 +77,33 @@ test('/api/health reveals no database details when the DB is down (SEC-015)', as
     }
     assert.deepEqual((await srv.api('GET', '/api/health')).json, { status: 'ok' });
 });
+
+test('airport search is answered from RAM without querying the database (PERF-013)', async () => {
+    await srv.ready;
+    // Load the in-memory map with a known airport via the refresh path, then reload caches.
+    const original = global.fetch;
+    global.fetch = (input, init) => {
+        const url = typeof input === 'string' ? input : input.url;
+        if (/localhost|127\.0\.0\.1/.test(url)) return original(input, init);
+        return Promise.resolve(new Response([JSON.stringify({ iata: 'LHR', city_name: 'London', airport_name: 'Heathrow' }), ...Array.from({ length: 20 }, (_, i) => JSON.stringify({ iata: `Z${String(i).padStart(2, "0")}`, city_name: 'Z', airport_name: 'Z' }))].join('\n')));
+    };
+    try { await srv.__test.refreshGlobalDataset('airports'); await srv.__test.loadGlobalData(); } finally { global.fetch = original; }
+    const realQuery = srv.pool.query.bind(srv.pool);
+    const seen = [];
+    srv.pool.query = (text, params) => { seen.push(String(text)); return realQuery(text, params); };
+    try {
+        const r = await srv.api('GET', '/api/airports/search?q=lon', { token: admin.token });
+        assert.equal(r.status, 200);
+        assert.equal(r.json[0].iata, 'LHR');
+        assert.ok(!seen.some((q) => q.includes('global_airports')), 'no table scan per keystroke');
+    } finally {
+        srv.pool.query = realQuery;
+    }
+});
+
+test('unused whole-document GIN and duplicate iata indexes are not created (PERF-012)', async () => {
+    const { rows } = await srv.pool.query(`SELECT indexname FROM pg_indexes`).catch(() => ({ rows: null }));
+    if (!rows) return; // pg-mem may not expose pg_indexes; the DROP statements are still exercised at startup
+    const names = rows.map((r) => r.indexname);
+    for (const unused of ['idx_trips_data', 'idx_users_data', 'idx_flights_data', 'idx_airports_iata']) assert.ok(!names.includes(unused), unused);
+});

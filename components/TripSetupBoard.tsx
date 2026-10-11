@@ -264,7 +264,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     users = []
 }) => {
     // Workspace settings & active currency
-    const { data: settings } = useWanderSync<WorkspaceSettings>('settings', () => dataService.getWorkspaceSettings());
+    const { data: settings } = useWanderSync<WorkspaceSettings>('settings', () => dataService.getWorkspaceSettings(), [], { collections: ['settings'] });
     const activeCurrency = settings?.currency || 'USD';
 
     // Current Active Stage

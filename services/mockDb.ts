@@ -263,6 +263,14 @@ export const isTripAir = (t: any): boolean => {
   return transports.some((tr: any) => !tr.mode || tr.mode === 'Flight');
 };
 
+// API collections touched by a mutating request to `endpoint` (used to scope refetches).
+const collectionsForEndpoint = (endpoint: string): string[] => {
+  const first = endpoint.replace(/^\//, '').split(/[/?]/)[0];
+  if (first === 'batch') return ['trips', 'flights'];
+  if (first === 'restore' || first === 'wipe' || first === 'auth') return [];
+  return first ? [first] : [];
+};
+
 class DataService {
   private _importState: ImportState = { status: '', progress: 0, isActive: false };
   private _importListeners: ((state: ImportState) => void)[] = [];
@@ -615,10 +623,11 @@ class DataService {
               }
 
               const result = await res.json();
-              const isMutation = options?.method && ['POST', 'PUT', 'DELETE'].includes(options.method.toUpperCase());
+              const isMutation = options?.method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method.toUpperCase());
               if (isMutation) {
                   try {
-                      window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
+                      // Tell listeners which collections changed so unrelated views don't refetch (PERF-008).
+                      window.dispatchEvent(new CustomEvent('wandergrid_db_updated', { detail: { collections: collectionsForEndpoint(endpoint) } }));
                   } catch (evErr) {}
               }
               return result;

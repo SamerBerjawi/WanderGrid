@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { affectsCollections } from '../hooks/useWanderSync';
 import { createPortal } from 'react-dom';
 import { ViewState, VisitedItem, Trip, CountryResidenceStatus, getResidenceStatuses, toggleCountryResidenceStatus } from '../types';
 import { dataService } from '../services/mockDb';
@@ -83,8 +84,8 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
   // Sync / Listen for updates
   useEffect(() => {
-    const handleUpdate = () => {
-      void loadData();
+    const handleUpdate = (e: Event) => {
+      if (affectsCollections(e, ['visited', 'trips', 'flights'])) void loadData();
     };
     window.addEventListener('wandergrid_db_updated', handleUpdate);
     return () => {

@@ -512,13 +512,12 @@ const initDb = async (retries = 10, delayMs = 3000) => {
             );
         `);
 
-        // Add GIN indexes on JSONB tables to address latency and fast query filters
+        // Whole-document GIN indexes were never used by any query but were rewritten on every save, and the
+        // dataset tables had duplicate iata indexes; drop them on existing databases (PERF-012).
         console.log('Creating database indexes on core tables...');
-        await client.query('CREATE INDEX IF NOT EXISTS idx_trips_data ON trips USING gin (data)');
-        await client.query('CREATE INDEX IF NOT EXISTS idx_users_data ON users USING gin (data)');
-        await client.query('CREATE INDEX IF NOT EXISTS idx_flights_data ON flights USING gin (data)');
-        await client.query('CREATE INDEX IF NOT EXISTS idx_events_data ON events USING gin (data)');
-        await client.query('CREATE INDEX IF NOT EXISTS idx_configs_data ON configs USING gin (data)');
+        for (const unused of ['idx_trips_data', 'idx_users_data', 'idx_flights_data', 'idx_events_data', 'idx_configs_data', 'idx_airports_iata', 'idx_carriers_iata']) {
+            await client.query(`DROP INDEX IF EXISTS ${unused}`);
+        }
         
         // Strict Unique Functional User Email Index (Unique user email index)
         await client.query("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users ((LOWER(data->>'email'))) WHERE (data->>'email' IS NOT NULL)");
@@ -2181,12 +2180,38 @@ app.get('/api/carriers/lookup/:iata', async (req, res) => {
 });
 
 // Search airports by query term
+// In-memory airport search over the RAM dataset (AGENTS.md §1): no DB round trip or table scan per keystroke (PERF-013).
+function searchAirportsInMemory(q) {
+    const lowerQuery = q.toLowerCase();
+    const results = [];
+    for (const [iata, details] of memoryAirports.entries()) {
+        const isIataMatch = iata.toLowerCase() === lowerQuery;
+        const isIataPartial = iata.toLowerCase().includes(lowerQuery);
+        const isCityMatch = (details.city_name || '').toLowerCase().includes(lowerQuery);
+        const isAirportMatch = (details.airport_name || '').toLowerCase().includes(lowerQuery);
+
+        if (isIataMatch || isIataPartial || isCityMatch || isAirportMatch) {
+            results.push({
+                iata: details.iata,
+                city_name: details.city_name,
+                airport_name: details.airport_name,
+                score: isIataMatch ? 1 : isIataPartial ? 2 : isCityMatch ? 3 : 4
+            });
+        }
+    }
+    results.sort((a,b) => a.score - b.score);
+    return results.slice(0, 15).map(({score, ...rest}) => rest);
+}
+
 app.get('/api/airports/search', async (req, res) => {
     const q = (req.query.q || '').trim();
     if (!q || q.length < 2) {
         return res.json([]);
     }
     
+    // 1. RAM first; the database is only consulted before the in-memory maps are loaded.
+    if (memoryAirports.size > 0) return res.json(searchAirportsInMemory(q));
+
     // 1. Try DB first
     try {
         const searchPattern = `%${q.toLowerCase()}%`;
@@ -2211,35 +2236,42 @@ app.get('/api/airports/search', async (req, res) => {
         console.warn('Database airport search failed, searching in-memory cache:', err.message);
     }
 
-    // 2. Try In-Memory Fallback Search
+    // 2. Database unavailable: answer from memory (possibly empty)
+    res.json(searchAirportsInMemory(q));
+});
+
+// Search carriers by query term
+// In-memory carrier search over the RAM dataset (AGENTS.md §1): no DB round trip or table scan per keystroke (PERF-013).
+function searchCarriersInMemory(q) {
     const lowerQuery = q.toLowerCase();
     const results = [];
-    for (const [iata, details] of memoryAirports.entries()) {
+    for (const [iata, details] of memoryCarriers.entries()) {
         const isIataMatch = iata.toLowerCase() === lowerQuery;
         const isIataPartial = iata.toLowerCase().includes(lowerQuery);
-        const isCityMatch = (details.city_name || '').toLowerCase().includes(lowerQuery);
-        const isAirportMatch = (details.airport_name || '').toLowerCase().includes(lowerQuery);
+        const isCompanyMatch = (details.company_name || '').toLowerCase().includes(lowerQuery);
 
-        if (isIataMatch || isIataPartial || isCityMatch || isAirportMatch) {
+        if ((isIataMatch && iata !== '') || isIataPartial || isCompanyMatch) {
             results.push({
                 iata: details.iata,
-                city_name: details.city_name,
-                airport_name: details.airport_name,
-                score: isIataMatch ? 1 : isIataPartial ? 2 : isCityMatch ? 3 : 4
+                company_name: details.company_name,
+                country_or_territory: details.country_or_territory,
+                score: isIataMatch ? 1 : isCompanyMatch ? 2 : 3
             });
         }
     }
     results.sort((a,b) => a.score - b.score);
-    res.json(results.slice(0, 15).map(({score, ...rest}) => rest));
-});
+    return results.slice(0, 15).map(({score, ...rest}) => rest);
+}
 
-// Search carriers by query term
 app.get('/api/carriers/search', async (req, res) => {
     const q = (req.query.q || '').trim();
     if (!q || q.length < 1) {
         return res.json([]);
     }
     
+    // 1. RAM first; the database is only consulted before the in-memory maps are loaded.
+    if (memoryCarriers.size > 0) return res.json(searchCarriersInMemory(q));
+
     // 1. Try DB first
     try {
         const searchPattern = `%${q.toLowerCase()}%`;
@@ -2262,25 +2294,8 @@ app.get('/api/carriers/search', async (req, res) => {
         console.warn('Database carrier search failed, searching in-memory cache:', err.message);
     }
 
-    // 2. Try In-Memory Fallback Search
-    const lowerQuery = q.toLowerCase();
-    const results = [];
-    for (const [iata, details] of memoryCarriers.entries()) {
-        const isIataMatch = iata.toLowerCase() === lowerQuery;
-        const isIataPartial = iata.toLowerCase().includes(lowerQuery);
-        const isCompanyMatch = (details.company_name || '').toLowerCase().includes(lowerQuery);
-
-        if ((isIataMatch && iata !== '') || isIataPartial || isCompanyMatch) {
-            results.push({
-                iata: details.iata,
-                company_name: details.company_name,
-                country_or_territory: details.country_or_territory,
-                score: isIataMatch ? 1 : isCompanyMatch ? 2 : 3
-            });
-        }
-    }
-    results.sort((a,b) => a.score - b.score);
-    res.json(results.slice(0, 15).map(({score, ...rest}) => rest));
+    // 2. Database unavailable: answer from memory (possibly empty)
+    res.json(searchCarriersInMemory(q));
 });
 
 // Calendar Sync Endpoint (iCal Feed)
@@ -3561,4 +3576,4 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 module.exports.gracefulShutdown = gracefulShutdown;
 // Internals exercised directly by the API test-suite.
-module.exports.__test = { BoundedMap, GLOBAL_DATASETS, parseDatasetLines, refreshGlobalDataset, activeJobs };
+module.exports.__test = { BoundedMap, GLOBAL_DATASETS, parseDatasetLines, refreshGlobalDataset, activeJobs, loadGlobalData };

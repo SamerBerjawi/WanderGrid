@@ -169,9 +169,12 @@ test('W32 bulk select and delete two journeys', async ({ page, request }) => {
   await page.locator('main button[title="Toggle bulk selection"] >> visible=true').first().click();
   const sel = page.locator('main button[aria-label="Select segment"] >> visible=true');
   for (let i = 0; i < 5 && (await sel.count()) > 0; i++) await sel.first().click();
+  const writes: string[] = [];
+  page.on('request', (r) => { if (r.url().includes('/api/') && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(r.method())) writes.push(`${r.method()} ${new URL(r.url()).pathname}`); });
   page.once('dialog', (d) => d.accept());
   await page.getByRole('button', { name: /Delete Selected/ }).click();
   await expect.poll(async () => (await landRecords(request)).length, { timeout: 10_000 }).toBe(0);
+  expect(writes, 'bulk delete is one atomic request (PERF-008)').toEqual(['POST /api/batch']);
 });
 
 test('road trips page has no horizontal overflow with data', async ({ page, request }) => {
