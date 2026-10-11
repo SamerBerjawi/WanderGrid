@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { Sidebar } from './components/Sidebar';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { ViewState, User } from './types';
 import { dataService } from './services/mockDb';
@@ -12,14 +11,20 @@ const Dashboard = lazy(() => import('./views/Dashboard').then(m => ({ default: m
 const Settings = lazy(() => import('./views/Settings').then(m => ({ default: m.Settings })));
 const UserDetail = lazy(() => import('./views/UserDetail').then(m => ({ default: m.UserDetail })));
 const PlannerView = lazy(() => import('./views/PlannerView').then(m => ({ default: m.PlannerView })));
-const VacationPlanner = lazy(() => import('./views/VacationPlanner').then(m => ({ default: m.VacationPlanner })));
 const TripDetail = lazy(() => import('./views/TripDetail').then(m => ({ default: m.TripDetail })));
 const ExpeditionMapView = lazy(() => import('./views/ExpeditionMapView').then(m => ({ default: m.ExpeditionMapView })));
 const Flights = lazy(() => import('./views/Flights').then(m => ({ default: m.Flights })));
 const RoadTrips = lazy(() => import('./views/RoadTrips').then(m => ({ default: m.RoadTrips })));
 const TravelAtlas = lazy(() => import('./views/TravelAtlas').then(m => ({ default: m.TravelAtlas })));
 const VacationCalendar = lazy(() => import('./views/VacationCalendar').then(m => ({ default: m.VacationCalendar })));
-const Auth = lazy(() => import('./views/Auth').then(m => ({ default: m.Auth })));
+// Signed-out visitors always need the sign-in screen: start fetching it immediately instead of after
+// the app shell has rendered (removes one round trip from the login page's LCP).
+const loadAuth = () => import('./views/Auth');
+try { if (!localStorage.getItem('wandergrid_session_token')) void loadAuth(); } catch (e) {}
+const Auth = lazy(() => loadAuth().then(m => ({ default: m.Auth })));
+// The navigation shell (and most of its icon set) is only needed after sign-in; keep it off the login page's
+// critical path (PERF-001/005).
+const Sidebar = lazy(() => import('./components/Sidebar').then(m => ({ default: m.Sidebar })));
 
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { Toaster } from './components/Toaster';
@@ -37,8 +42,8 @@ const getUrlState = () => {
         const queryView = search.get('view');
 
         if (path === '/settings' || queryView === 'settings') return { view: ViewState.SETTINGS };
-        if (path === '/planner' || queryView === 'planner') return { view: ViewState.PLANNER };
-        if (path === '/planner-2' || path === '/planner2' || queryView === 'planner-2') return { view: ViewState.PLANNER_2 };
+        // Planner-2 was removed; its old URLs open the Planner.
+        if (path === '/planner' || path === '/planner-2' || path === '/planner2' || queryView === 'planner' || queryView === 'planner-2') return { view: ViewState.PLANNER };
         if (path === '/map' || queryView === 'map') return { view: ViewState.MAP };
         if (path === '/gamification' || queryView === 'gamification') return { view: ViewState.DASHBOARD };
         // Legacy "-2" URLs of the retired duplicate views resolve to the main pages.
@@ -86,7 +91,6 @@ export default function App() {
       switch(newView) {
           case ViewState.SETTINGS: path = '/settings'; break;
           case ViewState.PLANNER: path = '/planner'; break;
-          case ViewState.PLANNER_2: path = '/planner-2'; break;
           case ViewState.MAP: path = '/map'; break;
           case ViewState.GAMIFICATION: path = '/gamification'; break;
           case ViewState.FLIGHTS: path = '/flights'; break;
@@ -301,8 +305,6 @@ export default function App() {
         return <UserDetail userId={selectedUserId!} onBack={() => navigate(ViewState.DASHBOARD)} onLogout={() => handleLogout()} />;
       case ViewState.PLANNER:
         return <PlannerView onTripClick={handleTripClick} />;
-      case ViewState.PLANNER_2:
-        return <VacationPlanner onTripClick={handleTripClick} />;
       case ViewState.TRIP_DETAIL:
         return <TripDetail tripId={selectedTripId!} onBack={() => navigate(ViewState.PLANNER)} />;
       case ViewState.MAP:
@@ -363,6 +365,7 @@ export default function App() {
           theme={getPageTheme(view)} 
           darkMode={isDarkMode} 
         />
+        <Suspense fallback={null}>
         <Sidebar 
           currentView={view} 
           onNavigate={(v, id) => navigate(v, id)} 
@@ -373,6 +376,7 @@ export default function App() {
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         />
+        </Suspense>
         <main className={`flex-1 h-full relative z-10 transition-all duration-300 ${
           view === ViewState.MAP 
             ? 'p-0 overflow-hidden' 

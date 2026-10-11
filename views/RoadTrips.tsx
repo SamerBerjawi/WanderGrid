@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
+// recharts is loaded only when the transit chart renders (PERF-004)
+const TransitFootprintChart = lazy(() => import('../components/TransitFootprintChart').then(m => ({ default: m.TransitFootprintChart })));
 import { 
   Plus, MagnifyingGlass as Search, CalendarBlank as Calendar, MapPin, Trash as Trash2, PencilSimple as Edit2, 
   CaretDown as ChevronDown, CaretUp as ChevronUp, Clock, CurrencyDollar as DollarSign, Compass, Car, 
@@ -16,7 +18,6 @@ import { fetchRoute } from '../services/multiModalRouting';
 import { formatDate, formatCurrency } from '../utils/formatters';
 
 import { EmptyState } from '../components/EmptyState';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { TooltipContent } from '../components/TooltipContent';
 
 // Drag & Drop via @dnd-kit for Waypoints
@@ -1148,38 +1149,9 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                     <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Shows travel distance (km) and total time spent (hours) across car, bus, train, ferry, and cruise modes.</p>
                   </div>
                   <div className="w-full h-[280px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} />
-                        <XAxis dataKey="name" stroke={isDark ? "#888" : "#555"} fontSize={10} tickLine={false} />
-                        <YAxis yAxisId="left" stroke="#3b82f6" label={{ value: 'Distance (km)', angle: -90, position: 'insideLeft', style: {fontSize: 10, fill: '#3b82f6'} }} fontSize={10} tickLine={false} />
-                        <YAxis yAxisId="right" orientation="right" stroke="#10b981" label={{ value: 'Duration (hours)', angle: 90, position: 'insideRight', style: {fontSize: 10, fill: '#10b981'} }} fontSize={10} tickLine={false} />
-                        <Tooltip 
-                          cursor={{ fill: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)' }}
-                          content={({ active, payload, label }) => {
-                            if (active && payload && payload.length) {
-                              const rows = payload.map((entry) => ({
-                                color: entry.color || '#3b82f6',
-                                label: String(entry.name || entry.dataKey || ''),
-                                value: entry.dataKey === 'Duration' 
-                                  ? `${Number(entry.value).toFixed(1)} hrs` 
-                                  : `${Number(entry.value).toLocaleString()} km`
-                              }));
-                              return (
-                                <TooltipContent
-                                  title={String(label)}
-                                  rows={rows}
-                                />
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Legend wrapperStyle={{ fontSize: '10px' }} />
-                        <Bar yAxisId="left" dataKey="Distance" fill="#3b82f6" name="Distance (km)" radius={[4, 4, 0, 0]} />
-                        <Bar yAxisId="right" dataKey="Duration" fill="#10b981" name="Duration (hrs)" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <Suspense fallback={<div className="w-full h-full animate-pulse rounded-2xl bg-black/5 dark:bg-white/5" aria-hidden="true" />}>
+                      <TransitFootprintChart data={chartData} isDark={isDark} />
+                    </Suspense>
                   </div>
                 </div>
               )}

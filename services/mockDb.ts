@@ -1,6 +1,8 @@
 
 import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, WorkspaceSettings, CustomEvent as TripCustomEvent, PackingItem, Carrier, BackupSelectionOptions, RestoreOptions } from '../types';
-import { getCoordinates } from './geocoding';
+// Geocoding (~100 KB with its place-search tables) is only needed when trips are saved; load it on first
+// use so it isn't part of the app's startup bundle (PERF-001).
+const getCoordinates = async (query: string) => (await import('./geocoding')).getCoordinates(query);
 
 const GEO_CACHE_KEY = 'wandergrid_geo_cache_v2';
 

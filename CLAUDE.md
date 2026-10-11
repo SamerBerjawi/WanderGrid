@@ -45,7 +45,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 | Path | Responsibility |
 |---|---|
 | `index.tsx`, `App.tsx` | Entry point. `App` does view switching on `ViewState` with a `switch`; there is no router library. Views are `React.lazy`-loaded |
-| `views/` | Top-level pages (Dashboard, PlannerView, VacationPlanner, VacationCalendar, ExpeditionMapView, Flights, RoadTrips, TripDetail, TravelAtlas, Settings, UserDetail, Auth) |
+| `views/` | Top-level pages (Dashboard, PlannerView, VacationCalendar, ExpeditionMapView, Flights, RoadTrips, TripDetail, TravelAtlas, Settings, UserDetail, Auth) |
 | `components/` | Feature components (configurators, drawers, map, passport/stamps). `ui.tsx` has the shared Card, Button and similar components |
 | `components/glass/` | Liquid-glass primitives: GlassPanel, GlassButton, GlassInput, GlassSelect, GlassDatePicker, GlassToggle, GlassSegmented, GlassSlider, SettingRow |
 | `components/ui/` | Icon wrapper, date pickers, bento grid, virtual list item |
@@ -108,7 +108,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 
 ## Fragile, legacy, or out of scope
 
-- **Retired "v2" views:** `Flights2`, `RoadTrips2` and `TripDetail2` were deleted; their legacy URLs (`/flights-2`, `/roadtrips-2`, `/trip-2/:id`) resolve to the main pages. `VacationPlanner` ("Planner-2") is still a separate, routed board.
+- **Retired "v2" views:** `Flights2`, `RoadTrips2` and `TripDetail2` were deleted; their legacy URLs (`/flights-2`, `/roadtrips-2`, `/trip-2/:id`) resolve to the main pages. `VacationPlanner` ("Planner-2") was removed as redundant; `/planner-2` and `/planner2` open the Planner.
 - **`services/mockDb.ts`** (~1.5k lines) is the real production data client, despite its name. It contains the API client, the localStorage fallback, backup/restore and trip↔flight sync. Edit it carefully. Restore assigns the password `password` to users that have none.
 - **`verifyPassword`** accepts plaintext stored passwords (legacy, no `:` salt separator). This is a legacy compatibility path, so do not extend it.
 - **`backend_files/server.js`** is a ~2.9k-line monolith, and `initDb()` is the real schema. Keep `schema.sql` in sync manually if you touch tables.

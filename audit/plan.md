@@ -889,6 +889,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - Screenshot diff on 13 pages.
 
 ### WP-4.7 Component and page consolidation
+- **Decision (2026-10-11, user):** Planner-2 (`views/VacationPlanner.tsx`) deleted as redundant; `/planner-2` and `/planner2` open the Planner; its e2e spec was retired.
 - **Covers:** M-65 (UI-011).
 - **Files:**
   - Select: `GlassSelect`, `LiquidGlassSelect` → one `Select`.

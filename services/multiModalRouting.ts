@@ -1,6 +1,5 @@
 // Multi-Modal Route Intelligence for WanderGrid: Rail (OSM Tracks) & Highways (OSRM) & Maritime (Marnet)
 import { STATIC_GEO_DATA } from './geocoding';
-import { fetchSeaRoute } from './maritimeRouting';
 
 // Global In-Memory RAM Cache for Multi-Modal Geometries
 const multiModalCache = new Map<string, [number, number, number][]>();
@@ -545,6 +544,8 @@ export async function fetchMultiModalRoute(
         try {
             let geom: [number, number, number][] | null = null;
             if (isSea) {
+                // searoute-js carries a large global shipping-lane network: load it only when a sea leg is drawn (PERF-004).
+                const { fetchSeaRoute } = await import('./maritimeRouting');
                 geom = await fetchSeaRoute(startLat, startLng, endLat, endLng, waypoints);
             } else if (isTrain) {
                 geom = await fetchRailGeometry(startLat, startLng, endLat, endLng, waypoints);

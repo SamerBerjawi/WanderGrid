@@ -9,7 +9,6 @@ const PAGES: { label: string; path: string; mobile: 'bar' | 'more' }[] = [
   { label: 'Dashboard', path: '/', mobile: 'bar' },
   { label: 'Map', path: '/map', mobile: 'bar' },
   { label: 'Planner', path: '/planner', mobile: 'more' },
-  { label: 'Planner-2', path: '/planner-2', mobile: 'more' },
   { label: 'Vacation Calendar', path: '/calendar', mobile: 'more' },
   { label: 'Travel Atlas', path: '/atlas', mobile: 'bar' },
   { label: 'Flights', path: '/flights', mobile: 'bar' },
@@ -53,9 +52,9 @@ test('every navigation item opens its page without crashing', async ({ page }) =
 test('browser Back/Forward move between views', async ({ page }) => {
   await page.goto('/');
   await expectAppShell(page);
-  await clickNav(page, PAGES[6]); // Flights
+  await clickNav(page, PAGES.find((p) => p.label === 'Flights')!);
   await expect(page).toHaveURL(/\/flights$/);
-  await clickNav(page, PAGES[8]); // Settings
+  await clickNav(page, PAGES.find((p) => p.label === 'Settings')!);
   await expect(page).toHaveURL(/\/settings$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/flights$/);
@@ -75,8 +74,8 @@ test('refresh on a deep link keeps the same view', async ({ page }) => {
   }
 });
 
-test('legacy URL aliases resolve (/travel-atlas, /vacation-calendar, /planner2)', async ({ page }) => {
-  for (const [alias, h1] of [['/travel-atlas', /Atlas/i], ['/vacation-calendar', /Calendar|Vacation/i], ['/planner2', /Planner|Trips|Expedition/i]] as const) {
+test('legacy URL aliases resolve (/travel-atlas, /vacation-calendar, /planner2 → Planner)', async ({ page }) => {
+  for (const [alias, h1] of [['/travel-atlas', /Atlas/i], ['/vacation-calendar', /Calendar|Vacation/i], ['/planner2', /Planner|Expedition/i], ['/planner-2', /Planner|Expedition/i]] as const) {
     await page.goto(alias);
     await expectAppShell(page);
     await expect(page.locator('main h1').first(), alias).toContainText(h1);

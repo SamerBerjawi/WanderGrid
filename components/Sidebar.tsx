@@ -112,7 +112,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { label: 'Dashboard', value: ViewState.DASHBOARD, icon: 'grid_view' },
     { label: 'Map', value: ViewState.MAP, icon: 'public' },
     { label: 'Planner', value: ViewState.PLANNER, icon: 'map' }, 
-    { label: 'Planner-2', value: ViewState.PLANNER_2, icon: 'calendar_month' }, 
     { label: 'Vacation Calendar', value: ViewState.VACATION_CALENDAR, icon: 'calendar_today' }, 
     { label: 'Travel Atlas', value: ViewState.TRAVEL_ATLAS, icon: 'explore' },
     { label: 'Flights', value: ViewState.FLIGHTS, icon: 'flight_takeoff' }, 
@@ -406,7 +405,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {/* Dynamic More popup trigger */}
             {(() => {
-              const isMoreActive = (currentView === ViewState.PLANNER || currentView === ViewState.PLANNER_2 || currentView === ViewState.VACATION_CALENDAR || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS);
+              const isMoreActive = (currentView === ViewState.PLANNER || currentView === ViewState.VACATION_CALENDAR || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS);
               const moreTheme = isMoreActive ? (PAGE_THEMES[currentView] || PAGE_THEMES[ViewState.PLANNER]) : null;
               return (
                 <button
@@ -465,7 +464,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="flex flex-col gap-1 w-full p-2 bg-white/85 dark:bg-dark-card/90 backdrop-blur-xl border border-black/10 dark:border-white/15 rounded-3xl">
                   {[
                     { label: 'Planner', value: ViewState.PLANNER, icon: 'map' },
-                    { label: 'Planner-2', value: ViewState.PLANNER_2, icon: 'calendar_month' },
                     { label: 'Vacation Calendar', value: ViewState.VACATION_CALENDAR, icon: 'calendar_today' },
                     { label: 'Road Trips', value: ViewState.ROADTRIPS, icon: 'directions_car' },
                     { label: 'Settings', value: ViewState.SETTINGS, icon: 'gear' },

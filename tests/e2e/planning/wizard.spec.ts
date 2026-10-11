@@ -1,6 +1,6 @@
 /**
  * Chunk B — workflow 9: create a trip with the TripSetupBoard wizard
- * (from Planner "New Trip", the Planner bucket "+" buttons, and Planner-2 "New Trip").
+ * (from Planner "New Trip" and the Planner bucket "+" buttons).
  */
 import { test, expect, ADMIN, resetDb, apiRegister, seedSession, expectAppShell, isMobile } from '../support/fixtures';
 import { pickRangeNextMonth, nextMonthDay, apiTrips, visible, inMain, waitForTrip } from '../support/planning';
@@ -156,15 +156,4 @@ test('browser Back while the wizard is open returns to the Planner board', async
   await page.goBack();
   await expect(page).toHaveURL(/\/planner$/);
   await expect(titleInput(page)).toHaveCount(0);
-});
-
-test('Planner-2 "New Trip" opens the same wizard and creates a trip', async ({ page, request }) => {
-  await page.goto('/planner-2');
-  await expectAppShell(page);
-  await page.getByRole('button', { name: /New (Trip|Expedition)/i }).first().click();
-  await expect(titleInput(page)).toBeVisible();
-  await titleInput(page).fill('QA From Planner-2');
-  await pickRangeNextMonth(page, 16, 18);
-  await headerCreate(page).click();
-  await expect.poll(async () => (await apiTrips(request, s.token)).some((x) => x.name === 'QA From Planner-2'), { timeout: 10_000 }).toBe(true);
 });

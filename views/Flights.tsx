@@ -18,7 +18,6 @@ import {
 import { EmptyState } from '../components/EmptyState';
 import { dataService } from '../services/mockDb';
 import FlightsHeroBento from '../components/FlightsHeroBento';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TooltipContent } from '../components/TooltipContent';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
