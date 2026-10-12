@@ -21,7 +21,7 @@ import {
   Compass, 
   ArrowRight
 } from '@phosphor-icons/react';
-import { Button, Badge, Card, Modal, Select } from '../components/ui';
+import { Button, Badge, Card, Modal, Select, Tabs } from '../components/ui';
 import { GlassPanel } from '../components/glass/GlassPanel';
 import { INPUT_BASE_STYLE } from '../constants';
 import { dataService } from '../services/mockDb';
@@ -913,97 +913,16 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
           
           {/* Calendar Layout Navigation Header Tabs */}
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-            <GlassPanel
-              className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
-              padding="4px 6px"
-              overrides={{ borderRadius: 9999 }}
-            >
-              <div className="flex gap-1 relative items-center">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('timeline')}
-                  aria-label="Timeline"
-                  className={`relative px-4 py-2 min-h-[44px] min-w-[44px] justify-center rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-raised ${
-                    activeTab === 'timeline' 
-                      ? 'text-primary-600 dark:text-primary-400 font-extrabold' 
-                      : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
-                  }`}
-                >
-                  {activeTab === 'timeline' && (
-                    <motion.div
-                      layoutId="calendarActiveTab"
-                      className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                  <Clock className="w-3.5 h-3.5" weight={activeTab === 'timeline' ? 'duotone' : 'regular'} />
-                  <span className={activeTab === 'timeline' ? 'inline' : 'hidden sm:inline'}>Timeline</span>
-                </button>
-                
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('grid')}
-                  aria-label="Grid"
-                  className={`relative px-4 py-2 min-h-[44px] min-w-[44px] justify-center rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-raised ${
-                    activeTab === 'grid' 
-                      ? 'text-primary-600 dark:text-primary-400 font-extrabold' 
-                      : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
-                  }`}
-                >
-                  {activeTab === 'grid' && (
-                    <motion.div
-                      layoutId="calendarActiveTab"
-                      className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                  <Grid className="w-3.5 h-3.5" weight={activeTab === 'grid' ? 'duotone' : 'regular'} />
-                  <span className={activeTab === 'grid' ? 'inline' : 'hidden sm:inline'}>Grid</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('agenda')}
-                  aria-label="Agenda"
-                  className={`relative px-4 py-2 min-h-[44px] min-w-[44px] justify-center rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-raised ${
-                    activeTab === 'agenda' 
-                      ? 'text-primary-600 dark:text-primary-400 font-extrabold' 
-                      : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
-                  }`}
-                >
-                  {activeTab === 'agenda' && (
-                    <motion.div
-                      layoutId="calendarActiveTab"
-                      className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                  <List className="w-3.5 h-3.5" weight={activeTab === 'agenda' ? 'duotone' : 'regular'} />
-                  <span className={activeTab === 'agenda' ? 'inline' : 'hidden sm:inline'}>Agenda</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('optimizer')}
-                  aria-label="Optimizer"
-                  className={`relative px-4 py-2 min-h-[44px] min-w-[44px] justify-center rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-raised ${
-                    activeTab === 'optimizer' 
-                      ? 'text-primary-600 dark:text-primary-400 font-extrabold' 
-                      : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
-                  }`}
-                >
-                  {activeTab === 'optimizer' && (
-                    <motion.div
-                      layoutId="calendarActiveTab"
-                      className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" weight={activeTab === 'optimizer' ? 'duotone' : 'regular'} />
-                  <span className={activeTab === 'optimizer' ? 'inline' : 'hidden sm:inline'}>Optimizer</span>
-                </button>
-              </div>
-            </GlassPanel>
+            <Tabs
+              tabs={[
+                { id: 'timeline', label: 'Timeline', color: 'primary', icon: <Clock className="w-4 h-4" weight="duotone" /> },
+                { id: 'grid', label: 'Grid', color: 'primary', icon: <Grid className="w-4 h-4" weight="duotone" /> },
+                { id: 'agenda', label: 'Agenda', color: 'primary', icon: <List className="w-4 h-4" weight="duotone" /> },
+                { id: 'optimizer', label: 'Optimizer', color: 'amber', icon: <Sparkles className="w-4 h-4 text-amber-500" weight="duotone" /> },
+              ]}
+              activeTab={activeTab}
+              onChange={(id) => setActiveTab(id as typeof activeTab)}
+            />
             
             <div className="px-3 text-right">
               <span className="px-2.5 py-1 rounded-full text-2xs font-mono font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">

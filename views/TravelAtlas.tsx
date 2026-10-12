@@ -846,11 +846,11 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
   const hoveredSlice = regionSlices.find(s => s.label === hoverRegion) || null;
 
   const atlasTabs: Tab[] = [
-    { id: 'visited', label: `Visited · ${visitedCountriesList.length}`, icon: <Globe className="w-5 h-5" weight="duotone" />, color: 'primary' },
-    { id: 'layovers', label: `Layovers · ${layoverCountriesList.length}`, icon: <Plane className="w-5 h-5" weight="duotone" />, color: 'amber' },
-    { id: 'wishlist', label: `Wishlist · ${wishlistCountriesList.length}`, icon: <Star className="w-5 h-5" weight="duotone" />, color: 'rose' },
-    { id: 'cities', label: `Cities · ${filteredCities.length}`, icon: <MapPin className="w-5 h-5" weight="duotone" />, color: 'blue' },
-    { id: 'sync', label: scanResults.countries.length + scanResults.cities.length > 0 ? `Sync · ${scanResults.countries.length + scanResults.cities.length}` : 'Sync', icon: <RefreshCw className="w-5 h-5" weight="duotone" />, color: 'indigo' },
+    { id: 'visited', label: 'Visited', count: visitedCountriesList.length, icon: <Globe className="w-5 h-5" weight="duotone" />, color: 'primary' },
+    { id: 'layovers', label: 'Layovers', count: layoverCountriesList.length, icon: <Plane className="w-5 h-5" weight="duotone" />, color: 'amber' },
+    { id: 'wishlist', label: 'Wishlist', count: wishlistCountriesList.length, icon: <Star className="w-5 h-5" weight="duotone" />, color: 'rose' },
+    { id: 'cities', label: 'Cities', count: filteredCities.length, icon: <MapPin className="w-5 h-5" weight="duotone" />, color: 'blue' },
+    { id: 'sync', label: 'Sync', count: scanResults.countries.length + scanResults.cities.length > 0 ? scanResults.countries.length + scanResults.cities.length : undefined, icon: <RefreshCw className="w-5 h-5" weight="duotone" />, color: 'indigo' },
   ];
 
   const statTiles = [

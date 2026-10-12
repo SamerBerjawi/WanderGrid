@@ -8,7 +8,7 @@ import {
   ArrowRight, Airplane as Plane, AirplaneTakeoff, AirplaneTilt, Bank as Landmark, Trophy as Award, Clock, ClockCounterClockwise, CurrencyDollar as DollarSign, ChartBar as BarChart2, SuitcaseSimple as Briefcase, FileText, Compass, Heart, Question as HelpCircle, ArrowsClockwise as RefreshCw, UploadSimple as Upload, DownloadSimple as Download, Tag, UserCheck, Star, Sparkle as Sparkles, SquaresFour as Grid, List,
   ArrowUpRight, ArrowDownLeft, FolderPlus, FolderMinus, X
 } from '@phosphor-icons/react';
-import { Card, Button, Input, Select, GlassSelect, Badge, TimeInput, Autocomplete } from '../components/ui';
+import { Card, Button, Input, Select, GlassSelect, Badge, TimeInput, Autocomplete, Tabs } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
 import VirtualListItem from '../components/ui/VirtualListItem';
 import { Trip, Transport, User, Carrier, WorkspaceSettings, FlightStatusResponse } from '../types';
@@ -2818,68 +2818,21 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       {/* FLOATING MAP-STYLE TAB SELECTOR                                           */}
       {/* ========================================================================= */}
       <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 w-full">
-        <div className="flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-3 -m-3 shrink-0 w-full sm:w-auto">
-          <GlassPanel
-            className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
-            padding="4px 6px"
-            overrides={{ borderRadius: 9999 }}
-          >
-            <div className="flex gap-1 relative items-center">
-              {[
-                { 
-                  id: 'all' as const, 
-                  label: 'All Flights', 
-                  count: flights.length,
-                  icon: Plane,
-                  color: 'text-blue-500 dark:text-blue-400'
-                },
-                { 
-                  id: 'upcoming' as const, 
-                  label: 'Upcoming', 
-                  count: flights.filter(f => getFlightDepartureUtcDate(f.flight) >= new Date()).length,
-                  icon: AirplaneTakeoff,
-                  color: 'text-emerald-500 dark:text-emerald-400'
-                },
-                { 
-                  id: 'past' as const, 
-                  label: 'Past', 
-                  count: flights.filter(f => getFlightDepartureUtcDate(f.flight) < new Date()).length,
-                  icon: ClockCounterClockwise,
-                  color: 'text-amber-500 dark:text-amber-400'
-                }
-              ].map((tab) => {
-                const isSelected = timeFilter === tab.id;
-                const TabIcon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setTimeFilter(tab.id)}
-                    title={tab.label}
-                    className={`relative rounded-full min-h-[44px] min-w-[44px] text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 ${
-                      isSelected
-                        ? 'text-blue-700 dark:text-blue-300 px-4 sm:px-5 py-2.5'
-                        : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 sm:px-5 py-2.5'
-                    }`}
-                  >
-                    {isSelected && (
-                      <motion.div
-                        layoutId="flightTimelineIndicator"
-                        className="absolute inset-0 rounded-full bg-blue-500/20 dark:bg-blue-500/30 backdrop-blur-md border border-blue-500/40 dark:border-blue-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(59,130,246,0.3)] z-0"
-                        style={{ WebkitBackdropFilter: 'blur(12px)' }}
-                        transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                      />
-                    )}
-                    <span className="relative z-raised flex items-center gap-2">
-                      <TabIcon className={`w-4 h-4 shrink-0 ${tab.color}`} weight="duotone" />
-                      <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden sm:inline'}`}>{tab.label}</span>
-                      <span className="text-2xs font-mono opacity-70">({tab.count})</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </GlassPanel>
-        </div>
+        {(() => {
+          const now = new Date();
+          const upcomingFlightCount = flights.filter(f => getFlightDepartureUtcDate(f.flight) >= now).length;
+          return (
+            <Tabs
+          tabs={[
+            { id: 'all', label: 'All Flights', color: 'blue', icon: <Plane className="w-5 h-5 text-blue-500 dark:text-blue-400" weight="duotone" />, count: flights.length },
+            { id: 'upcoming', label: 'Upcoming', color: 'emerald', icon: <AirplaneTakeoff className="w-5 h-5 text-emerald-500 dark:text-emerald-400" weight="duotone" />, count: upcomingFlightCount },
+            { id: 'past', label: 'Past', color: 'amber', icon: <ClockCounterClockwise className="w-5 h-5 text-amber-500 dark:text-amber-400" weight="duotone" />, count: flights.length - upcomingFlightCount },
+          ]}
+          activeTab={timeFilter}
+          onChange={(id) => setTimeFilter(id as 'all' | 'upcoming' | 'past')}
+        />
+          );
+        })()}
       </div>
 
       {/* Search & Filters Board inside GlassPanel */}

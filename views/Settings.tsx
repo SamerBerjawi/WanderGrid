@@ -40,7 +40,7 @@ import {
 import { isFeatureEnabled } from '../config/featureFlags';
 import { motion, AnimatePresence } from 'motion/react';
 import GlassPanel from '../components/glass/GlassPanel';
-import { Modal, Badge, Button, Input, Select } from '../components/ui';
+import { Modal, Badge, Button, Input, Select, Tabs } from '../components/ui';
 import { dataService, ImportState, isTripRoad, isTripAir } from '../services/mockDb';
 import { calendarService } from '../services/calendarExport';
 import { User, WorkspaceSettings, EntitlementType, SavedConfig, Trip, BackupSelectionOptions, RestoreOptions } from '../types';
@@ -780,59 +780,17 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       {/* ========================================================================= */}
       {/* FLOATING MAP-STYLE TAB SELECTOR                                          */}
       {/* ========================================================================= */}
-      <div className="flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-3 -m-3 shrink-0 w-full sm:w-auto">
-        <GlassPanel
-          className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
-          padding="4px 6px"
-          overrides={{ borderRadius: 9999 }}
-        >
-          <div className="flex gap-1 relative items-center">
-            {tabs.map((tab) => {
-              const isSelected = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  title={tab.label}
-                  className={`relative rounded-full min-h-[44px] min-w-[44px] text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 ${
-                    isSelected
-                      ? 'text-primary-600 dark:text-primary-400 px-4 sm:px-5 py-2.5'
-                      : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 sm:px-5 py-2.5'
-                  }`}
-                >
-                  {isSelected && (
-                    <motion.div
-                      layoutId="activeSettingsTabIndicator"
-                      className="absolute inset-0 rounded-full bg-primary-500/15 dark:bg-primary-500/20 backdrop-blur-md border border-primary-500/30 shadow-sm z-0"
-                      style={{ WebkitBackdropFilter: 'blur(12px)' }}
-                      transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                    />
-                  )}
-                  <span className="relative z-raised flex items-center gap-2 sm:gap-2.5">
-                    {React.cloneElement(tab.icon as React.ReactElement<any>, {
-                      className: `w-4 h-4 shrink-0 transition-colors ${isSelected ? 'text-primary-500 dark:text-primary-400' : ''}`,
-                      weight: 'duotone'
-                    })}
-                    <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden sm:inline'}`}>
-                      {tab.label}
-                    </span>
-                    {tab.badge !== undefined && (
-                      <span className={`text-2xs font-mono px-2 py-0.5 rounded-full font-bold border transition-colors ${
-                        isSelected
-                          ? 'bg-primary-500/20 text-primary-700 dark:text-primary-300 border-primary-500/30'
-                          : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border-black/5 dark:border-white/10 hidden sm:inline'
-                      }`}>
-                        {tab.badge}
-                      </span>
-                    )}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </GlassPanel>
-      </div>
+      <Tabs
+        tabs={tabs.map((tab) => ({
+          id: tab.id,
+          label: tab.label,
+          color: 'primary' as const,
+          icon: React.cloneElement(tab.icon as React.ReactElement<any>, { className: 'w-4 h-4 shrink-0', weight: 'duotone' }),
+          count: tab.badge,
+        }))}
+        activeTab={activeTab}
+        onChange={(id) => setActiveTab(id as TabType)}
+      />
 
       {/* ========================================================================= */}
       {/* SUB-PAGE 1: WORKSPACE IDENTITY & LOCALIZATION                             */}

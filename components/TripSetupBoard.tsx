@@ -35,7 +35,7 @@ import {
     Path,
     WarningCircle
 } from '@phosphor-icons/react';
-import { Input, Autocomplete, TimeInput, Select, DateRangePicker, DatePicker } from './ui';
+import { Input, Autocomplete, TimeInput, Select, DateRangePicker, DatePicker, Tabs } from './ui';
 import GlassPanel from './glass/GlassPanel';
 import GlassButton from './glass/GlassButton';
 import { Trip, Transport, Accommodation, TransportMode, User, GeoCoordinates, WorkspaceSettings } from '../types';
@@ -2241,66 +2241,26 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
             )}
 
             {/* Map-Style Floating Stage Tabs (Planner Standard) */}
-            <div className="flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-3 -m-3 shrink-0 w-full sm:w-auto">
-                <GlassPanel
-                    className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
-                    padding="4px 6px"
-                    overrides={{ borderRadius: 9999 }}
-                >
-                    <div className="flex gap-1 relative items-center">
-                        {(['basics', 'transport', 'accommodation'] as StageKey[]).map((stageKey) => {
-                            const config = STAGE_THEMES[stageKey];
-                            const isSelected = currentStage === stageKey;
-                            const IconComponent = config.icon;
-                            
-                            const count = stageKey === 'basics' 
-                                ? (title && startDate && endDate ? '✓' : '1') 
-                                : stageKey === 'transport' 
-                                ? transportsList.length 
-                                : accommodationsList.length;
-
-                            return (
-                                <button
-                                    key={stageKey}
-                                    type="button"
-                                    onClick={() => setCurrentStage(stageKey)}
-                                    title={config.label}
-                                    className={`relative rounded-full min-h-[44px] min-w-[44px] text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 ${
-                                        isSelected
-                                            ? `${config.activeText} px-4 sm:px-5 py-2.5`
-                                            : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 sm:px-5 py-2.5'
-                                    }`}
-                                >
-                                    {isSelected && (
-                                        <motion.div
-                                            layoutId="tripSetupTabActiveIndicator"
-                                            className={`absolute inset-0 rounded-full ${config.activeBg} backdrop-blur-md border ${config.activeBorder} ${config.activeShadow} z-0`}
-                                            style={{ WebkitBackdropFilter: 'blur(12px)' }}
-                                            transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                                        />
-                                    )}
-                                    <span className="relative z-raised flex items-center gap-2 sm:gap-2.5">
-                                        <IconComponent 
-                                            className={`w-5 h-5 shrink-0 transition-colors duration-200 ${config.color}`} 
-                                            weight="duotone" 
-                                        />
-                                        <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden sm:inline'}`}>
-                                            {config.label}
-                                        </span>
-                                        <span className={`text-2xs font-mono px-2 py-0.5 rounded-full font-bold border transition-colors ${config.badgeStyle} ${
-                                            isSelected 
-                                                ? 'inline shadow-xs' 
-                                                : 'hidden sm:inline opacity-90 hover:opacity-100'
-                                        }`}>
-                                            {count}
-                                        </span>
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </GlassPanel>
-            </div>
+            <Tabs
+                className="shrink-0"
+                tabs={(['basics', 'transport', 'accommodation'] as StageKey[]).map((stageKey) => {
+                    const config = STAGE_THEMES[stageKey];
+                    const IconComponent = config.icon;
+                    return {
+                        id: stageKey,
+                        label: config.label,
+                        color: stageKey === 'basics' ? 'emerald' as const : stageKey === 'transport' ? 'sky' as const : 'amber' as const,
+                        icon: <IconComponent className={`w-5 h-5 ${config.color}`} weight="duotone" />,
+                        count: stageKey === 'basics'
+                            ? (title && startDate && endDate ? '✓' : '1')
+                            : stageKey === 'transport'
+                            ? transportsList.length
+                            : accommodationsList.length,
+                    };
+                })}
+                activeTab={currentStage}
+                onChange={(id) => setCurrentStage(id as StageKey)}
+            />
 
             {/* Desktop 3-Column Bento Grid */}
             <div className="hidden lg:grid lg:grid-cols-3 gap-6 items-start">

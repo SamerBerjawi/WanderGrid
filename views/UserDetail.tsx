@@ -384,8 +384,8 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
         : '';
 
     const profileTabs = [
-        { id: 'trips', label: `Trips · ${trips.length}`, icon: <Suitcase className="w-5 h-5" weight="duotone" />, color: 'primary' as const },
-        { id: 'destinations', label: `Destinations · ${stats.destinations.length}`, icon: <Globe className="w-5 h-5" weight="duotone" />, color: 'emerald' as const },
+        { id: 'trips', label: 'Trips', count: trips.length, icon: <Suitcase className="w-5 h-5" weight="duotone" />, color: 'primary' as const },
+        { id: 'destinations', label: 'Destinations', count: stats.destinations.length, icon: <Globe className="w-5 h-5" weight="duotone" />, color: 'emerald' as const },
         { id: 'leave', label: 'Leave', icon: <SunHorizon className="w-5 h-5" weight="duotone" />, color: 'amber' as const },
     ];
 

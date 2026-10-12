@@ -1,5 +1,6 @@
 import React, { ReactNode, useState, useEffect, useRef, forwardRef, useCallback, useMemo, useId } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, useReducedMotion } from 'motion/react';
 import { 
   CaretDown as ChevronDown, 
   X,
@@ -423,81 +424,116 @@ export const Modal: React.FC<ModalProps> = ({
 };
 
 // --- Tabs (Segmented Switcher) ---
-export type TabColor = 'primary' | 'amber' | 'blue' | 'emerald' | 'purple' | 'teal' | 'rose' | 'indigo' | 'cyan' | 'orange' | 'violet';
+// The one tab bar for the whole app. CSS glass (not liquid glass: an SVG displacement filter per pill cost
+// scroll/animation frames for no visible gain at this size) and a spring indicator that slides between tabs.
+// Tabs stay plain toggle buttons (aria-pressed) so they remain reachable by role in the e2e suite.
+export type TabColor = 'primary' | 'amber' | 'blue' | 'sky' | 'emerald' | 'purple' | 'teal' | 'rose' | 'indigo' | 'cyan' | 'orange' | 'violet';
 
 export interface Tab {
   id: string;
   label: string;
   icon?: ReactNode;
   color?: TabColor;
+  /** Optional count shown in a small pill beside the label. */
+  count?: number | string;
 }
 
-const TAB_COLOR_STYLES: Record<string, { activeText: string; activeBg: string; activeBorder: string; activeShadow: string }> = {
+const TAB_COLOR_STYLES: Record<string, { activeText: string; activeBg: string; activeBorder: string; activeShadow: string; badge: string; hover: string }> = {
   primary: {
     activeText: "text-primary-700 dark:text-primary-300",
     activeBg: "bg-primary-500/20 dark:bg-primary-500/30",
     activeBorder: "border-primary-500/40 dark:border-primary-400/50",
-    activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(99,102,241,0.25)]",
+    activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(250,154,29,0.25)]",
+    badge: "bg-primary-500/15 text-primary-700 dark:text-primary-300 border-primary-500/25",
+    hover: "hover:bg-primary-500/10 dark:hover:bg-primary-500/15 hover:text-primary-700 dark:hover:text-primary-300 hover:border-primary-500/25",
   },
   amber: {
     activeText: "text-amber-700 dark:text-amber-300",
     activeBg: "bg-amber-500/20 dark:bg-amber-500/30",
     activeBorder: "border-amber-500/40 dark:border-amber-400/50",
     activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(245,158,11,0.25)]",
+    badge: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/25",
+    hover: "hover:bg-amber-500/10 dark:hover:bg-amber-500/15 hover:text-amber-700 dark:hover:text-amber-300 hover:border-amber-500/25",
   },
   blue: {
     activeText: "text-blue-700 dark:text-blue-300",
     activeBg: "bg-blue-500/20 dark:bg-blue-500/30",
     activeBorder: "border-blue-500/40 dark:border-blue-400/50",
     activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(59,130,246,0.25)]",
+    badge: "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/25",
+    hover: "hover:bg-blue-500/10 dark:hover:bg-blue-500/15 hover:text-blue-700 dark:hover:text-blue-300 hover:border-blue-500/25",
+  },
+  sky: {
+    activeText: "text-sky-700 dark:text-sky-300",
+    activeBg: "bg-sky-500/20 dark:bg-sky-500/30",
+    activeBorder: "border-sky-500/40 dark:border-sky-400/50",
+    activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(14,165,233,0.25)]",
+    badge: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/25",
+    hover: "hover:bg-sky-500/10 dark:hover:bg-sky-500/15 hover:text-sky-700 dark:hover:text-sky-300 hover:border-sky-500/25",
   },
   emerald: {
     activeText: "text-emerald-700 dark:text-emerald-300",
     activeBg: "bg-emerald-500/20 dark:bg-emerald-500/30",
     activeBorder: "border-emerald-500/40 dark:border-emerald-400/50",
     activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(16,185,129,0.25)]",
+    badge: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/25",
+    hover: "hover:bg-emerald-500/10 dark:hover:bg-emerald-500/15 hover:text-emerald-700 dark:hover:text-emerald-300 hover:border-emerald-500/25",
   },
   purple: {
     activeText: "text-purple-700 dark:text-purple-300",
     activeBg: "bg-purple-500/20 dark:bg-purple-500/30",
     activeBorder: "border-purple-500/40 dark:border-purple-400/50",
     activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(168,85,247,0.25)]",
+    badge: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/25",
+    hover: "hover:bg-purple-500/10 dark:hover:bg-purple-500/15 hover:text-purple-700 dark:hover:text-purple-300 hover:border-purple-500/25",
   },
   teal: {
     activeText: "text-teal-700 dark:text-teal-300",
     activeBg: "bg-teal-500/20 dark:bg-teal-500/30",
     activeBorder: "border-teal-500/40 dark:border-teal-400/50",
     activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(20,184,166,0.25)]",
+    badge: "bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-500/25",
+    hover: "hover:bg-teal-500/10 dark:hover:bg-teal-500/15 hover:text-teal-700 dark:hover:text-teal-300 hover:border-teal-500/25",
   },
   rose: {
     activeText: "text-rose-700 dark:text-rose-300",
     activeBg: "bg-rose-500/20 dark:bg-rose-500/30",
     activeBorder: "border-rose-500/40 dark:border-rose-400/50",
     activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(244,63,94,0.25)]",
+    badge: "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/25",
+    hover: "hover:bg-rose-500/10 dark:hover:bg-rose-500/15 hover:text-rose-700 dark:hover:text-rose-300 hover:border-rose-500/25",
   },
   indigo: {
     activeText: "text-indigo-700 dark:text-indigo-300",
     activeBg: "bg-indigo-500/20 dark:bg-indigo-500/30",
     activeBorder: "border-indigo-500/40 dark:border-indigo-400/50",
     activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(99,102,241,0.25)]",
+    badge: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/25",
+    hover: "hover:bg-indigo-500/10 dark:hover:bg-indigo-500/15 hover:text-indigo-700 dark:hover:text-indigo-300 hover:border-indigo-500/25",
   },
   cyan: {
     activeText: "text-cyan-700 dark:text-cyan-300",
     activeBg: "bg-cyan-500/20 dark:bg-cyan-500/30",
     activeBorder: "border-cyan-500/40 dark:border-cyan-400/50",
     activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(6,182,212,0.25)]",
+    badge: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/25",
+    hover: "hover:bg-cyan-500/10 dark:hover:bg-cyan-500/15 hover:text-cyan-700 dark:hover:text-cyan-300 hover:border-cyan-500/25",
   },
   orange: {
     activeText: "text-orange-700 dark:text-orange-300",
     activeBg: "bg-orange-500/20 dark:bg-orange-500/30",
     activeBorder: "border-orange-500/40 dark:border-orange-400/50",
     activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(249,115,22,0.25)]",
+    badge: "bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/25",
+    hover: "hover:bg-orange-500/10 dark:hover:bg-orange-500/15 hover:text-orange-700 dark:hover:text-orange-300 hover:border-orange-500/25",
   },
   violet: {
     activeText: "text-violet-700 dark:text-violet-300",
     activeBg: "bg-violet-500/20 dark:bg-violet-500/30",
     activeBorder: "border-violet-500/40 dark:border-violet-400/50",
     activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(139,92,246,0.25)]",
+    badge: "bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/25",
+    hover: "hover:bg-violet-500/10 dark:hover:bg-violet-500/15 hover:text-violet-700 dark:hover:text-violet-300 hover:border-violet-500/25",
   },
 };
 
@@ -508,55 +544,71 @@ interface TabsProps {
   className?: string;
 }
 
-export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className }) => (
-  // justify-start + mx-auto (not justify-center): centred when the tabs fit, but when they overflow
-  // on narrow screens the first tab stays reachable by scrolling instead of being clipped off the left.
-  // min-w-0/max-w-full let the row scroll inside its parent instead of widening the page (UI-007).
-  <div className={cn("flex items-center justify-start overflow-x-auto no-scrollbar py-3 px-2 -my-3 -mx-2 min-w-0 max-w-full", className)}>
-    <GlassPanel liquid
-      className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0 mx-auto sm:mx-0"
-      padding="4px 6px"
-      overrides={{ borderRadius: 9999 }}
-    >
-      <div className="flex gap-1 relative items-center">
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.id;
-          const colorKey = tab.color || 'primary';
-          const colorStyle = TAB_COLOR_STYLES[colorKey] || TAB_COLOR_STYLES.primary;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => onChange(tab.id)}
-              className={cn(
-                "relative isolate rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 px-3.5 sm:px-5 py-2.5 min-h-[44px]",
-                isActive
-                  ? colorStyle.activeText
-                  : "text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
-              )}
-            >
-              {isActive && (
-                <div
-                  className={cn(
-                    "absolute inset-0 rounded-full backdrop-blur-md border z-0 pointer-events-none",
-                    colorStyle.activeBg,
-                    colorStyle.activeBorder,
-                    colorStyle.activeShadow
+const TabsComponent: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className }) => {
+  const indicatorId = `tab-indicator-${useId()}`;
+  const reduceMotion = useReducedMotion();
+
+  return (
+    // justify-start + mx-auto (not justify-center): centred when the tabs fit, but when they overflow
+    // on narrow screens the first tab stays reachable by scrolling instead of being clipped off the left.
+    // min-w-0/max-w-full let the row scroll inside its parent instead of widening the page (UI-007).
+    <div className={cn("flex items-center justify-start overflow-x-auto no-scrollbar py-3 px-2 -my-3 -mx-2 min-w-0 max-w-full", className)}>
+      <GlassPanel
+        className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0 mx-auto sm:mx-0"
+        padding="4px 6px"
+        overrides={{ borderRadius: 9999 }}
+      >
+        <div className="flex gap-1 relative items-center">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            const style = TAB_COLOR_STYLES[tab.color || 'primary'] || TAB_COLOR_STYLES.primary;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                aria-pressed={isActive}
+                aria-label={tab.label}
+                title={tab.label}
+                onClick={() => onChange(tab.id)}
+                className={cn(
+                  "group relative isolate rounded-full text-xs font-bold border border-transparent transition-[color,background-color,border-color,transform] duration-150 flex items-center justify-center cursor-pointer select-none active:scale-95 px-3.5 sm:px-5 py-2.5 min-h-[44px] min-w-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50",
+                  isActive
+                    ? style.activeText
+                    // Inactive: tint in the tab's own colour, so hovering previews what selecting it will look like.
+                    : cn("text-light-text-secondary dark:text-dark-text-secondary", style.hover)
+                )}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId={indicatorId}
+                    className={cn("absolute inset-0 rounded-full border z-0 pointer-events-none", style.activeBg, style.activeBorder, style.activeShadow)}
+                    transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 450, damping: 34 }}
+                  />
+                )}
+                <span className="relative z-raised flex items-center gap-2">
+                  {tab.icon && <span className="shrink-0 transition-transform duration-150 group-hover:scale-110">{tab.icon}</span>}
+                  {/* Planner standard: inactive tabs collapse to their icon on phones */}
+                  <span className={cn("tracking-tight whitespace-nowrap", isActive ? "inline" : "hidden sm:inline")}>{tab.label}</span>
+                  {tab.count !== undefined && (
+                    <span className={cn(
+                      "text-2xs font-mono px-2 py-0.5 rounded-full font-bold border tabular-nums",
+                      isActive ? style.badge : "bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border-black/5 dark:border-white/10 hidden sm:inline"
+                    )}>
+                      {tab.count}
+                    </span>
                   )}
-                  style={{ WebkitBackdropFilter: 'blur(12px)' }}
-                />
-              )}
-              <span className="relative z-raised flex items-center gap-2">
-                {tab.icon && <span className="shrink-0 transition-transform duration-200">{tab.icon}</span>}
-                <span className="tracking-tight font-bold whitespace-nowrap">{tab.label}</span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </GlassPanel>
-  </div>
-);
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </GlassPanel>
+    </div>
+  );
+};
+
+export const Tabs = React.memo(TabsComponent);
+Tabs.displayName = 'Tabs';
 
 // --- Badge (Status Pills) ---
 interface BadgeProps {

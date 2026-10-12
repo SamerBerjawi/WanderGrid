@@ -31,7 +31,8 @@ import {
     Square
 } from '@phosphor-icons/react';
 import GlassPanel from '../components/glass/GlassPanel';
-import { Button } from '../components/ui';
+import { Button, Tabs } from '../components/ui';
+import type { TabColor } from '../components/ui';
 import { EmptyState } from '../components/EmptyState';
 import { isFeatureEnabled } from '../config/featureFlags';
 import { LiquidGlassSelect } from '../components/LiquidGlassSelect';
@@ -47,6 +48,7 @@ interface PlannerViewProps {
 }
 
 type TabKey = 'all' | 'planned' | 'confirmed' | 'past';
+const PLANNER_TAB_COLOR: Record<TabKey, TabColor> = { past: 'emerald', confirmed: 'sky', planned: 'amber', all: 'indigo' };
 
 interface TabThemeConfig {
     id: TabKey;
@@ -571,67 +573,28 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
             {/* ========================================================================= */}
             <div className="flex flex-col xl:flex-row xl:flex-wrap xl:items-center xl:justify-between gap-3 w-full">
                 {/* 1. Tabs Row (Left on desktop, centered on mobile) */}
-                <div className="flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-1 shrink-0 w-full sm:w-auto">
-                    <GlassPanel
-                        className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
-                        padding="4px 6px"
-                        overrides={{ borderRadius: 9999 }}
-                    >
-                        <div className="flex gap-1 relative items-center">
-                            {(['past', 'confirmed', 'planned', 'all'] as TabKey[]).map((tabKey) => {
-                                const config = PLANNER_TAB_THEMES[tabKey];
-                                const isSelected = activeTab === tabKey;
-                                const IconComponent = config.icon;
-                                
-                                const count = tabKey === 'all' 
-                                    ? filteredTrips.length 
-                                    : tabKey === 'planned' 
-                                    ? plannedTrips.length 
-                                    : tabKey === 'confirmed' 
-                                    ? confirmedTrips.length 
-                                    : pastTrips.length;
-
-                                return (
-                                    <button
-                                        key={tabKey}
-                                        onClick={() => setActiveTab(tabKey)}
-                                        title={config.label}
-                                        className={`relative rounded-full min-h-[44px] min-w-[44px] text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 min-h-[44px] ${
-                                            isSelected
-                                                ? `${config.activeText} px-4 sm:px-5 py-2.5`
-                                                : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 sm:px-5 py-2.5'
-                                        }`}
-                                    >
-                                        {isSelected && (
-                                            <motion.div
-                                                layoutId="plannerTabActiveIndicator"
-                                                className={`absolute inset-0 rounded-full ${config.activeBg} backdrop-blur-md border ${config.activeBorder} ${config.activeShadow} z-0`}
-                                                style={{ WebkitBackdropFilter: 'blur(12px)' }}
-                                                transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                                            />
-                                        )}
-                                        <span className="relative z-raised flex items-center gap-2 sm:gap-2.5">
-                                            <IconComponent 
-                                                className={`w-5 h-5 shrink-0 transition-colors duration-200 ${config.color}`} 
-                                                weight="duotone" 
-                                            />
-                                            <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden sm:inline'}`}>
-                                                {config.label}
-                                            </span>
-                                            <span className={`text-2xs font-mono px-2 py-0.5 rounded-full font-bold border transition-colors ${config.badgeStyle} ${
-                                                isSelected 
-                                                    ? 'inline shadow-xs' 
-                                                    : 'hidden sm:inline opacity-90 hover:opacity-100'
-                                            }`}>
-                                                {count}
-                                            </span>
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </GlassPanel>
-                </div>
+                <Tabs
+                    className="shrink-0"
+                    tabs={(['past', 'confirmed', 'planned', 'all'] as TabKey[]).map((tabKey) => {
+                        const config = PLANNER_TAB_THEMES[tabKey];
+                        const IconComponent = config.icon;
+                        return {
+                            id: tabKey,
+                            label: config.label,
+                            color: PLANNER_TAB_COLOR[tabKey],
+                            icon: <IconComponent className={`w-5 h-5 ${config.color}`} weight="duotone" />,
+                            count: tabKey === 'all'
+                                ? filteredTrips.length
+                                : tabKey === 'planned'
+                                ? plannedTrips.length
+                                : tabKey === 'confirmed'
+                                ? confirmedTrips.length
+                                : pastTrips.length,
+                        };
+                    })}
+                    activeTab={activeTab}
+                    onChange={(id) => setActiveTab(id as TabKey)}
+                />
 
                 {/* 2. Filter Controls Bar (Right on desktop, below on mobile) */}
                 <div className="flex-1 xl:max-w-4xl w-full min-w-0">

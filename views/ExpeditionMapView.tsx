@@ -1004,8 +1004,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     {isSelected && (
                                         <motion.div
                                             layoutId="kokonutSmoothTabActive"
-                                            className={`absolute inset-0 rounded-full ${config.activeBg} backdrop-blur-md border ${config.activeBorder} ${config.activeShadow} z-0`}
-                                            style={{ WebkitBackdropFilter: 'blur(12px)' }}
+                                            className={`absolute inset-0 rounded-full ${config.activeBg} border ${config.activeBorder} ${config.activeShadow} z-0`}
                                             transition={{ type: "spring", stiffness: 450, damping: 32 }}
                                         />
                                     )}
@@ -1177,8 +1176,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         {isSelected && (
                                             <motion.div
                                                 layoutId="kokonutSmoothTabActiveMobile"
-                                                className={`absolute inset-0 rounded-full ${config.activeBg} backdrop-blur-md border ${config.activeBorder} ${config.activeShadow} z-0`}
-                                                style={{ WebkitBackdropFilter: 'blur(12px)' }}
+                                                className={`absolute inset-0 rounded-full ${config.activeBg} border ${config.activeBorder} ${config.activeShadow} z-0`}
                                                 transition={{ type: "spring", stiffness: 450, damping: 32 }}
                                             />
                                         )}

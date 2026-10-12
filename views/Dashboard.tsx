@@ -2,7 +2,7 @@ import { mergeCountryRecords, ukNationsFromCities } from '../services/countryReg
 import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { affectsCollections } from '../hooks/useWanderSync';
 import { motion, AnimatePresence } from 'motion/react';
-import { Button } from '../components/ui';
+import { Button, Tabs } from '../components/ui';
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 const FlightTrackerModal = lazy(() => import('../components/FlightTrackerModal').then(m => ({ default: m.FlightTrackerModal })));
 import { dataService } from '../services/mockDb';
@@ -1254,58 +1254,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         <div className="space-y-5">
             
             {/* Centered Floating Liquid Glass Tab Switcher */}
-            <div className="flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-2 -m-2 shrink-0 w-full">
-                <GlassPanel
-                    className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
-                    padding="3px 5px"
-                    overrides={{ borderRadius: 9999 }}
-                >
-                    <div className="flex gap-1 relative items-center">
-                        {[
-                            { id: 'stamps' as const, label: 'Stamps', icon: IdentificationCard, count: visitedData.length },
-                            { id: 'stickers' as const, label: 'Stickers', icon: Star, count: `${stickerStats.unlockedCount}/${stickerStats.totalCount}` },
-                            { id: 'milestones' as const, label: 'Milestones', icon: Trophy },
-                            { id: 'analytics' as const, label: 'Analytics', icon: ChartBar },
-                        ].map((tab) => {
-                            const isSelected = activeStatsTab === tab.id;
-                            const IconComponent = tab.icon;
-
-                            return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveStatsTab(tab.id)}
-                                    aria-label={tab.label}
-                                    className={`relative rounded-full min-h-[44px] min-w-[44px] text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 min-h-[44px] ${
-                                        isSelected
-                                            ? 'text-primary-700 dark:text-primary-300 px-3.5 sm:px-5 py-2'
-                                            : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 sm:px-4 py-2'
-                                    }`}
-                                >
-                                    {isSelected && (
-                                        <motion.div
-                                            layoutId="dashboardActiveTab"
-                                            className="absolute inset-0 rounded-full bg-primary-500/20 dark:bg-primary-500/30 backdrop-blur-md border border-primary-500/40 dark:border-primary-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(99,102,241,0.3)] z-0"
-                                            style={{ WebkitBackdropFilter: 'blur(12px)' }}
-                                            transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                                        />
-                                    )}
-                                    <span className="relative z-raised flex items-center gap-1.5 sm:gap-2">
-                                        <IconComponent className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" weight="duotone" />
-                                        <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden sm:inline'}`}>
-                                            {tab.label}
-                                        </span>
-                                        {tab.count !== undefined && (
-                                            <span className="text-2xs font-mono px-1.5 py-0.2 rounded-full font-bold border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10">
-                                                {tab.count}
-                                            </span>
-                                        )}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </GlassPanel>
-            </div>
+            <Tabs
+                    tabs={[
+                        { id: 'stamps', label: 'Stamps', icon: <IdentificationCard className="w-5 h-5" weight="duotone" />, count: visitedData.length },
+                        { id: 'stickers', label: 'Stickers', icon: <Star className="w-5 h-5" weight="duotone" />, count: `${stickerStats.unlockedCount}/${stickerStats.totalCount}` },
+                        { id: 'milestones', label: 'Milestones', icon: <Trophy className="w-5 h-5" weight="duotone" /> },
+                        { id: 'analytics', label: 'Analytics', icon: <ChartBar className="w-5 h-5" weight="duotone" /> },
+                    ]}
+                    activeTab={activeStatsTab}
+                    onChange={(id) => setActiveStatsTab(id as StatsTabKey)}
+                />
 
             {/* Tab Body Panels */}
             <AnimatePresence mode="wait">
