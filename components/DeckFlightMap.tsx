@@ -1035,7 +1035,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             const cleanedFeatures = countriesData.features
                 .filter((f: any) => {
                     const p = f.properties || {};
-                    const isUKMain = ukUnitsData && (p.SOVEREIGNT === 'United Kingdom' || p.NAME === 'United Kingdom') && p.TYPE === 'Sovereign country';
+                    // 110m labels the UK 'Sovereign country', 50m labels it 'Country'; both are replaced by the individual nations.
+                    const isUKMain = ukUnitsData && (p.SOVEREIGNT === 'United Kingdom' || p.NAME === 'United Kingdom') && (p.TYPE === 'Sovereign country' || p.TYPE === 'Country') && p.NAME === 'United Kingdom';
                     return !isUKMain;
                 })
                 .map((f: any) => {
@@ -1087,12 +1088,21 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
         const loadGeoJson = async () => {
             // P-05: Vendored local Natural Earth datasets (zero GitHub raw network calls in production)
-            const countriesLocalUrl = '/data/ne_110m_admin_0_countries.geojson';
+            // 50m borders (accurate coastlines and islands); the coarse 110m file is kept only as an offline fallback.
+            const countriesLocalUrl = '/data/ne_50m_admin_0_countries.geojson';
+            const countriesFallbackUrl = '/data/ne_110m_admin_0_countries.geojson';
             const mapUnitsLocalUrl = '/data/ne_50m_admin_0_map_units.geojson';
 
             try {
+                const fetchCountries = async () => {
+                    try {
+                        const res = await fetch(countriesLocalUrl);
+                        if (res.ok) return res;
+                    } catch { /* fall through to the coarse file */ }
+                    return fetch(countriesFallbackUrl);
+                };
                 const [countriesRes, mapUnitsRes] = await Promise.allSettled([
-                    fetch(countriesLocalUrl),
+                    fetchCountries(),
                     fetch(mapUnitsLocalUrl)
                 ]);
 
@@ -1112,7 +1122,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             }
 
             try {
-                const countriesStdResUrl = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson';
+                const countriesStdResUrl = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson';
                 const res = await fetch(countriesStdResUrl);
                 if (res.ok) {
                     const raw = await res.json();
