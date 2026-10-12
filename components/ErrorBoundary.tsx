@@ -1,4 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE } from '../constants';
 
 interface Props {
   children: ReactNode;
@@ -7,6 +8,7 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  confirmingReset?: boolean;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -26,8 +28,11 @@ export class ErrorBoundary extends Component<Props, State> {
   // Clears derived caches only (geocoding, routes, dashboard snapshots, service-worker caches).
   // The session, preferences and — in local mode — the user's data are kept (REL-017).
   private handleReset = async () => {
-    const confirmed = window.confirm('Clear cached map, route and dashboard data and reload? Your account and trips are not affected.');
-    if (!confirmed) return;
+    // Two-step confirmation inline (the app's dialog host isn't available on the crash screen).
+    if (!this.state.confirmingReset) {
+      this.setState({ confirmingReset: true });
+      return;
+    }
     try {
       const isCacheKey = (key: string) =>
         /^wandergrid_.*(cache|_routes_|geo_db|metadata_resolved|api_status|place_registry|road_tracing)/.test(key) ||
@@ -46,38 +51,41 @@ export class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-center items-center p-6">
-          <div className="max-w-md w-full bg-slate-800/80 backdrop-blur border border-slate-700/50 rounded-3xl p-8 shadow-2xl text-center">
-            <div className="w-16 h-16 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-rose-500">
+        <div className="min-h-screen bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text flex flex-col justify-center items-center p-6">
+          <div className="max-w-md w-full bg-light-card dark:bg-dark-card backdrop-blur border border-light-separator dark:border-dark-separator rounded-3xl p-8 shadow-glass-light-card dark:shadow-2xl text-center">
+            <div className="w-16 h-16 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-rose-600 dark:text-rose-400">
               <span className="text-3xl font-bold">!</span>
             </div>
             
-            <h1 className="text-2xl font-black tracking-tight text-white mb-3">WanderGrid Stopped Unexpectedly</h1>
+            <h1 className="text-2xl font-black tracking-tight mb-3">WanderGrid Stopped Unexpectedly</h1>
             
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+            <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mb-6 leading-relaxed">
               An unhandled crash occurred in the frontend rendering cycle. This is usually caused by outdated, incompatible local cache or transient route state.
             </p>
 
             {this.state.error && (
-              <div className="bg-slate-950 p-4 rounded-xl text-left font-mono text-xs text-rose-400 overflow-auto max-h-32 mb-6 border border-slate-900 leading-normal">
+              <div className="bg-light-fill dark:bg-dark-fill p-4 rounded-xl text-left font-mono text-xs text-rose-700 dark:text-rose-300 overflow-auto max-h-32 mb-6 border border-light-separator dark:border-dark-separator leading-normal">
                 {this.state.error.message}
               </div>
             )}
 
+            {this.state.confirmingReset && (
+              <p role="alert" className="text-xs text-light-text-secondary dark:text-dark-text-secondary mb-3">Cached map, route and dashboard data will be cleared. Your account and trips are not affected.</p>
+            )}
             <div className="flex flex-col sm:flex-row gap-3">
               <button 
                 id="error-boundary-refresh"
                 onClick={() => window.location.reload()}
-                className="flex-1 bg-sky-500 hover:bg-sky-400 text-white font-semibold py-3 px-4 rounded-2xl transition duration-200 text-sm shadow-lg shadow-sky-500/20 pointer-events-auto"
+                className={`${BTN_PRIMARY_STYLE} flex-1 px-4 text-sm`}
               >
                 Reload Page
               </button>
               <button 
                 id="error-boundary-reset"
                 onClick={this.handleReset}
-                className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-3 px-4 rounded-2xl transition duration-200 text-sm border border-slate-600/50 pointer-events-auto"
+                className={`${BTN_SECONDARY_STYLE} flex-1 px-4 text-sm`}
               >
-                Clear Cached Data & Reload
+                {this.state.confirmingReset ? 'Confirm: Clear Cache & Reload' : 'Clear Cached Data & Reload'}
               </button>
             </div>
           </div>

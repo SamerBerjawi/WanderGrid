@@ -226,7 +226,7 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
 
                         {/* Route Display */}
                         <div className="relative flex justify-between items-center p-6 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-white/5 shadow-lg">
-                            <div className="text-center z-10">
+                            <div className="text-center z-raised">
                                 <span className="text-4xl font-black text-gray-900 dark:text-white block mb-1">{flightData.departure.iata}</span>
                                 <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{flightData.departure.airport}</span>
                             </div>
@@ -240,7 +240,7 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                                 </div>
                             </div>
 
-                            <div className="text-center z-10">
+                            <div className="text-center z-raised">
                                 <span className="text-4xl font-black text-gray-900 dark:text-white block mb-1">{flightData.arrival.iata}</span>
                                 <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{flightData.arrival.airport}</span>
                             </div>

@@ -73,7 +73,7 @@ export const CarRentalForm: React.FC<CarRentalFormProps> = ({
                     fetchSuggestions={fetchLocationSuggestions} 
                 />
                 <Autocomplete 
-                    label="Dropoff Location" 
+                    label="Drop-off Location" 
                     placeholder="e.g. Florence Airport (FLR)" 
                     value={form.dropoffLocation} 
                     onChange={val => onUpdate({ dropoffLocation: val })} 
@@ -130,13 +130,13 @@ export const CarRentalForm: React.FC<CarRentalFormProps> = ({
                 </div>
             </div>
 
-            {/* Pickup & Dropoff Schedule */}
+            {/* Pickup & Drop-off Schedule */}
             <div className="space-y-3">
                 <DateRangePicker 
                     accentColor="blue"
                     label="Rental Dates"
                     startLabel="Pickup Date"
-                    endLabel="Dropoff Date"
+                    endLabel="Drop-off Date"
                     startDate={form.pickupDate}
                     endDate={form.dropoffDate}
                     onChange={(start, end) => onUpdate({ pickupDate: start, dropoffDate: end })}
@@ -148,7 +148,7 @@ export const CarRentalForm: React.FC<CarRentalFormProps> = ({
                         onChange={val => onUpdate({ pickupTime: val })} 
                     />
                     <TimeInput 
-                        label="Dropoff Time" 
+                        label="Drop-off Time" 
                         value={form.dropoffTime} 
                         onChange={val => onUpdate({ dropoffTime: val })} 
                     />

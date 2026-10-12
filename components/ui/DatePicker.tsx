@@ -528,7 +528,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                             type="button"
                             disabled={isDisabled}
                             onClick={() => handleSelectDate(dateStr)}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all relative z-10 cursor-pointer ${
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all relative z-raised cursor-pointer ${
                               isSelected
                                 ? theme.selectedDay
                                 : isDisabled

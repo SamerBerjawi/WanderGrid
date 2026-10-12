@@ -1,5 +1,7 @@
 
-import React, { useEffect, useState, useRef, useMemo, Suspense } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback, Suspense } from 'react';
+import { useEscapeKey } from '../hooks/useEscapeKey';
+import { toast } from '../services/toast';
 import { 
     CaretUp as ChevronUp, 
     CaretDown as ChevronDown,
@@ -549,6 +551,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const [isEditTripOpen, setIsEditTripOpen] = useState(false);
     const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
     const [isCinematicOpen, setIsCinematicOpen] = useState(false);
+    const closeCinematic = useCallback(() => setIsCinematicOpen(false), []);
+    useEscapeKey(isCinematicOpen, closeCinematic);
     
     // Import State
     const [isImportWizardOpen, setIsImportWizardOpen] = useState(false);
@@ -671,7 +675,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             });
             await loadData();
         } catch (err: any) {
-            alert(`Could not add the flights to this trip. Nothing was changed. ${err?.message || ''}`.trim());
+            toast.error(`Could not add the flights to this trip. Nothing was changed. ${err?.message || ''}`.trim());
         } finally {
             setIsAssigningFlights(false);
         }
@@ -786,7 +790,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 setImportFilters({ search: '', minDate: '', maxDate: '', minConfidence: '0', airline: '' });
                 setImportPreview({ open: true, candidates });
             } else {
-                alert("No valid flights found in file.");
+                toast.info("No valid flights were found in that file.");
             }
         };
         reader.readAsText(file);
@@ -1578,7 +1582,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
                 {/* Right Card: Embedded 2D Route Map Overview */}
                 <GlassPanel className="lg:col-span-4 wg-glass-card rounded-[28px] overflow-hidden min-h-[180px] h-full relative flex flex-col border border-black/5 dark:border-white/10" overrides={{ borderRadius: 28 }} padding="0px">
-                    <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-black/40 text-white backdrop-blur px-3 py-1 rounded-full border border-white/10 shadow-sm pointer-events-none text-2xs font-bold uppercase tracking-wider">
+                    <div className="absolute top-3 left-3 z-raised flex items-center gap-1.5 bg-black/40 text-white backdrop-blur px-3 py-1 rounded-full border border-white/10 shadow-sm pointer-events-none text-2xs font-bold uppercase tracking-wider">
                         <Compass className="w-3.5 h-3.5 text-primary-500" weight="duotone" />
                         <span>Route Map 2D</span>
                     </div>
@@ -1604,7 +1608,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             </div>
 
             {/* 3. Floating Liquid-Glass Tab Navigation & Subviews Switcher */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 py-1">
+            <div className="flex flex-col md:flex-row md:flex-wrap justify-between items-center gap-4 py-1 min-w-0">
                 <Tabs 
                     tabs={[
                         { id: 'planner', label: 'Daily Planner', icon: <CalendarBlank className="w-4 h-4 text-amber-500" weight="duotone" />, color: 'amber' }, 
@@ -1885,7 +1889,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                         // Table View - Keep exact same structure with GlassPanel
                         <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden">
                             <table className="w-full text-left border-collapse">
-                                <thead className="bg-light-fill dark:bg-dark-fill/50 border-b border-black/5 dark:border-white/5 text-2xs font-bold uppercase tracking-widest text-light-text-secondary dark:text-dark-text-secondary sticky top-0 z-20">
+                                <thead className="bg-light-fill dark:bg-dark-fill/50 border-b border-black/5 dark:border-white/5 text-2xs font-bold uppercase tracking-widest text-light-text-secondary dark:text-dark-text-secondary sticky top-0 z-float">
                                     <tr>
                                         <th className="p-6 w-32">Time</th>
                                         <th className="p-6 w-48">Category</th>
@@ -2655,7 +2659,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
             {/* Cinematic Modal */}
             {isCinematicOpen && (
-                <div className="fixed inset-0 z-modal bg-black safe-top safe-bottom safe-x">
+                <div className="fixed inset-0 z-modal bg-black safe-top safe-bottom safe-x" role="dialog" aria-modal="true" aria-label="Cinematic trip view">
                     <div className="absolute top-[calc(1.5rem+env(safe-area-inset-top,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))] z-popover">
                         <button 
                             onClick={() => setIsCinematicOpen(false)} 

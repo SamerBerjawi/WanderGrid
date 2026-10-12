@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import {
     Compass,
@@ -67,6 +68,7 @@ export const ExcursionConfigurator: React.FC<ExcursionConfiguratorProps> = ({
     onDelete,
     onClose
 }) => {
+    useEscapeKey(isOpen, onClose);
     const [title, setTitle] = useState('');
     const [type, setType] = useState<ActivityType>('Tour');
     const [date, setDate] = useState(defaultDate || '');
@@ -177,7 +179,7 @@ export const ExcursionConfigurator: React.FC<ExcursionConfiguratorProps> = ({
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-modal overflow-y-auto flex items-center justify-center p-4 sm:p-6 safe-top safe-bottom safe-x font-sans">
+        <div role="dialog" aria-modal="true" aria-label="Excursion" className="fixed inset-0 z-modal overflow-y-auto flex items-center justify-center p-4 sm:p-6 safe-top safe-bottom safe-x font-sans">
             {/* Backdrop */}
             <div
                 className="fixed inset-0 backdrop-blur-md bg-black/5 dark:bg-black/15 transition-all duration-300"
@@ -185,7 +187,7 @@ export const ExcursionConfigurator: React.FC<ExcursionConfiguratorProps> = ({
             />
 
             {/* Modal Shell with Liquid Glass */}
-            <GlassPanel className="wg-glass-card w-full max-w-2xl shadow-2xl overflow-hidden z-20 animate-fade-in" overrides={{ borderRadius: 28 }} padding="0px">
+            <GlassPanel className="wg-glass-card w-full max-w-2xl shadow-2xl overflow-hidden z-float animate-fade-in" overrides={{ borderRadius: 28 }} padding="0px">
                 <div className="p-6 sm:p-8 space-y-6">
 
                     {/* Header */}

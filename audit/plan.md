@@ -593,6 +593,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - Regression: `wizard.spec.ts` › "double-clicking Create Trip creates only one trip".
 
 ### WP-2.5 Optimistic concurrency (no more silent lost updates)
+- **Status: ✅ Done.** M-22: every trip/flight/atlas/user record has a server `version`; stale writes (PUT, bulk, batch) get 409 "changed by someone else" and the view reloads; the client rebases its own successive saves; `PATCH /api/settings` + Settings sends only edited fields, so the sidebar theme and the Settings page no longer overwrite each other. (Conflicts are detected and refused rather than auto-merged.)
 - **Covers:** M-22 (REL-005).
 - **Files:**
   - `backend_files/server.js:893-907` (`updateResource`): a `version` field, `WHERE … version = $n`, and 409 on mismatch.
@@ -608,7 +609,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - New e2e: toggle the theme, then save Settings, and the theme persists.
 
 ### WP-2.6 Server resilience
-- **Status: ✅ Done.** M-22: every trip/flight/atlas/user record has a server `version`; stale writes (PUT, bulk, batch) get 409 "changed by someone else" and the view reloads; the client rebases its own successive saves; `PATCH /api/settings` + Settings sends only edited fields, so the sidebar theme and the Settings page no longer overwrite each other. (Conflicts are detected and refused rather than auto-merged.)
+- **Status: ✅ Done (API tests).** M-36 (timeouts, URL encoding, status checks on AviationStack/AeroDataBox), M-25 (one dataset refresh path with a row-count floor; fixed a placeholder-index bug for skipped lines), M-37 (`BoundedMap` caches, job retention 30 min), M-41 (bounded request drain on SIGTERM), M-13 (`/api/health` returns status only).
 - **Covers:** M-36 (REL-008), M-37 (REL-010), M-25 (REL-009), M-41 (REL-016) and M-13 (SEC-015).
 - **Files:**
   - Timeouts and encoding:
@@ -643,6 +644,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - New e2e: the crash card's reset keeps `wandergrid_session_token`. `settings.spec.ts` › "a view crash shows the recovery card…" is a regression check.
 
 ### WP-2.8 Type safety, incrementally
+- **Status: ✅ Done.** M-38: `strictNullChecks` on with `tsc` at 0 errors; trip records are normalised at the `dataService` API boundary (list fields always arrays). Runtime schemas are shared with the server-side `validateRecord` (WP-2.11) rather than a separate client schema library. (Status line restored; the work shipped in d47ad6a.)
 - **Covers:** M-38 (REL-012).
 - **Files:**
   - `tsconfig.json`: `strictNullChecks`, per directory if needed.
@@ -851,6 +853,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - e2e `flights.spec.ts` › "W28 Track Flight (Dashboard) shows a clear result or error for AA100" (mobile).
 
 ### WP-4.4 One dialog primitive, plus `useConfirm` and toasts
+- **Status: ✅ Done.** M-60/M-66: `Modal` and `StandardDrawer` have `role="dialog"`, `aria-modal` and `aria-labelledby`; the Flights (5), Atlas, Excursion, Import and Cinematic overlays are dialogs that close with Escape (`hooks/useEscapeKey.ts`; Escape inside a text field or an open suggestion list never discards the form, NEW-012). New `confirmDialog()` (`services/confirm.ts` + `components/ConfirmHost.tsx`) replaces every `window.confirm`; every `alert` is a toast or an inline `role="alert"` message (Flights form validation, duplicate member email). `grep window.confirm|alert( views components` → 0. Tests click the in-app dialog (`answerConfirm`).
 - **Covers:** M-60 (UI-005, QA-C-006), M-66 (UI-012, QA-D-005).
 - **Files:**
   - `components/ui.tsx:258+` `Modal` and `StandardDrawer`: `role="dialog"`, `aria-modal` and `aria-labelledby`.
@@ -865,6 +868,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - Tests that currently handle native dialogs (`page.once('dialog')` in `roadtrips`, `explore` and `planner-board`) must be updated to click the in-app confirm. This changes test mechanics, not expected behaviour.
 
 ### WP-4.5 Layout overflow and touch targets
+- **Status: ✅ Done.** M-62/M-61: the shared `Tabs` scrolls inside its parent (`min-w-0`, scroll at all widths); Planner filter row and TripDetail tab row wrap; Dashboard glows clipped (`overflow-x-clip`); Calendar and Atlas tab pills compact on phones (icon + `aria-label`, active tab keeps its label). Sidebar, map zoom/settings, segmented tabs, calendar month arrows and filters, Day Planner actions, Flights toolbar and Map controls are ≥44 px; the weekday picker wraps on phones. New gate `tests/e2e/a11y/layout.spec.ts`: 9 pages × 2 widths with a 300-char title and 400-char activity → 0 px overflow, 0 controls under 24 px, under 10 % under 44 px (measured 0 % on every page). The Calendar timeline's one-cell-per-day grid is exempt (`data-touch-exempt`, WCAG 2.5.8 equivalent control: the same trips have full-size controls in Grid and Agenda).
 - **Covers:** M-62 (UI-007, QA-A-013, QA-B-005, QA-C-007, QA-F-003), M-61 (UI-006).
 - **Files:**
   - `views/PlannerView.tsx:590-670`: filter row wraps.
@@ -883,6 +887,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - The touch-target script reports 0 controls under 24 px and fewer than 10 % under 44 px per page.
 
 ### WP-4.6 Token hygiene
+- **Status: ✅ Done.** M-63/M-64: numeric `z-10…z-50` replaced by tokens with the same values (`z-raised`/`z-float` added for local layering, then `z-dropdown`/`z-sticky`/`z-modal-backdrop`), so stacking is unchanged; arbitrary hex classes replaced by theme tokens (`primary-500`, `light-bg`, `dark-bg`, `light-fill`, `dark-fill`), except map-style swatches and the WebGL globe background (allowlisted). New `npm run lint:tokens` (`scripts/check-tokens.mjs`, run in CI) fails on numeric/arbitrary z-index, arbitrary hex, and shades missing from the resolved Tailwind palette: 0 problems. `eslint-plugin-tailwindcss` was not added (no ESLint toolchain in the repo); the script covers the same rules for this codebase. No screenshot diff was run; the axe and layout gates passed.
 - **Covers:** M-63 (UI-009, effort S, a quick win) and M-64 (UI-010, effort L).
 - **Files:**
   - The 211 invalid shade classes, e.g. `views/VacationCalendar.tsx:1063` and `views/UserDetail.tsx:307`.
@@ -897,6 +902,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - Screenshot diff on 13 pages.
 
 ### WP-4.7 Component and page consolidation
+- **Status: ✅ Done (scoped).** M-65: dead `WorkspaceSettingsTab`, `TimezoneSlider`, `TravelerLeaderboard`, `transport/FerryForm` and the `GlassDatePicker` pass-through deleted; every date field already goes through `ui/DatePicker` (`Input type="date"` upgrades itself). Root `ErrorBoundary` uses theme tokens and the shared button styles. Kept on purpose: `LiquidGlassSelect` (filter pills with search) next to `Select`/`GlassSelect` (form fields), as Design.md §3.3 specifies; a single `Tabs` rewrite was not needed for the findings. The `*2` views and Planner-2 were removed earlier.
 - **Decision (2026-10-11, user):** Planner-2 (`views/VacationPlanner.tsx`) deleted as redundant; `/planner-2` and `/planner2` open the Planner; its e2e spec was retired.
 - **Covers:** M-65 (UI-011).
 - **Files:**
@@ -913,6 +919,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - Usage counts from UI-011 drop to a single implementation per job.
 
 ### WP-4.8 Copy, terminology and wizard polish
+- **Status: ✅ Done.** M-67/M-68/M-45: Design.md glossary (Trip, Road trip, Flight, Stay, Activity, Member, Archive/Delete, Sign in, Drop-off); Settings "Personnel" → "Members"; sign-in copy is plain ("Sign In", "Invalid credentials: the email or password is incorrect.", "Create Account"); Drop-off spelled consistently. Wizard: Next applies the same rules as Create Trip (destination optional), the draft survives a refresh (sessionStorage) and browser Back closes the wizard (history entry). "Airward" and "1 Trip" were fixed earlier. cspell was not run.
 - **Covers:** M-67 (UI-013), M-68 (UI-014, QA-A-015), M-45 (QA-B-004, QA-B-006, QA-B-007).
 - **Files:**
   - A glossary in Design.md.

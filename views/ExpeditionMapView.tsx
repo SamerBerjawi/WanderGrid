@@ -21,7 +21,7 @@ import { dataService } from '../services/mockDb';
 import { runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, getResidenceStatuses } from '../types';
 import { GlassSegmented } from '../components/glass/GlassSegmented';
-import { GlassDatePicker } from '../components/glass/GlassDatePicker';
+import DatePicker from '../components/ui/DatePicker';
 import { LiquidGlassSelect, LiquidGlassMultiSelect } from '../components/LiquidGlassSelect';
 import { getCoordinates, getCoordinatesSync, STATIC_GEO_DATA, calculateDistance, formatProperLocationName } from '../services/geocoding';
 import {
@@ -900,11 +900,11 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
     };
 
     return (
-        <div ref={mapContainerRef} className="relative w-full h-full overflow-hidden bg-light-bg dark:bg-[#050505] select-none">
+        <div ref={mapContainerRef} className="relative w-full h-full overflow-hidden bg-light-bg dark:bg-dark-bg select-none">
             {/* 1. 100% FULL-SCREEN DECK.GL WEBGL MAP */}
             <div className="absolute inset-0 w-full h-full">
                 <Suspense fallback={
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-light-bg dark:bg-[#050505] space-y-4">
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-light-bg dark:bg-dark-bg space-y-4">
                         <Compass className="w-10 h-10 text-primary-500 animate-[spin_4s_linear_infinite]" weight="duotone" />
                         <p className="text-xs font-bold uppercase tracking-[0.2em] text-light-text-secondary dark:text-dark-text-secondary">Loading Geospatial Engine...</p>
                     </div>
@@ -942,7 +942,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             </div>
 
             {/* 2. FLOATING BOTTOM-CENTER PREDEFINED VIEW MODES SELECTOR (Desktop md+) */}
-            <div className="hidden md:block absolute bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+            <div className="hidden md:block absolute bottom-6 left-1/2 -translate-x-1/2 z-float pointer-events-auto">
                 <GlassPanel
                     className="wg-glass-pill shadow-glass-card"
                     padding="4px 6px"
@@ -973,7 +973,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                             transition={{ type: "spring", stiffness: 450, damping: 32 }}
                                         />
                                     )}
-                                    <span className="relative z-10 flex flex-col items-center gap-0.5">
+                                    <span className="relative z-raised flex flex-col items-center gap-0.5">
                                         <span className="flex items-center gap-1.5 sm:gap-2">
                                             <IconComponent className={`w-4.5 h-4.5 shrink-0 transition-colors duration-200 ${config.color}`} weight="duotone" />
                                             <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden sm:inline'} ${isSelected ? config.activeText : config.color}`}>
@@ -998,7 +998,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             </div>
 
             {/* 3. FLOATING TOP RIGHT CONTROLS TOGGLE & FULLSCREEN (Desktop md+) */}
-            <div className="hidden md:flex absolute top-5 right-5 z-20 items-center gap-2 pointer-events-auto">
+            <div className="hidden md:flex absolute top-5 right-5 z-float items-center gap-2 pointer-events-auto">
                 <GlassPanel
                     className="wg-glass-pill shadow-glass-card"
                     padding="0px"
@@ -1006,7 +1006,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 >
                     <button
                         onClick={handleToggleFullscreen}
-                        className={`p-2.5 text-xs font-semibold flex items-center justify-center cursor-pointer transition-all duration-150 active:scale-95 rounded-2xl ${isFullscreen
+                        className={`p-2.5 wg-touch-target text-xs font-semibold flex items-center justify-center cursor-pointer transition-all duration-150 active:scale-95 rounded-2xl ${isFullscreen
                                 ? 'bg-primary-500/20 dark:bg-primary-500/30 backdrop-blur-md text-primary-600 dark:text-primary-400 border border-primary-500/40 dark:border-primary-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)]'
                                 : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/5'
                             }`}
@@ -1029,7 +1029,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 >
                     <button
                         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                        className={`px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2.5 cursor-pointer transition-all duration-150 active:scale-[0.98] ${isSidebarOpen
+                        className={`px-4 py-2.5 min-h-[44px] rounded-2xl text-xs font-semibold flex items-center gap-2.5 cursor-pointer transition-all duration-150 active:scale-[0.98] ${isSidebarOpen
                                 ? 'bg-primary-500/20 dark:bg-primary-500/30 backdrop-blur-md text-primary-700 dark:text-primary-300 border border-primary-500/40 dark:border-primary-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(234,88,12,0.2)]'
                                 : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/5'
                             }`}
@@ -1047,7 +1047,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             </div>
 
             {/* 3.5 MOBILE TOP BAR (< md): Telemetry on left, Fullscreen & Controls on right */}
-            <div className="flex md:hidden absolute top-[calc(0.75rem+env(safe-area-inset-top,0px))] inset-x-3 z-20 items-center justify-between pointer-events-none safe-x">
+            <div className="flex md:hidden absolute top-[calc(0.75rem+env(safe-area-inset-top,0px))] inset-x-3 z-float items-center justify-between pointer-events-none safe-x">
                 {/* Left: Compact Telemetry / Map Brand */}
                 <div className="pointer-events-auto">
                     <GlassPanel
@@ -1076,7 +1076,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         <div className="flex items-center gap-1">
                             <button
                                 onClick={handleToggleFullscreen}
-                                className={`w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer transition-all duration-150 active:scale-95 ${isFullscreen
+                                className={`w-11 h-11 rounded-xl flex items-center justify-center cursor-pointer transition-all duration-150 active:scale-95 ${isFullscreen
                                         ? 'bg-primary-500/20 dark:bg-primary-500/30 text-primary-600 dark:text-primary-400'
                                         : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
                                     }`}
@@ -1092,7 +1092,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             <div className="w-[1px] h-4 bg-black/10 dark:bg-white/10" />
                             <button
                                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                                className={`h-8 px-2.5 rounded-xl flex items-center gap-1.5 text-xs font-bold cursor-pointer transition-all duration-150 active:scale-95 ${isSidebarOpen
+                                className={`h-11 px-2.5 rounded-xl flex items-center gap-1.5 text-xs font-bold cursor-pointer transition-all duration-150 active:scale-95 ${isSidebarOpen
                                         ? 'bg-primary-500/20 dark:bg-primary-500/30 text-primary-700 dark:text-primary-300'
                                         : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/5'
                                     }`}
@@ -1113,7 +1113,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             </div>
 
             {/* 3.6 MOBILE BOTTOM FLOATING TAB SELECTOR (< md) - Floating just above bottom navbar */}
-            <div className={`flex md:hidden fixed bottom-[calc(4.85rem+env(safe-area-inset-bottom,0px))] inset-x-0 z-40 items-center justify-center px-4 pointer-events-none transition-opacity duration-200 ${isSidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            <div className={`flex md:hidden fixed bottom-[calc(4.85rem+env(safe-area-inset-bottom,0px))] inset-x-0 z-sticky items-center justify-center px-4 pointer-events-none transition-opacity duration-200 ${isSidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
                 }`}>
                 <div className="pointer-events-auto w-full max-w-sm">
                     <GlassPanel
@@ -1146,7 +1146,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                                 transition={{ type: "spring", stiffness: 450, damping: 32 }}
                                             />
                                         )}
-                                        <span className="relative z-10 flex flex-col items-center justify-center truncate px-0.5">
+                                        <span className="relative z-raised flex flex-col items-center justify-center truncate px-0.5">
                                             <span className="flex items-center gap-1 truncate">
                                                 <IconComponent className={`w-3.5 h-3.5 shrink-0 transition-colors duration-200 ${config.color}`} weight="duotone" />
                                                 <span className={`text-2xs font-bold tracking-tight ${isSelected ? config.activeText : config.color}`}>{config.shortLabel}</span>
@@ -1268,7 +1268,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-0.5">From</span>
-                                    <GlassDatePicker
+                                    <DatePicker
                                         value={dateFrom}
                                         onChange={setDateFrom}
                                         placeholder="Select date"
@@ -1277,7 +1277,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 </div>
                                 <div>
                                     <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-0.5">To</span>
-                                    <GlassDatePicker
+                                    <DatePicker
                                         value={dateTo}
                                         onChange={setDateTo}
                                         placeholder="Select date"

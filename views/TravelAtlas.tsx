@@ -1,5 +1,7 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { confirmDialog } from '../services/confirm';
 import { affectsCollections } from '../hooks/useWanderSync';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { ViewState, VisitedItem, Trip, CountryResidenceStatus, getResidenceStatuses, toggleCountryResidenceStatus } from '../types';
 import { dataService } from '../services/mockDb';
@@ -34,6 +36,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
   // Modal / Form state for Add/Edit Country/City
   const [isModalOpen, setIsModalOpen] = useState(false);
+  useEscapeKey(isModalOpen, useCallback(() => setIsModalOpen(false), []));
   const [modalType, setModalType] = useState<'country' | 'city'>('country');
   const [editingItem, setEditingItem] = useState<VisitedItem | null>(null);
 
@@ -527,7 +530,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
   // Delete visited item
   const handleDeleteItem = async (id: string) => {
-    if (!window.confirm("Are you sure you want to remove this item from your Atlas? This will update your maps and statistics dynamically.")) return;
+    if (!(await confirmDialog({ title: 'Remove from Atlas?', message: 'Remove this item from your Atlas? Your maps and statistics update straight away.', confirmLabel: 'Remove', danger: true }))) return;
     try {
       await dataService.deleteVisited(id);
       void loadData();
@@ -886,9 +889,9 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
       ) : null}
 
       {/* Main Tabs Navigation (Liquid Glass Pill) */}
-      <div className="flex justify-center w-full my-2">
+      <div className="flex justify-center w-full my-2 min-w-0">
         <GlassPanel
-          className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
+          className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 max-w-full min-w-0"
           padding="4px 6px"
           overrides={{ borderRadius: 9999 }}
         >
@@ -897,7 +900,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
             type="button"
             onClick={() => setActiveTab('visited')}
             aria-label="Visited"
-            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
+            className={`relative px-3 sm:px-4 py-2 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer z-raised shrink-0 ${
               activeTab === 'visited'
                 ? 'text-primary-600 dark:text-primary-400 font-extrabold'
                 : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
@@ -921,7 +924,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
             type="button"
             onClick={() => setActiveTab('layovers')}
             aria-label="Layovers"
-            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
+            className={`relative px-3 sm:px-4 py-2 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer z-raised shrink-0 ${
               activeTab === 'layovers'
                 ? 'text-amber-600 dark:text-amber-400 font-extrabold'
                 : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
@@ -945,7 +948,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
             type="button"
             onClick={() => setActiveTab('wishlist')}
             aria-label="Wishlist"
-            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
+            className={`relative px-3 sm:px-4 py-2 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer z-raised shrink-0 ${
               activeTab === 'wishlist'
                 ? 'text-rose-600 dark:text-rose-400 font-extrabold'
                 : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
@@ -969,7 +972,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
             type="button"
             onClick={() => setActiveTab('cities')}
             aria-label="Cities"
-            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
+            className={`relative px-3 sm:px-4 py-2 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer z-raised shrink-0 ${
               activeTab === 'cities'
                 ? 'text-blue-600 dark:text-blue-400 font-extrabold'
                 : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
@@ -993,7 +996,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
             type="button"
             onClick={() => setActiveTab('sync')}
             aria-label="Sync Scanner"
-            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
+            className={`relative px-3 sm:px-4 py-2 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer z-raised shrink-0 ${
               activeTab === 'sync'
                 ? 'text-primary-600 dark:text-primary-400 font-extrabold'
                 : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
@@ -1710,7 +1713,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
       {createPortal(
         <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-modal flex items-start sm:items-center justify-center p-4 font-sans overflow-y-auto">
+          <div role="dialog" aria-modal="true" aria-label={editingItem ? 'Edit atlas record' : 'Add to atlas'} className="fixed inset-0 z-modal flex items-start sm:items-center justify-center p-4 font-sans overflow-y-auto">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1722,7 +1725,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg z-10"
+              className="w-full max-w-lg z-raised"
             >
               <GlassPanel
                 className="wg-glass-card w-full shadow-2xl overflow-hidden"

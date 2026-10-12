@@ -198,7 +198,7 @@ export const PassportStamp: React.FC<PassportStampProps> = ({ country }) => {
             </div>
 
             {/* Micro Floating Tooltip on Hover */}
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2 z-30 px-2 py-0.5 rounded-full text-2xs font-mono font-bold bg-black/85 dark:bg-white/90 text-white dark:text-black whitespace-nowrap shadow-md flex items-center gap-1">
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2 z-dropdown px-2 py-0.5 rounded-full text-2xs font-mono font-bold bg-black/85 dark:bg-white/90 text-white dark:text-black whitespace-nowrap shadow-md flex items-center gap-1">
                 <span>{country.name}</span>
                 <span className="opacity-60">•</span>
                 <span>{country.tripCount}x</span>

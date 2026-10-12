@@ -106,7 +106,7 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
   if (!isOpen && !isVisible) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-modal overflow-hidden font-sans">
+    <div className="fixed inset-0 z-modal overflow-hidden font-sans" role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>
       {/* 1. Backdrop Blur Overlay */}
       <div 
         className={`fixed inset-0 backdrop-blur-md bg-black/5 dark:bg-black/15 transition-all duration-300 ${

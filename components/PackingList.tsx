@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { confirmDialog } from '../services/confirm';
 import { toast } from '../services/toast';
 import { Trip, PackingItem, WorkspaceSettings } from '../types';
 import { Button, Input, Select, Badge } from './ui';
@@ -83,7 +84,7 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
         if (newItems.length > 0) {
             onUpdate([...items, ...newItems]);
         } else {
-            alert("All master list items are already added.");
+            toast.info("All master list items are already added.");
         }
     };
 
@@ -144,7 +145,7 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
             <div className="flex flex-col md:flex-row justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
                 
-                <div className="flex items-center gap-6 relative z-10 w-full md:w-auto">
+                <div className="flex items-center gap-6 relative z-raised w-full md:w-auto">
                     <div className="relative w-20 h-20 flex-shrink-0">
                         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                             <path className="text-white/20" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
@@ -158,11 +159,11 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                     </div>
                 </div>
 
-                <div className="relative z-10 w-full md:w-auto mt-6 md:mt-0 flex gap-3 flex-wrap justify-end">
+                <div className="relative z-raised w-full md:w-auto mt-6 md:mt-0 flex gap-3 flex-wrap justify-end">
                     <Button 
-                        onClick={() => {
+                        onClick={async () => {
                             if (items.length === 0) return;
-                            if (window.confirm(`Remove all ${items.length} item${items.length === 1 ? '' : 's'} from this packing list? This can't be undone.`)) onUpdate([]);
+                            if (await confirmDialog({ title: 'Clear packing list?', message: `Remove all ${items.length} item${items.length === 1 ? '' : 's'} from this packing list? This can't be undone.`, confirmLabel: 'Clear All', danger: true })) onUpdate([]);
                         }} 
                         variant="ghost" 
                         className="text-white/70 hover:text-white hover:bg-white/10"

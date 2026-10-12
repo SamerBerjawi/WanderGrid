@@ -1,4 +1,4 @@
-import colors from 'tailwindcss/colors';
+import colors from 'tailwindcss/colors.js';
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -31,6 +31,9 @@ export default {
         '2xs': ['0.6875rem', { lineHeight: '1rem' }],
       },
       zIndex: {
+        // Local layering inside a component (content above its own decoration).
+        'raised': '10',
+        'float': '20',
         'dropdown': '30',
         'sticky': '40',
         'modal-backdrop': '50',

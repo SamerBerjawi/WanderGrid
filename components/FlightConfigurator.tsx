@@ -737,7 +737,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             )}
 
             {/* Sticky Frosted Action Footer */}
-            <div className="p-4 sm:p-5 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 mt-6 border-t border-black/5 dark:border-white/10 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md flex items-center justify-between gap-3 sticky bottom-0 z-20 rounded-b-[28px]">
+            <div className="p-4 sm:p-5 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 mt-6 border-t border-black/5 dark:border-white/10 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md flex items-center justify-between gap-3 sticky bottom-0 z-float rounded-b-[28px]">
                 {initialData && onDelete ? (
                     <button
                         type="button"

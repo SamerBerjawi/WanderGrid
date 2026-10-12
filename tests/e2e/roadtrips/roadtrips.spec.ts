@@ -3,6 +3,7 @@
  * create/edit land journey (modes, route calculation, waypoints, trip association), auto-sync, browse/delete.
  */
 import { test, expect, ADMIN, resetDb, apiRegister, seedSession, expectAppShell } from '../support/fixtures';
+import { answerConfirm } from '../support/fixtures';
 import { seedTrip, seedFlight, flightRecord, apiGet, apiTrips, isoDaysFromNow, visible, inMain, overflowX, pickDateNextMonth } from '../support/planning';
 
 let s: { token: string; user: any };
@@ -17,7 +18,7 @@ const train = (id: string, over: Record<string, any> = {}) => flightRecord(id, {
 
 async function openRoadTrips(page) { await page.goto('/roadtrips'); await expectAppShell(page); }
 async function openCreate(page) {
-  await page.getByRole('button', { name: 'Add Land Journey' }).click();
+  await page.getByRole('button', { name: 'Add Land Journey' }).first().click();
   await expect(visible(page, 'input[placeholder="e.g. Paris Gare du Nord, Rome"]').first()).toBeVisible();
 }
 async function fillJourney(page, o: { from: string; to: string; day: number; mode?: string }) {
@@ -129,11 +130,13 @@ test('W31 Auto-Sync finds a land segment inside a trip and saves it', async ({ p
     ] }, ADMIN.id);
   await openRoadTrips(page);
   page.on('dialog', (d) => d.accept());
-  await page.locator('select >> visible=true').filter({ has: page.locator('option', { hasText: 'QA Austria' }) }).first().selectOption({ label: 'QA Austria' });
+  await page.locator('select >> visible=true').filter({ has: page.locator('option', { hasText: 'QA Austria' }) }).first().selectOption('sync-trip'); // options read "QA Austria (2 stops)"
   await page.getByRole('button', { name: /Auto-Sync Segments/ }).click();
   const saveAll = page.getByRole('button', { name: /Save All Segments/ });
   if (await saveAll.isVisible({ timeout: 8000 }).catch(() => false)) await saveAll.click();
-  await expect(inMain(page, 'Vienna').first()).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(/Synchronized and imported 1 new/)).toBeVisible({ timeout: 10_000 });
+  await expect.poll(async () => (await landRecords(request)).some((r) => /Vienna/.test(r.origin) && /Salzburg/.test(r.destination)), { timeout: 10_000 }).toBe(true);
+  await expect(page.locator('main').getByText(/Vienna/).first()).toBeAttached(); // listed (labels read "Vienna, Austria")
 });
 
 test('W32 search filters journeys', async ({ page, request }) => {
@@ -148,16 +151,16 @@ test('W32 search filters journeys', async ({ page, request }) => {
 test('W32 delete a journey (confirm) removes it', async ({ page, request }) => {
   await seedFlight(request, s.token, train('rt-del'));
   await openRoadTrips(page);
-  page.once('dialog', (d) => d.accept());
   await page.getByRole('button', { name: 'Delete Travel Record' }).first().click();
+  await answerConfirm(page, true);
   await expect.poll(async () => (await landRecords(request)).length, { timeout: 10_000 }).toBe(0);
 });
 
 test('W32 delete → dismiss confirmation keeps the journey', async ({ page, request }) => {
   await seedFlight(request, s.token, train('rt-keep'));
   await openRoadTrips(page);
-  page.once('dialog', (d) => d.dismiss());
   await page.getByRole('button', { name: 'Delete Travel Record' }).first().click();
+  await answerConfirm(page, false);
   await page.waitForTimeout(800);
   expect((await landRecords(request)).length).toBe(1);
 });
@@ -171,8 +174,8 @@ test('W32 bulk select and delete two journeys', async ({ page, request }) => {
   for (let i = 0; i < 5 && (await sel.count()) > 0; i++) await sel.first().click();
   const writes: string[] = [];
   page.on('request', (r) => { if (r.url().includes('/api/') && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(r.method())) writes.push(`${r.method()} ${new URL(r.url()).pathname}`); });
-  page.once('dialog', (d) => d.accept());
   await page.getByRole('button', { name: /Delete Selected/ }).click();
+  await answerConfirm(page, true);
   await expect.poll(async () => (await landRecords(request)).length, { timeout: 10_000 }).toBe(0);
   expect(writes, 'bulk delete is one atomic request (PERF-008)').toEqual(['POST /api/batch']);
 });

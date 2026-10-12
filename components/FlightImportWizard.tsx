@@ -1,4 +1,5 @@
 import React, { useRef, useState, useMemo, useEffect } from 'react';
+import { toast } from '../services/toast';
 import * as XLSX from 'xlsx';
 import { Trip, Transport, User, BackupSelectionOptions, RestoreOptions } from '../types';
 import { Button, Input, Select } from './ui';
@@ -769,7 +770,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                     setBackupRestoreError('');
                 } catch (err: any) {
                     console.error(err);
-                    alert("This JSON file does not appear to be a valid backup file.");
+                    toast.error("This JSON file does not appear to be a valid backup file.");
                     setBackupDataState(null);
                     setBackupParsedCount(null);
                 }
@@ -791,7 +792,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                 const jsonRows = XLSX.utils.sheet_to_json(sheet) as any[];
 
                 if (jsonRows.length === 0) {
-                    alert("The uploaded file contains no rows.");
+                    toast.error("The uploaded file contains no rows.");
                     return;
                 }
 
@@ -849,7 +850,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                 setStep(2);
             } catch (err) {
                 console.error(err);
-                alert("Failed to read sheet. Ensure it is a valid Excel or CSV table.");
+                toast.error("Failed to read sheet. Ensure it is a valid Excel or CSV table.");
             }
         };
         reader.readAsArrayBuffer(file);
@@ -864,7 +865,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
         // Validation: Verify key items have some mapping
         const missingRequired = TARGET_FIELDS.find(t => t.required && !columnMapping[t.key]);
         if (missingRequired) {
-            alert(`Please map the required field: ${missingRequired.label}`);
+            toast.error(`Please map the required field: ${missingRequired.label}`);
             return;
         }
         setStep(3);
@@ -930,7 +931,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
             onClose();
         } catch (e) {
             console.error('Import error', e);
-            alert('An error occurred while saving imported data.');
+            toast.error('An error occurred while saving imported data.');
         } finally {
             setIsProcessing(false);
         }
@@ -938,6 +939,9 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
 
     return (
         <div 
+            role="dialog"
+            aria-modal="true"
+            aria-label="Import flights"
             className="fixed inset-0 backdrop-blur-md bg-black/5 dark:bg-black/15 flex items-center justify-center z-modal p-4 safe-top safe-bottom safe-x text-light-text dark:text-dark-text animate-fade-in font-sans"
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
@@ -1156,7 +1160,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                         { key: 'flights', label: 'Flights & Itineraries', count: backupParsedCount?.flights || 0, icon: <Plane className="w-4 h-4" /> },
                                                         { key: 'roadTrips', label: 'Road Trips & Overland', count: backupParsedCount?.roadTrips || 0, icon: <Car className="w-4 h-4" /> },
                                                         { key: 'visited', label: 'Travel Atlas (Visited)', count: backupParsedCount?.visited || 0, icon: <MapPin className="w-4 h-4" /> },
-                                                        { key: 'users', label: 'Personnel & Roster', count: backupParsedCount?.users || 0, icon: <Users className="w-4 h-4" /> },
+                                                        { key: 'users', label: 'Members', count: backupParsedCount?.users || 0, icon: <Users className="w-4 h-4" /> },
                                                         { key: 'calendar', label: 'Calendar & Leave Policies', count: backupParsedCount?.calendar || 0, icon: <Calendar className="w-4 h-4" /> },
                                                         { key: 'settings', label: 'Workspace Configuration', count: backupParsedCount?.settings ? 1 : 0, icon: <Gear className="w-4 h-4" /> },
                                                     ].map(item => {
@@ -1641,7 +1645,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                             try {
                                                 const flightsToSaveIndexes = Array.from(selectedImportIndexes);
                                                 if (flightsToSaveIndexes.length === 0) {
-                                                    alert("Please select at least one flight to import.");
+                                                    toast.error("Please select at least one flight to import.");
                                                     setIsProcessing(false);
                                                     return;
                                                 }
@@ -1742,7 +1746,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                 onClose();
                                             } catch (e) {
                                                 console.error('Import error', e);
-                                                alert('An error occurred while saving imported data.');
+                                                toast.error('An error occurred while saving imported data.');
                                             } finally {
                                                 setIsProcessing(false);
                                             }

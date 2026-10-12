@@ -336,7 +336,7 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
       padding="0px"
     >
       {/* Floating Status Indicator Tag */}
-      <div className="absolute top-3 left-3 z-10 bg-white/80 dark:bg-black/50 px-2.5 py-1 rounded-xl border border-black/5 dark:border-white/10 backdrop-blur-md shadow-xs pointer-events-none">
+      <div className="absolute top-3 left-3 z-raised bg-white/80 dark:bg-black/50 px-2.5 py-1 rounded-xl border border-black/5 dark:border-white/10 backdrop-blur-md shadow-xs pointer-events-none">
         <div className="flex items-center gap-1.5 text-2xs font-extrabold uppercase tracking-widest text-light-text dark:text-dark-text">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping shrink-0" />
           Route Network
@@ -344,7 +344,7 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
       </div>
 
       {/* Floating Network Statistics Tag */}
-      <div className="absolute top-3 right-3 z-10 bg-white/80 dark:bg-black/50 px-2.5 py-1 rounded-xl border border-black/5 dark:border-white/10 backdrop-blur-md shadow-xs pointer-events-none">
+      <div className="absolute top-3 right-3 z-raised bg-white/80 dark:bg-black/50 px-2.5 py-1 rounded-xl border border-black/5 dark:border-white/10 backdrop-blur-md shadow-xs pointer-events-none">
         <div className="flex items-center gap-1 text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary">
           <Globe className="w-3 h-3 text-indigo-500" />
           {stats.routes.length} Active Segments
@@ -536,7 +536,7 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
                     transition={{ type: "spring", stiffness: 450, damping: 32 }}
                   />
                 )}
-                <span className="relative z-10 flex items-center gap-1.5">
+                <span className="relative z-raised flex items-center gap-1.5">
                   <TabIcon className="w-3.5 h-3.5" weight="duotone" />
                   <span className="text-2xs truncate">{tab.label}</span>
                 </span>

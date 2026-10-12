@@ -319,13 +319,13 @@ export const PassportIdCard: React.FC<PassportIdCardProps> = ({ flights, yearFil
               
               {/* Profile icon structure */}
               {currentUser?.profilePicture ? (
-                <img src={currentUser.profilePicture} alt={travelerName} className="w-full h-full object-cover relative z-10" referrerPolicy="no-referrer" />
+                <img src={currentUser.profilePicture} alt={travelerName} className="w-full h-full object-cover relative z-raised" referrerPolicy="no-referrer" />
               ) : (
                 <>
-                  <div className="w-12 h-12 rounded-full bg-zinc-700/80 border border-zinc-600 flex items-center justify-center text-zinc-300 relative z-10 shrink-0 font-bold text-lg shadow-sm">
+                  <div className="w-12 h-12 rounded-full bg-zinc-700/80 border border-zinc-600 flex items-center justify-center text-zinc-300 relative z-raised shrink-0 font-bold text-lg shadow-sm">
                     {initials}
                   </div>
-                  <div className="w-20 h-10 rounded-t-[50%] bg-zinc-700/50 border border-zinc-600/40 relative z-10 -mt-2 shadow-sm" />
+                  <div className="w-20 h-10 rounded-t-[50%] bg-zinc-700/50 border border-zinc-600/40 relative z-raised -mt-2 shadow-sm" />
                 </>
               )}
               
@@ -496,7 +496,7 @@ export const PassportTravelMap: React.FC<PassportTravelMapProps> = ({ flights, y
   return (
     <div className="relative overflow-hidden bg-white/70 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-white/5 shadow-xl rounded-3xl backdrop-blur-xl h-full flex flex-col justify-end group transition-all duration-300 hover:shadow-2xl">
       {/* Floating Status Indicator Tag */}
-      <div className="absolute top-5 left-5 z-20 bg-white/90 dark:bg-black/55 px-3 py-2 rounded-2xl border border-zinc-200 dark:border-white/10 backdrop-blur-md shadow-sm pointer-events-none">
+      <div className="absolute top-5 left-5 z-float bg-white/90 dark:bg-black/55 px-3 py-2 rounded-2xl border border-zinc-200 dark:border-white/10 backdrop-blur-md shadow-sm pointer-events-none">
         <div className="flex items-center gap-2 text-2xs font-bold uppercase tracking-widest text-zinc-800 dark:text-zinc-200">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping shrink-0" />
           Live Route Network
@@ -504,7 +504,7 @@ export const PassportTravelMap: React.FC<PassportTravelMapProps> = ({ flights, y
       </div>
 
       {/* Floating Network Statistics Tag */}
-      <div className="absolute top-5 right-5 z-20 bg-white/90 dark:bg-black/55 px-3 py-2 rounded-2xl border border-zinc-200 dark:border-white/10 backdrop-blur-md shadow-sm pointer-events-none">
+      <div className="absolute top-5 right-5 z-float bg-white/90 dark:bg-black/55 px-3 py-2 rounded-2xl border border-zinc-200 dark:border-white/10 backdrop-blur-md shadow-sm pointer-events-none">
         <div className="flex items-center gap-1 text-2xs font-bold text-zinc-500 dark:text-zinc-400">
           <Globe className="w-3.5 h-3.5 text-indigo-500" />
           {stats.routes.length} Active Segments

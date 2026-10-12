@@ -141,7 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* Desktop Fixed Sidebar with Liquid Glass */}
-      <aside className={`hidden md:flex flex-shrink-0 flex-col fixed top-4 left-4 bottom-4 z-40 transition-all duration-300 pointer-events-none ${isCollapsed ? 'w-20' : 'w-72'}`}>
+      <aside className={`hidden md:flex flex-shrink-0 flex-col fixed top-4 left-4 bottom-4 z-sticky transition-all duration-300 pointer-events-none ${isCollapsed ? 'w-20' : 'w-72'}`}>
         <div className="relative w-full h-full pointer-events-auto">
           <GlassPanel liquid
             className="wg-glass-card shadow-2xl h-full flex flex-col"
@@ -171,7 +171,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         onClick={() => onNavigate(item.value)}
                         className={`flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold select-none cursor-pointer relative transition-all duration-200 group
                           ${isActive 
-                            ? 'font-black z-10' 
+                            ? 'font-black z-raised' 
                             : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-white/[0.08] z-0'
                           }
                           ${isCollapsed ? 'justify-center px-0 w-12 h-12 border border-transparent' : 'w-full'}
@@ -188,17 +188,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         )}
                         <Icon 
                           name={item.icon} 
-                          className={`text-xl relative z-20 shrink-0 transition-transform duration-200 group-hover:scale-105 ${itemTheme.color} ${
+                          className={`text-xl relative z-float shrink-0 transition-transform duration-200 group-hover:scale-105 ${itemTheme.color} ${
                             isActive ? 'opacity-100' : 'opacity-75 group-hover:opacity-100'
                           }`} 
                         />
                         {!isCollapsed && (
-                          <span className={`relative z-20 font-bold tracking-tight ${isActive ? itemTheme.color : ''}`}>
+                          <span className={`relative z-float font-bold tracking-tight ${isActive ? itemTheme.color : ''}`}>
                             {item.label}
                           </span>
                         )}
                         {isActive && !isCollapsed && (
-                          <span className={`ml-auto relative z-20 w-1.5 h-3.5 rounded-full ${itemTheme.indicator}`} />
+                          <span className={`ml-auto relative z-float w-1.5 h-3.5 rounded-full ${itemTheme.indicator}`} />
                         )}
                       </button>
                     );
@@ -287,7 +287,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {currentUser && (
                         <button 
                             onClick={() => onNavigate(ViewState.USER_DETAIL, currentUser.id)}
-                            className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center transition-all border cursor-pointer overflow-hidden p-0.5 group hover:scale-105 active:scale-95 ${
+                            className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all border cursor-pointer overflow-hidden p-0.5 group hover:scale-105 active:scale-95 ${
                                 currentView === ViewState.USER_DETAIL 
                                 ? `${isDark ? PAGE_THEMES[ViewState.USER_DETAIL].activeSidebarDark : PAGE_THEMES[ViewState.USER_DETAIL].activeSidebarLight} border-primary-500/50` 
                                 : 'bg-transparent border-transparent hover:border-zinc-200/40 dark:hover:border-white/20 hover:bg-zinc-200/30 dark:hover:bg-white/[0.08]'
@@ -306,7 +306,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {/* 2. Theme Toggle (Dark / Light / Auto) */}
                     <button 
                         onClick={handleThemeCycle}
-                        className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.08] transition-all cursor-pointer hover:scale-105 active:scale-95`}
+                        className={`w-11 h-11 rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.08] transition-all cursor-pointer hover:scale-105 active:scale-95`}
                         title={
                           theme === 'dark' 
                             ? 'Appearance: Dark Mode (Click for Light)' 
@@ -329,7 +329,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <button 
                           type="button"
                           onClick={onLogout}
-                          className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center text-zinc-500 hover:text-rose-600 dark:text-zinc-200 dark:hover:text-rose-400 hover:bg-zinc-200/30 dark:hover:bg-white/[0.08] transition-all cursor-pointer hover:scale-105 active:scale-95`}
+                          className={`w-11 h-11 rounded-xl flex items-center justify-center text-zinc-500 hover:text-rose-600 dark:text-zinc-200 dark:hover:text-rose-400 hover:bg-zinc-200/30 dark:hover:bg-white/[0.08] transition-all cursor-pointer hover:scale-105 active:scale-95`}
                           title="Sign out"
                           aria-label="Sign out"
                       >
@@ -340,7 +340,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {/* 3. Collapse Button (Moved from top right of sidebar) */}
                     <button 
                         onClick={toggleCollapse}
-                        className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.08] transition-all cursor-pointer hover:scale-105 active:scale-95`}
+                        className={`w-11 h-11 rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.08] transition-all cursor-pointer hover:scale-105 active:scale-95`}
                         title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                     >
                         <SidebarSimple weight="duotone" className="w-5 h-5" />
@@ -363,7 +363,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </aside>
 
       {/* Mobile Bottom Navigation with Liquid Glass */}
-      <div className="flex md:hidden fixed bottom-safe-nav left-0 right-0 z-50 items-center justify-center px-3 pointer-events-none safe-x">
+      <div className="flex md:hidden fixed bottom-safe-nav left-0 right-0 z-modal-backdrop items-center justify-center px-3 pointer-events-none safe-x">
         <GlassPanel liquid
           className="wg-glass-pill shadow-2xl pointer-events-auto w-full max-w-md"
           overrides={{ borderRadius: 28 }}

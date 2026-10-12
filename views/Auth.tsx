@@ -63,7 +63,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 if (user) {
                     onLogin(user);
                 } else {
-                    setError('Invalid credentials. Please verify design coordinates.');
+                    setError('Invalid credentials: the email or password is incorrect.');
                 }
             } else if (mode === 'signup') {
                 if (formData.password !== formData.confirmPassword) {
@@ -220,10 +220,10 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 }
                 onLogin(user);
             } else {
-                setError('Failed to initialize demo session');
+                setError('Could not start the demo. Please try again.');
             }
         } catch (e: any) {
-            setError(e?.message || 'Demo mode unavailable at this moment');
+            setError(e?.message || 'The demo is not available right now.');
         } finally {
             setIsLoading(false);
         }
@@ -237,7 +237,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/3 rounded-full blur-3xl pointer-events-none animate-pulse"></div>
             <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/3 rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDelay: '1s' }}></div>
 
-            <GlassPanel className="w-full max-w-md z-10 wg-glass-card rounded-[28px] overflow-hidden shadow-2xl">
+            <GlassPanel className="w-full max-w-md z-raised wg-glass-card rounded-[28px] overflow-hidden shadow-2xl">
                 <div className="p-8 text-center">
                     <img 
                         src="/app-icon-192.png" 
@@ -251,9 +251,9 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                         {mode === 'setup_admin' 
                             ? 'Configure the primary Administrator account.' 
                             : mode === 'reset'
-                            ? 'Ask a workspace administrator for a one-time reset code (Settings › Personnel), then choose a new password.'
+                            ? 'Ask a workspace administrator for a one-time reset code (Settings › Members), then choose a new password.'
                             : mode === 'signin' 
-                                ? 'Enter your credentials to manage coordinates.' 
+                                ? 'Sign in with your email and password.' 
                                 : 'Start your journey with a new partner profile.'}
                     </p>
                 </div>
@@ -351,12 +351,12 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                                 type="submit"
                             >
                                 {mode === 'setup_admin' 
-                                    ? 'Provision Administrator Account' 
+                                    ? 'Create Administrator Account' 
                                     : mode === 'reset'
                                     ? 'Set New Password'
                                     : mode === 'signin' 
-                                        ? 'Authorize Session' 
-                                        : 'Enlist Profile'}
+                                        ? 'Sign In' 
+                                        : 'Create Account'}
                             </Button>
                         </div>
                     </form>

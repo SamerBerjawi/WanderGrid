@@ -1,13 +1,14 @@
 {
   "name": "wandergrid-v0.2",
   "private": true,
-  "version": "0.5-261012.1",
+  "version": "0.5-261012.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "bump-version": "node scripts/bump-version.cjs",
     "build": "node scripts/bump-version.cjs && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint:tokens": "node scripts/check-tokens.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

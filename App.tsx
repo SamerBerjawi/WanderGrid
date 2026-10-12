@@ -28,6 +28,7 @@ const Sidebar = lazy(() => import('./components/Sidebar').then(m => ({ default: 
 
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { Toaster } from './components/Toaster';
+import { ConfirmHost } from './components/ConfirmHost';
 import { toast, errorMessage } from './services/toast';
 
 // Ids in URLs may arrive percent-encoded (e.g. `@` as %40 from mail/chat apps).
@@ -331,7 +332,7 @@ export default function App() {
                 <div className="absolute -top-40 -left-40 w-[550px] h-[550px] rounded-full bg-blue-500/2 dark:bg-blue-600/3 blur-[120px] animate-[pulse_10s_infinite]" />
                 <div className="absolute -bottom-40 -right-40 w-[600px] h-[600px] rounded-full bg-purple-500/2 dark:bg-purple-600/3 blur-[130px] animate-[pulse_14s_infinite] delay-1000" />
             </div>
-            <div className="w-full h-full relative z-10 flex items-center justify-center">
+            <div className="w-full h-full relative z-raised flex items-center justify-center">
                 <ViewLoader />
             </div>
         </div>
@@ -346,7 +347,7 @@ export default function App() {
                 <div className="absolute -top-40 -left-40 w-[550px] h-[550px] rounded-full bg-blue-500/2 dark:bg-blue-600/3 blur-[120px] animate-[pulse_10s_infinite]" />
                 <div className="absolute -bottom-40 -right-40 w-[600px] h-[600px] rounded-full bg-purple-500/2 dark:bg-purple-600/3 blur-[130px] animate-[pulse_14s_infinite] delay-1000" />
             </div>
-            <div className="w-full h-full relative z-10">
+            <div className="w-full h-full relative z-raised">
                 <Suspense fallback={<ViewLoader />}>
                     <Auth onLogin={handleLogin} />
                 </Suspense>
@@ -359,7 +360,7 @@ export default function App() {
 
   return (
     <IconContext.Provider value={{ weight: 'duotone' }}>
-      <div className="flex h-screen w-full overflow-hidden bg-[#FAFAFA] dark:bg-[#050505] transition-colors duration-700 text-light-text dark:text-dark-text relative safe-x">
+      <div className="flex h-screen w-full overflow-hidden bg-light-bg dark:bg-dark-bg transition-colors duration-700 text-light-text dark:text-dark-text relative safe-x">
         {/* Dynamic Ambient Background Glow representing current page theme */}
         <AmbientBackground 
           theme={getPageTheme(view)} 
@@ -377,7 +378,7 @@ export default function App() {
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         />
         </Suspense>
-        <main className={`flex-1 h-full relative z-10 transition-all duration-300 ${
+        <main className={`flex-1 h-full relative z-raised transition-all duration-300 ${
           view === ViewState.MAP 
             ? 'p-0 overflow-hidden' 
             : `px-2 sm:px-4 md:px-8 pt-[calc(0.5rem+env(safe-area-inset-top,0px))] sm:pt-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-8 overflow-y-auto custom-scrollbar ${isSidebarCollapsed ? 'md:pl-28' : 'md:pl-80'}`
@@ -401,6 +402,7 @@ export default function App() {
         </main>
         <PWAInstallBanner />
         <Toaster />
+        <ConfirmHost />
         {!dataService.isDatabaseMode() && (
           <div className="fixed top-safe-offset right-3 z-toast px-3 py-1.5 rounded-full bg-amber-500 text-black text-xs font-bold shadow-lg pointer-events-none" role="status">
             Local mode · data stays in this browser

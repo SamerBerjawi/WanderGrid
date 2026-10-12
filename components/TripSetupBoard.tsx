@@ -256,6 +256,23 @@ export const AirlineLogoBadge: React.FC<{ carrier: string; className?: string }>
     );
 };
 
+// The in-progress wizard is kept in sessionStorage so a page refresh restores it (QA-B-006).
+const TRIP_DRAFT_KEY = 'wandergrid_trip_wizard_draft';
+type TripDraft = { title: string; destination: string; startDate: string; endDate: string; status: 'Planning' | 'Upcoming' | 'Past'; transportsList: Partial<Transport>[]; accommodationsList: Partial<Accommodation>[] };
+
+export const readTripDraft = (): TripDraft | null => {
+    try {
+        const raw = sessionStorage.getItem(TRIP_DRAFT_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+};
+
+export const clearTripDraft = () => {
+    try { sessionStorage.removeItem(TRIP_DRAFT_KEY); } catch { /* storage unavailable */ }
+};
+
 export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     isOpen,
     onClose,
@@ -267,6 +284,8 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     const { data: settings } = useWanderSync<WorkspaceSettings>('settings', () => dataService.getWorkspaceSettings(), [], { collections: ['settings'] });
     const activeCurrency = settings?.currency || 'USD';
 
+    const [draft] = useState(readTripDraft);
+
     // Current Active Stage
     const [currentStage, setCurrentStage] = useState<StageKey>('basics');
 
@@ -275,12 +294,12 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     const [editingAccommodationIndex, setEditingAccommodationIndex] = useState<number | null>(null);
 
     // Stage 1: Trip Basics State
-    const [title, setTitle] = useState('');
-    const [destination, setDestination] = useState('');
+    const [title, setTitle] = useState(draft?.title ?? '');
+    const [destination, setDestination] = useState(draft?.destination ?? '');
     const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lng: number } | undefined>();
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [status, setStatus] = useState<'Planning' | 'Upcoming' | 'Past'>(initialStatus);
+    const [startDate, setStartDate] = useState(draft?.startDate ?? '');
+    const [endDate, setEndDate] = useState(draft?.endDate ?? '');
+    const [status, setStatus] = useState<'Planning' | 'Upcoming' | 'Past'>(draft?.status ?? initialStatus);
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>(users.length > 0 ? [users[0].id] : []);
     const [basicsError, setBasicsError] = useState<string | null>(null);
 
@@ -300,7 +319,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     // Stage 2: Transport Sub-Steps State
     const [transportMode, setTransportMode] = useState<TransportMode>('Flight');
     const [transportStructure, setTransportStructure] = useState<'Round Trip' | 'One-Way'>('Round Trip');
-    const [transportsList, setTransportsList] = useState<Partial<Transport>[]>([]);
+    const [transportsList, setTransportsList] = useState<Partial<Transport>[]>(draft?.transportsList ?? []);
     
     // Transport fields
     const [outboundOrigin, setOutboundOrigin] = useState('');
@@ -427,7 +446,13 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     };
 
     // Stage 3: Accommodation Sub-Steps State
-    const [accommodationsList, setAccommodationsList] = useState<Partial<Accommodation>[]>([]);
+    const [accommodationsList, setAccommodationsList] = useState<Partial<Accommodation>[]>(draft?.accommodationsList ?? []);
+
+    useEffect(() => {
+        if (!title && !destination && !startDate && transportsList.length === 0 && accommodationsList.length === 0) return;
+        const next: TripDraft = { title, destination, startDate, endDate, status, transportsList, accommodationsList };
+        try { sessionStorage.setItem(TRIP_DRAFT_KEY, JSON.stringify(next)); } catch { /* storage unavailable */ }
+    }, [title, destination, startDate, endDate, status, transportsList, accommodationsList]);
     const [accType, setAccType] = useState<Accommodation['type']>('Hotel');
     const [accName, setAccName] = useState('');
     const [accAddress, setAccAddress] = useState('');
@@ -635,10 +660,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
             setBasicsError("Please provide a trip title.");
             return;
         }
-        if (!destination.trim()) {
-            setBasicsError("Please enter a destination.");
-            return;
-        }
+        // Same rules as Create Trip: title and dates are required, the destination is optional (QA-B-004).
         if (!startDate || !endDate) {
             setBasicsError("Please select both a start and end date.");
             return;
@@ -649,20 +671,21 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
         }
 
         // Pre-seed subsequent stages
-        if (!outboundDest) setOutboundDest(destination);
+        const hasDestination = !!destination.trim();
+        if (!outboundDest && hasDestination) setOutboundDest(destination);
         if (!outboundDate) {
             setOutboundDate(startDate);
             setOutboundArrivalDate(startDate);
         }
         if (!returnDate) setReturnDate(endDate);
 
-        if (!accName) setAccName(`${destination} Stay`);
-        if (!accAddress) setAccAddress(destination);
+        if (!accName && hasDestination) setAccName(`${destination} Stay`);
+        if (!accAddress && hasDestination) setAccAddress(destination);
         if (!accCheckIn) setAccCheckIn(startDate);
         if (!accCheckOut) setAccCheckOut(endDate);
 
         // Resolve destination coordinates in background
-        if (!destinationCoords) {
+        if (!destinationCoords && hasDestination) {
             getCoordinates(destination).then(c => {
                 if (c) setDestinationCoords(c);
             }).catch(() => {});
@@ -2230,7 +2253,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     type="button"
                                     onClick={() => setCurrentStage(stageKey)}
                                     title={config.label}
-                                    className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 ${
+                                    className={`relative rounded-full min-h-[44px] min-w-[44px] text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 ${
                                         isSelected
                                             ? `${config.activeText} px-4 sm:px-5 py-2.5`
                                             : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 sm:px-5 py-2.5'
@@ -2244,7 +2267,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             transition={{ type: "spring", stiffness: 450, damping: 32 }}
                                         />
                                     )}
-                                    <span className="relative z-10 flex items-center gap-2 sm:gap-2.5">
+                                    <span className="relative z-raised flex items-center gap-2 sm:gap-2.5">
                                         <IconComponent 
                                             className={`w-5 h-5 shrink-0 transition-colors duration-200 ${config.color}`} 
                                             weight="duotone" 

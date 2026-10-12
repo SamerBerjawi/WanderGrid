@@ -145,7 +145,7 @@ test.describe('W8 password reset', () => {
     await seedSession(page, admin.token, admin.user);
     await page.goto('/settings');
     await expectAppShell(page);
-    await page.locator('main button >> visible=true').filter({ hasText: /^Personnel/ }).first().click();
+    await page.locator('main button >> visible=true').filter({ hasText: /^Members/ }).first().click();
     await page.getByRole('button', { name: `Issue password reset code for ${PARTNER.name}` }).click();
     const code = (await page.getByTestId('reset-code').innerText()).trim();
     expect(code).toMatch(/^[A-Z2-9]{5}-[A-Z2-9]{5}$/);

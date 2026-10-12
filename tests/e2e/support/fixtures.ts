@@ -69,3 +69,11 @@ export const test = base.extend<{}>({
   },
 });
 export { expect };
+
+/** Answer the app's in-app confirmation dialog (UI-012 replaced window.confirm). */
+export async function answerConfirm(page: Page, accept: boolean) {
+  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('button', { name: 'Cancel' }) }).last();
+  await expect(dialog).toBeVisible();
+  if (accept) await dialog.getByRole('button').filter({ hasNotText: /^Cancel$/ }).filter({ hasNot: page.locator('[aria-label="Close dialog"]') }).last().click();
+  else await dialog.getByRole('button', { name: 'Cancel' }).click();
+}

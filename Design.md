@@ -286,3 +286,22 @@ Every component and view must pass this mobile checklist:
 - Informational text (labels, helper text, table metadata) uses `text-xs` (12px) or larger.
 - `text-3xs` and arbitrary `text-[Npx]` sizes below 11px are not used.
 - Pinch-zoom is never disabled (`user-scalable=no` / `maximum-scale` are forbidden in the viewport meta).
+
+## Glossary (user-facing terms)
+
+Use one word per concept in labels, buttons, messages and empty states (UI-013). Internal names in code may differ.
+
+| Use | Means | Avoid in UI copy |
+|---|---|---|
+| **Trip** | Any planned, upcoming or past journey record on the Planner | expedition, voyage, itinerary (as the object name) |
+| **Road trip** | A land journey on the Road Trips page | land journey, road trip record, travel ticket |
+| **Flight** | One flight log entry; several legs grouped are a **bundle** | boarding stub (as the object name) |
+| **Stay** | A hotel, rental or other accommodation within a trip | accommodation, lodging |
+| **Activity** | A dated item in the Daily Planner | excursion (as the object name) |
+| **Member** | A person in the workspace; managed under Settings › Members | personnel, explorer, traveler (as a role) |
+| **Archive** / **Restore** | Hide a trip from the board and bring it back; reversible | "archive" for something that deletes |
+| **Delete** | Permanently remove; always confirmed | remove, dismiss (for permanent deletion) |
+| **Sign in** / **Sign out** | Session actions | authorize session, log in/out (mixed) |
+| **Drop-off** | Where or when a rental car is returned (hyphenated) | dropoff, drop off |
+
+Error messages say what went wrong and what to do next, in plain language ("Invalid credentials: the email or password is incorrect."). Avoid system jargon such as "coordinates", "provision" or "initialize".

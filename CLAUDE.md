@@ -23,7 +23,8 @@ WanderGrid is a self-hosted travel planner, flight log and leave manager. It has
 ```bash
 npm install                      # root/frontend deps (legacy-peer-deps via .npmrc)
 npm run dev                      # Vite on localhost:3000 (VITE_DEV_HOST=0.0.0.0 for LAN); proxies /api -> http://localhost:3001
-npx tsc --noEmit                 # type check; currently 0 errors. There is no lint script
+npx tsc --noEmit                 # type check; currently 0 errors
+npm run lint:tokens              # design-token check: z-index scale, no arbitrary hex, valid shades (also in CI)
 npx vite build                   # production build to dist/ (works, ~8s)
 npm run build                    # = bump-version + vite build. SIDE EFFECT: rewrites version.ts and package.json "version"
 npm run preview                  # serve dist/
@@ -47,7 +48,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 | `index.tsx`, `App.tsx` | Entry point. `App` does view switching on `ViewState` with a `switch`; there is no router library. Views are `React.lazy`-loaded |
 | `views/` | Top-level pages (Dashboard, PlannerView, VacationCalendar, ExpeditionMapView, Flights, RoadTrips, TripDetail, TravelAtlas, Settings, UserDetail, Auth) |
 | `components/` | Feature components (configurators, drawers, map, passport/stamps). `ui.tsx` has the shared Card, Button and similar components |
-| `components/glass/` | Liquid-glass primitives: GlassPanel, GlassButton, GlassInput, GlassSelect, GlassDatePicker, GlassToggle, GlassSegmented, GlassSlider, SettingRow |
+| `components/glass/` | Liquid-glass primitives: GlassPanel, GlassButton, GlassInput, GlassSelect, GlassToggle, GlassSegmented, GlassSlider, SettingRow |
 | `components/ui/` | Icon wrapper, date pickers, bento grid, virtual list item |
 | `services/` | Client-side domain logic. `mockDb.ts` is **the** data service (`dataService`), despite its name. The rest cover geocoding, routing (road/rail/maritime), flight tracking, import/export, map styles, and the solar terminator |
 | `hooks/` | `useWanderSync` (SWR cache), `usePWA`, `useExistingTripSuggestions` |

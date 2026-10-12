@@ -5,6 +5,7 @@
  */
 import * as fs from 'fs';
 import { test, expect, ADMIN, resetDb, apiRegister, seedSession, expectAppShell } from '../support/fixtures';
+import { answerConfirm } from '../support/fixtures';
 import { seedTrip, apiTrips, nextMonthDay, visible, inMain, waitForTrip, overflowX, pickDateNextMonth, pickDateByLabel, seedFlight, flightRecord, apiGet } from '../support/planning';
 
 let s: { token: string; user: any };
@@ -162,7 +163,7 @@ test('W13 add a train booking from Bookings → + Add Booking', async ({ page, r
   await visible(page, 'input[placeholder="e.g. Eurostar, SNCF, Deutsche Bahn"]').first().fill('Hellenic Train');
   await visible(page, 'input[placeholder="e.g. 9024 or ICE 125"]').first().fill('IC 52');
   await pickDateByLabel(page, /^Date$/i, 6);
-  await page.getByRole('button', { name: /^Save$/ }).last().click();
+  await page.getByRole('button', { name: /^Save Train$/i }).last().click(); // the configurator labels Save with the mode
   await expect.poll(async () => (await getTrip(request))?.transports?.some((x) => x.mode === 'Train' && x.provider === 'Hellenic Train'), { timeout: 10_000 }).toBe(true);
   await expect(modal).toHaveCount(0);
 });
@@ -257,13 +258,10 @@ test('W17 Gear: "Clear All" asks for confirmation before deleting the list', asy
   await visible(page, 'input[placeholder="Add new item..."]').first().fill('Sunscreen');
   await page.getByRole('button', { name: 'Add packing item' }).click();
   await expect.poll(async () => ((await getTrip(request))?.packingList ?? []).length).toBe(1);
-  let asked = false;
-  page.on('dialog', async (d) => { asked = true; await d.dismiss(); });
   await page.getByRole('button', { name: 'Clear All' }).click();
-  await page.waitForTimeout(1200);
-  const remaining = ((await getTrip(request))?.packingList ?? []).length;
-  expect(asked || (await page.getByText(/are you sure|confirm/i).count()) > 0, 'a confirmation is shown').toBe(true);
-  expect(remaining).toBe(1);
+  await answerConfirm(page, false); // an in-app confirmation is shown; cancelling keeps the list
+  await page.waitForTimeout(800);
+  expect(((await getTrip(request))?.packingList ?? []).length).toBe(1);
 });
 
 test('W17 Gear: "Magic Generate" without a Gemini key explains what to do', async ({ page }) => {

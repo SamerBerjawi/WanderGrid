@@ -63,7 +63,7 @@ test.describe('W34 Workspace preferences', () => {
   });
 
   test('settings page has no horizontal overflow', async ({ page }) => {
-    for (const t of ['Workspace', 'Personnel', 'Integrations', 'Gear', 'Carriers', 'Data Management']) {
+    for (const t of ['Workspace', 'Members', 'Integrations', 'Gear', 'Carriers', 'Data Management']) {
       await openSettings(page, t);
       await page.waitForTimeout(600);
       expect.soft(await overflowX(page), t).toBeLessThanOrEqual(0);
@@ -71,11 +71,11 @@ test.describe('W34 Workspace preferences', () => {
   });
 });
 
-// ---------------- W33 Personnel ----------------
-test.describe('W33 Personnel', () => {
+// ---------------- W33 Members ----------------
+test.describe('W33 Members', () => {
   test('enroll a member: appears in the roster and can sign in with the given password', async ({ page, request }) => {
-    await openSettings(page, 'Personnel');
-    await page.getByRole('button', { name: /Enroll Member/ }).click();
+    await openSettings(page, 'Members');
+    await page.getByRole('button', { name: /Add Member/ }).click();
     await page.locator('input[placeholder="e.g. Elena Rostova"]').fill('Elena Rostova');
     await page.locator('input[placeholder="e.g. elena@wandergrid.abc"]').fill('elena@wandergrid.test');
     await page.locator('input[placeholder="At least 8 characters"]').fill('Elena!Pass1');
@@ -87,8 +87,8 @@ test.describe('W33 Personnel', () => {
   });
 
   test('enroll requires name, email and password', async ({ page, request }) => {
-    await openSettings(page, 'Personnel');
-    await page.getByRole('button', { name: /Enroll Member/ }).click();
+    await openSettings(page, 'Members');
+    await page.getByRole('button', { name: /Add Member/ }).click();
     const save = page.getByRole('button', { name: /^Save Member$/ });
     await expect(save, 'Save is disabled until a name is entered').toBeDisabled();
     await page.locator('input[placeholder="e.g. Elena Rostova"]').fill('No Password');
@@ -103,8 +103,8 @@ test.describe('W33 Personnel', () => {
 
   test('enrolling an email that already exists is rejected', async ({ page, request }) => {
     await apiRegister(request, PARTNER);
-    await openSettings(page, 'Personnel');
-    await page.getByRole('button', { name: /Enroll Member/ }).click();
+    await openSettings(page, 'Members');
+    await page.getByRole('button', { name: /Add Member/ }).click();
     await page.locator('input[placeholder="e.g. Elena Rostova"]').fill('Dup');
     await page.locator('input[placeholder="e.g. elena@wandergrid.abc"]').fill(PARTNER.email);
     await page.locator('input[placeholder="At least 8 characters"]').fill('abc12345');
@@ -118,7 +118,7 @@ test.describe('W33 Personnel', () => {
 
   test('edit a member name', async ({ page, request }) => {
     await apiRegister(request, PARTNER);
-    await openSettings(page, 'Personnel');
+    await openSettings(page, 'Members');
     await page.locator('main div', { hasText: PARTNER.name }).locator('button[title="Edit member"]').last().click();
     await page.locator('input[placeholder="e.g. Elena Rostova"]').fill('QA Partner Renamed');
     await page.getByRole('button', { name: /^Save Member$/ }).click();
@@ -127,7 +127,7 @@ test.describe('W33 Personnel', () => {
 
   test('remove a member (confirm)', async ({ page, request }) => {
     await apiRegister(request, PARTNER);
-    await openSettings(page, 'Personnel');
+    await openSettings(page, 'Members');
     await page.locator('main div', { hasText: PARTNER.name }).locator('button[title="Delete member"]').last().click();
     await page.getByRole('button', { name: /^Confirm Removal$/ }).click();
     await expect.poll(async () => (await users(request)).length, { timeout: 10_000 }).toBe(1);
@@ -149,7 +149,7 @@ test.describe('W33 Personnel', () => {
   });
 
   test('the signed-in admin cannot remove their own account', async ({ page, request }) => {
-    await openSettings(page, 'Personnel');
+    await openSettings(page, 'Members');
     const own = page.locator('main div', { hasText: ADMIN.email }).locator('button[title="Delete member"]').last();
     if (await own.isVisible().catch(() => false)) {
       await own.click();

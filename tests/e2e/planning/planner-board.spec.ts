@@ -1,7 +1,7 @@
 /**
  * Chunk B — workflows 10–11: Planner board browse/filter/search/open, bulk "archive".
  */
-import { test, expect, ADMIN, resetDb, apiRegister, seedSession, expectAppShell } from '../support/fixtures';
+import { test, expect, ADMIN, resetDb, apiRegister, seedSession, expectAppShell, answerConfirm } from '../support/fixtures';
 import { seedTrip, apiTrips, isoDaysFromNow, inMain, visible } from '../support/planning';
 
 let s: { token: string; user: any };
@@ -107,11 +107,11 @@ test('bulk select → "Archive Selected" archives (keeps) the trips, and they ca
   await page.goto('/planner');
   await expectAppShell(page);
   await page.locator('button[title="Toggle bulk selection"]').click();
-  page.once('dialog', (d) => d.accept());
   for (const name of [UPCOMING.name, PLANNING.name]) {
     await page.locator('main div').filter({ has: page.locator(`text="${name}"`) }).filter({ has: page.locator('button[aria-label="Select trip"]') }).last().locator('button[aria-label="Select trip"]').click();
   }
   await page.getByRole('button', { name: /Archive Selected/i }).click();
+  await answerConfirm(page, true);
   await expect(gone(page, UPCOMING.name)).toHaveCount(0);
   const ids = (await apiTrips(request, s.token)).map((t) => t.id);
   expect(ids, '"Archive" must not permanently delete trips').toEqual(expect.arrayContaining(['qa-up', 'qa-plan']));
@@ -122,8 +122,8 @@ test('bulk select → "Archive Selected" archives (keeps) the trips, and they ca
   await expect(gone(page, PAST.name)).toHaveCount(0);
   await page.locator('button[title="Toggle bulk selection"]').click();
   await page.locator('main div').filter({ has: page.locator(`text="${UPCOMING.name}"`) }).filter({ has: page.locator('button[aria-label="Select trip"]') }).last().locator('button[aria-label="Select trip"]').click();
-  page.once('dialog', (d) => d.accept());
   await page.getByRole('button', { name: /Restore Selected/i }).click();
+  await answerConfirm(page, true);
   await expect.poll(async () => (await apiTrips(request, s.token)).find((t) => t.id === 'qa-up')?.archived).toBe(false);
 });
 
@@ -133,8 +133,8 @@ test('bulk archive: dismissing the confirmation changes nothing', async ({ page,
   await expectAppShell(page);
   await page.locator('button[title="Toggle bulk selection"]').click();
   await page.locator('main div').filter({ has: page.locator(`text="${PAST.name}"`) }).filter({ has: page.locator('button[aria-label="Select trip"]') }).last().locator('button[aria-label="Select trip"]').click();
-  page.once('dialog', (d) => d.dismiss());
   await page.getByRole('button', { name: /Archive Selected/i }).click();
+  await answerConfirm(page, false);
   await expect(card(page, PAST.name)).toBeVisible();
   expect((await apiTrips(request, s.token)).length).toBe(3);
 });

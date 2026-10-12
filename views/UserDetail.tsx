@@ -688,7 +688,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                 isOpen={isEditing} 
                 onClose={() => setIsEditing(false)} 
                 title="Edit Inhabitant Details"
-                subtitle="Personnel Parameters & Identification"
+                subtitle="Profile & identification"
                 icon="person"
             >
                 <div className="space-y-6 text-left font-sans">

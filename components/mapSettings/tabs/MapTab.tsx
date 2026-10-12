@@ -185,13 +185,13 @@ const BasemapCard = React.memo<BasemapCardProps>(({
         />
 
         {/* Icon glass badge */}
-        <div className="w-6 h-6 rounded-lg bg-white/70 dark:bg-white/10 backdrop-blur-sm border border-white/60 dark:border-white/10 flex items-center justify-center shrink-0 shadow-xs z-10 transition-transform group-hover:scale-105">
+        <div className="w-6 h-6 rounded-lg bg-white/70 dark:bg-white/10 backdrop-blur-sm border border-white/60 dark:border-white/10 flex items-center justify-center shrink-0 shadow-xs z-raised transition-transform group-hover:scale-105">
           <Icon className={`w-3.5 h-3.5 ${item.textColor}`} weight="bold" />
         </div>
 
         {/* Active Selected Check Badge */}
         {isSelected && (
-          <div className="w-4 h-4 rounded-full bg-primary-500 flex items-center justify-center text-slate-950 shrink-0 z-10 shadow-xs ring-2 ring-white/60 dark:ring-dark-card animate-scaleIn">
+          <div className="w-4 h-4 rounded-full bg-primary-500 flex items-center justify-center text-slate-950 shrink-0 z-raised shadow-xs ring-2 ring-white/60 dark:ring-dark-card animate-scaleIn">
             <Check className="w-2.5 h-2.5" weight="bold" />
           </div>
         )}

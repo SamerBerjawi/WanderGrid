@@ -59,7 +59,7 @@ const ACCENT_THEMES: Record<string, AccentTheme> = {
     iconBox: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
     calendarActiveTab: 'bg-emerald-500 text-white shadow-xs font-bold',
     startDay: 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30 font-black scale-105',
-    endDay: 'border-2 border-emerald-500 bg-white dark:bg-[#121820] text-emerald-600 dark:text-emerald-400 font-black scale-105',
+    endDay: 'border-2 border-emerald-500 bg-white dark:bg-dark-fill text-emerald-600 dark:text-emerald-400 font-black scale-105',
     rangeBand: 'bg-emerald-500/15 dark:bg-emerald-500/25',
     doneBtn: 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm shadow-emerald-500/20',
     durationBadge: 'text-emerald-600 dark:text-emerald-400',
@@ -71,7 +71,7 @@ const ACCENT_THEMES: Record<string, AccentTheme> = {
     iconBox: 'bg-sky-500/15 text-sky-600 dark:text-sky-400',
     calendarActiveTab: 'bg-sky-500 text-white shadow-xs font-bold',
     startDay: 'bg-sky-500 text-white shadow-md shadow-sky-500/30 font-black scale-105',
-    endDay: 'border-2 border-sky-500 bg-white dark:bg-[#121820] text-sky-600 dark:text-sky-400 font-black scale-105',
+    endDay: 'border-2 border-sky-500 bg-white dark:bg-dark-fill text-sky-600 dark:text-sky-400 font-black scale-105',
     rangeBand: 'bg-sky-500/15 dark:bg-sky-500/25',
     doneBtn: 'bg-sky-500 hover:bg-sky-600 text-white shadow-sm shadow-sky-500/20',
     durationBadge: 'text-sky-600 dark:text-sky-400',
@@ -83,7 +83,7 @@ const ACCENT_THEMES: Record<string, AccentTheme> = {
     iconBox: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
     calendarActiveTab: 'bg-amber-500 text-white shadow-xs font-bold',
     startDay: 'bg-amber-500 text-white shadow-md shadow-amber-500/30 font-black scale-105',
-    endDay: 'border-2 border-amber-500 bg-white dark:bg-[#121820] text-amber-600 dark:text-amber-400 font-black scale-105',
+    endDay: 'border-2 border-amber-500 bg-white dark:bg-dark-fill text-amber-600 dark:text-amber-400 font-black scale-105',
     rangeBand: 'bg-amber-500/15 dark:bg-amber-500/25',
     doneBtn: 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm shadow-amber-500/20',
     durationBadge: 'text-amber-600 dark:text-amber-400',
@@ -95,7 +95,7 @@ const ACCENT_THEMES: Record<string, AccentTheme> = {
     iconBox: 'bg-primary-500/15 text-primary-600 dark:text-primary-400',
     calendarActiveTab: 'bg-primary-500 text-slate-950 shadow-xs font-bold',
     startDay: 'bg-primary-500 text-slate-950 shadow-md shadow-primary-500/30 font-black scale-105',
-    endDay: 'border-2 border-primary-500 bg-white dark:bg-[#121820] text-primary-600 dark:text-primary-400 font-black scale-105',
+    endDay: 'border-2 border-primary-500 bg-white dark:bg-dark-fill text-primary-600 dark:text-primary-400 font-black scale-105',
     rangeBand: 'bg-primary-500/15 dark:bg-primary-500/25',
     doneBtn: 'bg-primary-500 hover:bg-primary-600 text-slate-950 shadow-sm shadow-primary-500/20',
     durationBadge: 'text-primary-600 dark:text-primary-400',
@@ -631,7 +631,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                             type="button"
                             disabled={isDisabled}
                             onClick={() => handleSelectDate(dateStr)}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all relative z-10 cursor-pointer ${
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all relative z-raised cursor-pointer ${
                               isStart
                                 ? theme.startDay
                                 : isEnd

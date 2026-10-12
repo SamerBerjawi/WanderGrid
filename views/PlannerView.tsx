@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { confirmDialog } from '../services/confirm';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
     CalendarBlank, 
@@ -38,7 +39,7 @@ import { useWanderSync } from '../hooks/useWanderSync';
 import { dataService } from '../services/mockDb';
 import { Trip, User } from '../types';
 import { formatDateRange } from '../utils/formatters';
-import { TripSetupBoard } from '../components/TripSetupBoard';
+import { TripSetupBoard, readTripDraft, clearTripDraft } from '../components/TripSetupBoard';
 
 interface PlannerViewProps {
     onTripClick?: (tripId: string) => void;
@@ -145,7 +146,8 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
     const [activeTab, setActiveTab] = useState<TabKey>('all');
     
     // 3. New Trip Drawer State
-    const [isNewTripOpen, setIsNewTripOpen] = useState(false);
+    // A wizard draft left by a page refresh reopens the wizard (QA-B-006).
+    const [isNewTripOpen, setIsNewTripOpen] = useState(() => !!readTripDraft());
     const [drawerStatus, setDrawerStatus] = useState<'Planning' | 'Upcoming' | 'Past'>('Planning');
 
     // 4. Multi-Attribute Filter State
@@ -345,6 +347,21 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
         setIsNewTripOpen(true);
     };
 
+    // The wizard owns a history entry so browser Back closes it instead of leaving the Planner (QA-B-007).
+    useEffect(() => {
+        if (!isNewTripOpen) return;
+        if (!window.history.state?.wgTripWizard) window.history.pushState({ wgTripWizard: true }, '', window.location.pathname);
+        const onPop = () => { clearTripDraft(); setIsNewTripOpen(false); };
+        window.addEventListener('popstate', onPop);
+        return () => window.removeEventListener('popstate', onPop);
+    }, [isNewTripOpen]);
+
+    const closeNewTrip = () => {
+        clearTripDraft();
+        if (window.history.state?.wgTripWizard) window.history.back(); // popstate closes the wizard
+        else setIsNewTripOpen(false);
+    };
+
     const toggleTripSelection = (tripId: string) => {
         setSelectedTripIds(prev => {
             const next = new Set(prev);
@@ -364,7 +381,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
         const message = showArchived
             ? `Restore ${label} to the planner?`
             : `Archive ${label}? Archived trips are hidden from the planner and can be restored from "Archived".`;
-        if (!window.confirm(message)) {
+        if (!(await confirmDialog({ title: showArchived ? 'Restore trips?' : 'Archive trips?', message, confirmLabel: showArchived ? 'Restore' : 'Archive' }))) {
             return;
         }
 
@@ -379,8 +396,11 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                 isOpen={isNewTripOpen}
                 initialStatus={drawerStatus}
                 users={users}
-                onClose={() => setIsNewTripOpen(false)}
+                onClose={closeNewTrip}
                 onTripCreated={(savedTrip) => {
+                    clearTripDraft();
+                    // Drop the wizard's history entry so Back from the new trip returns to the board.
+                    if (window.history.state?.wgTripWizard) window.history.replaceState({}, '', window.location.pathname);
                     setIsNewTripOpen(false);
                     if (onTripClick && savedTrip?.id) {
                         onTripClick(savedTrip.id);
@@ -548,7 +568,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
             {/* ========================================================================= */}
             {/* FLOATING MAP-STYLE TAB SELECTOR & MULTI-FILTER BAR                        */}
             {/* ========================================================================= */}
-            <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 w-full">
+            <div className="flex flex-col xl:flex-row xl:flex-wrap xl:items-center xl:justify-between gap-3 w-full">
                 {/* 1. Tabs Row (Left on desktop, centered on mobile) */}
                 <div className="flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-1 shrink-0 w-full sm:w-auto">
                     <GlassPanel
@@ -575,7 +595,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                         key={tabKey}
                                         onClick={() => setActiveTab(tabKey)}
                                         title={config.label}
-                                        className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 min-h-[44px] ${
+                                        className={`relative rounded-full min-h-[44px] min-w-[44px] text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 min-h-[44px] ${
                                             isSelected
                                                 ? `${config.activeText} px-4 sm:px-5 py-2.5`
                                                 : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 sm:px-5 py-2.5'
@@ -589,7 +609,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                                 transition={{ type: "spring", stiffness: 450, damping: 32 }}
                                             />
                                         )}
-                                        <span className="relative z-10 flex items-center gap-2 sm:gap-2.5">
+                                        <span className="relative z-raised flex items-center gap-2 sm:gap-2.5">
                                             <IconComponent 
                                                 className={`w-5 h-5 shrink-0 transition-colors duration-200 ${config.color}`} 
                                                 weight="duotone" 
@@ -613,7 +633,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                 </div>
 
                 {/* 2. Filter Controls Bar (Right on desktop, below on mobile) */}
-                <div className="flex-1 xl:max-w-4xl w-full">
+                <div className="flex-1 xl:max-w-4xl w-full min-w-0">
                     <GlassPanel
                         className="wg-glass-pill shadow-glass-card w-full"
                         padding={isMobile ? "6px 8px" : "4px 6px"}
@@ -1232,7 +1252,7 @@ const TripCard: React.FC<TripCardProps> = ({
                 <div className={`absolute left-0 top-3.5 bottom-3.5 w-1.5 rounded-r-full ${stageConfig.railColor} ${stageConfig.railGlow} transition-all duration-300 group-hover:w-2 group-hover:opacity-100 opacity-90`} />
 
                 {/* Top Row: Identity Icon, Title & Micro-Action */}
-                <div className="flex items-start justify-between gap-3 relative z-10 pl-2">
+                <div className="flex items-start justify-between gap-3 relative z-raised pl-2">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                         {/* Optional Multi-Select Checkbox */}
                         {isMultiSelectMode && (
@@ -1287,7 +1307,7 @@ const TripCard: React.FC<TripCardProps> = ({
                 </div>
 
                 {/* Middle Row: Clean Timeline Date Range & Duration */}
-                <div className="flex items-center gap-2.5 text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium flex-wrap relative z-10 pl-2">
+                <div className="flex items-center gap-2.5 text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium flex-wrap relative z-raised pl-2">
                     <div className="flex items-center gap-1.5 min-w-0">
                         <CalendarBlank className={`w-4 h-4 shrink-0 ${stageConfig.calendarColor} opacity-90`} weight="duotone" />
                         <span className="font-semibold text-light-text dark:text-dark-text">
@@ -1305,7 +1325,7 @@ const TripCard: React.FC<TripCardProps> = ({
                 </div>
 
                 {/* Route Row: Origin ➔ Destination Journey Itinerary */}
-                <div className="flex items-center gap-2 relative z-10 pl-2 flex-wrap">
+                <div className="flex items-center gap-2 relative z-raised pl-2 flex-wrap">
                     {destinationsList.length === 0 ? (
                         <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium italic">
                             No destinations specified
@@ -1352,7 +1372,7 @@ const TripCard: React.FC<TripCardProps> = ({
                 </div>
 
                 {/* Bottom Row: Logistics (Stays / Travelers) & Transport Emblems */}
-                <div className="flex items-center justify-between gap-2 pt-3 border-t border-black/5 dark:border-white/5 relative z-10 pl-2 flex-wrap">
+                <div className="flex items-center justify-between gap-2 pt-3 border-t border-black/5 dark:border-white/5 relative z-raised pl-2 flex-wrap">
                     {/* Left: Optional Logistics Badges */}
                     <div className="flex items-center gap-3">
                         {trip.accommodations && trip.accommodations.length > 0 && (

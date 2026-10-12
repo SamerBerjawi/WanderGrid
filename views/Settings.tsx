@@ -86,7 +86,7 @@ const CATEGORY_DEFINITIONS: {
   },
   {
     key: 'users',
-    label: 'Personnel & Team Members',
+    label: 'Members',
     subtitle: 'Workspace profiles, roster & leave balances',
     icon: <Users className="w-5 h-5" weight="duotone" />
   },
@@ -420,7 +420,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
 
       const duplicate = users.find(u => u.email?.toLowerCase().trim() === finalEmail && u.id !== editingUser.id);
       if (duplicate) {
-          alert(`Conflict: A user of the roster already uses the email '${finalEmail}'. Please specify a unique email.`);
+          setMemberFormError(`Another member already uses ${finalEmail}. Use a different email.`);
           return;
       }
 
@@ -750,7 +750,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
 
   const tabs: { id: TabType; label: string; icon: React.ReactNode; badge?: number | string }[] = [
     { id: 'workspace', label: 'Workspace', icon: <Gear className="w-4 h-4" /> },
-    { id: 'personnel', label: 'Personnel', icon: <Users className="w-4 h-4" />, badge: users.length },
+    { id: 'personnel', label: 'Members', icon: <Users className="w-4 h-4" />, badge: users.length },
     { id: 'integrations', label: 'Integrations', icon: <Plugs className="w-4 h-4" />, badge: isGeminiActive ? 'Live' : undefined },
     { id: 'gear', label: 'Gear', icon: <SuitcaseSimple className="w-4 h-4" />, badge: config.masterPackingList?.length || 0 },
     { id: 'carriers', label: 'Carriers', icon: <Airplane className="w-4 h-4" />, badge: config.carriers?.length || 0 },
@@ -824,7 +824,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
                   title={tab.label}
-                  className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 ${
+                  className={`relative rounded-full min-h-[44px] min-w-[44px] text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 ${
                     isSelected
                       ? 'text-primary-600 dark:text-primary-400 px-4 sm:px-5 py-2.5'
                       : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 sm:px-5 py-2.5'
@@ -838,7 +838,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                       transition={{ type: "spring", stiffness: 450, damping: 32 }}
                     />
                   )}
-                  <span className="relative z-10 flex items-center gap-2 sm:gap-2.5">
+                  <span className="relative z-raised flex items-center gap-2 sm:gap-2.5">
                     {React.cloneElement(tab.icon as React.ReactElement<any>, {
                       className: `w-4 h-4 shrink-0 transition-colors ${isSelected ? 'text-primary-500 dark:text-primary-400' : ''}`,
                       weight: 'duotone'
@@ -1207,7 +1207,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
 
                   {/* Card Body */}
                   <div className="p-5 sm:p-6 space-y-4">
-                    <div className="grid grid-cols-7 gap-2">
+                    <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
                       {[
                         { index: 0, label: 'S' },
                         { index: 1, label: 'M' },
@@ -1223,6 +1223,8 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                             key={d.index}
                             type="button"
                             onClick={() => toggleWorkingDay(d.index)}
+                            aria-label={['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.index]}
+                            aria-pressed={isActive}
                             className={`h-11 rounded-xl font-mono text-xs font-black transition-all cursor-pointer ${
                               isActive
                                 ? 'bg-primary-500 text-white shadow-md shadow-primary-500/30'
@@ -1268,7 +1270,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               className="h-11 px-5 rounded-2xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shrink-0"
               icon={<Plus className="w-4 h-4" />}
             >
-              Enroll Member
+              Add Member
             </Button>
           </div>
 
@@ -2564,14 +2566,14 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       <Modal 
         isOpen={isEditingUser} 
         onClose={() => setIsEditingUser(false)} 
-        title={editingUser.id ? "Edit Personnel Profile" : "Enroll Personnel Member"}
+        title={editingUser.id ? "Edit Member" : "Add Member"}
         subtitle="Credentials & Work Roster"
         icon="badge"
       >
         <div className="space-y-6 text-left font-sans">
           <div className="space-y-4">
             <Input 
-              label="Personnel Name *"
+              label="Name *"
               type="text"
               placeholder="e.g. Elena Rostova" 
               value={editingUser.name || ''} 

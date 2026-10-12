@@ -1,4 +1,4 @@
-import React, { ReactNode, useState, useEffect, useRef, forwardRef, useCallback, useMemo } from 'react';
+import React, { ReactNode, useState, useEffect, useRef, forwardRef, useCallback, useMemo, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   CaretDown as ChevronDown, 
@@ -267,6 +267,7 @@ export const Modal: React.FC<ModalProps> = ({
   footerActions
 }) => {
   const [visible, setVisible] = useState(false);
+  const titleId = useId();
 
   const modalRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
@@ -341,7 +342,12 @@ export const Modal: React.FC<ModalProps> = ({
   if (!visible && !isOpen) return null;
 
   return createPortal(
-    <div className={cn("fixed inset-0 z-modal flex items-center justify-center p-4 safe-top safe-bottom safe-x transition-all duration-300 font-sans", isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none')}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      className={cn("fixed inset-0 z-modal flex items-center justify-center p-4 safe-top safe-bottom safe-x transition-all duration-300 font-sans", isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none')}
+    >
       {/* 1. Backdrop Blur Overlay */}
       <div
         className="fixed inset-0 backdrop-blur-md bg-black/5 dark:bg-black/15 transition-all duration-300"
@@ -352,7 +358,7 @@ export const Modal: React.FC<ModalProps> = ({
       <GlassPanel liquid
         ref={modalRef}
         className={cn(
-          "wg-glass-card w-full shadow-2xl overflow-hidden transform transition-all duration-300 max-h-[calc(90dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] flex flex-col min-h-0 z-10",
+          "wg-glass-card w-full shadow-2xl overflow-hidden transform transition-all duration-300 max-h-[calc(90dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] flex flex-col min-h-0 z-raised",
           maxWidth,
           isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'
         )}
@@ -370,7 +376,7 @@ export const Modal: React.FC<ModalProps> = ({
               )}
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className={HEADER_TITLE_STYLE}>{title}</h3>
+                  <h3 id={titleId} className={HEADER_TITLE_STYLE}>{title}</h3>
                   {tag && (
                     <span className={STATUS_PILL_STYLE}>
                       {tag}
@@ -503,7 +509,8 @@ interface TabsProps {
 export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className }) => (
   // justify-start + mx-auto (not justify-center): centred when the tabs fit, but when they overflow
   // on narrow screens the first tab stays reachable by scrolling instead of being clipped off the left.
-  <div className={cn("flex items-center justify-start overflow-x-auto sm:overflow-visible no-scrollbar py-3 px-2 -my-3 -mx-2 shrink-0", className)}>
+  // min-w-0/max-w-full let the row scroll inside its parent instead of widening the page (UI-007).
+  <div className={cn("flex items-center justify-start overflow-x-auto no-scrollbar py-3 px-2 -my-3 -mx-2 min-w-0 max-w-full", className)}>
     <GlassPanel liquid
       className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0 mx-auto sm:mx-0"
       padding="4px 6px"
@@ -537,7 +544,7 @@ export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className
                   style={{ WebkitBackdropFilter: 'blur(12px)' }}
                 />
               )}
-              <span className="relative z-10 flex items-center gap-2">
+              <span className="relative z-raised flex items-center gap-2">
                 {tab.icon && <span className="shrink-0 transition-transform duration-200">{tab.icon}</span>}
                 <span className="tracking-tight font-bold whitespace-nowrap">{tab.label}</span>
               </span>
@@ -833,6 +840,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
         setIsOpen(false);
       }
     } else if (e.key === 'Escape') {
+      if (isOpen) e.preventDefault(); // the open list consumes Escape; surrounding dialogs stay open
       setIsOpen(false);
     }
   };

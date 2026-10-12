@@ -145,15 +145,13 @@ test('W26 a bundle that fails to save keeps every selected flight (atomic)', asy
   await seedFlight(request, s.token, flightRecord('a1', { origin: 'JFK', destination: 'CDG', identifier: 'AF7', departureDate: isoDaysFromNow(30) }));
   await seedFlight(request, s.token, flightRecord('a2', { origin: 'CDG', destination: 'JFK', identifier: 'AF8', departureDate: isoDaysFromNow(37) }));
   await page.route('**/api/batch', (r) => r.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"Failed to apply changes"}' }));
-  let alertText = '';
-  page.on('dialog', async (d) => { alertText = d.message(); await d.dismiss(); });
   await openFlights(page);
   await page.getByRole('button', { name: 'Edit Flights' }).click();
   await page.getByRole('button', { name: /^Select All$/ }).click();
   await page.getByRole('button', { name: /^Bundle \(2\)$/ }).click();
   await page.locator('input[placeholder="e.g. Paris Getaway"]').fill('QA Doomed Bundle');
   await page.getByRole('button', { name: /^Create Bundle$/ }).click();
-  await expect.poll(() => alertText, { timeout: 20_000 }).toMatch(/Nothing was changed/);
+  await expect(page.getByText(/Nothing was changed/).first(), 'an error toast explains nothing changed').toBeVisible({ timeout: 20_000 });
   expect((await flights(request)).map((f) => f.id).sort()).toEqual(['a1', 'a2']);
   expect((await apiTrips(request, s.token)).some((t) => t.name === 'QA Doomed Bundle')).toBe(false);
 });

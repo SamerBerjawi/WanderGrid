@@ -2,6 +2,7 @@
  * Chunk F — Map, Atlas, Dashboard & Calendar (workflows 42–46).
  */
 import { test, expect, ADMIN, PARTNER, resetDb, apiRegister, seedSession, expectAppShell, isMobile } from '../support/fixtures';
+import { answerConfirm } from '../support/fixtures';
 import { seedTrip, seedVisited, apiGet, isoDaysFromNow, visible, inMain, overflowX } from '../support/planning';
 
 let s: { token: string; user: any };
@@ -102,8 +103,12 @@ test.describe('W43 Map', () => {
     await page.goto('/map');
     await expectAppShell(page);
     await page.getByRole('button', { name: /Controls & Appearance/ }).first().click();
-    await page.getByRole('button', { name: 'Past', exact: true }).first().click();
+    await page.getByRole('button', { name: /^Filter/ }).first().click(); // the panel opens on its Map tab
+    const past = page.getByRole('radio', { name: 'Past', exact: true }).first(); // GlassSegmented is a radiogroup (WP-4.3)
+    await past.click();
+    await expect(past).toHaveAttribute('aria-checked', 'true');
     await page.getByRole('button', { name: /Reset All Filters/ }).click();
+    await expect(past).toHaveAttribute('aria-checked', 'false');
     await expect(page.getByText(/Try Again/i)).toHaveCount(0);
   });
 
@@ -163,8 +168,8 @@ test.describe('W44 Travel Atlas records', () => {
     await seedVisited(request, s.token, { id: 'country_IT', type: 'country', code: 'IT', name: 'Italy', visitDate: '2025-06-01' });
     await page.goto('/atlas');
     await expectAppShell(page);
-    page.once('dialog', (d) => d.accept());
     await page.getByRole('button', { name: 'Remove country' }).first().click();
+    await answerConfirm(page, true);
     await expect.poll(async () => (await visited(request)).length, { timeout: 10_000 }).toBe(0);
   });
 

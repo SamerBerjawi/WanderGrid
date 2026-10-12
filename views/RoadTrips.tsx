@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
+import { toast } from '../services/toast';
+import { confirmDialog } from '../services/confirm';
 // recharts is loaded only when the transit chart renders (PERF-004)
 const TransitFootprintChart = lazy(() => import('../components/TransitFootprintChart').then(m => ({ default: m.TransitFootprintChart })));
 import { 
@@ -468,7 +470,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
   const handleBulkDelete = async () => {
     if (selectedTripIds.size === 0) return;
     const count = selectedTripIds.size;
-    if (!window.confirm(`Are you sure you want to delete ${count} selected road trip record${count > 1 ? 's' : ''}?`)) {
+    if (!(await confirmDialog({ title: 'Delete journeys?', message: `Delete ${count} selected land journey${count > 1 ? 's' : ''}? This can't be undone.`, confirmLabel: 'Delete', danger: true }))) {
       return;
     }
 
@@ -494,7 +496,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       await loadData();
     } catch (err: any) {
       console.error(err);
-      alert(err.message || 'Failed to bulk delete records.');
+      toast.error(err.message || 'Could not delete the selected journeys.');
     } finally {
       setLoading(false);
     }
@@ -719,7 +721,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
 
   const handleCalculateRoute = async () => {
     if (!formOrigin.trim() || !formDestination.trim()) {
-      alert("Please enter origin and destination cities first.");
+      toast.info("Enter the origin and destination first.");
       return;
     }
     setIsCalculatingRoute(true);
@@ -781,6 +783,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       setFormDistance(String(fallbackDist));
       setIsDistanceEstimated(true);
       setRouteAttribution(null);
+      toast.info("Routing service unavailable. The distance was estimated from the schedule; you can edit it.");
     } finally {
       setIsCalculatingRoute(false);
     }
@@ -790,7 +793,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
     e.preventDefault();
     if (savingRef.current) return; // a double click must not create two journeys (REL-006)
     if (!formOrigin.trim() || !formDestination.trim() || !formDepDate) {
-      alert("Origin, destination, and departure date are required fields.");
+      toast.error("Origin, destination and departure date are required.");
       return;
     }
 
@@ -871,7 +874,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       await loadData();
     } catch (err: any) {
       console.error(err);
-      alert(err.message || 'Failed saving land journey record.');
+      toast.error(err.message || 'Could not save this journey.');
     } finally {
       savingRef.current = false;
       setLoading(false);
@@ -879,7 +882,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
   };
 
   const handleDeleteTransport = async (id: string, tripId?: string) => {
-    if (!window.confirm("Are you sure you want to delete this land journey?")) return;
+    if (!(await confirmDialog({ title: 'Delete journey?', message: 'Delete this land journey? This can\'t be undone.', confirmLabel: 'Delete', danger: true }))) return;
     try {
       setLoading(true);
       await dataService.deleteFlight(id);
@@ -899,7 +902,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       loadData();
     } catch (err: any) {
       console.error(err);
-      alert(err.message || 'Failure deleting travel ticket.');
+      toast.error(err.message || 'Could not delete this journey.');
     } finally {
       setLoading(false);
     }
@@ -1091,7 +1094,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
               <button
                 type="button"
                 onClick={() => setHubTab('map')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   hubTab === 'map' 
                     ? 'bg-white text-primary-800 dark:text-primary-400 shadow-sm dark:bg-dark-card' 
                     : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text'
@@ -1103,7 +1106,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
               <button
                 type="button"
                 onClick={() => setHubTab('chart')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   hubTab === 'chart' 
                     ? 'bg-white text-primary-800 dark:text-primary-400 shadow-sm dark:bg-dark-card' 
                     : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text'

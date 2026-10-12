@@ -64,12 +64,12 @@ const BentoCard = ({
     {background && <div className="absolute inset-0 pointer-events-none overflow-hidden">{background}</div>}
     
     {children ? (
-      <div className="relative z-10 p-5 flex flex-col justify-between h-full w-full">
+      <div className="relative z-raised p-5 flex flex-col justify-between h-full w-full">
         {children}
       </div>
     ) : (
       <>
-        <div className="p-5 relative z-10 flex flex-col justify-between h-full">
+        <div className="p-5 relative z-raised flex flex-col justify-between h-full">
           <div className="flex transform-gpu flex-col gap-1.5 transition-all duration-300 lg:group-hover:-translate-y-2">
             {Icon && (
               <div className="w-10 h-10 rounded-2xl bg-primary-500/10 text-primary-500 flex items-center justify-center mb-1 transition-transform duration-300 group-hover:scale-110">

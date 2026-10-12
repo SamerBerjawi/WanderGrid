@@ -53,7 +53,7 @@ export const StatCard: React.FC<{
             <div className={`absolute -right-8 -top-8 w-24 h-24 bg-${color}-500/10 dark:bg-${color}-500/15 rounded-full blur-[30px] pointer-events-none transition-all duration-500 group-hover:scale-125`} />
             
             {/* Top row: Compact Icon Pill + Label */}
-            <div className="flex items-center gap-2 sm:gap-2.5 relative z-10 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-2.5 relative z-raised min-w-0">
                 <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-${color}-500/10 border border-${color}-500/20 text-${color}-600 dark:text-${color}-400 flex items-center justify-center shrink-0`}>
                     {renderStatIcon(icon)}
                 </div>
@@ -63,7 +63,7 @@ export const StatCard: React.FC<{
             </div>
             
             {/* Metric Value & Subtitle */}
-            <div className="relative z-10 mt-2 sm:mt-3 min-w-0">
+            <div className="relative z-raised mt-2 sm:mt-3 min-w-0">
                 <div className="text-lg sm:text-2xl lg:text-3xl font-black text-light-text dark:text-dark-text leading-tight tracking-tight">
                     {value}
                 </div>
@@ -91,7 +91,7 @@ export const ExtremeFlightCard: React.FC<{
         <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-6 relative group transition-all duration-300 flex flex-col justify-between h-full">
             <div className={`absolute top-0 right-0 w-44 h-44 bg-${color}-500/5 rounded-full blur-[60px] -translate-y-1/2 translate-x-1/3 pointer-events-none transition-all duration-500 group-hover:scale-125`} />
             
-            <div className="flex justify-between items-start relative z-10">
+            <div className="flex justify-between items-start relative z-raised">
                 <div className={`p-3 rounded-2xl bg-${color}-500/10 border border-${color}-500/25 text-${color}-600 dark:text-${color}-400`}>
                     {type === 'Longest' ? (
                         <Globe weight="duotone" className="w-5 h-5" />
@@ -105,7 +105,7 @@ export const ExtremeFlightCard: React.FC<{
                 </div>
             </div>
 
-            <div className="mt-6 relative z-10">
+            <div className="mt-6 relative z-raised">
                 <div className="flex justify-between items-center mb-3">
                     <span className="text-3xl font-black text-light-text dark:text-dark-text tracking-tighter">{flight.origin}</span>
                     <div className="flex-1 mx-4 relative h-0.5 bg-black/10 dark:bg-white/10">
@@ -166,7 +166,7 @@ export const TopList: React.FC<{
             <div className="space-y-4 flex-1 overflow-y-auto custom-scrollbar pr-2">
                 {items.slice(0, 8).map((item, idx) => (
                     <div key={`${item.code || item.label}-${item.sub || idx}`} className="relative group">
-                        <div className="flex justify-between items-center mb-2 relative z-10">
+                        <div className="flex justify-between items-center mb-2 relative z-raised">
                             <div className="flex items-center gap-3">
                                 <span className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary w-4">{idx + 1}</span>
                                 <div>

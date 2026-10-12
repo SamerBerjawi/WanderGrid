@@ -914,7 +914,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   }
 
   return (
-    <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
+    <div className="relative overflow-x-clip w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
         
         {/* Soft background ambient glow */}
         <div className="absolute top-0 left-1/4 w-[40rem] h-[30rem] bg-gradient-to-tr from-primary-500/[0.04] to-indigo-500/[0.04] dark:from-primary-600/[0.07] dark:to-indigo-500/[0.05] rounded-full blur-[140px] pointer-events-none select-none -z-10" />
@@ -955,7 +955,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         {/* 2. DYNAMIC ISLAND & CONTEXTUAL STATUS STRIP (Mobile First)*/}
         {/* ========================================================= */}
         <GlassPanel className="wg-glass-card rounded-2xl sm:rounded-[28px] overflow-hidden p-3.5 sm:p-5 shadow-xs border border-black/5 dark:border-white/10">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 relative z-10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 relative z-raised">
                 
                 {/* Explorer Profile & Beacon */}
                 <div className="flex items-center gap-3 min-w-0">
@@ -967,7 +967,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-primary-500/10 dark:bg-primary-400/10 text-primary-600 dark:text-primary-400 flex items-center justify-center font-black text-base sm:text-lg border border-primary-500/20 shadow-xs transition-transform group-hover:scale-105">
                             {currentUser?.name ? currentUser.name.charAt(0) : currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : 'E'}
                         </div>
-                        <div className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 rounded-full p-0.5 sm:p-1 border-2 border-white dark:border-[#0c0c0e]">
+                        <div className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 rounded-full p-0.5 sm:p-1 border-2 border-white dark:border-dark-bg">
                             <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping absolute" />
                             <div className="w-1.5 h-1.5 bg-white rounded-full" />
                         </div>
@@ -1063,7 +1063,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     padding="0px"
                 >
                     {/* Map Banner Header */}
-                    <div className="p-3.5 sm:p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/10 via-primary-500/5 to-transparent shrink-0 z-10">
+                    <div className="p-3.5 sm:p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/10 via-primary-500/5 to-transparent shrink-0 z-raised">
                         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-primary-500 to-indigo-600 text-white shadow-md shadow-primary-500/20 flex items-center justify-center shrink-0">
                                 <Globe className="w-4 h-4 sm:w-5 sm:h-5" weight="duotone" />
@@ -1082,7 +1082,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                 localStorage.setItem('wandergrid_map_view_mode', nextMode);
                             }}
                             aria-label={mapViewMode === '3d' ? 'Switch to 2D Map' : 'Switch to 3D Globe'}
-                            className="bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/15 px-3 py-1.5 rounded-xl sm:rounded-2xl border border-black/10 dark:border-white/15 flex items-center gap-2 shadow-xs min-h-[40px] cursor-pointer transition-all text-light-text dark:text-dark-text"
+                            className="bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/15 px-3 py-1.5 min-h-[44px] rounded-xl sm:rounded-2xl border border-black/10 dark:border-white/15 flex items-center gap-2 shadow-xs min-h-[40px] cursor-pointer transition-all text-light-text dark:text-dark-text"
                             title={mapViewMode === '3d' ? 'Switch to 2D Map' : 'Switch to 3D Globe'}
                         >
                             <Planet className={`w-4 h-4 transition-colors ${mapViewMode === '3d' ? 'text-primary-500' : 'text-zinc-500 dark:text-zinc-400'}`} weight="duotone" />
@@ -1131,7 +1131,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     overrides={{ borderRadius: 28 }}
                     padding="0px"
                 >
-                    <div className="p-5 sm:p-6 h-full flex flex-col justify-between relative z-10">
+                    <div className="p-5 sm:p-6 h-full flex flex-col justify-between relative z-raised">
                         {/* Iridescent shimmer overlays */}
                         <div className="absolute -top-10 -right-10 w-36 h-36 bg-gradient-to-br from-primary-500/15 via-indigo-500/10 to-transparent rounded-full blur-[40px] pointer-events-none" />
                         <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-gradient-to-tr from-amber-500/15 via-pink-500/10 to-transparent rounded-full blur-[40px] pointer-events-none" />
@@ -1217,7 +1217,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                         className="relative overflow-hidden p-2.5 bg-white/50 dark:bg-white/[0.04] border border-black/5 dark:border-white/10 rounded-xl flex items-center justify-between hover:bg-white/80 dark:hover:bg-white/[0.08] cursor-pointer transition-all duration-150 min-h-[44px] group"
                                         title="View expedition details"
                                     >
-                                        <div className="flex items-center gap-2.5 min-w-0 z-10">
+                                        <div className="flex items-center gap-2.5 min-w-0 z-raised">
                                             <div className="w-7 h-7 rounded-lg bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-600 dark:text-primary-400 shrink-0">
                                                 <span className="text-xs">{t.icon || '✈️'}</span>
                                             </div>
@@ -1227,7 +1227,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                             </div>
                                         </div>
                                         
-                                        <div className="text-right shrink-0 font-mono z-10 pl-2">
+                                        <div className="text-right shrink-0 font-mono z-raised pl-2">
                                             <span className="block text-xs font-bold text-primary-600 dark:text-primary-400 uppercase">
                                                 {formatDate(t.startDate, 'short')}
                                             </span>
@@ -1269,7 +1269,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                     key={tab.id}
                                     onClick={() => setActiveStatsTab(tab.id)}
                                     aria-label={tab.label}
-                                    className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 min-h-[44px] ${
+                                    className={`relative rounded-full min-h-[44px] min-w-[44px] text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 min-h-[44px] ${
                                         isSelected
                                             ? 'text-primary-700 dark:text-primary-300 px-3.5 sm:px-5 py-2'
                                             : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 sm:px-4 py-2'
@@ -1283,7 +1283,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                             transition={{ type: "spring", stiffness: 450, damping: 32 }}
                                         />
                                     )}
-                                    <span className="relative z-10 flex items-center gap-1.5 sm:gap-2">
+                                    <span className="relative z-raised flex items-center gap-1.5 sm:gap-2">
                                         <IconComponent className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" weight="duotone" />
                                         <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden sm:inline'}`}>
                                             {tab.label}
@@ -1344,7 +1344,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                           <button
                                               key={region}
                                               onClick={() => setSelectedRegion(region)}
-                                              className={`px-3 py-1.5 min-h-[40px] rounded-xl border text-2xs font-mono font-bold uppercase tracking-wide shrink-0 transition-all duration-150 cursor-pointer ${
+                                              className={`px-3 py-1.5 min-h-[44px] rounded-xl border text-2xs font-mono font-bold uppercase tracking-wide shrink-0 transition-all duration-150 cursor-pointer ${
                                                   isSelected
                                                       ? 'bg-primary-500/20 border-primary-500/30 text-primary-700 dark:text-primary-300 shadow-xs'
                                                       : 'bg-white/50 dark:bg-white/[0.04] border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:bg-white/80 dark:hover:bg-white/[0.08]'

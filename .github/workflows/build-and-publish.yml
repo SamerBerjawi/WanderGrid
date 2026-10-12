@@ -39,6 +39,9 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
+      - name: Design-token check (z-index scale, no arbitrary hex, valid shades)
+        run: npm run lint:tokens
+
       - name: Backend tests (unit + API integration on in-memory Postgres)
         working-directory: backend_files
         run: |
