@@ -656,39 +656,9 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               selectedCategories: restoreCategories
           });
 
-          // If the restored backup includes users, ensure active session points to a valid user in the restored database
-          if (restoreCategories.users && Array.isArray(pendingBackupData.users) && pendingBackupData.users.length > 0) {
-              try {
-                  const sessionRaw = localStorage.getItem('wandergrid_session_user');
-                  const sessionUser = sessionRaw ? JSON.parse(sessionRaw) : null;
-                  const norm = (v: any) => String(v || '').toLowerCase().trim();
-                  const sessionKeys = new Set([sessionUser?.id, sessionUser?.email].filter(Boolean).map(norm));
-
-                  const matchesRestored = !!sessionUser && pendingBackupData.users.some((u: any) =>
-                      sessionKeys.has(norm(u.id)) || (u.email && sessionKeys.has(norm(u.email)))
-                  );
-
-                  // Would the current session actually see the restored trips?
-                  const restoredTrips: any[] = Array.isArray(pendingBackupData.trips) ? pendingBackupData.trips : [];
-                  const isSessionAdmin = norm(sessionUser?.role) === 'admin';
-                  const canSeeRestoredTrips = restoredTrips.length === 0 || isSessionAdmin || restoredTrips.some((t: any) =>
-                      t.privacy === 'Public' ||
-                      (Array.isArray(t.participants) && t.participants.some((p: any) => sessionKeys.has(norm(p))))
-                  );
-
-                  // Adopt the backup's owner when the active account is foreign to the restored dataset
-                  if (!matchesRestored || !canSeeRestoredTrips) {
-                      const primaryUser = pendingBackupData.users.find((u: any) => norm(u.role) === 'admin') || pendingBackupData.users[0];
-                      if (primaryUser) {
-                          localStorage.setItem('wandergrid_session_user', JSON.stringify(primaryUser));
-                          localStorage.removeItem('wandergrid_session_token');
-                          sessionStorage.removeItem('wandergrid_session_token');
-                      }
-                  }
-              } catch (e) {
-                  console.warn("Could not synchronize session user to restored dataset:", e);
-              }
-          }
+          // The server keeps the signed-in account through a restore, so the session stays as it is.
+          // Never clear the token or swap the session user here: the backup's records carry no
+          // credentials, so doing so only signs the person out (the page reload re-validates via /auth/me).
 
           setRestoreStatus('success');
           setTimeout(() => {
