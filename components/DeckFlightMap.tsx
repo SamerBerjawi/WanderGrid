@@ -90,7 +90,7 @@ import { getLatestRainRadarMetadata, RainRadarMetadata } from '../services/rainV
 import { getPhysicalRunways, getPhysicalRunwaysSync, generateAirportRunway, PhysicalRunway, isKnownAirport, getAllGlobalAirports, GlobalAirportNode, AirportCategory, AIRPORT_CATEGORY_META } from '../services/airportRunways';
 import { buildRouteCorridors, RouteCorridor, getApproxLocalTime, formatAirportDisplayName, resolveLocationMetadata, getRouteTransportSummary } from '../services/routeCorridor';
 import { getFlagEmoji, getRegion } from '../services/geoData';
-import { fetchMultiModalRoute, getCachedMultiModalRoute, getMultiModalRouteStatus, generateSmoothRailCorridor } from '../services/multiModalRouting';
+import { fetchMultiModalRoute, getCachedMultiModalRoute, getMultiModalRouteStatus, generateSmoothRailCorridor, isApproximateMultiModalRoute } from '../services/multiModalRouting';
 import { dataService } from '../services/mockDb';
 import { DataCreditsPopover } from './DataCreditsPopover';
 import GlassPanel from './glass/GlassPanel';
@@ -1382,6 +1382,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     let isUntraced = false;
                     if (cachedCoords && cachedCoords.length > 0) {
                         path = cachedCoords;
+                        // A rail leg traced along roads (no rail connection exists) is real geography but approximate.
+                        isUntraced = isTrain && isApproximateMultiModalRoute(t.mode, t.originLat, t.originLng, t.destLat, t.destLng, t.waypoints);
                     } else if (isTrackable && isTracingEnabled) {
                         const status = getMultiModalRouteStatus(t.mode, t.originLat, t.originLng, t.destLat, t.destLng, t.waypoints);
                         // While the real road/rail/sea geometry is loading (or being retried) draw nothing instead of a
@@ -1403,7 +1405,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
                     if (path.length > 0) overlandRoutes.push({
                         path,
-                        color: [...modeRGB, isUntraced ? 110 : 235],
+                        color: [...modeRGB, isUntraced ? 150 : 235],
                         corridorId,
                         routeKey: `${trip.id}_${t.origin}_${t.destination}`,
                         tripId: trip.id,

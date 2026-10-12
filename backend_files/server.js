@@ -13,6 +13,7 @@ const rateLimit = require('express-rate-limit');
 const { fetchUpstream } = require('./upstream');
 const { resolveIcaoCallsign } = require('./carrierMapping');
 const { handleRouteProxy, handleRailRouteProxy } = require('./routeProxy');
+const { createRouteService } = require('./routeStore');
 const { searchGeocodingChain, searchOpenMeteo, searchPhoton, searchNominatim } = require('./geocodingChain');
 const { testProvider } = require('./integrationsTester');
 
@@ -1618,6 +1619,9 @@ app.get('/api/proxy/adsbdb/aircraft/:hexOrReg', async (req, res) => {
 // ==========================================
 // P-02: REAL ROAD & RAIL ROUTING PROXIES
 // ==========================================
+// Persistent, batched road/rail tracing (see routeStore.js). The GET proxies below remain for single lookups.
+const routeService = createRouteService({ pool, fetchUpstream });
+app.post('/api/proxy/routes/resolve', routeService.handleResolve);
 app.get('/api/proxy/route', handleRouteProxy);
 app.get('/api/route', handleRouteProxy);
 app.get('/api/proxy/rail', handleRailRouteProxy);

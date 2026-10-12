@@ -87,7 +87,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 **External services.** All of them go through backend proxies under `/api/proxy/*` with timeouts. `vite.config.ts` re-implements the route, rail and test proxies as dev middleware.
 
 - Geocoding: Open-Meteo, then Photon, then Nominatim (`geocodingChain.js`). Results are cached in the `geocoding_cache` table, the timeout is 3s, and the fallback on failure is `[]`.
-- Routing: FOSSGIS OSRM, then project-osrm, then Valhalla for road. OpenRailRouting for rail. `searoute-js` for maritime. Results are cached in `cached_routes`.
+- Routing: FOSSGIS OSRM, then project-osrm, then Valhalla for road. OpenRailRouting for rail (tries the `all_tracks`, `non_tgv`, `tgv_all`, `all_tracks_1435` profiles in turn). `searoute-js` for maritime. Road and rail legs are resolved by `backend_files/routeStore.js` behind `POST /api/proxy/routes/resolve` (batched, requires the session token) and persisted in `cached_routes`, including definitive "no route" answers; the client (`services/multiModalRouting.ts`) polls only for pending legs.
 - Flights: AviationStack, AeroDataBox (RapidAPI), adsbdb, adsb.lol and OpenSky. Map tiles: OpenFreeMap, CARTO, OSM, NASA GIBS, AWS Terrarium and OpenAIP (keyed). Logos: Brandfetch. Holidays: Nager.Date. Weather radar: RainViewer.
 - Gemini (`@google/genai`) runs client-side in `PackingList.tsx` and `TripDetail*.tsx`. The key comes from workspace settings (`googleGeminiApiKey`) or `GEMINI_API_KEY`, which `vite.config.ts` `define` **inlines into the bundle**.
 - Most third-party API keys are stored in workspace settings and sent by the client as headers, for example `X-AeroDataBox-Key` and `X-OpenAIP-Key`. A key can also be set through env vars (`INTEGRATIONS_*`).

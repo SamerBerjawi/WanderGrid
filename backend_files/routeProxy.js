@@ -259,46 +259,50 @@ async function handleRailRouteProxy(req, res) {
   }
 
   const pointsQuery = ghPoints.join('&');
-  const profile = req.query.profile || 'all_tracks';
-  const upstreamUrl = `https://routing.openrailrouting.org/route?${pointsQuery}&profile=${encodeURIComponent(profile)}&points_encoded=false`;
+  // One profile only fails for many real pairs (rail graphs are split by gauge/service), so walk a ladder
+  // unless the caller pinned a profile.
+  const profiles = req.query.profile
+    ? [String(req.query.profile)]
+    : ['all_tracks', 'non_tgv', 'tgv_all', 'all_tracks_1435'];
 
   try {
-    const result = await fetchUpstream({
-      key: `rail:${profile}:${pointsQuery}`,
-      url: upstreamUrl,
-      ttlMs: ROUTE_CACHE_MS,
-      staleMs: 60 * 60 * 1000,
-      timeoutMs: 15000,
-      maxBytes: 8 * 1024 * 1024,
-      hostGate: { minIntervalMs: 250 },
-    });
-
-    if (result.outcome === 'hit') res.set('X-Cache', 'HIT');
-    else if (result.outcome === 'stale') res.set('X-Cache', 'STALE');
-    else if (result.outcome === 'miss') res.set('X-Cache', 'MISS');
-
-    if (!result.ok || !result.data) {
-      return res.status(result.status || 502).json({
-        ok: false,
-        error: result.error || 'Failed to calculate rail route from upstream',
+    let lastFailure = null;
+    for (const profile of profiles) {
+      const result = await fetchUpstream({
+        key: `rail:${profile}:${pointsQuery}`,
+        url: `https://routing.openrailrouting.org/route?${pointsQuery}&profile=${encodeURIComponent(profile)}&points_encoded=false`,
+        ttlMs: ROUTE_CACHE_MS,
+        staleMs: 60 * 60 * 1000,
+        timeoutMs: 15000,
+        maxBytes: 8 * 1024 * 1024,
+        hostGate: { minIntervalMs: 250 },
       });
+
+      if (result.ok && result.data) {
+        const path = result.data?.paths?.[0];
+        if (path?.points?.coordinates?.length) {
+          if (result.outcome === 'hit') res.set('X-Cache', 'HIT');
+          else if (result.outcome === 'stale') res.set('X-Cache', 'STALE');
+          else if (result.outcome === 'miss') res.set('X-Cache', 'MISS');
+          return res.json({
+            ok: true,
+            distanceKm: Math.round((path.distance / 1000) * 10) / 10,
+            durationMin: Math.round(path.time / 60000),
+            geometry: path.points.coordinates.map(c => [c[0], c[1], 0]),
+            attribution: '© OpenStreetMap contributors · OpenRailRouting (GraphHopper)',
+            profile,
+          });
+        }
+      }
+      lastFailure = result;
     }
 
-    const data = result.data;
-    const path = data?.paths?.[0];
-    if (!path?.points?.coordinates?.length) {
-      return res.status(404).json({
-        ok: false,
-        error: data.message || 'No physical rail connection found between coordinates',
-      });
-    }
-
-    return res.json({
-      ok: true,
-      distanceKm: Math.round((path.distance / 1000) * 10) / 10,
-      durationMin: Math.round(path.time / 60000),
-      geometry: path.points.coordinates.map(c => [c[0], c[1], 0]),
-      attribution: '© OpenStreetMap contributors · OpenRailRouting (GraphHopper)',
+    const transient = lastFailure && !(lastFailure.status === 400 || lastFailure.status === 404);
+    return res.status(transient ? (lastFailure.status || 502) : 404).json({
+      ok: false,
+      error: transient
+        ? (lastFailure.error || 'Failed to calculate rail route from upstream')
+        : (lastFailure?.data?.message || 'No physical rail connection found between coordinates'),
     });
   } catch (err) {
     console.error('[Rail Route Proxy Error]:', err.message);

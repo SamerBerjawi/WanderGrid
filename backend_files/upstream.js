@@ -129,6 +129,8 @@ async function fetchUpstream({
   hostGate = { minIntervalMs: 0 },
   negativeTtlMs = 60000,
   fetchImpl = globalThis.fetch,
+  // false: do not keep the response in the shared RAM cache (callers that persist results themselves).
+  cacheResult = true,
 }) {
   const cacheKey = key || url;
   const now = Date.now();
@@ -286,16 +288,18 @@ async function fetchUpstream({
       }
 
       // Success -> Cache Fresh Entry
-      const entryNow = Date.now();
-      memoryCache.set(cacheKey, {
-        data: parsedData,
-        status: res.status,
-        cachedAt: entryNow,
-        expiresAt: entryNow + ttlMs,
-        staleUntil: entryNow + Math.max(ttlMs, staleMs),
-        isNegative: false,
-      });
-      enforceCacheCapacity();
+      if (cacheResult) {
+        const entryNow = Date.now();
+        memoryCache.set(cacheKey, {
+          data: parsedData,
+          status: res.status,
+          cachedAt: entryNow,
+          expiresAt: entryNow + ttlMs,
+          staleUntil: entryNow + Math.max(ttlMs, staleMs),
+          isNegative: false,
+        });
+        enforceCacheCapacity();
+      }
 
       return {
         ok: true,

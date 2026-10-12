@@ -3,9 +3,23 @@ import { STATIC_GEO_DATA } from './geocoding';
 
 // Global In-Memory RAM Cache for Multi-Modal Geometries
 const multiModalCache = new Map<string, [number, number, number][]>();
+const encodedRoutes = new Map<string, string>(); // key -> polyline6 ('~' prefix = approximated), what gets persisted
+const approximateRoutes = new Set<string>(); // rail legs traced along roads because no rail connection exists
 const pendingFetches = new Set<string>();
 
-const STORAGE_KEY = 'wandergrid_overland_routes_v4';
+// v5 stores polyline6 strings (about 5x smaller than coordinate arrays) and is written at most once a second.
+const STORAGE_KEY = 'wandergrid_overland_routes_v5';
+const MAX_STORED_ROUTES = 400;
+
+/** Bearer token for the backend proxies: every /api route requires it, so unauthenticated calls were all 401. */
+function authHeaders(): Record<string, string> {
+    try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('wandergrid_session_token') : null;
+        return token ? { Authorization: `Bearer ${token}` } : {};
+    } catch {
+        return {};
+    }
+}
 
 // Checks if a geometry is an un-routed chord. Only degenerate (<=2 point) geometries qualify:
 // genuine routing engine output (even for very straight roads / short hops) always has intermediate vertices,
@@ -21,7 +35,7 @@ export function isStraightLineRoute(pts: [number, number, number][]): boolean {
 
 // --- Request scheduling: the public routing hosts are rate-gated (and the proxy aborts requests that wait too long
 // in its host queue), so bursting every transport at once made roughly half of them fail => random straight lines.
-const MAX_CONCURRENT_ROUTE_FETCHES = 2;
+const MAX_CONCURRENT_ROUTE_FETCHES = 6;
 const MAX_ROUTE_ATTEMPTS = 4;
 let activeRouteFetches = 0;
 const routeFetchQueue: Array<() => void> = [];
@@ -44,53 +58,70 @@ export type RouteStatus = 'ready' | 'loading' | 'failed' | 'idle';
 const routeAttempts = new Map<string, number>();
 const failedRoutes = new Set<string>();
 
-// Load stored routes from persistent storage on startup, purging any poisoned straight lines
+// Load stored routes from persistent storage on startup
 try {
     if (typeof window !== 'undefined') {
-        localStorage.removeItem('wandergrid_multimodal_routes_v1');
-        localStorage.removeItem('wandergrid_overland_routes_v2');
-        // v3 may contain synthetic great-circle corridors that were wrongly cached as traced rail routes
-        localStorage.removeItem('wandergrid_overland_routes_v3');
+        ['wandergrid_multimodal_routes_v1', 'wandergrid_overland_routes_v2', 'wandergrid_overland_routes_v3', 'wandergrid_overland_routes_v4']
+            .forEach(k => localStorage.removeItem(k));
 
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
-            const parsed = JSON.parse(stored);
-            const sanitized: Record<string, [number, number, number][]> = {};
-
-            Object.entries(parsed).forEach(([k, v]) => {
-                const pts = v as [number, number, number][];
-                // Only keep real traced curves with actual deviation (purge straight fallbacks)
-                if (Array.isArray(pts) && pts.length > 2 && !isStraightLineRoute(pts)) {
+            const parsed = JSON.parse(stored) as Record<string, string>;
+            Object.entries(parsed).forEach(([k, stored]) => {
+                if (typeof stored !== 'string') return;
+                const approx = stored.startsWith('~');
+                const enc = approx ? stored.slice(1) : stored;
+                const pts = decodePolyline6(enc);
+                if (pts.length > 2 && !isStraightLineRoute(pts)) {
                     multiModalCache.set(k, pts);
-                    sanitized[k] = pts;
+                    encodedRoutes.set(k, stored);
+                    if (approx) approximateRoutes.add(k);
                 }
             });
-
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
         }
     }
 } catch (e) {
     console.warn('Failed to load multi-modal route cache:', e);
 }
 
-const saveRouteToCache = (key: string, points: [number, number, number][]) => {
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+function schedulePersist() {
+    if (typeof window === 'undefined' || persistTimer) return;
+    persistTimer = setTimeout(() => {
+        persistTimer = null;
+        try {
+            const entries = Array.from(encodedRoutes.entries()).slice(-MAX_STORED_ROUTES);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(entries)));
+        } catch {
+            // storage full or unavailable: the server store is the source of truth anyway
+        }
+    }, 1000);
+}
+
+function encodePolyline6(points: [number, number, number][]): string {
+    let prevLat = 0, prevLng = 0, out = '';
+    const push = (value: number) => {
+        let v = value < 0 ? ~(value << 1) : value << 1;
+        while (v >= 0x20) { out += String.fromCharCode((0x20 | (v & 0x1f)) + 63); v >>= 5; }
+        out += String.fromCharCode(v + 63);
+    };
+    for (const [lng, lat] of points) {
+        const la = Math.round(lat * 1e6), lo = Math.round(lng * 1e6);
+        push(la - prevLat); push(lo - prevLng);
+        prevLat = la; prevLng = lo;
+    }
+    return out;
+}
+
+const saveRouteToCache = (key: string, points: [number, number, number][], encoded?: string, approximate = false) => {
     // Never cache straight line fallbacks as traced routes
     if (!points || points.length <= 2 || isStraightLineRoute(points)) return;
 
     multiModalCache.set(key, points);
-    try {
-        if (typeof window !== 'undefined') {
-            const data: Record<string, [number, number, number][]> = {};
-            let count = 0;
-            multiModalCache.forEach((val, k) => {
-                if (count < 500 && val.length > 2 && !isStraightLineRoute(val)) {
-                    data[k] = val;
-                    count++;
-                }
-            });
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        }
-    } catch (e) {}
+    encodedRoutes.delete(key); // re-insert so the newest entries survive the size cap
+    encodedRoutes.set(key, (approximate ? '~' : '') + (encoded || encodePolyline6(points)));
+    if (approximate) approximateRoutes.add(key); else approximateRoutes.delete(key);
+    schedulePersist();
 };
 
 /**
@@ -291,7 +322,8 @@ export async function fetchRailGeometry(
         const proxyController = new AbortController();
         const proxyTimeout = setTimeout(() => proxyController.abort(), 8000);
         const res = await fetch(`/api/proxy/rail?coords=${encodeURIComponent(coordsStr)}`, {
-            signal: proxyController.signal
+            signal: proxyController.signal,
+            headers: authHeaders()
         });
         clearTimeout(proxyTimeout);
 
@@ -309,7 +341,7 @@ export async function fetchRailGeometry(
         try {
             const directUrl = `https://routing.openrailrouting.org/route?${ghPoints}&profile=${prof}&points_encoded=false`;
             const directController = new AbortController();
-            const directTimeout = setTimeout(() => directController.abort(), 7000);
+            const directTimeout = setTimeout(() => directController.abort(), 4000);
             const directRes = await fetch(directUrl, {
                 signal: directController.signal,
                 headers: { 'User-Agent': 'WanderGrid/1.0' }
@@ -356,7 +388,7 @@ export async function fetchRoute(
         const proxyTimeout = setTimeout(() => proxyController.abort(), 20000);
         const res = await fetch(
             `/api/proxy/route?profile=${encodeURIComponent(profile)}&coords=${encodeURIComponent(coordsStr)}`,
-            { signal: proxyController.signal }
+            { signal: proxyController.signal, headers: authHeaders() }
         );
         clearTimeout(proxyTimeout);
 
@@ -416,6 +448,30 @@ export async function fetchRoute(
                 const geometry: [number, number, number][] = route.geometry.coordinates.map((c: [number, number]) => [c[0], c[1], 0]);
                 return {
                     geometry,
+                    distanceKm: Math.round((route.distance || 0) / 1000),
+                    durationMin: Math.round((route.duration || 0) / 60),
+                    attribution: '© OpenStreetMap contributors, OSRM',
+                    isFallback: false
+                };
+            }
+        }
+    } catch {}
+
+    // 3b. Very long legs: the full-detail geometry can be >1 MB and miss the short timeouts above. A
+    // simplified overview is far smaller and still follows the highways, which beats a straight line.
+    try {
+        const osrmProfile = profile === 'bike' ? 'routed-bike/route/v1/bicycle' : profile === 'foot' ? 'routed-foot/route/v1/foot' : 'routed-car/route/v1/driving';
+        const url = `https://routing.openstreetmap.de/${osrmProfile}/${coordsStr}?overview=simplified&geometries=geojson&alternatives=false&steps=false`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 9000);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+            const data = await res.json();
+            const route = data?.routes?.[0];
+            if (data.code === 'Ok' && route?.geometry?.coordinates?.length > 2) {
+                return {
+                    geometry: route.geometry.coordinates.map((c: [number, number]) => [c[0], c[1], 0] as [number, number, number]),
                     distanceKm: Math.round((route.distance || 0) / 1000),
                     durationMin: Math.round((route.duration || 0) / 60),
                     attribution: '© OpenStreetMap contributors, OSRM',
@@ -500,6 +556,135 @@ export async function fetchHighwayGeometry(
     return null;
 }
 
+// --- Batched resolution through the server's persistent route store -------------------------------------
+// One POST carries every road/rail leg the map needs. The server answers instantly for anything it already
+// holds (including "no route exists") and resolves the rest in the background; we poll only for those.
+type BatchEntry = {
+    key: string;
+    mode: 'road' | 'rail';
+    coords: [number, number][];
+    callbacks: Array<() => void>;
+    polls: number;
+    errors: number;
+    retry: () => void;
+};
+const batchQueue = new Map<string, BatchEntry>();
+let batchTimer: ReturnType<typeof setTimeout> | null = null;
+// Local dev mode (VITE_LOCAL_MODE) has no backend at all: go straight to the direct per-route path.
+const LOCAL_MODE = typeof import.meta !== 'undefined' && !import.meta.env?.PROD && import.meta.env?.VITE_LOCAL_MODE === 'true';
+let batchUnavailable = LOCAL_MODE;
+let batchWorked = false; // true once the endpoint has answered successfully
+// Legs the batch endpoint could not settle: resolved through the direct per-route path instead.
+const legacyKeys = new Set<string>();
+const MAX_POLLS = 45;
+const MAX_ERROR_RETRIES = 1;
+
+function scheduleBatch(delayMs: number) {
+    if (batchTimer) return;
+    batchTimer = setTimeout(() => {
+        batchTimer = null;
+        void flushBatch();
+    }, delayMs);
+}
+
+/** Hand a leg the batch endpoint could not settle to the direct per-route path. */
+function toLegacy(entry: BatchEntry) {
+    batchQueue.delete(entry.key);
+    pendingFetches.delete(entry.key);
+    legacyKeys.add(entry.key);
+    entry.callbacks.slice(1).forEach(cb => { try { cb(); } catch { /* ignore */ } });
+    entry.retry();
+}
+
+function settle(entry: BatchEntry, outcome: 'ok' | 'failed') {
+    batchQueue.delete(entry.key);
+    pendingFetches.delete(entry.key);
+    routeAttempts.delete(entry.key);
+    if (outcome === 'failed') failedRoutes.add(entry.key);
+    entry.callbacks.forEach(cb => { try { cb(); } catch { /* a render callback must not break settling */ } });
+}
+
+async function flushBatch() {
+    const entries = Array.from(batchQueue.values()).slice(0, 100);
+    if (entries.length === 0) return;
+
+    let results: Record<string, { status: string; geometry?: string; approximate?: boolean }> | null = null;
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 20000);
+        const res = await fetch('/api/proxy/routes/resolve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
+            body: JSON.stringify({ routes: entries.map(e => ({ id: e.key, mode: e.mode, coords: e.coords })) }),
+            signal: controller.signal
+        });
+        clearTimeout(timeout);
+
+        if (res.ok) {
+            results = (await res.json())?.results || null;
+            batchWorked = batchWorked || results !== null;
+        } else if (!batchWorked) {
+            // The endpoint has never answered successfully (missing, auth failure, backend down, dev proxy
+            // 500/502...): do not wait on it. Use the direct per-route path, which is what always worked.
+            batchUnavailable = true;
+        }
+    } catch {
+        if (!batchWorked) batchUnavailable = true;
+    }
+
+    if (batchUnavailable) {
+        entries.forEach(e => { batchQueue.delete(e.key); pendingFetches.delete(e.key); e.retry(); });
+        if (batchQueue.size > 0) scheduleBatch(0);
+        return;
+    }
+
+    let anyPending = false;
+    entries.forEach(entry => {
+        const r = results?.[entry.key];
+        if (r?.status === 'ok' && typeof r.geometry === 'string') {
+            const pts = decodePolyline6(r.geometry);
+            if (pts.length > 2) {
+                saveRouteToCache(entry.key, pts, r.geometry, r.approximate === true);
+                return settle(entry, 'ok');
+            }
+            return toLegacy(entry);
+        }
+        if (r?.status === 'none') return settle(entry, 'failed'); // authoritative: no such route, never retried
+        if (r?.status === 'pending') {
+            entry.polls++;
+            if (entry.polls > MAX_POLLS) return toLegacy(entry);
+            anyPending = true;
+            return;
+        }
+        // 'error' or no answer: retry once, then resolve it directly instead of leaving the map empty
+        entry.errors++;
+        routeAttempts.set(entry.key, entry.errors);
+        if (entry.errors > MAX_ERROR_RETRIES) return toLegacy(entry);
+        anyPending = true;
+    });
+
+    if (batchQueue.size > 0) {
+        const hasErrors = entries.some(e => batchQueue.has(e.key) && e.errors > 0);
+        scheduleBatch(hasErrors ? 2000 : anyPending ? 1200 : 0);
+    }
+}
+
+function enqueueBatchRoute(
+    key: string,
+    mode: 'road' | 'rail',
+    coords: [number, number][],
+    onDone: () => void,
+    retry: () => void
+) {
+    const existing = batchQueue.get(key);
+    if (existing) {
+        existing.callbacks.push(onDone);
+        return;
+    }
+    batchQueue.set(key, { key, mode, coords, callbacks: [onDone], polls: 0, errors: 0, retry });
+    scheduleBatch(60); // gather every leg requested in the same render pass into one request
+}
+
 /**
  * Unified Multi-Modal Geometry Dispatcher (Rail, Maritime Sea Lanes & Highway Roads) with immediate async execution.
  */
@@ -535,25 +720,55 @@ export async function fetchMultiModalRoute(
         return null;
     }
 
+    // Already settled as unavailable this session (the server remembers definitive "no route" answers):
+    // do not ask again on every re-render.
+    if (failedRoutes.has(key)) {
+        return null;
+    }
+
     pendingFetches.add(key);
     failedRoutes.delete(key);
+
+    if ((isTrain || isRoad) && !batchUnavailable && !legacyKeys.has(key)) {
+        const coords: [number, number][] = [[startLng, startLat]];
+        (waypoints || []).forEach((wp: any) => {
+            const lat = wp?.coordinates?.lat ?? wp?.lat;
+            const lng = wp?.coordinates?.lng ?? wp?.lng;
+            if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) coords.push([lng, lat]);
+        });
+        coords.push([endLng, endLat]);
+        enqueueBatchRoute(
+            key,
+            isTrain ? 'rail' : 'road',
+            coords,
+            onDone,
+            () => { void fetchMultiModalRoute(mode, startLat, startLng, endLat, endLng, onDone, waypoints); }
+        );
+        return null;
+    }
 
     (async () => {
         let success = false;
         await acquireRouteSlot();
         try {
             let geom: [number, number, number][] | null = null;
+            let approximate = false;
             if (isSea) {
                 // searoute-js carries a large global shipping-lane network: load it only when a sea leg is drawn (PERF-004).
                 const { fetchSeaRoute } = await import('./maritimeRouting');
                 geom = await fetchSeaRoute(startLat, startLng, endLat, endLng, waypoints);
             } else if (isTrain) {
                 geom = await fetchRailGeometry(startLat, startLng, endLat, endLng, waypoints);
+                if (!geom) {
+                    // No rail connection: follow the road network so the leg still shows real geography.
+                    geom = await fetchHighwayGeometry(startLat, startLng, endLat, endLng, waypoints);
+                    approximate = !!geom;
+                }
             } else if (isRoad) {
                 geom = await fetchHighwayGeometry(startLat, startLng, endLat, endLng, waypoints);
             }
             if (geom && geom.length > 2) {
-                saveRouteToCache(key, geom);
+                saveRouteToCache(key, geom, undefined, approximate);
                 success = true;
             }
         } catch (e) {
@@ -628,4 +843,16 @@ export function getCachedMultiModalRoute(
         return cached;
     }
     return null;
+}
+
+/** True when a rail leg is drawn along roads because the rail network has no connection for it. */
+export function isApproximateMultiModalRoute(
+    mode: string | undefined,
+    startLat: number,
+    startLng: number,
+    endLat: number,
+    endLng: number,
+    waypoints?: any[]
+): boolean {
+    return approximateRoutes.has(buildRouteKey(mode, startLat, startLng, endLat, endLng, waypoints));
 }
