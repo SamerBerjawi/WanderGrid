@@ -208,11 +208,11 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                         await dataService.addTrip(trip);
                     }
                     const sampleVisited: VisitedItem[] = [
-                        { id: 'v-demo-1', type: 'country', code: 'US', name: 'United States', residenceStatus: 'lived_current' },
-                        { id: 'v-demo-2', type: 'country', code: 'FR', name: 'France', residenceStatus: 'visited' },
-                        { id: 'v-demo-3', type: 'country', code: 'NL', name: 'Netherlands', residenceStatus: 'visited' },
-                        { id: 'v-demo-4', type: 'country', code: 'JP', name: 'Japan', residenceStatus: 'visited' },
-                        { id: 'v-demo-5', type: 'country', code: 'GB', name: 'United Kingdom', residenceStatus: 'lived_past' }
+                        { id: 'country_US', type: 'country', code: 'US', name: 'United States', residenceStatus: 'lived_current' },
+                        { id: 'country_FR', type: 'country', code: 'FR', name: 'France', residenceStatus: 'visited' },
+                        { id: 'country_NL', type: 'country', code: 'NL', name: 'Netherlands', residenceStatus: 'visited' },
+                        { id: 'country_JP', type: 'country', code: 'JP', name: 'Japan', residenceStatus: 'visited' },
+                        { id: 'country_GB-ENG', type: 'country', code: 'GB-ENG', name: 'England', residenceStatus: 'lived_past' }
                     ];
                     for (const v of sampleVisited) {
                         await dataService.addVisited(v);

@@ -112,9 +112,27 @@ const withApiAuth = (url: string) => {
     return { url };
 };
 
-const isCountryVisited = (f: any, visitedList: string[]): boolean => {
-    if (!visitedList || visitedList.length === 0) return false;
+const UK_NATION_BY_NAME: Record<string, string> = { ENGLAND: 'GB-ENG', SCOTLAND: 'GB-SCT', WALES: 'GB-WLS', 'NORTHERN IRELAND': 'GB-NIR' };
+const UK_NATION_BY_GU: Record<string, string> = { ENG: 'GB-ENG', SCT: 'GB-SCT', WLS: 'GB-WLS', NIR: 'GB-NIR' };
+
+const isCountryVisited = (
+    f: any,
+    visitedList: string[],
+    statusMap?: Record<string, CountryResidenceStatus[] | CountryResidenceStatus>
+): boolean => {
     const p = f.properties || {};
+
+    // A UK nation with its own explicit entry (including an empty "cleared" one) never inherits from the UK parent.
+    const nation = (typeof p.ISO_A2 === 'string' && p.ISO_A2.startsWith('GB-') ? p.ISO_A2 : '')
+        || UK_NATION_BY_GU[p.GU_A3] || UK_NATION_BY_NAME[String(p.NAME || '').toUpperCase()] || '';
+    if (nation && statusMap) {
+        const explicit = statusMap[nation] ?? statusMap[String(p.NAME || '').toUpperCase()];
+        if (Array.isArray(explicit)) {
+            return explicit.some(s => s === 'visited' || s === 'lived_past' || s === 'lived_current');
+        }
+    }
+
+    if (!visitedList || visitedList.length === 0) return false;
     const lookupSet = new Set(visitedList.map(c => (c || '').trim().toUpperCase()));
 
     // If UK is in visitedList, match UK subunits
@@ -1844,7 +1862,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         if (showLayover && statuses.includes('layover')) return [245, 158, 11, 140];
                         if (showWishlist && statuses.includes('wishlist')) return [244, 63, 94, 90];
 
-                        const visited = isCountryVisited(f, visitedCountries);
+                        const visited = isCountryVisited(f, visitedCountries, countryStatusMap);
                         if (visited) {
                             const center = getFeatureCentroid(f);
                             const rgb = getGeoGradientRGB(center.lat, center.lng);
@@ -3757,7 +3775,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         const p = selectedCountry.properties || {};
                         const name = p.NAME || p.NAME_LONG || p.ADMIN || p.SOVEREIGNT || 'Country';
                         const iso2 = (p.ISO_A2 && p.ISO_A2 !== '-99' ? p.ISO_A2 : (p.ISO_A2_EH || p.wb_a2 || '')).toUpperCase();
-                        const isVisited = isCountryVisited(selectedCountry, visitedCountries);
+                        const isVisited = isCountryVisited(selectedCountry, visitedCountries, countryStatusMap);
                         const rawStatus = (iso2 && countryStatusMap?.[iso2]) || (name && countryStatusMap?.[name.toUpperCase()]);
                         const currentStatuses: CountryResidenceStatus[] = Array.isArray(rawStatus)
                             ? rawStatus
@@ -4314,7 +4332,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         const p = hoverInfo.object.properties;
                         const name = p.NAME || p.NAME_LONG || p.ADMIN || p.SOVEREIGNT || 'Country';
                         const iso2 = (p.ISO_A2 && p.ISO_A2 !== '-99' ? p.ISO_A2 : (p.ISO_A2_EH || p.wb_a2 || '')).toUpperCase();
-                        const isVisited = isCountryVisited(hoverInfo.object, visitedCountries);
+                        const isVisited = isCountryVisited(hoverInfo.object, visitedCountries, countryStatusMap);
                         const rawStatus = (iso2 && countryStatusMap?.[iso2]) || (name && countryStatusMap?.[name.toUpperCase()]);
                         const currentStatuses: CountryResidenceStatus[] = Array.isArray(rawStatus)
                             ? rawStatus

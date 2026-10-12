@@ -1,4 +1,5 @@
 import { RoadTripWaypoint, VisitedItem } from '../types';
+import { resolveCountryCode, normalizeCountryCode, canonicalCountryName, countryId } from './countryRegistry';
 import { getCoordinates } from './geocoding';
 import { dataService } from './mockDb';
 
@@ -27,7 +28,7 @@ export async function syncPitStopsToVisited(
         const existingCountryCodes = new Set(
             existingVisited
                 .filter(item => item.type === 'country')
-                .map(item => (item.code || '').toUpperCase())
+                .map(item => resolveCountryCode(item))
         );
 
         for (const wp of waypoints) {
@@ -39,8 +40,8 @@ export async function syncPitStopsToVisited(
             // Geocode the pit stop location to obtain city, country and coordinates
             const coords = await getCoordinates(trimmedName);
             const cityName = coords?.city || trimmedName.split(',')[0].trim();
-            const countryCode = (coords?.countryCode || 'XX').toUpperCase();
-            const countryName = coords?.country || 'Visited Country';
+            const countryCode = normalizeCountryCode(coords?.countryCode || 'XX');
+            const countryName = countryCode !== 'XX' ? canonicalCountryName(countryCode, coords?.country || 'Visited Country') : (coords?.country || 'Visited Country');
             const cityKey = `${cityName.toLowerCase()}_${countryCode.toLowerCase()}`;
 
             const visitDate = wp.visitDate || context?.date || new Date().toISOString().split('T')[0];
@@ -75,7 +76,7 @@ export async function syncPitStopsToVisited(
             // 2. Ensure country is registered in visited places if recognized
             if (countryCode && countryCode !== 'XX' && !existingCountryCodes.has(countryCode)) {
                 const visitedCountry: VisitedItem = {
-                    id: `pitstop_country_${countryCode}`,
+                    id: countryId(countryCode),
                     type: 'country',
                     code: countryCode,
                     name: countryName,

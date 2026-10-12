@@ -79,9 +79,10 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   color?: 'primary' | 'emerald' | 'blue' | 'sky' | 'amber' | 'rose' | 'indigo' | string;
   size?: 'sm' | 'md' | 'lg';
   icon?: ReactNode;
+  vibrant?: boolean;
   isLoading?: boolean;
 }
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ children, variant = 'primary', color, size = 'md', className, icon, isLoading, disabled, ...props }, ref) => {
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ children, variant = 'primary', color, size = 'md', className, icon, vibrant, isLoading, disabled, ...props }, ref) => {
   return (
     <GlassButton
       ref={ref}
@@ -90,6 +91,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ children, va
       size={size}
       className={className}
       icon={icon}
+      vibrant={vibrant}
       isLoading={isLoading}
       disabled={disabled}
       {...props}

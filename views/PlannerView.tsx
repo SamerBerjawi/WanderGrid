@@ -471,6 +471,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                     <Button 
                         variant="primary" 
                         color="emerald"
+                        vibrant
                         className="shrink-0 min-h-[44px]"
                         onClick={() => handleOpenNewTrip('Planning')}
                         icon={<Plus className="w-4 h-4" />}

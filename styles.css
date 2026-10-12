@@ -337,21 +337,56 @@
   color: #93c5fd !important;
 }
 
-.wg-glass-pill-primary,
+/* Primary is a solid, saturated fill (brighter than the tinted accents). Near-black text keeps
+   contrast at ~7-8:1 on the orange, so the UI-003 accessibility floor still holds. */
+.wg-glass-pill-primary {
+  background: linear-gradient(180deg, #fdb84a 0%, #fa9a1d 55%, #f58a0b 100%) !important;
+  border-color: rgba(255, 214, 140, 0.75) !important;
+  --pill-shadow-color: rgba(250, 154, 29, 0.55);
+  color: #2b1400 !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.wg-glass-pill-primary:hover {
+  background: linear-gradient(180deg, #ffc460 0%, #fca733 55%, #f89416 100%) !important;
+}
+.dark .wg-glass-pill-primary {
+  --pill-shadow-color: rgba(250, 154, 29, 0.45);
+}
+
 .wg-glass-pill-amber {
   background: rgba(250, 154, 29, 0.16) !important;
   border-color: rgba(250, 154, 29, 0.38) !important;
   --pill-shadow-color: rgba(250, 154, 29, 0.18);
   color: #7d4312 !important;
 }
-.wg-glass-pill-primary:hover,
 .wg-glass-pill-amber:hover {
   background: rgba(250, 154, 29, 0.26) !important;
 }
-.dark .wg-glass-pill-primary,
 .dark .wg-glass-pill-amber {
   background: rgba(250, 154, 29, 0.22) !important;
   color: #faca89 !important;
+}
+
+/* Opt-in vibrant fills (<Button vibrant>): solid saturated gradient, text kept at >= 4.5:1. */
+.wg-glass-pill-emerald.wg-glass-pill-vibrant {
+  background: linear-gradient(180deg, #4ade9c 0%, #10b981 55%, #0ea371 100%) !important;
+  border-color: rgba(167, 243, 208, 0.75) !important;
+  --pill-shadow-color: rgba(16, 185, 129, 0.55);
+  color: #022c22 !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.wg-glass-pill-emerald.wg-glass-pill-vibrant:hover {
+  background: linear-gradient(180deg, #6ee7b0 0%, #22c993 55%, #12b27d 100%) !important;
+}
+.wg-glass-pill-blue.wg-glass-pill-vibrant {
+  background: linear-gradient(180deg, #2b6df0 0%, #2563eb 55%, #1d4ed8 100%) !important;
+  border-color: rgba(147, 197, 253, 0.7) !important;
+  --pill-shadow-color: rgba(37, 99, 235, 0.55);
+  color: #ffffff !important;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+.wg-glass-pill-blue.wg-glass-pill-vibrant:hover {
+  background: linear-gradient(180deg, #3b7bf5 0%, #2f6df0 55%, #2358e0 100%) !important;
 }
 
 .wg-glass-pill-rose,
@@ -911,4 +946,17 @@
   .wg-glass-dropdown { -webkit-backdrop-filter: none; backdrop-filter: none; }
   :root:not(.dark) .wg-glass-dropdown { background: rgba(255, 255, 255, 0.97); }
   .dark .wg-glass-dropdown { background: rgba(28, 28, 30, 0.97); }
+}
+
+/* Region donut on the Travel Atlas. First six slots of the validated categorical palette
+   (blue, orange, aqua, yellow, magenta, green) plus a neutral for "Other"; dark values are the dark-surface steps. */
+.atlas-viz {
+  --viz-1: #2a78d6; --viz-2: #eb6834; --viz-3: #1baf7a;
+  --viz-4: #eda100; --viz-5: #e87ba4; --viz-6: #008300;
+  --viz-other: #9a9a95;
+}
+.dark .atlas-viz {
+  --viz-1: #3987e5; --viz-2: #d95926; --viz-3: #199e70;
+  --viz-4: #c98500; --viz-5: #d55181; --viz-6: #008300;
+  --viz-other: #6b6b66;
 }

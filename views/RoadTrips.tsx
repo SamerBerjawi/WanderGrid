@@ -974,6 +974,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
           <Button 
             variant="primary" 
             color="emerald"
+            vibrant
             onClick={handleOpenCreateModal} 
             className="shrink-0 min-h-[44px]"
             icon={<Plus className="w-4 h-4" />}

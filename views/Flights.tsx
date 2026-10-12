@@ -2804,6 +2804,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           <Button 
             variant="primary" 
             color="blue"
+            vibrant
             className="shrink-0"
             onClick={() => openFlightForm()}
             icon={<Plus className="w-4 h-4" />}

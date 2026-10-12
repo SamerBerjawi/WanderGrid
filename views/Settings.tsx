@@ -1,3 +1,4 @@
+import { mergeCountryRecords } from '../services/countryRegistry';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { toast, errorMessage } from '../services/toast';
 import { 
@@ -374,7 +375,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
         setConfig(settings);
         loadedConfigRef.current = settings;
         setTrips(t || []);
-        setVisitedCount(Array.isArray(v) ? v.length : 0);
+        setVisitedCount(Array.isArray(v) ? v.filter((i: any) => i.type !== 'country').length + mergeCountryRecords(v).length : 0);
         setLoading(false);
     }).catch(err => {
         console.error("Failed to load settings data:", err);

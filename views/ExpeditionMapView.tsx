@@ -1,3 +1,4 @@
+import { resolveCountryCode, countryId, mergeCountryRecords, excludedCountryCodes, ukNationsFromCities } from '../services/countryRegistry';
 import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { affectsCollections } from '../hooks/useWanderSync';
 import {
@@ -23,7 +24,7 @@ import { Trip, CountryResidenceStatus, PredefinedMapMode, getResidenceStatuses }
 import { GlassSegmented } from '../components/glass/GlassSegmented';
 import DatePicker from '../components/ui/DatePicker';
 import { LiquidGlassSelect, LiquidGlassMultiSelect } from '../components/LiquidGlassSelect';
-import { getCoordinates, getCoordinatesSync, STATIC_GEO_DATA, calculateDistance, formatProperLocationName } from '../services/geocoding';
+import { getCoordinates, getCoordinatesSync, STATIC_GEO_DATA, calculateDistance, formatProperLocationName, refineUKCountry } from '../services/geocoding';
 import {
     MapAppearanceSettings,
     DEFAULT_MAP_APPEARANCE,
@@ -525,9 +526,16 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 const statusMap: Record<string, CountryResidenceStatus[] | CountryResidenceStatus> = {};
                 const placeMap = new Map<string, { lat: number; lng: number; name: string }>();
 
-                // 1. From database visited collection
-                if (visited && visited.length > 0) {
-                    visited.forEach(item => {
+                // 1. From database visited collection: one record per country, the UK as its nations,
+                //    and countries the user explicitly cleared are remembered so trips don't re-mark them.
+                const excludedCodes = excludedCountryCodes(visited);
+                const ukNations = ukNationsFromCities(visited, n => refineUKCountry(n, 'United Kingdom', 'GB').countryCode);
+                const records = [
+                    ...mergeCountryRecords(visited, { ukConstituentsFor: () => ukNations }),
+                    ...(visited || []).filter((i: any) => i.type !== 'country')
+                ];
+                if (records.length > 0) {
+                    records.forEach(item => {
                         const code = item.code ? item.code.toUpperCase() : (item.countryCode ? item.countryCode.toUpperCase() : '');
                         const name = item.name ? item.name.toUpperCase() : (item.countryName ? item.countryName.toUpperCase() : '');
                         const statuses = getResidenceStatuses(item);
@@ -620,8 +628,9 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     });
                 });
 
-                // Add all verified destination countries to countrySet
-                destinationCountries.forEach(code => countrySet.add(code));
+                // Add all verified destination countries to countrySet (except ones the user cleared)
+                excludedCodes.forEach(code => { statusMap[code] = []; countrySet.delete(code); });
+                destinationCountries.forEach(code => { if (!excludedCodes.has(code)) countrySet.add(code); });
 
                 // Auto-detect layover-only countries: in layoverCandidateCountries, but NEVER stayed as a destination
                 layoverCandidateCountries.forEach(code => {
@@ -653,16 +662,36 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             const upperCode = (countryCode || '').toUpperCase();
             const upperName = (countryName || '').toUpperCase();
 
-            const existing = (visitedList || []).find((v: any) =>
-                (v.type === 'country' && v.code && v.code.toUpperCase() === upperCode) ||
-                (v.name && v.name.toUpperCase() === upperName)
-            );
+            // Every stored record for this country, whatever id or spelling it was saved with.
+            const matches = (visitedList || []).filter((v: any) => v.type === 'country' && resolveCountryCode(v) === resolveCountryCode({ code: countryCode, name: countryName }));
+            const existing = matches[0];
 
             const isNone = status === 'none' || (Array.isArray(status) && status.length === 0);
 
             if (isNone) {
+                // Keep a marker instead of deleting: otherwise trips (or a stored UK parent record) would
+                // immediately mark the country as visited again.
                 if (existing) {
-                    await dataService.deleteVisited(existing.id);
+                    await dataService.updateVisited({
+                        ...existing,
+                        excluded: true,
+                        residenceStatus: undefined,
+                        residenceStatuses: [],
+                        isTransit: false
+                    });
+                    for (const dup of matches.slice(1)) {
+                        await dataService.deleteVisited(dup.id);
+                    }
+                } else if (upperCode) {
+                    await dataService.addVisited({
+                        id: countryId(upperCode),
+                        type: 'country',
+                        code: upperCode,
+                        name: countryName,
+                        excluded: true,
+                        residenceStatuses: [],
+                        isManual: true
+                    });
                 }
             } else {
                 const statuses: CountryResidenceStatus[] = Array.isArray(status) ? status : [status];
@@ -675,17 +704,23 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         residenceStatus: primaryStatus,
                         residenceStatuses: statuses,
                         isTransit,
+                        excluded: false,
                         name: countryName || existing.name
                     });
+                    // Fold any stale copies into the surviving record.
+                    for (const dup of matches.slice(1)) {
+                        await dataService.deleteVisited(dup.id);
+                    }
                 } else {
                     await dataService.addVisited({
-                        id: `visited-country-${upperCode || Date.now()}`,
+                        id: upperCode ? countryId(upperCode) : `visited-country-${Date.now()}`,
                         type: 'country',
                         code: upperCode,
                         name: countryName,
                         residenceStatus: primaryStatus,
                         residenceStatuses: statuses,
                         isTransit,
+                        excluded: false,
                         isManual: true,
                         visitDate: new Date().toISOString().split('T')[0]
                     });
@@ -695,8 +730,9 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             setCountryStatusMap(prev => {
                 const next = { ...prev };
                 if (isNone) {
-                    if (upperCode) delete next[upperCode];
-                    if (upperName) delete next[upperName];
+                    // An empty list is an explicit "cleared", distinct from "no entry" (which falls back to trips).
+                    if (upperCode) next[upperCode] = [];
+                    if (upperName) next[upperName] = [];
                 } else {
                     const statuses: CountryResidenceStatus[] = Array.isArray(status) ? status : [status];
                     if (upperCode) next[upperCode] = statuses;

@@ -9,6 +9,8 @@ export interface GlassButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLBu
   color?: ButtonAccentColor;
   size?: 'sm' | 'md' | 'lg';
   icon?: ReactNode;
+  /** Solid, saturated fill in the button's own colour (primary, emerald, blue). */
+  vibrant?: boolean;
   isLoading?: boolean;
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   overrides?: {
@@ -25,6 +27,7 @@ export const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>
   color,
   size = 'md',
   icon,
+  vibrant,
   isLoading,
   disabled,
   onClick,
@@ -37,7 +40,7 @@ export const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>
   const colorClass = `wg-glass-pill-colored wg-glass-pill-${resolvedColor}`;
 
   const variantStyles = {
-    primary: `${colorClass} font-bold`,
+    primary: `${colorClass} ${vibrant ? 'wg-glass-pill-vibrant' : ''} font-bold`,
     secondary: 'bg-black/5 dark:bg-white/5 text-light-text dark:text-dark-text font-bold hover:bg-black/10 dark:hover:bg-white/10',
     pill: 'text-light-text dark:text-dark-text font-semibold',
     ghost: 'bg-transparent text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text font-bold',

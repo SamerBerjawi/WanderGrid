@@ -6,15 +6,17 @@ import { createPortal } from 'react-dom';
 import { ViewState, VisitedItem, Trip, CountryResidenceStatus, getResidenceStatuses, toggleCountryResidenceStatus } from '../types';
 import { dataService } from '../services/mockDb';
 import { getFlagEmoji, getRegion } from '../services/geoData';
-import { resolvePlaceName, getCoordinates, cleanCityName, formatPlaceName } from '../services/geocoding';
+import { resolvePlaceName, getCoordinates, cleanCityName, formatPlaceName, refineUKCountry } from '../services/geocoding';
+import {
+  mergeCountryRecords, planCountryCleanup, normalizeCountryCode, canonicalCountryName, countryId,
+  findCountryRecord, ukNationsFromCities, excludedCountryCodes, type MergedCountry
+} from '../services/countryRegistry';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Compass, MapPin, Globe, CalendarBlank as Calendar, Plus, Trash as Trash2, PencilSimpleLine as Edit3, 
-  MapTrifold as MapIcon, ArrowsClockwise as RefreshCw, Stack as Layers, CheckCircle as CheckCircle2, Warning as AlertTriangle, Info,
-  BookmarkSimple as Bookmark, ShieldCheck as Shield, CaretRight as ChevronRight, X, Sparkle as Sparkles, Funnel as Filter, Check,
-  Star, Heart, Airplane as Plane, House as Home, Bank as Landmark
-} from '@phosphor-icons/react';
-import { Card, Button, Input, Select, BentoGrid, BentoCard } from '../components/ui';
+import { Compass, MapPin, Globe, Plus, Trash as Trash2, PencilSimpleLine as Edit3, MapTrifold as MapIcon, ArrowsClockwise as RefreshCw, CheckCircle as CheckCircle2, Stack as Layers, Info, X, Sparkle as Sparkles, Funnel as Filter, Check, Star, Airplane as Plane, House as Home, Bank as Landmark, MagnifyingGlass } from '@phosphor-icons/react';
+import { Button, Select, Tabs } from '../components/ui';
+import type { Tab } from '../components/ui';
+import { EmptyState } from '../components/EmptyState';
+import { formatDate } from '../utils/formatters';
 import { GlassPanel } from '../components/glass/GlassPanel';
 import { CLOSE_BTN_STYLE, INPUT_BASE_STYLE } from '../constants';
 
@@ -96,43 +98,56 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
     };
   }, []);
 
+  // Which UK nations a stored "Great Britain / United Kingdom" record stands for, judged by its tracked cities.
+  const ukNationsFor = useCallback(
+    () => ukNationsFromCities(visitedItems, name => refineUKCountry(name, 'United Kingdom', 'GB').countryCode),
+    [visitedItems]
+  );
+
+  // One record per country: duplicates merged, the UK shown as its individual nations.
+  const countryRecords = useMemo(
+    () => mergeCountryRecords(visitedItems, { ukConstituentsFor: ukNationsFor }),
+    [visitedItems, ukNationsFor]
+  );
+
+  const cleanupPlan = useMemo(
+    () => planCountryCleanup(visitedItems, { ukConstituentsFor: ukNationsFor }),
+    [visitedItems, ukNationsFor]
+  );
+  const cleanupCount = cleanupPlan.upserts.length + cleanupPlan.deleteIds.length;
+  const [cleaningUp, setCleaningUp] = useState(false);
+
   // Scopes and Unique regions
   const uniqueRegions = useMemo(() => {
     const regions = new Set<string>();
+    countryRecords.forEach(item => regions.add(getRegion(item.code)));
     visitedItems.forEach(item => {
-      if (item.type === 'country') {
-        regions.add(getRegion(item.code));
-      } else if (item.countryCode) {
-        regions.add(getRegion(item.countryCode));
-      }
+      if (item.type === 'city' && item.countryCode) regions.add(getRegion(normalizeCountryCode(item.countryCode)));
     });
     return ['All', ...Array.from(regions)];
-  }, [visitedItems]);
+  }, [countryRecords, visitedItems]);
 
   // Visited vs Layover vs Wishlist split
   const visitedCountriesList = useMemo(() => {
-    return visitedItems.filter(item => {
-      if (item.type !== 'country') return false;
+    return countryRecords.filter(item => {
       const statuses = getResidenceStatuses(item);
       return statuses.some(s => s === 'visited' || s === 'lived_past' || s === 'lived_current');
     });
-  }, [visitedItems]);
+  }, [countryRecords]);
 
   const layoverCountriesList = useMemo(() => {
-    return visitedItems.filter(item => {
-      if (item.type !== 'country') return false;
+    return countryRecords.filter(item => {
       const statuses = getResidenceStatuses(item);
       return statuses.includes('layover') || item.isTransit === true;
     });
-  }, [visitedItems]);
+  }, [countryRecords]);
 
   const wishlistCountriesList = useMemo(() => {
-    return visitedItems.filter(item => {
-      if (item.type !== 'country') return false;
+    return countryRecords.filter(item => {
       const statuses = getResidenceStatuses(item);
       return statuses.includes('wishlist');
     });
-  }, [visitedItems]);
+  }, [countryRecords]);
 
   // Filtering processed
   const filteredVisitedCountries = useMemo(() => {
@@ -393,6 +408,16 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
     setIsModalOpen(true);
   };
 
+  // Merged records carry bookkeeping ids; never persist them, and remove the stale copies they replaced.
+  const toStored = (item: VisitedItem): VisitedItem => {
+    const { duplicateIds: _dup, ...rest } = item as MergedCountry;
+    return rest;
+  };
+  const removeDuplicatesOf = async (item: VisitedItem) => {
+    const dup = (item as MergedCountry).duplicateIds || [];
+    for (const id of dup) await dataService.deleteVisited(id);
+  };
+
   // Promote a wishlist country to a visited country with 1 click
   const handlePromoteWishlistToVisited = async (item: VisitedItem) => {
     try {
@@ -400,12 +425,13 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
       const filtered = current.filter(s => s !== 'wishlist' && s !== 'layover');
       const nextStatuses = filtered.length > 0 ? filtered : ['visited' as CountryResidenceStatus];
       await dataService.updateVisited({
-        ...item,
+        ...toStored(item),
         residenceStatus: nextStatuses[0],
         residenceStatuses: nextStatuses,
         isTransit: false,
         visitDate: new Date().toISOString().split('T')[0]
       });
+      await removeDuplicatesOf(item);
       void loadData();
       window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
     } catch (err) {
@@ -420,12 +446,13 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
       const filtered = current.filter(s => s !== 'wishlist' && s !== 'layover');
       const nextStatuses = filtered.length > 0 ? filtered : ['visited' as CountryResidenceStatus];
       await dataService.updateVisited({
-        ...item,
+        ...toStored(item),
         residenceStatus: nextStatuses[0],
         residenceStatuses: nextStatuses,
         isTransit: false,
         visitDate: item.visitDate || new Date().toISOString().split('T')[0]
       });
+      await removeDuplicatesOf(item);
       void loadData();
       window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
     } catch (err) {
@@ -455,21 +482,27 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
         const statuses = formResidenceStatuses.length > 0 ? formResidenceStatuses : ['visited' as CountryResidenceStatus];
         const isLayover = statuses.includes('layover');
         const primaryStatus = statuses[0] || 'visited';
+        const code = normalizeCountryCode(formCountryCode);
+        // Adding a country that is already recorded updates that record instead of creating a second one.
+        const existing = editingItem ? undefined : findCountryRecord(visitedItems, code, formCountryName);
+        const target = editingItem || existing;
         const payload: VisitedItem = {
-          id: editingItem?.id || `country_${formCountryCode.toUpperCase()}`,
+          id: target?.id || countryId(code),
           type: 'country',
-          code: formCountryCode.toUpperCase(),
-          name: formCountryName,
+          code,
+          name: canonicalCountryName(code, formCountryName),
           visitDate: formVisitDate,
           notes: formNotes,
           isTransit: isLayover,
           residenceStatus: primaryStatus,
           residenceStatuses: statuses,
-          isManual: editingItem ? editingItem.isManual : true
+          excluded: false,
+          isManual: target ? target.isManual : true
         };
 
-        if (editingItem) {
-          await dataService.updateVisited(payload);
+        if (target) {
+          await dataService.updateVisited({ ...toStored(target), ...payload });
+          await removeDuplicatesOf(target);
         } else {
           await dataService.addVisited(payload);
         }
@@ -519,8 +552,9 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
   // Toggle Transit Mode quickly in place
   const handleToggleTransit = async (item: VisitedItem) => {
     try {
-      const updated = { ...item, isTransit: !item.isTransit };
+      const updated = { ...toStored(item), isTransit: !item.isTransit };
       await dataService.updateVisited(updated);
+      await removeDuplicatesOf(item);
       void loadData();
       window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
     } catch (err) {
@@ -533,10 +567,32 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
     if (!(await confirmDialog({ title: 'Remove from Atlas?', message: 'Remove this item from your Atlas? Your maps and statistics update straight away.', confirmLabel: 'Remove', danger: true }))) return;
     try {
       await dataService.deleteVisited(id);
+      // A merged country may stand for several stored records; remove them all or the copy reappears.
+      const record = countryRecords.find(r => r.id === id);
+      if (record) await removeDuplicatesOf(record);
       void loadData();
       window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
     } catch (err) {
       console.error("Failed to delete visited item:", err);
+    }
+  };
+
+  // Persist the merge so every other screen sees the same single record per country.
+  const handleConsolidate = async () => {
+    setCleaningUp(true);
+    try {
+      const storedIds = new Set(visitedItems.map(v => v.id));
+      for (const record of cleanupPlan.upserts) {
+        if (storedIds.has(record.id)) await dataService.updateVisited(record);
+        else await dataService.addVisited(record);
+      }
+      for (const id of cleanupPlan.deleteIds) await dataService.deleteVisited(id);
+      await loadData();
+      window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
+    } catch (err) {
+      console.error("Failed to merge duplicate country records:", err);
+    } finally {
+      setCleaningUp(false);
     }
   };
 
@@ -545,9 +601,10 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
     setScanActive(true);
     try {
       // Countries & Cities already logged in current visitedItems set to ignore duplicate suggestions
-      const existingCountryCodes = new Set(
-        visitedItems.filter(item => item.type === 'country').map(item => item.code.toUpperCase())
-      );
+      const existingCountryCodes = new Set([
+        ...countryRecords.map(item => normalizeCountryCode(item.code)),
+        ...excludedCountryCodes(visitedItems),
+      ]);
       const existingCityKeys = new Set(
         visitedItems.filter(item => item.type === 'city').map(item => `${cleanCityName(item.name, item.countryCode).toLowerCase()}_${(item.countryCode || '').toLowerCase()}`)
       );
@@ -568,9 +625,9 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
         if (!rawLocation || typeof rawLocation !== 'string' || !rawLocation.trim()) return;
         const res = await resolvePlaceName(rawLocation.trim());
         if (res && res.city) {
-          const countryCode = (res.countryCode || 'XX').toUpperCase();
+          const countryCode = normalizeCountryCode(res.countryCode || 'XX');
           const canonicalCity = cleanCityName(res.city, countryCode);
-          const countryName = res.country || 'Unknown';
+          const countryName = countryCode !== 'XX' ? canonicalCountryName(countryCode, res.country || 'Unknown') : (res.country || 'Unknown');
           const cityKey = `${canonicalCity.toLowerCase()}_${countryCode.toLowerCase()}`;
           const cityNameLower = canonicalCity.toLowerCase();
 
@@ -671,12 +728,13 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
     try {
       // Countries to import
       for (const candidate of scanResults.countries) {
-        if (selectedScanCountries.has(candidate.code)) {
+        // Re-check against current data: the scan may be stale, and the bulk write upserts by id.
+        if (selectedScanCountries.has(candidate.code) && !findCountryRecord(countryRecords, candidate.code, candidate.name)) {
           importItems.push({
-            id: `country_${candidate.code}`,
+            id: countryId(candidate.code),
             type: 'country',
-            code: candidate.code,
-            name: candidate.name,
+            code: normalizeCountryCode(candidate.code),
+            name: canonicalCountryName(candidate.code, candidate.name),
             visitDate: candidate.date,
             isTransit: candidate.source === 'layover',
             isManual: false,
@@ -740,966 +798,610 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
     }
   }, [loading, visitedItems.length]);
 
+  // ---- Dashboard derived data ----
+  // Donut: top 5 regions + "Other". Colours are fixed slots from the dataviz palette (see .atlas-viz in styles.css).
+  const [hoverRegion, setHoverRegion] = useState<string | null>(null);
+  const DONUT_R = 38;
+  const DONUT_C = 2 * Math.PI * DONUT_R;
+  const regionSlices = useMemo(() => {
+    const counts = new Map<string, number>();
+    visitedCountriesList.forEach(item => {
+      const region = getRegion(item.code);
+      counts.set(region, (counts.get(region) || 0) + 1);
+    });
+    const sorted = Array.from(counts.entries()).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+    const head = sorted.length > 6 ? sorted.slice(0, 5) : sorted;
+    const tail = sorted.length > 6 ? sorted.slice(5) : [];
+    const rows = [
+      ...head.map((r, i) => ({ ...r, color: `--viz-${i + 1}`, isOther: false })),
+      ...(tail.length > 0 ? [{ label: 'Other', count: tail.reduce((n, r) => n + r.count, 0), color: '--viz-other', isOther: true }] : []),
+    ];
+    const total = rows.reduce((n, r) => n + r.count, 0) || 1;
+    const GAP = rows.length > 1 ? 1.5 : 0;
+    let cursor = 0;
+    return rows.map(r => {
+      const len = (r.count / total) * DONUT_C;
+      const slice = { ...r, percent: Math.round((r.count / total) * 100), dash: Math.max(0, len - GAP), offset: cursor };
+      cursor += len;
+      return slice;
+    });
+  }, [visitedCountriesList]);
+  const hoveredSlice = regionSlices.find(s => s.label === hoverRegion) || null;
+
+  const atlasTabs: Tab[] = [
+    { id: 'visited', label: `Visited · ${visitedCountriesList.length}`, icon: <Globe className="w-5 h-5" weight="duotone" />, color: 'primary' },
+    { id: 'layovers', label: `Layovers · ${layoverCountriesList.length}`, icon: <Plane className="w-5 h-5" weight="duotone" />, color: 'amber' },
+    { id: 'wishlist', label: `Wishlist · ${wishlistCountriesList.length}`, icon: <Star className="w-5 h-5" weight="duotone" />, color: 'rose' },
+    { id: 'cities', label: `Cities · ${filteredCities.length}`, icon: <MapPin className="w-5 h-5" weight="duotone" />, color: 'blue' },
+    { id: 'sync', label: scanResults.countries.length + scanResults.cities.length > 0 ? `Sync · ${scanResults.countries.length + scanResults.cities.length}` : 'Sync', icon: <RefreshCw className="w-5 h-5" weight="duotone" />, color: 'indigo' },
+  ];
+
+  const statTiles = [
+    { label: 'Countries', value: stats.totalCountries, icon: Globe, tone: 'text-primary-500', tab: 'visited' as const },
+    { label: 'Cities', value: stats.totalCities, icon: MapPin, tone: 'text-blue-500', tab: 'cities' as const },
+    { label: 'Layovers', value: stats.transitCount, icon: Plane, tone: 'text-amber-500', tab: 'layovers' as const },
+    { label: 'Wishlist', value: stats.wishlistCount, icon: Star, tone: 'text-rose-500', tab: 'wishlist' as const },
+  ];
+
+  const STATUS_PILLS: Record<string, { label: string; icon: React.ElementType; cls: string }> = {
+    visited: { label: 'Visited', icon: Sparkles, cls: 'bg-primary-500/10 text-primary-700 dark:text-primary-300 border-primary-500/25' },
+    lived_past: { label: 'Past home', icon: Landmark, cls: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/25' },
+    lived_current: { label: 'Home', icon: Home, cls: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25' },
+    layover: { label: 'Layover', icon: Plane, cls: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25' },
+    wishlist: { label: 'Wishlist', icon: Star, cls: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/25' },
+  };
+
+  const iconBtn = 'w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary transition-colors cursor-pointer';
+
+  const renderRowActions = (item: VisitedItem, removeLabel: string) => (
+    <div className="flex items-center shrink-0">
+      <button type="button" onClick={() => handleOpenEdit(item)} className={`${iconBtn} hover:text-primary-500 hover:bg-black/5 dark:hover:bg-white/5`} aria-label={`Edit ${item.name}`}>
+        <Edit3 className="w-5 h-5" />
+      </button>
+      <button type="button" onClick={() => handleDeleteItem(item.id)} className={`${iconBtn} hover:text-rose-500 hover:bg-rose-500/10`} aria-label={`${removeLabel} ${item.name}`}>
+        <Trash2 className="w-5 h-5" />
+      </button>
+    </div>
+  );
+
+  const renderCountryRows = (items: VisitedItem[], kind: 'visited' | 'layover' | 'wishlist') => {
+    const cfg = {
+      visited: { dateLabel: 'Visited', actionLabel: 'To layovers', ActionIcon: Plane, act: handleToggleTransit },
+      layover: { dateLabel: 'Transit', actionLabel: 'Mark visited', ActionIcon: Sparkles, act: handlePromoteLayoverToVisited },
+      wishlist: { dateLabel: 'Target', actionLabel: 'Mark visited', ActionIcon: Sparkles, act: handlePromoteWishlistToVisited },
+    }[kind];
+
+    return (
+      <GlassPanel className="wg-glass-card shadow-glass-card overflow-hidden border border-black/5 dark:border-white/10" overrides={{ borderRadius: 28 }} padding="0px">
+        <ul className="divide-y divide-black/5 dark:divide-white/5 rounded-[28px] overflow-hidden">
+          {items.map(item => {
+            const statuses = kind === 'visited'
+              ? getResidenceStatuses(item).filter(s => s === 'visited' || s === 'lived_past' || s === 'lived_current')
+              : kind === 'layover'
+                ? ['layover', ...(getResidenceStatuses(item).includes('wishlist') ? ['wishlist'] : [])]
+                : ['wishlist'];
+            return (
+              <li key={item.id} className="p-4 sm:px-6 flex flex-col md:flex-row md:items-center gap-3 md:gap-6 hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors">
+                <div className="flex items-center gap-4 min-w-0 flex-1">
+                  <span className="text-3xl shrink-0" role="img" aria-label={`${item.name} flag`}>{getFlagEmoji(item.code)}</span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <h3 className="font-bold text-base tracking-tight truncate">{item.name}</h3>
+                      {statuses.map(s => {
+                        const pill = STATUS_PILLS[s];
+                        if (!pill) return null;
+                        const PillIcon = pill.icon;
+                        return (
+                          <span key={s} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider border leading-none ${pill.cls}`}>
+                            <PillIcon className="w-3 h-3" weight="fill" />
+                            {pill.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary truncate mt-0.5">
+                      {item.code} · {getRegion(item.code)}
+                      {item.notes ? <span className="italic"> · {item.notes}</span> : null}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="md:w-36 shrink-0">
+                  <span className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">{cfg.dateLabel}</span>
+                  <span className="text-sm font-semibold tabular-nums">{item.visitDate ? formatDate(item.visitDate, 'short-with-year') : '—'}</span>
+                </div>
+
+                <div className="flex items-center justify-between md:justify-end gap-2 shrink-0">
+                  <Button variant="secondary" size="sm" onClick={() => cfg.act(item)} icon={<cfg.ActionIcon className="w-4 h-4" />}>
+                    {cfg.actionLabel}
+                  </Button>
+                  {renderRowActions(item, 'Remove')}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </GlassPanel>
+    );
+  };
+
+  const hasScanFindings = scanResults.countries.length > 0 || scanResults.cities.length > 0;
+  const searchNoun = activeTab === 'visited' ? 'countries' : activeTab === 'layovers' ? 'layovers' : activeTab === 'wishlist' ? 'wishlist' : 'cities';
+
   return (
     <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16 text-light-text dark:text-dark-text">
-      
-      {/* Universal Page Blueprint Header */}
+
+      {/* HERO HEADER */}
       <div className="flex flex-row items-center justify-between gap-2.5 sm:gap-4 w-full pt-1 pb-1">
-        {/* Left: Pure Icon + Responsive Scaled Title (Aligned Left) */}
         <div className="flex items-center justify-start gap-2 sm:gap-3 md:gap-4 min-w-0">
           <Compass className="w-6 h-6 sm:w-9 sm:h-9 md:w-12 md:h-12 text-rose-500 dark:text-rose-400 shrink-0" weight="duotone" />
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-dark-text tracking-tight leading-tight sm:leading-none truncate sm:overflow-visible">
-                Travel Atlas
-              </h1>
-              <span className="hidden sm:inline-flex px-2.5 py-0.5 rounded-full text-2xs font-mono font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
-                Footprint Registry
-              </span>
-            </div>
-            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
-              Curated global footprint & wishlist registry
-            </p>
-          </div>
+          <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-dark-text tracking-tight leading-tight sm:leading-none truncate sm:overflow-visible">
+            Travel Atlas
+          </h1>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <Button 
-            onClick={handleRunScan} 
-            variant="outline" 
-            className="rounded-full shadow-sm hover:shadow text-xs"
-            id="btn-scan-log"
-            aria-label="Scan travel history"
-          >
-            <RefreshCw className="sm:mr-1.5 h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Scan History</span>
+          <Button onClick={handleRunScan} variant="outline" id="btn-scan-log" aria-label="Scan travel history" icon={<RefreshCw className="w-4 h-4" />}>
+            <span className="hidden sm:inline">Scan</span>
           </Button>
-          <Button 
-            variant="primary"
-            color="primary"
-            onClick={() => handleOpenAdd('country')} 
-            className="text-xs"
-            id="btn-add-country"
-            aria-label="Add visited country"
-            icon={<Plus className="sm:mr-1.5 h-3.5 w-3.5" />}
-          >
-            <span className="hidden sm:inline">Visited Country</span>
-            <span className="sm:hidden">Country</span>
+          <Button onClick={() => handleOpenAdd('city')} variant="outline" id="btn-add-city" aria-label="Add city" className="hidden md:inline-flex" icon={<Plus className="w-4 h-4" />}>
+            City
           </Button>
-          <Button 
-            onClick={() => handleOpenAdd('city')} 
-            variant="outline" 
-            className="rounded-full shadow-sm text-xs hidden md:inline-flex"
-            id="btn-add-city"
-            aria-label="Add city"
-          >
-            <Plus className="mr-1.5 h-3.5 w-3.5" /> City
+          <Button variant="primary" vibrant onClick={() => handleOpenAdd('country')} id="btn-add-country" aria-label="Add visited country" icon={<Plus className="w-4 h-4" />}>
+            Country
           </Button>
         </div>
       </div>
 
-      {/* Stats Bento Grid Header (MagicUI Bento Grid) */}
-      <BentoGrid className="grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-        
-        <BentoCard 
-          onClick={() => setActiveTab('visited')}
-          className="min-h-[130px] border border-black/5 dark:border-white/5 hover:border-indigo-500/30" 
-          background={<div className="absolute right-3 bottom-3 text-indigo-600/10 dark:text-indigo-400/10 pointer-events-none"><Globe className="w-14 h-14" /></div>}
-        >
-          <div>
-            <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block mb-1">Visited Nations</span>
-            <span className="text-3xl font-black text-light-text dark:text-dark-text font-mono">{stats.totalCountries}</span>
-            <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary block mt-1">Explored & Lived</span>
-          </div>
-        </BentoCard>
-
-        <BentoCard 
-          onClick={() => setActiveTab('layovers')}
-          className="min-h-[130px] border border-amber-500/20 dark:border-amber-500/15 hover:border-amber-500/40" 
-          background={<div className="absolute right-3 bottom-3 text-amber-600/10 dark:text-amber-400/10 pointer-events-none"><Plane className="w-14 h-14" /></div>}
-        >
-          <div>
-            <span className="text-2xs font-bold uppercase tracking-wider text-amber-500 block mb-1">Layover Stops</span>
-            <span className="text-3xl font-black text-amber-500 font-mono">{stats.transitCount}</span>
-            <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary block mt-1">Airport connections</span>
-          </div>
-        </BentoCard>
-
-        <BentoCard 
-          onClick={() => setActiveTab('wishlist')}
-          className="min-h-[130px] border border-rose-500/20 dark:border-rose-500/15 hover:border-rose-500/40" 
-          background={<div className="absolute right-3 bottom-3 text-rose-500/10 pointer-events-none"><Star className="w-14 h-14 fill-rose-500/20 text-rose-500" /></div>}
-        >
-          <div>
-            <span className="text-2xs font-bold uppercase tracking-wider text-rose-500 block mb-1">Wishlist Targets</span>
-            <span className="text-3xl font-black text-rose-600 dark:text-rose-400 font-mono">{stats.wishlistCount}</span>
-            <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary block mt-1">Dream destinations</span>
-          </div>
-        </BentoCard>
-
-        <BentoCard 
-          onClick={() => setActiveTab('cities')}
-          className="min-h-[130px] border border-black/5 dark:border-white/5 hover:border-blue-500/30" 
-          background={<div className="absolute right-3 bottom-3 text-blue-600/10 dark:text-blue-400/10 pointer-events-none"><MapPin className="w-14 h-14" /></div>}
-        >
-          <div>
-            <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block mb-1">Tracked Cities</span>
-            <span className="text-3xl font-black text-light-text dark:text-dark-text font-mono">{stats.totalCities}</span>
-            <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary block mt-1">Urban footprints</span>
-          </div>
-        </BentoCard>
-
-        <BentoCard 
-          className="min-h-[130px] !bg-gradient-to-br from-indigo-600 to-blue-700 text-white col-span-2 lg:col-span-1 border-0 shadow-md"
-        >
-          <div>
-            <span className="text-2xs font-bold uppercase tracking-wider text-indigo-200 block mb-1">Coverage</span>
-            <span className="text-3xl font-black tracking-tight font-mono">{stats.worldPercentage}%</span>
-            <div className="w-full bg-white/20 h-1.5 rounded-full mt-2 relative overflow-hidden">
-              <div className="bg-amber-300 h-full rounded-full" style={{ width: `${stats.worldPercentage}%` }} />
+      {/* STATS + REGION SPLIT */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch">
+        <GlassPanel className="wg-glass-card shadow-glass-card overflow-hidden border border-black/5 dark:border-white/10 lg:col-span-7" overrides={{ borderRadius: 28 }} padding="0px">
+          <div className="rounded-[28px] overflow-hidden h-full flex flex-col">
+            <div className="grid grid-cols-2 flex-1 divide-x divide-black/5 dark:divide-white/5">
+              {statTiles.map((tile, i) => {
+                const TileIcon = tile.icon;
+                return (
+                  <button
+                    key={tile.label}
+                    type="button"
+                    onClick={() => setActiveTab(tile.tab)}
+                    className={`p-5 sm:p-6 flex items-center gap-4 text-left min-h-[44px] hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors cursor-pointer ${i >= 2 ? 'border-t border-black/5 dark:border-white/5' : ''}`}
+                    aria-label={`${tile.label}: ${tile.value}`}
+                  >
+                    <TileIcon className={`w-8 h-8 shrink-0 ${tile.tone}`} weight="duotone" />
+                    <span className="min-w-0">
+                      <span className="block text-3xl sm:text-4xl font-black tabular-nums leading-none">{tile.value}</span>
+                      <span className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mt-1.5">{tile.label}</span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-            <span className="text-xs text-white/70 block mt-2">{stats.totalCountries} / 198 Nations</span>
-          </div>
-        </BentoCard>
-      </BentoGrid>
-
-      {/* Scanning Feed Warning Trigger */}
-      {scanResults.countries.length > 0 || scanResults.cities.length > 0 ? (
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8 p-5 bg-indigo-50/70 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-500/10 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4"
-        >
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-2xl bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 mt-0.5">
-              <Sparkles className="w-5 h-5 text-amber-500" />
-            </div>
-            <div>
-              <h4 className="font-bold text-sm text-indigo-950 dark:text-indigo-200">New Footprints Discovered! ({scanResults.countries.length} countries, {scanResults.cities.length} cities)</h4>
-              <p className="text-xs text-indigo-700/80 dark:text-indigo-300/70 mt-0.5">We scanned your flight registry and planner logs and found uncatalogued places. Keep your atlas up-to-date.</p>
+            <div className="p-5 sm:p-6 border-t border-black/5 dark:border-white/5 flex flex-col gap-2">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">World coverage</span>
+                <span className="text-lg font-black tabular-nums">{stats.worldPercentage}%</span>
+              </div>
+              <div
+                className="w-full h-2 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden"
+                role="progressbar"
+                aria-label="World coverage"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={stats.worldPercentage}
+              >
+                <div className="h-full rounded-full bg-primary-500 transition-all duration-500" style={{ width: `${stats.worldPercentage}%` }} />
+              </div>
+              <span className="text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary tabular-nums">{stats.totalCountries} of 198 countries</span>
             </div>
           </div>
-          <Button 
-            onClick={() => setActiveTab('sync')} 
-            className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm font-bold text-xs"
-          >
-            Review Footprint Map
-          </Button>
-        </motion.div>
-      ) : null}
+        </GlassPanel>
 
-      {/* Main Tabs Navigation (Liquid Glass Pill) */}
-      <div className="flex justify-center w-full my-2 min-w-0">
-        <GlassPanel
-          className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 max-w-full min-w-0"
-          padding="4px 6px"
-          overrides={{ borderRadius: 9999 }}
-        >
-          <div className="flex gap-1 relative items-center overflow-x-auto no-scrollbar">
-          <button 
-            type="button"
-            onClick={() => setActiveTab('visited')}
-            aria-label="Visited"
-            className={`relative px-3 sm:px-4 py-2 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer z-raised shrink-0 ${
-              activeTab === 'visited'
-                ? 'text-primary-600 dark:text-primary-400 font-extrabold'
-                : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
-            }`}
-          >
-            {activeTab === 'visited' && (
-              <motion.div
-                layoutId="atlasActiveTab"
-                className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
-            )}
-            <Globe className="w-4 h-4" weight={activeTab === 'visited' ? 'duotone' : 'regular'} />
-            <span className="hidden sm:inline">Visited</span>
-            <span className="px-2 py-0.5 rounded-full text-2xs bg-primary-500/15 text-primary-600 dark:text-primary-400 font-mono font-bold">
-              {visitedCountriesList.length}
-            </span>
-          </button>
+        {/* REGION SPLIT (donut) */}
+        <GlassPanel className="atlas-viz wg-glass-card shadow-glass-card overflow-hidden border border-black/5 dark:border-white/10 lg:col-span-5" overrides={{ borderRadius: 28 }} padding="0px">
+          <div className="rounded-[28px] overflow-hidden h-full flex flex-col">
+            <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center gap-3 bg-gradient-to-r from-primary-500/10 via-primary-500/5 to-transparent">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary-500 to-indigo-600 text-white shadow-md shadow-primary-500/20 flex items-center justify-center shrink-0">
+                <MapIcon className="w-5 h-5" weight="duotone" />
+              </div>
+              <h2 className="text-base font-bold tracking-tight">By region</h2>
+            </div>
 
-          <button 
-            type="button"
-            onClick={() => setActiveTab('layovers')}
-            aria-label="Layovers"
-            className={`relative px-3 sm:px-4 py-2 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer z-raised shrink-0 ${
-              activeTab === 'layovers'
-                ? 'text-amber-600 dark:text-amber-400 font-extrabold'
-                : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
-            }`}
-          >
-            {activeTab === 'layovers' && (
-              <motion.div
-                layoutId="atlasActiveTab"
-                className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
-            )}
-            <Plane className="w-4 h-4" weight={activeTab === 'layovers' ? 'duotone' : 'regular'} />
-            <span className="hidden sm:inline">Layovers</span>
-            <span className="px-2 py-0.5 rounded-full text-2xs bg-amber-500/15 text-amber-600 dark:text-amber-400 font-mono font-bold">
-              {layoverCountriesList.length}
-            </span>
-          </button>
+            {regionSlices.length === 0 ? (
+              <div className="p-5 sm:p-6 flex-1 flex items-center justify-center text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary">
+                No visited countries yet
+              </div>
+            ) : (
+              <div className="p-5 sm:p-6 flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center gap-5 sm:gap-6 flex-1">
+                <div className="relative w-40 h-40 shrink-0">
+                  <svg
+                    viewBox="0 0 100 100"
+                    className="w-full h-full -rotate-90"
+                    role="img"
+                    aria-label={`Visited countries by region: ${regionSlices.map(s => `${s.label} ${s.count}`).join(', ')}`}
+                  >
+                    {regionSlices.map(slice => {
+                      const isDim = hoverRegion !== null && hoverRegion !== slice.label;
+                      return (
+                        <circle
+                          key={slice.label}
+                          cx="50" cy="50" r={DONUT_R} fill="none"
+                          stroke={`var(${slice.color})`}
+                          strokeWidth={hoverRegion === slice.label ? 15 : 13}
+                          strokeDasharray={`${slice.dash} ${DONUT_C - slice.dash}`}
+                          strokeDashoffset={-slice.offset}
+                          opacity={isDim ? 0.35 : 1}
+                          style={{ transition: 'opacity 150ms, stroke-width 150ms' }}
+                          onMouseEnter={() => setHoverRegion(slice.label)}
+                          onMouseLeave={() => setHoverRegion(null)}
+                        />
+                      );
+                    })}
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none px-6">
+                    <span className="text-3xl font-black tabular-nums leading-none">{hoveredSlice ? hoveredSlice.count : stats.totalCountries}</span>
+                    <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mt-1 truncate max-w-full">
+                      {hoveredSlice ? hoveredSlice.label : 'Countries'}
+                    </span>
+                  </div>
+                </div>
 
-          <button 
-            type="button"
-            onClick={() => setActiveTab('wishlist')}
-            aria-label="Wishlist"
-            className={`relative px-3 sm:px-4 py-2 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer z-raised shrink-0 ${
-              activeTab === 'wishlist'
-                ? 'text-rose-600 dark:text-rose-400 font-extrabold'
-                : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
-            }`}
-          >
-            {activeTab === 'wishlist' && (
-              <motion.div
-                layoutId="atlasActiveTab"
-                className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
+                <ul className="w-full min-w-0 flex-1 space-y-0.5">
+                  {regionSlices.map(slice => {
+                    const isActive = !slice.isOther && regionFilter === slice.label;
+                    const row = (
+                      <>
+                        <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: `var(${slice.color})` }} aria-hidden="true" />
+                        <span className={`flex-1 min-w-0 text-sm font-semibold truncate text-left ${isActive ? 'text-primary-600 dark:text-primary-400' : ''}`}>{slice.label}</span>
+                        <span className="text-sm font-black tabular-nums">{slice.count}</span>
+                        <span className="w-10 text-right text-xs font-medium tabular-nums text-light-text-secondary dark:text-dark-text-secondary">{slice.percent}%</span>
+                      </>
+                    );
+                    return (
+                      <li key={slice.label} onMouseEnter={() => setHoverRegion(slice.label)} onMouseLeave={() => setHoverRegion(null)}>
+                        {slice.isOther ? (
+                          <div className="min-h-[44px] flex items-center gap-3 px-2">{row}</div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => { setRegionFilter(isActive ? 'All' : slice.label); setActiveTab('visited'); }}
+                            aria-pressed={isActive}
+                            className="w-full min-h-[44px] flex items-center gap-3 px-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                          >
+                            {row}
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             )}
-            <Star className="w-4 h-4" weight={activeTab === 'wishlist' ? 'duotone' : 'regular'} />
-            <span className="hidden sm:inline">Wishlist</span>
-            <span className="px-2 py-0.5 rounded-full text-2xs bg-rose-500/15 text-rose-600 dark:text-rose-400 font-mono font-bold">
-              {wishlistCountriesList.length}
-            </span>
-          </button>
-
-          <button 
-            type="button"
-            onClick={() => setActiveTab('cities')}
-            aria-label="Cities"
-            className={`relative px-3 sm:px-4 py-2 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer z-raised shrink-0 ${
-              activeTab === 'cities'
-                ? 'text-blue-600 dark:text-blue-400 font-extrabold'
-                : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
-            }`}
-          >
-            {activeTab === 'cities' && (
-              <motion.div
-                layoutId="atlasActiveTab"
-                className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
-            )}
-            <MapPin className="w-4 h-4" weight={activeTab === 'cities' ? 'duotone' : 'regular'} />
-            <span className="hidden sm:inline">Cities</span>
-            <span className="px-2 py-0.5 rounded-full text-2xs bg-blue-500/15 text-blue-600 dark:text-blue-400 font-mono font-bold">
-              {filteredCities.length}
-            </span>
-          </button>
-
-          <button 
-            type="button"
-            onClick={() => setActiveTab('sync')}
-            aria-label="Sync Scanner"
-            className={`relative px-3 sm:px-4 py-2 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer z-raised shrink-0 ${
-              activeTab === 'sync'
-                ? 'text-primary-600 dark:text-primary-400 font-extrabold'
-                : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
-            }`}
-          >
-            {activeTab === 'sync' && (
-              <motion.div
-                layoutId="atlasActiveTab"
-                className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
-            )}
-            <RefreshCw className="w-4 h-4" weight={activeTab === 'sync' ? 'duotone' : 'regular'} />
-            <span className="hidden sm:inline">Sync Scanner</span>
-            {scanResults.countries.length + scanResults.cities.length > 0 && (
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-            )}
-          </button>
           </div>
         </GlassPanel>
       </div>
 
-      {/* Filtering Section - Skip for Scan tab */}
-      {activeTab !== 'sync' && (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 max-w-4xl mx-auto w-full mb-4">
-          <div className="md:col-span-8 relative">
-            <Filter className="w-4 h-4 text-light-text-secondary dark:text-dark-text-secondary absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input 
-              type="text"
-              placeholder={`Search ${activeTab === 'visited' ? 'visited countries' : activeTab === 'layovers' ? 'layover countries' : activeTab === 'wishlist' ? 'wishlist destinations' : 'cities'}...`} 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={`${INPUT_BASE_STYLE} pl-10 min-h-[44px] text-xs font-semibold`}
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                aria-label="Clear search"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
+      {/* DUPLICATE RECORDS */}
+      {cleanupCount > 0 && (
+        <div className="p-4 sm:p-5 rounded-3xl bg-primary-500/10 border border-primary-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <Layers className="w-6 h-6 text-primary-500 shrink-0" weight="duotone" />
+            <p className="text-sm font-bold">
+              {cleanupCount} country {cleanupCount === 1 ? 'record' : 'records'} can be merged
+            </p>
           </div>
-
-          <div className="md:col-span-4 select-none">
-            <Select 
-              aria-label="Filter by region"
-              id="region-filter"
-              value={regionFilter}
-              onChange={(e) => setRegionFilter(e.target.value)}
-              options={uniqueRegions.map(r => ({ label: r, value: r }))}
-            />
-          </div>
+          <Button variant="secondary" onClick={handleConsolidate} isLoading={cleaningUp} className="shrink-0">Merge</Button>
         </div>
       )}
 
-      {/* Main Tab Content */}
+      {/* NEW FINDINGS */}
+      {hasScanFindings && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 sm:p-5 rounded-3xl bg-amber-500/10 border border-amber-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <Sparkles className="w-6 h-6 text-amber-500 shrink-0" weight="duotone" />
+            <p className="text-sm font-bold">
+              {scanResults.countries.length} new {scanResults.countries.length === 1 ? 'country' : 'countries'} and {scanResults.cities.length} new {scanResults.cities.length === 1 ? 'city' : 'cities'} found
+            </p>
+          </div>
+          <Button variant="secondary" onClick={() => setActiveTab('sync')} className="shrink-0">Review</Button>
+        </motion.div>
+      )}
+
+      {/* TABS + FILTERS */}
+      <div className="flex flex-col gap-4">
+        <Tabs tabs={atlasTabs} activeTab={activeTab} onChange={id => setActiveTab(id as typeof activeTab)} />
+
+        {activeTab !== 'sync' && (
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 w-full">
+            <div className="md:col-span-8 relative">
+              <MagnifyingGlass className="w-4 h-4 text-light-text-secondary dark:text-dark-text-secondary absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                aria-label={`Search ${searchNoun}`}
+                placeholder={`Search ${searchNoun}`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={`${INPUT_BASE_STYLE} pl-10 min-h-[44px] text-xs font-semibold`}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear search"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <div className="md:col-span-4 select-none">
+              <Select
+                aria-label="Filter by region"
+                id="region-filter"
+                value={regionFilter}
+                onChange={(e) => setRegionFilter(e.target.value)}
+                options={uniqueRegions.map(r => ({ label: r === 'All' ? 'All regions' : r, value: r }))}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* CONTENT */}
       <div className="min-h-[300px]">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 text-gray-500 dark:text-gray-400">
-            <RefreshCw className="w-10 h-10 animate-spin text-indigo-500 mb-3" />
-            <span className="text-xs font-bold uppercase tracking-wider">Syncing Atlas Registry...</span>
+          <div className="flex items-center justify-center py-24" role="status" aria-label="Loading atlas">
+            <RefreshCw className="w-8 h-8 animate-spin text-primary-500" />
           </div>
         ) : (
           <AnimatePresence mode="wait">
-            
-            {/* Visited Countries tab */}
+
             {activeTab === 'visited' && (
-              <motion.div 
-                key="visited-countries-grid"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              >
+              <motion.div key="visited-countries-grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 {filteredVisitedCountries.length === 0 ? (
-                  <div className="col-span-full py-16 text-center text-gray-500 dark:text-gray-400 bg-white/40 dark:bg-zinc-900/20 border border-dashed border-gray-200 dark:border-white/5 rounded-3xl">
-                    <Globe className="w-10 h-10 mx-auto text-gray-300 dark:text-zinc-700 mb-2" />
-                    <p className="text-sm font-bold">No visited countries resolved yet</p>
-                    <p className="text-xs text-gray-500 mt-1">Try to Scan history from top right, or manually register your first visited country.</p>
-                    <Button 
-                      onClick={() => handleOpenAdd('country')} 
-                      className="mt-4 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold"
-                    >
-                      <Plus className="mr-1.5 h-4 w-4" /> Add Visited Country
-                    </Button>
-                  </div>
-                ) : (
-                  filteredVisitedCountries.map(item => (
-                    <motion.div 
-                      key={item.id} 
-                      layout
-                    >
-                      <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-6 relative transition-all hover:shadow-lg h-full flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <span className="text-4xl" role="img" aria-label="flag">
-                                {getFlagEmoji(item.code)}
-                              </span>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <h3 className="font-black text-lg text-light-text dark:text-dark-text tracking-tight leading-tight">{item.name}</h3>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                                  {getResidenceStatuses(item).map(status => {
-                                    if (status === 'lived_current') {
-                                      return (
-                                        <span key="lived_current" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 leading-none">
-                                          <Home className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
-                                          <span>Current Home</span>
-                                        </span>
-                                      );
-                                    }
-                                    if (status === 'lived_past') {
-                                      return (
-                                        <span key="lived_past" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-indigo-500/10 dark:bg-indigo-400/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/25 leading-none">
-                                          <Landmark className="w-2.5 h-2.5 text-indigo-600 dark:text-indigo-400" />
-                                          <span>Past Home</span>
-                                        </span>
-                                      );
-                                    }
-                                    if (status === 'visited') {
-                                      return (
-                                        <span key="visited" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 dark:bg-primary-400/10 text-primary-700 dark:text-primary-300 border border-primary-500/25 leading-none">
-                                          <Sparkles className="w-2.5 h-2.5 text-primary-600 dark:text-primary-400" />
-                                          <span>Visited</span>
-                                        </span>
-                                      );
-                                    }
-                                    return null;
-                                  })}
-                                </div>
-                                <span className="text-2xs font-bold text-primary-500 dark:text-primary-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
-                              </div>
-                            </div>
-
-                            {/* Top corner actions */}
-                            <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-xl">
-                              <button 
-                                onClick={() => handleOpenEdit(item)}
-                                title="Edit Record" 
-                                aria-label="Edit Record"
-                                className="p-1 px-2 rounded-lg text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-white dark:hover:bg-dark-card transition-all flex items-center cursor-pointer"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteItem(item.id)}
-                                title="Remove country" 
-                                aria-label="Remove country"
-                                className="p-1 px-2 rounded-lg text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-rose-500 hover:bg-white dark:hover:bg-dark-card transition-all flex items-center cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-
-                          {item.notes && (
-                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary bg-black/5 dark:bg-white/5 border border-black/8 dark:border-white/5 p-3 rounded-2xl mb-4 italic">
-                              "{item.notes}"
-                            </p>
-                          )}
-
-                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-black/10 dark:border-white/5 pt-4">
-                            <div>
-                              <span className="text-light-text-secondary dark:text-dark-text-secondary block text-2xs font-bold uppercase tracking-wider">Visited Date</span>
-                              <span className="font-semibold">{item.visitDate || 'Not specified'}</span>
-                            </div>
-                            <div>
-                              <span className="text-light-text-secondary dark:text-dark-text-secondary block text-2xs font-bold uppercase tracking-wider">Record Origin</span>
-                              <span className="font-semibold text-zinc-500">{item.isManual ? 'Manual Edit' : 'Scanned'}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Convert to Layover button */}
-                        <button 
-                          onClick={() => handleToggleTransit(item)}
-                          className="w-full mt-4 flex items-center justify-between text-xs font-bold tracking-wider uppercase px-4.5 py-3 rounded-2xl border transition-all duration-200 bg-primary-500/10 hover:bg-primary-500/20 border-primary-500/20 text-primary-700 dark:text-primary-300 cursor-pointer"
-                        >
-                          <span className="flex items-center gap-1.5">
-                            <Plane className="w-3.5 h-3.5" />
-                            Move to Layovers
-                          </span>
-                          <span className="font-bold underline text-2xs">Transit</span>
-                        </button>
-                      </GlassPanel>
-                    </motion.div>
-                  ))
-                )}
+                  <EmptyState
+                    icon={<Globe className="w-10 h-10" weight="duotone" />}
+                    title={searchQuery || regionFilter !== 'All' ? 'No matches' : 'No visited countries yet'}
+                    action={{ label: 'Add country', onClick: () => handleOpenAdd('country'), icon: <Plus className="w-4 h-4" />, variant: 'primary' }}
+                  />
+                ) : renderCountryRows(filteredVisitedCountries, 'visited')}
               </motion.div>
             )}
 
-            {/* Layover Countries tab */}
             {activeTab === 'layovers' && (
-              <motion.div 
-                key="layovers-grid"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              >
+              <motion.div key="layovers-grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 {filteredLayoverCountries.length === 0 ? (
-                  <div className="col-span-full py-16 text-center text-gray-500 dark:text-gray-400 bg-white/40 dark:bg-zinc-900/20 border border-dashed border-amber-500/20 dark:border-amber-500/10 rounded-3xl">
-                    <Plane className="w-10 h-10 mx-auto text-amber-400 dark:text-amber-500/40 mb-2 rotate-45" />
-                    <p className="text-sm font-bold text-light-text dark:text-dark-text">No Layover Countries Catalogued</p>
-                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1 max-w-sm mx-auto">
-                      Airport transfers and transit stops are tracked here. They are highlighted with special amber tones on your map and kept distinct from fully explored countries.
-                    </p>
-                    <Button 
-                      onClick={() => handleOpenAdd('layover')} 
-                      className="mt-4 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs font-bold"
-                    >
-                      <Plus className="mr-1.5 h-4 w-4" /> Add Layover Country
-                    </Button>
-                  </div>
-                ) : (
-                  filteredLayoverCountries.map(item => (
-                    <motion.div 
-                      key={item.id} 
-                      layout
-                    >
-                      <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-6 relative transition-all hover:shadow-lg border-amber-500/20 dark:border-amber-500/15 h-full flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <span className="text-4xl" role="img" aria-label="flag">
-                                {getFlagEmoji(item.code)}
-                              </span>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <h3 className="font-black text-lg text-light-text dark:text-dark-text tracking-tight leading-tight">{item.name}</h3>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/10 dark:bg-amber-400/10 text-amber-700 dark:text-amber-300 border border-amber-500/25 leading-none">
-                                    <Plane className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
-                                    <span>Layover</span>
-                                  </span>
-                                  {getResidenceStatuses(item).includes('wishlist') && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-rose-500/10 dark:bg-rose-400/10 text-rose-700 dark:text-rose-300 border border-rose-500/25 leading-none">
-                                      <Star className="w-2.5 h-2.5 fill-rose-500/40 text-rose-600 dark:text-rose-400" />
-                                      <span>Wishlist</span>
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="text-2xs font-bold text-amber-500 dark:text-amber-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
-                              </div>
-                            </div>
-
-                            {/* Top corner actions */}
-                            <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-xl">
-                              <button 
-                                onClick={() => handleOpenEdit(item)}
-                                title="Edit Record" 
-                                aria-label="Edit Record"
-                                className="p-1 px-2 rounded-lg text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-white dark:hover:bg-dark-card transition-all flex items-center cursor-pointer"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteItem(item.id)}
-                                title="Remove country" 
-                                aria-label="Remove country"
-                                className="p-1 px-2 rounded-lg text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-rose-500 hover:bg-white dark:hover:bg-dark-card transition-all flex items-center cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-
-                          {item.notes && (
-                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary bg-black/5 dark:bg-white/5 border border-black/8 dark:border-white/5 p-3 rounded-2xl mb-4 italic">
-                              "{item.notes}"
-                            </p>
-                          )}
-
-                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-black/10 dark:border-white/5 pt-4">
-                            <div>
-                              <span className="text-light-text-secondary dark:text-dark-text-secondary block text-2xs font-bold uppercase tracking-wider">Transit Date</span>
-                              <span className="font-semibold">{item.visitDate || 'Transit connection'}</span>
-                            </div>
-                            <div>
-                              <span className="text-light-text-secondary dark:text-dark-text-secondary block text-2xs font-bold uppercase tracking-wider">Classification</span>
-                              <span className="font-semibold text-amber-500">Transit Only</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* 1-Click Promote to Visited */}
-                        <button 
-                          onClick={() => handlePromoteLayoverToVisited(item)}
-                          className="w-full mt-4 flex items-center justify-center gap-2 text-xs font-bold tracking-wider uppercase px-4.5 py-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 transition-all duration-200 cursor-pointer shadow-sm active:scale-[0.98]"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                          <span>Promote to Explored / Visited</span>
-                        </button>
-                      </GlassPanel>
-                    </motion.div>
-                  ))
-                )}
+                  <EmptyState
+                    icon={<Plane className="w-10 h-10" weight="duotone" />}
+                    title={searchQuery || regionFilter !== 'All' ? 'No matches' : 'No layovers yet'}
+                    action={{ label: 'Add layover', onClick: () => handleOpenAdd('layover'), icon: <Plus className="w-4 h-4" />, variant: 'secondary' }}
+                  />
+                ) : renderCountryRows(filteredLayoverCountries, 'layover')}
               </motion.div>
             )}
 
-            {/* Wishlist Destinations Tab */}
             {activeTab === 'wishlist' && (
-              <motion.div 
-                key="wishlist-grid"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              >
-                {wishlistCountriesList.length === 0 ? (
-                  <div className="col-span-full py-16 text-center text-gray-500 dark:text-gray-400 bg-white/40 dark:bg-zinc-900/20 border border-dashed border-rose-500/20 dark:border-rose-500/10 rounded-3xl">
-                    <Star className="w-10 h-10 mx-auto text-rose-400 dark:text-rose-500/40 mb-2" />
-                    <p className="text-sm font-bold text-light-text dark:text-dark-text">No Wishlist Destinations Added</p>
-                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1 max-w-sm mx-auto">
-                      Mark target destinations you aspire to explore. They'll glow with distinctive wishlist highlights.
-                    </p>
-                    <Button 
-                      onClick={() => handleOpenAdd('wishlist')} 
-                      className="mt-4 rounded-full bg-gradient-to-r from-rose-500 to-pink-600 text-white text-xs font-bold"
-                    >
-                      <Star className="mr-1.5 h-4 w-4 fill-white" /> Add Target Wishlist
-                    </Button>
-                  </div>
-                ) : (
-                  wishlistCountriesList.map(item => (
-                    <motion.div 
-                      key={item.id} 
-                      layout
-                    >
-                      <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-6 relative transition-all hover:shadow-lg border-rose-500/20 dark:border-rose-500/15 h-full flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <span className="text-4xl" role="img" aria-label="flag">
-                                {getFlagEmoji(item.code)}
-                              </span>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <h3 className="font-black text-lg text-light-text dark:text-dark-text tracking-tight leading-tight">{item.name}</h3>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-rose-500/10 dark:bg-rose-400/10 text-rose-700 dark:text-rose-300 border border-rose-500/25 leading-none">
-                                    <Star className="w-2.5 h-2.5 fill-rose-500/40 text-rose-600 dark:text-rose-400" />
-                                    <span>Wishlist</span>
-                                  </span>
-                                </div>
-                                <span className="text-2xs font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
-                              </div>
-                            </div>
-
-                            {/* Top corner actions */}
-                            <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-xl">
-                              <button 
-                                onClick={() => handleOpenEdit(item)}
-                                title="Edit Record" 
-                                aria-label="Edit Record"
-                                className="p-1 px-2 rounded-lg text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-white dark:hover:bg-dark-card transition-all flex items-center cursor-pointer"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteItem(item.id)}
-                                title="Remove country" 
-                                aria-label="Remove country"
-                                className="p-1 px-2 rounded-lg text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-rose-500 hover:bg-white dark:hover:bg-dark-card transition-all flex items-center cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-
-                          {item.notes && (
-                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary bg-black/5 dark:bg-white/5 p-3 rounded-2xl mb-4 italic">
-                              "{item.notes}"
-                            </p>
-                          )}
-
-                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-black/5 dark:border-white/5 pt-4">
-                            <div>
-                              <span className="text-light-text-secondary dark:text-dark-text-secondary block text-2xs font-bold uppercase tracking-wider">Target Voyage</span>
-                              <span className="font-semibold">{item.visitDate || 'Future dream'}</span>
-                            </div>
-                            <div>
-                              <span className="text-light-text-secondary dark:text-dark-text-secondary block text-2xs font-bold uppercase tracking-wider">Classification</span>
-                              <span className="font-semibold text-rose-500">Dream Destination</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* 1-Click Promote to Visited */}
-                        <button 
-                          onClick={() => handlePromoteWishlistToVisited(item)}
-                          className="w-full mt-4 flex items-center justify-center gap-2 text-xs font-bold tracking-wider uppercase px-4.5 py-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 transition-all duration-200 cursor-pointer shadow-sm active:scale-[0.98]"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                          <span>Mark as Explored / Visited</span>
-                        </button>
-                      </GlassPanel>
-                    </motion.div>
-                  ))
-                )}
+              <motion.div key="wishlist-grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                {filteredWishlistCountries.length === 0 ? (
+                  <EmptyState
+                    icon={<Star className="w-10 h-10" weight="duotone" />}
+                    title={searchQuery || regionFilter !== 'All' ? 'No matches' : 'Wishlist is empty'}
+                    action={{ label: 'Add destination', onClick: () => handleOpenAdd('wishlist'), icon: <Plus className="w-4 h-4" />, variant: 'secondary' }}
+                  />
+                ) : renderCountryRows(filteredWishlistCountries, 'wishlist')}
               </motion.div>
             )}
 
-            {/* Cities tab */}
             {activeTab === 'cities' && (
-              <motion.div 
-                key="cities-table"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden shadow-glass-card">
-                  {filteredCities.length === 0 ? (
-                    <div className="py-20 text-center text-gray-400">
-                      <MapPin className="w-10 h-10 mx-auto text-gray-300 dark:text-zinc-700 mb-2" />
-                      <p className="text-sm font-bold">No cities registered in your map dataset yet</p>
-                      <p className="text-xs text-gray-500 mt-1">Try to trigger History Scanner or custom Register city with Coordinates manually.</p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto min-w-full">
-                      <table className="min-w-full border-collapse text-left text-xs">
-                        <thead>
-                          <tr className="border-b border-black/5 dark:border-white/5 text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest font-black text-2xs bg-black/5 dark:bg-white/5">
-                            <th className="p-5 pl-8">City Name</th>
-                            <th className="p-5">Country</th>
-                            <th className="p-5">Map coordinates</th>
-                            <th className="p-5">Visit Date</th>
-                            <th className="p-5">Notes</th>
-                            <th className="p-5 pr-8 text-right">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredCities.map((item, idx) => (
-                            <tr key={item.id} className="border-b border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5 transition-all">
-                              <td className="p-5 pl-8 font-extrabold text-light-text dark:text-dark-text flex items-center gap-2">
-                                <span className="font-mono text-2xs text-zinc-400">#{idx + 1}</span>
-                                {item.name}
-                              </td>
-                              <td className="p-5">
-                                <span className="flex items-center gap-1.5 font-bold">
-                                  <span className="text-lg">{item.countryCode ? getFlagEmoji(item.countryCode) : '🏳️'}</span>
-                                  {item.countryName || item.countryCode}
-                                </span>
-                              </td>
-                              <td className="p-5">
-                                <span className="font-mono bg-primary-500/10 text-primary-600 dark:text-primary-400 p-2 py-1 px-3 rounded-xl border border-primary-500/20 font-bold block w-fit">
-                                  Lat: {item.lat?.toFixed(4) || '??'} • Lng: {item.lng?.toFixed(4) || '??'}
-                                </span>
-                              </td>
-                              <td className="p-5 font-semibold text-light-text-secondary dark:text-dark-text-secondary">{item.visitDate || 'No date Logged'}</td>
-                              <td className="p-5 text-light-text-secondary dark:text-dark-text-secondary italic max-w-xs truncate" title={item.notes}>{item.notes || '—'}</td>
-                              <td className="p-5 pr-8 text-right">
-                                <div className="flex items-center justify-end gap-1.5">
-                                  <button 
-                                    onClick={() => handleOpenEdit(item)}
-                                    className="p-2 bg-black/5 hover:bg-primary-500 hover:text-white dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary rounded-xl transition-all cursor-pointer"
-                                    title="Edit Coordinates & Details"
-                                    aria-label="Edit Coordinates & Details"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button 
-                                    onClick={() => handleDeleteItem(item.id)}
-                                    className="p-2 bg-black/5 hover:bg-rose-500 hover:text-white dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary rounded-xl transition-all cursor-pointer"
-                                    title="Remove City"
-                                    aria-label="Remove City"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </GlassPanel>
+              <motion.div key="cities-table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                {filteredCities.length === 0 ? (
+                  <EmptyState
+                    icon={<MapPin className="w-10 h-10" weight="duotone" />}
+                    title={searchQuery || regionFilter !== 'All' ? 'No matches' : 'No cities yet'}
+                    action={{ label: 'Add city', onClick: () => handleOpenAdd('city'), icon: <Plus className="w-4 h-4" />, variant: 'secondary' }}
+                  />
+                ) : (
+                  <GlassPanel className="wg-glass-card shadow-glass-card overflow-hidden border border-black/5 dark:border-white/10" overrides={{ borderRadius: 28 }} padding="0px">
+                    <ul className="divide-y divide-black/5 dark:divide-white/5 rounded-[28px] overflow-hidden">
+                      {filteredCities.map(item => (
+                        <li key={item.id} className="p-4 sm:px-6 flex flex-col md:flex-row md:items-center gap-3 md:gap-6 hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors">
+                          <div className="flex items-center gap-4 min-w-0 flex-1">
+                            <span className="text-3xl shrink-0" role="img" aria-label="flag">{item.countryCode && item.countryCode !== 'XX' ? getFlagEmoji(item.countryCode) : '🏳️'}</span>
+                            <div className="min-w-0">
+                              <h3 className="font-bold text-base tracking-tight truncate">{item.name}</h3>
+                              <p className="text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary truncate mt-0.5">
+                                {item.countryName || item.countryCode}
+                                {item.notes ? <span className="italic"> · {item.notes}</span> : null}
+                              </p>
+                            </div>
+                          </div>
+
+                          <span className="hidden lg:inline-flex shrink-0 px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/5 text-xs font-mono font-bold tabular-nums">
+                            {item.lat != null && item.lng != null ? `${item.lat.toFixed(2)}, ${item.lng.toFixed(2)}` : 'No coordinates'}
+                          </span>
+
+                          <div className="md:w-36 shrink-0">
+                            <span className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Visited</span>
+                            <span className="text-sm font-semibold tabular-nums">{item.visitDate ? formatDate(item.visitDate, 'short-with-year') : '—'}</span>
+                          </div>
+
+                          <div className="flex justify-end shrink-0">{renderRowActions(item, 'Remove')}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  </GlassPanel>
+                )}
               </motion.div>
             )}
 
             {/* Sync Tab */}
             {activeTab === 'sync' && (
-              <motion.div 
+              <motion.div
                 key="sync-panel"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="space-y-8"
               >
-                
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                  {/* Controls / Info */}
-                  <div className="lg:col-span-4 space-y-6">
-                    {/* CSS glass (not liquid-glass Card): the measured glass wrapper mis-sized these on phones and the
-                        text spilled over the Register button (decision C-1: liquid glass for hero surfaces only). */}
-                    <div className="bg-white/70 dark:bg-white/[0.08] backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-glass-light-card dark:shadow-glass-card rounded-3xl p-5">
-                      <h3 className="font-black text-lg tracking-tight mb-2">Automated Scanner</h3>
-                      <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                        WanderGrid scans all historical details across flight paths and georoute itineraries to extract visited territory candidates.
-                      </p>
-
-                      <div className="bg-white/40 dark:bg-zinc-950/20 p-4 rounded-2xl border border-gray-100 dark:border-white/5 space-y-3 mb-6">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-gray-400 font-bold block">Flights Audited:</span>
-                          <span className="font-extrabold">{flights.length}</span>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  {/* Scanner */}
+                  <div className="lg:col-span-4">
+                    <GlassPanel className="wg-glass-card shadow-glass-card overflow-hidden border border-black/5 dark:border-white/10" overrides={{ borderRadius: 28 }} padding="0px">
+                      <div className="rounded-[28px] overflow-hidden">
+                        <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center gap-3 bg-gradient-to-r from-indigo-500/10 via-indigo-500/5 to-transparent">
+                          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-md shadow-indigo-500/20 flex items-center justify-center shrink-0">
+                            <RefreshCw className="w-5 h-5" weight="duotone" />
+                          </div>
+                          <h2 className="text-base font-bold tracking-tight">History scan</h2>
                         </div>
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-gray-400 font-bold block">Itineraries Checked:</span>
-                          <span className="font-extrabold">{trips.length}</span>
-                        </div>
-                      </div>
-
-                      <Button 
-                        onClick={handleRunScan} 
-                        disabled={scanActive}
-                        className="w-full rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow font-bold"
-                      >
-                        {scanActive ? (
-                          <>
-                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                            Analyzing Logs...
-                          </>
-                        ) : (
-                          <>
-                            <RefreshCw className="mr-2 h-4 w-4" />
-                            Re-Scan Database
-                          </>
-                        )}
-                      </Button>
-                    </div>
-
-                    <div className="bg-white/70 dark:bg-white/[0.08] backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-glass-light-card dark:shadow-glass-card rounded-3xl p-5">
-                      <div className="flex items-start gap-2.5">
-                        <Info className="w-5 h-5 text-indigo-500 shrink-0" />
-                        <div className="text-xs leading-relaxed text-gray-500">
-                          <strong className="text-gray-900 dark:text-white font-bold block mb-1">Exclude Transits & Layovers</strong>
-                          When layovers are discovered, WanderGrid marks them as transits so your map does not highlight countries you did not actively explore. Uncheck anything you want to omit before importing.
+                        <div className="p-5 sm:p-6 space-y-5">
+                          <dl className="space-y-3">
+                            <div className="flex items-baseline justify-between">
+                              <dt className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Flights</dt>
+                              <dd className="text-lg font-black tabular-nums">{flights.length}</dd>
+                            </div>
+                            <div className="flex items-baseline justify-between">
+                              <dt className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Trips</dt>
+                              <dd className="text-lg font-black tabular-nums">{trips.length}</dd>
+                            </div>
+                          </dl>
+                          <Button
+                            variant="primary"
+                            color="blue"
+                            vibrant
+                            onClick={handleRunScan}
+                            disabled={scanActive}
+                            isLoading={scanActive}
+                            className="w-full"
+                            icon={<RefreshCw className="w-4 h-4" />}
+                          >
+                            {scanActive ? 'Scanning' : 'Scan again'}
+                          </Button>
+                          <p className="flex items-start gap-2 text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary">
+                            <Info className="w-4 h-4 shrink-0 mt-0.5 text-indigo-500" />
+                            Layovers are imported as layovers, not visits.
+                          </p>
                         </div>
                       </div>
-                    </div>
+                    </GlassPanel>
                   </div>
 
-                  {/* Scanned Candidates results */}
-                  <div className="lg:col-span-8">
-                    {scanResults.countries.length === 0 && scanResults.cities.length === 0 ? (
-                      <div className="text-center py-20 bg-white/50 dark:bg-zinc-900/20 border border-dashed border-gray-200 dark:border-white/5 rounded-3xl text-gray-400">
-                        <CheckCircle2 className="w-12 h-12 mx-auto text-emerald-500 mb-2 animate-bounce" />
-                        <h4 className="font-bold text-sm text-gray-900 dark:text-white">All Clear! No uncatalogued spots.</h4>
-                        <p className="text-xs text-gray-500 max-w-sm mx-auto mt-1">Every country and city from your vacation logs is already recorded in your curated atlas.</p>
-                      </div>
+                  {/* Results */}
+                  <div className="lg:col-span-8 min-w-0">
+                    {!hasScanFindings ? (
+                      <EmptyState
+                        icon={<CheckCircle2 className="w-10 h-10 text-emerald-500" weight="duotone" />}
+                        title="Atlas is up to date"
+                      />
                     ) : (
                       <div className="space-y-6">
-                        
-                        {/* Header controls for import */}
-                        <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-gray-50 dark:bg-white/5 rounded-3xl">
-                          <span className="text-xs font-bold text-gray-500">
-                            Selected footprint: <strong className="text-indigo-600 dark:text-indigo-400">{selectedScanCountries.size}</strong> countries & <strong className="text-indigo-600 dark:text-indigo-400">{selectedScanCities.size}</strong> cities
+                        <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-3xl bg-black/5 dark:bg-white/5">
+                          <span className="text-sm font-bold tabular-nums">
+                            {selectedScanCountries.size} countries · {selectedScanCities.size} cities selected
                           </span>
-                          
-                          <Button 
+                          <Button
+                            variant="primary"
+                            vibrant
                             onClick={handleBulkImport}
-                            className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-6 py-2"
+                            disabled={selectedScanCountries.size + selectedScanCities.size === 0}
+                            icon={<Plus className="w-4 h-4" />}
                           >
-                            <Sparkles className="mr-1.5 h-3.5 w-3.5 text-amber-300" />
-                            Register to Atlas ({selectedScanCountries.size + selectedScanCities.size} items)
+                            Add {selectedScanCountries.size + selectedScanCities.size} to Atlas
                           </Button>
                         </div>
 
-                        {/* Country Suggestions */}
                         {scanResults.countries.length > 0 && (
-                          <div className="space-y-3">
-                            <h4 className="text-xs font-black tracking-widest uppercase text-gray-400 flex items-center justify-between">
-                              <span>Nations Discovered ({scanResults.countries.length})</span>
-                              <div className="flex items-center gap-1.5 select-none">
-                                <button 
-                                  onClick={() => setSelectedScanCountries(new Set(scanResults.countries.map(c => c.code)))}
-                                  className="text-xs text-indigo-500 lowercase hover:underline"
-                                >
-                                  select all
-                                </button>
-                                <span className="text-xs text-gray-300">•</span>
-                                <button 
-                                  onClick={() => setSelectedScanCountries(new Set())}
-                                  className="text-xs text-gray-400 lowercase hover:underline"
-                                >
-                                  clear
-                                </button>
+                          <GlassPanel className="wg-glass-card shadow-glass-card overflow-hidden border border-black/5 dark:border-white/10" overrides={{ borderRadius: 28 }} padding="0px">
+                            <div className="rounded-[28px] overflow-hidden">
+                              <div className="p-4 sm:px-6 flex items-center justify-between gap-3 border-b border-black/5 dark:border-white/5">
+                                <h3 className="text-sm font-bold">Countries · {scanResults.countries.length}</h3>
+                                <div className="flex items-center">
+                                  <button type="button" onClick={() => setSelectedScanCountries(new Set(scanResults.countries.map(c => c.code)))} className="min-h-[44px] px-3 text-xs font-bold text-primary-600 dark:text-primary-400 hover:underline cursor-pointer">Select all</button>
+                                  <button type="button" onClick={() => setSelectedScanCountries(new Set())} className="min-h-[44px] px-3 text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary hover:underline cursor-pointer">Clear</button>
+                                </div>
                               </div>
-                            </h4>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              {scanResults.countries.map(candidate => {
-                                const isSelected = selectedScanCountries.has(candidate.code);
-                                return (
-                                  <div 
-                                    key={candidate.code}
-                                    onClick={() => {
-                                      const next = new Set(selectedScanCountries);
-                                      if (isSelected) next.delete(candidate.code);
-                                      else next.add(candidate.code);
-                                      setSelectedScanCountries(next);
-                                    }}
-                                    className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
-                                      isSelected 
-                                        ? 'bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-500/40' 
-                                        : 'bg-white/50 dark:bg-zinc-900/10 border-gray-100 hover:border-gray-200 dark:border-white/5'
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <span className="text-3xl">{getFlagEmoji(candidate.code)}</span>
-                                      <div>
-                                        <span className="font-extrabold text-sm block leading-tight">{candidate.name}</span>
-                                        <span className="text-xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest">{candidate.code} • source: {candidate.source}</span>
-                                      </div>
-                                    </div>
-                                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
-                                      isSelected ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-gray-200'
-                                    }`}>
-                                      {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                                    </div>
-                                  </div>
-                                );
-                              })}
+                              <ul className="divide-y divide-black/5 dark:divide-white/5">
+                                {scanResults.countries.map(candidate => {
+                                  const isSelected = selectedScanCountries.has(candidate.code);
+                                  return (
+                                    <li key={candidate.code}>
+                                      <button
+                                        type="button"
+                                        role="checkbox"
+                                        aria-checked={isSelected}
+                                        onClick={() => {
+                                          const next = new Set(selectedScanCountries);
+                                          if (isSelected) next.delete(candidate.code); else next.add(candidate.code);
+                                          setSelectedScanCountries(next);
+                                        }}
+                                        className={`w-full min-h-[44px] p-4 sm:px-6 flex items-center gap-4 text-left transition-colors cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.03] ${isSelected ? '' : 'opacity-60'}`}
+                                      >
+                                        <span className="text-2xl shrink-0">{getFlagEmoji(candidate.code)}</span>
+                                        <span className="min-w-0 flex-1">
+                                          <span className="block text-sm font-bold truncate">{candidate.name}</span>
+                                          <span className="block text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary capitalize">{candidate.code} · {candidate.source}</span>
+                                        </span>
+                                        <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-primary-500 border-primary-500 text-black' : 'border-black/20 dark:border-white/20'}`}>
+                                          {isSelected && <Check className="w-3.5 h-3.5" weight="bold" />}
+                                        </span>
+                                      </button>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
                             </div>
-                          </div>
+                          </GlassPanel>
                         )}
 
-                        {/* Cities Suggestions */}
                         {scanResults.cities.length > 0 && (
-                          <div className="space-y-3 pt-4">
-                            <h4 className="text-xs font-black tracking-widest uppercase text-gray-400 flex items-center justify-between">
-                              <span>Cities Discovered ({scanResults.cities.length})</span>
-                              <div className="flex items-center gap-1.5 select-none">
-                                <button 
-                                  onClick={() => setSelectedScanCities(new Set(scanResults.cities.map(c => c.name)))}
-                                  className="text-xs text-indigo-500 lowercase hover:underline"
-                                >
-                                  select all
-                                </button>
-                                <span className="text-xs text-gray-300">•</span>
-                                <button 
-                                  onClick={() => setSelectedScanCities(new Set())}
-                                  className="text-xs text-gray-400 lowercase hover:underline"
-                                >
-                                  clear
-                                </button>
+                          <GlassPanel className="wg-glass-card shadow-glass-card overflow-hidden border border-black/5 dark:border-white/10" overrides={{ borderRadius: 28 }} padding="0px">
+                            <div className="rounded-[28px] overflow-hidden">
+                              <div className="p-4 sm:px-6 flex items-center justify-between gap-3 border-b border-black/5 dark:border-white/5">
+                                <h3 className="text-sm font-bold">Cities · {scanResults.cities.length}</h3>
+                                <div className="flex items-center">
+                                  <button type="button" onClick={() => setSelectedScanCities(new Set(scanResults.cities.map(c => c.name)))} className="min-h-[44px] px-3 text-xs font-bold text-primary-600 dark:text-primary-400 hover:underline cursor-pointer">Select all</button>
+                                  <button type="button" onClick={() => setSelectedScanCities(new Set())} className="min-h-[44px] px-3 text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary hover:underline cursor-pointer">Clear</button>
+                                </div>
                               </div>
-                            </h4>
-
-                            <div className="bg-white/50 dark:bg-zinc-900/30 border border-gray-100 dark:border-white/5 rounded-3xl overflow-hidden select-none">
-                              <div className="p-3 bg-gray-50 dark:bg-white/5 border-b border-gray-100 dark:border-white/5 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                                Click to toggle city exclusion before registration
-                              </div>
-                              <div className="max-h-[300px] overflow-y-auto divide-y divide-gray-100 dark:divide-white/5">
+                              <ul className="max-h-[360px] overflow-y-auto custom-scrollbar divide-y divide-black/5 dark:divide-white/5">
                                 {scanResults.cities.map(candidate => {
                                   const isSelected = selectedScanCities.has(candidate.name);
                                   return (
-                                    <div 
-                                      key={candidate.name}
-                                      onClick={() => {
-                                        const next = new Set(selectedScanCities);
-                                        if (isSelected) next.delete(candidate.name);
-                                        else next.add(candidate.name);
-                                        setSelectedScanCities(next);
-                                      }}
-                                      className={`p-4 hover:bg-gray-50/50 dark:hover:bg-whiteScale-5 transition-all cursor-pointer flex items-center justify-between ${
-                                        isSelected ? 'bg-indigo-50/20 dark:bg-indigo-950/10' : 'bg-transparent text-gray-400'
-                                      }`}
-                                    >
-                                      <div className="flex items-center gap-3">
-                                        <span className="text-lg">{candidate.countryCode ? getFlagEmoji(candidate.countryCode) : '🏳️'}</span>
-                                        <div>
-                                          <span className="font-extrabold text-xs block leading-tight text-gray-900 dark:text-white">{candidate.name}</span>
-                                          <span className="text-xs text-gray-400">country: {candidate.countryName} • source: {candidate.source} {candidate.lat ? `(Lat: ${candidate.lat.toFixed(2)})` : ''}</span>
-                                        </div>
-                                      </div>
-                                      
-                                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
-                                        isSelected ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-gray-200'
-                                      }`}>
-                                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                                      </div>
-                                    </div>
+                                    <li key={candidate.name}>
+                                      <button
+                                        type="button"
+                                        role="checkbox"
+                                        aria-checked={isSelected}
+                                        onClick={() => {
+                                          const next = new Set(selectedScanCities);
+                                          if (isSelected) next.delete(candidate.name); else next.add(candidate.name);
+                                          setSelectedScanCities(next);
+                                        }}
+                                        className={`w-full min-h-[44px] p-4 sm:px-6 flex items-center gap-4 text-left transition-colors cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.03] ${isSelected ? '' : 'opacity-60'}`}
+                                      >
+                                        <span className="text-xl shrink-0">{candidate.countryCode ? getFlagEmoji(candidate.countryCode) : '🏳️'}</span>
+                                        <span className="min-w-0 flex-1">
+                                          <span className="block text-sm font-bold truncate">{candidate.name}</span>
+                                          <span className="block text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary truncate capitalize">{candidate.countryName} · {candidate.source}</span>
+                                        </span>
+                                        <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-primary-500 border-primary-500 text-black' : 'border-black/20 dark:border-white/20'}`}>
+                                          {isSelected && <Check className="w-3.5 h-3.5" weight="bold" />}
+                                        </span>
+                                      </button>
+                                    </li>
                                   );
                                 })}
-                              </div>
+                              </ul>
                             </div>
-                          </div>
+                          </GlassPanel>
                         )}
-
                       </div>
                     )}
                   </div>
                 </div>
-
               </motion.div>
             )}
 

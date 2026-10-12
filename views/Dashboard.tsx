@@ -1,3 +1,4 @@
+import { mergeCountryRecords, ukNationsFromCities } from '../services/countryRegistry';
 import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { affectsCollections } from '../hooks/useWanderSync';
 import { motion, AnimatePresence } from 'motion/react';
@@ -532,7 +533,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         const totalDistance = Math.round(kmCount);
 
         try {
-            const dbVisited = await dataService.getVisited();
+            const rawVisited = await dataService.getVisited();
+            // One record per country, UK shown as its nations: the same rules as the Travel Atlas.
+            const dbVisited = rawVisited ? [
+                ...mergeCountryRecords(rawVisited, { ukConstituentsFor: () => ukNationsFromCities(rawVisited, name => refineUKCountry(name, 'United Kingdom', 'GB').countryCode) }),
+                ...rawVisited.filter((item: any) => item.type !== 'country')
+            ] : rawVisited;
             const hasSeededBefore = localStorage.getItem('wandergrid_visited_seeded') === 'true';
             if (dbVisited && (dbVisited.length > 0 || hasSeededBefore)) {
                 const countries = dbVisited.filter(item => {

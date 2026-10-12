@@ -355,6 +355,8 @@ export interface VisitedItem {
   isTransit?: boolean;
   residenceStatus?: CountryResidenceStatus;
   residenceStatuses?: CountryResidenceStatus[];
+  /** Country the user explicitly cleared on the map: kept as a marker so trips don't re-mark it as visited. */
+  excluded?: boolean;
 }
 
 export const getResidenceStatuses = (item?: {
