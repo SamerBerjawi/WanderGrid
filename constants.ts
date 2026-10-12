@@ -42,8 +42,10 @@ export const HEADER_BANNER_STYLE =
 export const MODAL_SHELL_STYLE =
   'wg-glass-card shadow-2xl rounded-[28px] overflow-hidden';
 
+// The scrim sits inside the dialog's own `fixed z-modal` shell, so it must not carry a z-index of its
+// own: `z-modal-backdrop` (50) outranks the panel's `z-raised` (10) and paints the blur over the panel.
 export const MODAL_BACKDROP_STYLE =
-  'fixed inset-0 z-modal-backdrop backdrop-blur-md bg-black/5 dark:bg-black/15 transition-all duration-300';
+  'fixed inset-0 backdrop-blur-md bg-black/5 dark:bg-black/15 transition-all duration-300';
 
 export const DIVIDER_INNER_STYLE =
   'border-black/10 dark:border-white/5';

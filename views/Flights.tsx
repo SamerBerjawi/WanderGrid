@@ -3189,7 +3189,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     {activeFilterPopup === 'flight' && (
                       <>
                         <div className="fixed inset-0 z-sticky bg-transparent cursor-default" onClick={(e) => { e.stopPropagation(); setActiveFilterPopup(null); }} />
-                        <div className="absolute top-full left-0 mt-2 p-3.5 bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl z-dropdown w-64 text-left font-sans normal-case tracking-normal">
+                        <div className="absolute top-full left-0 mt-2 p-3.5 wg-glass-dropdown rounded-2xl shadow-2xl z-dropdown w-64 text-left font-sans normal-case tracking-normal">
                           <div className="flex justify-between items-center mb-2 pb-1.5 border-b border-zinc-100 dark:border-white/5">
                             <span className="text-xs font-black text-zinc-900 dark:text-white flex items-center gap-1.5 font-sans">
                               <Filter className="w-3.5 h-3.5 text-blue-500" />
@@ -3261,7 +3261,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     {activeFilterPopup === 'sector' && (
                       <>
                         <div className="fixed inset-0 z-sticky bg-transparent cursor-default" onClick={(e) => { e.stopPropagation(); setActiveFilterPopup(null); }} />
-                        <div className="absolute top-full left-0 mt-2 p-3.5 bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl z-dropdown w-64 text-left font-sans normal-case tracking-normal">
+                        <div className="absolute top-full left-0 mt-2 p-3.5 wg-glass-dropdown rounded-2xl shadow-2xl z-dropdown w-64 text-left font-sans normal-case tracking-normal">
                           <div className="flex justify-between items-center mb-2 pb-1.5 border-b border-zinc-100 dark:border-white/5 font-sans">
                             <span className="text-xs font-black text-zinc-900 dark:text-white flex items-center gap-1.5">
                               <Filter className="w-3.5 h-3.5 text-blue-500" />
@@ -3333,7 +3333,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     {activeFilterPopup === 'status' && (
                       <>
                         <div className="fixed inset-0 z-sticky bg-transparent cursor-default" onClick={(e) => { e.stopPropagation(); setActiveFilterPopup(null); }} />
-                        <div className="absolute top-full left-0 mt-2 p-3.5 bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl z-dropdown w-64 text-left font-sans normal-case tracking-normal">
+                        <div className="absolute top-full left-0 mt-2 p-3.5 wg-glass-dropdown rounded-2xl shadow-2xl z-dropdown w-64 text-left font-sans normal-case tracking-normal">
                           <div className="flex justify-between items-center mb-2 pb-1.5 border-b border-zinc-100 dark:border-white/5 font-sans">
                             <span className="text-xs font-black text-zinc-900 dark:text-white flex items-center gap-1.5">
                               <Filter className="w-3.5 h-3.5 text-blue-500" />
@@ -3409,7 +3409,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     {activeFilterPopup === 'timing' && (
                       <>
                         <div className="fixed inset-0 z-sticky bg-transparent cursor-default" onClick={(e) => { e.stopPropagation(); setActiveFilterPopup(null); }} />
-                        <div className="absolute top-full left-0 mt-2 p-3.5 bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl z-dropdown w-64 text-left font-sans normal-case tracking-normal">
+                        <div className="absolute top-full left-0 mt-2 p-3.5 wg-glass-dropdown rounded-2xl shadow-2xl z-dropdown w-64 text-left font-sans normal-case tracking-normal">
                           <div className="flex justify-between items-center mb-2 pb-1.5 border-b border-zinc-100 dark:border-white/5 font-sans">
                             <span className="text-xs font-black text-zinc-900 dark:text-white flex items-center gap-1.5">
                               <Filter className="w-3.5 h-3.5 text-blue-500" />
@@ -3489,7 +3489,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     {activeFilterPopup === 'seat' && (
                       <>
                         <div className="fixed inset-0 z-sticky bg-transparent cursor-default" onClick={(e) => { e.stopPropagation(); setActiveFilterPopup(null); }} />
-                        <div className="absolute top-full right-0 mt-2 p-3.5 bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl z-dropdown w-64 text-left font-sans normal-case tracking-normal">
+                        <div className="absolute top-full right-0 mt-2 p-3.5 wg-glass-dropdown rounded-2xl shadow-2xl z-dropdown w-64 text-left font-sans normal-case tracking-normal">
                           <div className="flex justify-between items-center mb-2 pb-1.5 border-b border-zinc-100 dark:border-white/5 font-sans">
                             <span className="text-xs font-black text-zinc-900 dark:text-white flex items-center gap-1.5">
                               <Filter className="w-3.5 h-3.5 text-blue-500" />

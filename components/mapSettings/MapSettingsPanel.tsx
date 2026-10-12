@@ -427,8 +427,8 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
                 })}
               </div>
 
-              {/* Scrollable Tab Body (pb-20 ensures footer never overlaps content) */}
-              <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 pb-20 space-y-3 sm:space-y-3.5 custom-scrollbar text-light-text dark:text-dark-text">
+              {/* Scrollable Tab Body. The footer below is a sibling in the flex column, so the body ends above it. */}
+              <div className="flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-4 space-y-3 sm:space-y-3.5 custom-scrollbar text-light-text dark:text-dark-text">
                 {activeTab === 'map' && (
                   <MapTab
                     settings={localSettings}
@@ -471,7 +471,7 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
               </div>
 
               {/* Sticky Footer Actions (MC-05: Reset settings with confirm + Recenter + Done) */}
-              <div className="absolute bottom-0 inset-x-0 px-3.5 py-2 sm:px-4 sm:py-2.5 border-t border-black/5 dark:border-white/10 bg-white/80 dark:bg-dark-card/90 wg-glass-surface flex items-center justify-between gap-2 shrink-0 pb-[calc(0.625rem+env(safe-area-inset-bottom,0px))]">
+              <div className="relative shrink-0 w-full px-3.5 py-2 sm:px-4 sm:py-2.5 border-t border-black/5 dark:border-white/10 bg-white/80 dark:bg-dark-card/90 wg-glass-surface flex items-center justify-between gap-2 pb-[calc(0.625rem+env(safe-area-inset-bottom,0px))]">
                 {/* Reset settings button & inline confirm dialog */}
                 {isResetConfirming ? (
                   <div className="flex items-center gap-1.5 animate-fadeIn">
