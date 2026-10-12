@@ -5,7 +5,8 @@ WanderGrid is a self-hosted travel planner, flight log and leave manager. It has
 
 ## Stack (versions from package.json ranges)
 
-**Frontend (root `package.json`, ESM)**
+### Frontend (root `package.json`, ESM)
+
 - React 19.2 / react-dom 19.2, TypeScript ~5.8, Vite 6.2 with `@vitejs/plugin-react` 5, `vite-plugin-pwa` 1.3 (Workbox generateSW)
 - Tailwind CSS 3.4 + PostCSS/autoprefixer (single compiled config; no CDN); `clsx`, `tailwind-merge`; global CSS in `styles.css`. Classes built at runtime must be safelisted in `tailwind.config.js`
 - UI: `@nkzw/liquid-glass` 1.3 (glass surfaces), `@phosphor-icons/react` 2.1, `motion` 12 (`motion/react`), `@number-flow/react`, `@dnd-kit/*`
@@ -13,7 +14,8 @@ WanderGrid is a self-hosted travel planner, flight log and leave manager. It has
 - Charts: `recharts` 3.8. Data I/O: `xlsx` 0.18, `html2canvas` 1.4.1. AI: `@google/genai` 1.34
 - `.npmrc` sets `legacy-peer-deps=true`. Peer conflicts are expected.
 
-**Backend (`backend_files/package.json`, CommonJS)**
+### Backend (`backend_files/package.json`, CommonJS)
+
 - Node 20 (Dockerfile `node:20-alpine`), Express 4.19, `pg` 8.12, `jsonwebtoken` 9, `helmet` 7, `express-rate-limit` 8, `compression`, `cors`
 - Tests use the built-in `node:test` runner. There is no test framework dependency.
 - Postgres 15 (`postgres:15-alpine` in docker-compose)
@@ -34,6 +36,7 @@ npm test                         # unit tests + API integration tests (test/api/
 PORT=3001 DATABASE_URL=postgres://wandergrid:wandergrid_password@localhost:5432/wandergrid node server.js
 docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT_SECRET in .env (copy .env.example)
 ```
+
 - `npm start` is in the README but **does not exist**. Use `npm run dev`.
 - The backend defaults to `PORT=3000`, and that clashes with Vite. Set `PORT=3001` locally so the Vite proxy reaches it. I verified that it boots and that `/api/health` responds. Running it against a live Postgres was **not verified** because no Postgres or Docker was available.
 - `npm run dev` runs in local mode by default (`.env.development` sets `VITE_LOCAL_MODE=true`): the data layer uses localStorage only and shows a "Local mode" badge, so no backend or Postgres is needed. To develop against the API, put `VITE_LOCAL_MODE=false` in `.env.development.local` (git-ignored) and run the backend on `PORT=3001`.
@@ -44,7 +47,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 ## Directory map
 
 | Path | Responsibility |
-|---|---|
+| --- | --- |
 | `index.tsx`, `App.tsx` | Entry point. `App` does view switching on `ViewState` with a `switch`; there is no router library. Views are `React.lazy`-loaded |
 | `views/` | Top-level pages (Dashboard, PlannerView, VacationCalendar, ExpeditionMapView, Flights, RoadTrips, TripDetail, TravelAtlas, Settings, UserDetail, Auth) |
 | `components/` | Feature components (configurators, drawers, map, passport/stamps). `ui.tsx` has the shared Card, Button and similar components |
@@ -65,7 +68,8 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 
 ## Architecture
 
-**Data flow**
+### Data flow
+
 - Every collection is a Postgres table of shape `(id TEXT PK, data JSONB)`: users, trips, events, entitlements, configs, flights and visited. `settings` is a key/JSONB table. Generic `getResources/createResource/updateResource/deleteResource` handlers in `server.js` serve `/api/<collection>`, plus `/bulk` upserts for trips, flights and visited.
 - Client: components call `dataService` (in `services/mockDb.ts`). It calls `fetch('/api…')` with a Bearer token, a 10s timeout and exponential retry on network errors and 5xx responses (never for POST, which is not idempotent). After a successful POST/PUT/DELETE it dispatches the `wandergrid_db_updated` window event. `useWanderSync` (5s TTL in-memory cache) listens for that event and refetches.
 - **Dev vs prod persistence:** `dataService` uses the API unless the dev-only `VITE_LOCAL_MODE=true` is set (the default under `npm run dev`, via `.env.development`), in which case it uses localStorage for the whole session. Production builds always use the API. It never switches mid-session; API failures surface as errors.
@@ -73,13 +77,15 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 - Airports and carriers are served from in-memory maps loaded from the `global_airports` and `global_carriers` tables. A weekly `setInterval` refreshes them (`GLOBAL_DATA_REFRESH_MS`). Do not fetch them live per request (AGENTS.md §1).
 - Production: the Dockerfile builds the SPA, copies it to `client_build/`, and Express serves it statically along with the `*` SPA fallback. CI (`.github/workflows/build-and-publish.yml`) pushes the image to GHCR on main, master and `v*` tags.
 
-**Auth**
+### Auth
+
 - JWT (7d expiry), signed with `JWT_SECRET`. In production the server refuses to start with the default dev secret. Passwords use PBKDF2-SHA512 with a salt (`hashPassword`).
 - `authenticateToken` is applied to all of `/api`. The public paths are `/api/health`, `/api/auth/login`, `/api/auth/register` and `/api/calendar/:userId/feed.ics`. Token and user are stored in localStorage (`wandergrid_session_token`, `wandergrid_session_user`).
 - A 401 or 403 from the API dispatches `wandergrid-unauthorized` / `wandergrid:unauthorized` window events. `role` is carried in the token.
 - Rate limits: a general limiter on `/api` and a stricter one on `/api/auth`.
 
 **External services.** All of them go through backend proxies under `/api/proxy/*` with timeouts. `vite.config.ts` re-implements the route, rail and test proxies as dev middleware.
+
 - Geocoding: Open-Meteo, then Photon, then Nominatim (`geocodingChain.js`). Results are cached in the `geocoding_cache` table, the timeout is 3s, and the fallback on failure is `[]`.
 - Routing: FOSSGIS OSRM, then project-osrm, then Valhalla for road. OpenRailRouting for rail. `searoute-js` for maritime. Results are cached in `cached_routes`.
 - Flights: AviationStack, AeroDataBox (RapidAPI), adsbdb, adsb.lol and OpenSky. Map tiles: OpenFreeMap, CARTO, OSM, NASA GIBS, AWS Terrarium and OpenAIP (keyed). Logos: Brandfetch. Holidays: Nager.Date. Weather radar: RainViewer.

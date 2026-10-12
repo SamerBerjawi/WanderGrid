@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { EmptyState } from '../components/EmptyState';
-import { Card, Button, Badge, Input, Select, Modal } from '../components/ui';
+import { Button, Badge, Input, Select, Modal, Tabs } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
-import { 
-  ArrowLeft, SignOut, AirplaneTakeoff, Clock, CheckCircle, MapPin, 
-  CalendarBlank, Ticket, Compass, MapTrifold, Plus, AirplaneTilt, Bed, 
-  PencilSimple, Trash, Camera, Spinner
+import DatePicker from '../components/ui/DatePicker';
+import {
+  ArrowLeft, SignOut, AirplaneTakeoff, MapPin, CalendarBlank, Compass,
+  AirplaneTilt, Bed, PencilSimple, Trash, Camera, Spinner, UserCircle,
+  IdentificationCard, Suitcase, Globe, SunHorizon, Eye, EyeSlash, Plus, Envelope
 } from '@phosphor-icons/react';
 import { dataService } from '../services/mockDb';
 import { User, Trip } from '../types';
@@ -41,6 +42,8 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
     const [editPassportIssueDate, setEditPassportIssueDate] = useState('');
     const [editPassportExpiryDate, setEditPassportExpiryDate] = useState('');
     const [isDragging, setIsDragging] = useState(false);
+    const [activeTab, setActiveTab] = useState<'trips' | 'destinations' | 'leave'>('trips');
+    const [showPassportNumber, setShowPassportNumber] = useState(false);
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
@@ -175,18 +178,20 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
         }
     };
 
-    const getTripPlannerStatus = (trip: Trip) => {
-        if (trip.status === 'Planning') {
-            return { text: 'Planning', color: 'amber' as const };
-        }
+    type Phase = 'Planning' | 'Active' | 'Upcoming' | 'Past' | 'Cancelled';
+    const PHASE_BADGE: Record<Phase, 'amber' | 'green' | 'blue' | 'purple' | 'red'> = {
+        Planning: 'amber', Active: 'green', Upcoming: 'blue', Past: 'purple', Cancelled: 'red'
+    };
+
+    const getPhase = (trip: Trip): Phase => {
+        if (trip.status === 'Cancelled') return 'Cancelled';
+        if (trip.status === 'Planning') return 'Planning';
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const tripEnd = new Date(trip.endDate);
-        if (tripEnd >= today) {
-            return { text: 'Upcoming', color: 'green' as const };
-        } else {
-            return { text: 'Past', color: 'purple' as const };
-        }
+        const start = new Date(trip.startDate);
+        const end = new Date(trip.endDate);
+        if (start <= today && today <= end) return 'Active';
+        return end >= today ? 'Upcoming' : 'Past';
     };
 
     const refreshProfile = () => {
@@ -196,18 +201,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                 const foundUser = allUsers.find(u => u.id === userId);
                 if (foundUser) {
                     setUser(foundUser);
-                    setEditName(foundUser.name || '');
-                    setEditPassword('');
-                    setEditWeekendRule(foundUser.holidayWeekendRule || 'none');
-                    setEditLeaveBalance(foundUser.leaveBalance ?? 25);
-                    setEditTakenLeave(foundUser.takenLeave ?? 0);
-                    setEditProfilePicture(foundUser.profilePicture || '');
-                    setEditNationality(foundUser.nationality || '');
-                    setEditDateOfBirth(foundUser.dateOfBirth || '');
-                    setEditPassportNumber(foundUser.passportNumber || '');
-                    setEditPassportIssuingEntity(foundUser.passportIssuingEntity || '');
-                    setEditPassportIssueDate(foundUser.passportIssueDate || '');
-                    setEditPassportExpiryDate(foundUser.passportExpiryDate || '');
+                    syncEditFields(foundUser);
                 }
                 return dataService.getTrips();
             })
@@ -221,37 +215,76 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
             });
     };
 
+    const syncEditFields = (u: User) => {
+        setEditName(u.name || '');
+        setEditPassword('');
+        setEditWeekendRule(u.holidayWeekendRule || 'none');
+        setEditLeaveBalance(u.leaveBalance ?? 25);
+        setEditTakenLeave(u.takenLeave ?? 0);
+        setEditProfilePicture(u.profilePicture || '');
+        setEditNationality(u.nationality || '');
+        setEditDateOfBirth(u.dateOfBirth || '');
+        setEditPassportNumber(u.passportNumber || '');
+        setEditPassportIssuingEntity(u.passportIssuingEntity || '');
+        setEditPassportIssueDate(u.passportIssueDate || '');
+        setEditPassportExpiryDate(u.passportExpiryDate || '');
+    };
+
     useEffect(() => {
         refreshProfile();
     }, [userId]);
 
     const stats = useMemo(() => {
-        const nonCancelled = trips.filter(t => t.status !== 'Cancelled');
-        const upcoming = nonCancelled.filter(t => t.status === 'Upcoming' || t.status === 'Planning');
-        const completed = nonCancelled.filter(t => t.status === 'Past');
-        
-        // Calculate total days on road
-        let totalDays = 0;
-        nonCancelled.forEach(t => {
-            const start = new Date(t.startDate);
-            const end = new Date(t.endDate);
-            const diffTime = Math.abs(end.getTime() - start.getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-            totalDays += diffDays;
+        const live = trips.filter(t => t.status !== 'Cancelled');
+        const phases = live.map(t => ({ trip: t, phase: getPhase(t) }));
+        const past = phases.filter(p => p.phase === 'Past').map(p => p.trip);
+
+        let daysTravelled = 0;
+        past.forEach(t => {
+            const diff = new Date(t.endDate).getTime() - new Date(t.startDate).getTime();
+            if (Number.isFinite(diff)) daysTravelled += Math.round(diff / 86400000) + 1;
         });
 
-        // Unique countries/locations in set from completed trips
-        const locations = Array.from(new Set(completed.map(t => t.location.trim()).filter(Boolean)));
+        // Most recent visit per destination, newest first
+        const lastVisit = new Map<string, string>();
+        past.forEach(t => {
+            const key = (t.location || '').trim();
+            if (!key) return;
+            const prev = lastVisit.get(key);
+            if (!prev || t.endDate > prev) lastVisit.set(key, t.endDate);
+        });
+        const destinations = Array.from(lastVisit.entries())
+            .map(([name, date]) => ({ name, date }))
+            .sort((a, b) => b.date.localeCompare(a.date));
+
+        const flights = live.reduce((n, t) => n + (t.transports?.filter(x => x.mode === 'Flight').length || 0), 0);
 
         return {
-            total: nonCancelled.length,
-            upcoming: upcoming.length,
-            completed: completed.length,
-            totalDays,
-            uniqueDestinations: locations.length,
-            destinationsList: locations
+            trips: live.length,
+            upcoming: phases.filter(p => p.phase === 'Upcoming' || p.phase === 'Active' || p.phase === 'Planning').length,
+            daysTravelled,
+            flights,
+            destinations
         };
     }, [trips]);
+
+    const sortedTrips = useMemo(() => {
+        const today = new Date().toISOString().slice(0, 10);
+        const ahead = trips.filter(t => t.endDate >= today).sort((a, b) => a.startDate.localeCompare(b.startDate));
+        const behind = trips.filter(t => t.endDate < today).sort((a, b) => b.startDate.localeCompare(a.startDate));
+        return [...ahead, ...behind];
+    }, [trips]);
+
+    const passportStatus = useMemo(() => {
+        if (!user?.passportExpiryDate) return null;
+        const expiry = new Date(user.passportExpiryDate);
+        if (isNaN(expiry.getTime())) return null;
+        const now = new Date();
+        if (expiry < now) return { label: 'Expired', color: 'red' as const };
+        const months = (expiry.getFullYear() - now.getFullYear()) * 12 + expiry.getMonth() - now.getMonth();
+        if (months < 6) return { label: months < 1 ? 'Expires <1 mo' : `Expires in ${months} mo`, color: 'amber' as const };
+        return { label: 'Valid', color: 'green' as const };
+    }, [user?.passportExpiryDate]);
 
     const handleSaveProfile = async () => {
         if (!user || !editName.trim()) return;
@@ -299,14 +332,21 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
         }
     };
 
+    const openEditProfile = () => {
+        if (!user) return;
+        syncEditFields(user);
+        setProfileError('');
+        setIsEditing(true);
+    };
+
     if (!loading && !user) {
         return (
             <div className="w-full max-w-[1680px] mx-auto pt-12 px-4">
                 <EmptyState
                     icon="person_off"
-                    title="Traveler not found"
+                    title="Member not found"
                     description="This profile doesn't exist or has been removed."
-                    action={{ label: 'Return to Dashboard', onClick: onBack }}
+                    action={{ label: 'Back to Dashboard', onClick: onBack }}
                 />
             </div>
         );
@@ -314,666 +354,507 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
 
     if (loading || !user) {
         return (
-            <div className="flex flex-col items-center justify-center p-24 text-gray-500 dark:text-gray-400 gap-4 animate-pulse w-full">
-                <Spinner className="w-12 h-12 animate-spin text-primary-500" />
-                <p className="font-bold text-xs uppercase tracking-widest text-zinc-500">Retrieving Traveler ID...</p>
+            <div className="flex flex-col items-center justify-center p-24 gap-4 w-full" role="status" aria-label="Loading profile">
+                <Spinner className="w-10 h-10 animate-spin text-primary-500" />
             </div>
         );
     }
 
-    // Dynamic ink colors for airport stamps
-    const stampColors = [
-        'border-blue-600/70 text-blue-600/85 bg-blue-50/5 dark:border-blue-500/50 dark:text-blue-400/80',
-        'border-rose-600/70 text-rose-600/85 bg-rose-50/5 dark:border-rose-500/50 dark:text-rose-400/80',
-        'border-emerald-600/70 text-emerald-600/85 bg-emerald-50/5 dark:border-emerald-500/50 dark:text-emerald-400/80',
-        'border-indigo-600/70 text-indigo-600/85 bg-indigo-50/5 dark:border-indigo-500/50 dark:text-indigo-400/80',
-        'border-amber-600/70 text-amber-600/85 bg-amber-50/5 dark:border-amber-500/50 dark:text-amber-400/80',
+    const allowance = user.leaveBalance ?? 25;
+    const taken = user.takenLeave ?? 0;
+    const remaining = allowance - taken;
+    const leavePercent = allowance > 0 ? Math.min(100, Math.round((taken / allowance) * 100)) : 0;
+    const leaveBarColor = leavePercent > 85 ? 'bg-rose-500' : leavePercent > 60 ? 'bg-amber-500' : 'bg-emerald-500';
+    const weekendRuleLabel = { none: 'Standard', monday: 'Move to Monday', lieu: 'Day in lieu' }[user.holidayWeekendRule || 'none'];
+    const roleColor = user.role === 'Admin' ? 'purple' : user.role === 'Partner' ? 'blue' : 'green';
+    const roleGradient = user.role === 'Admin'
+        ? 'from-purple-500 to-indigo-600 shadow-purple-500/25'
+        : user.role === 'Partner'
+            ? 'from-blue-500 to-indigo-600 shadow-indigo-500/25'
+            : 'from-emerald-500 to-teal-600 shadow-teal-500/25';
+
+    let isOwnProfile = false;
+    try {
+        const sessionRaw = localStorage.getItem('wandergrid_session_user');
+        isOwnProfile = !!sessionRaw && JSON.parse(sessionRaw).id === userId;
+    } catch { /* unreadable session: treat as not own */ }
+
+    const maskedPassport = user.passportNumber
+        ? `•••• ${user.passportNumber.slice(-4)}`
+        : '';
+
+    const profileTabs = [
+        { id: 'trips', label: `Trips · ${trips.length}`, icon: <Suitcase className="w-5 h-5" weight="duotone" />, color: 'primary' as const },
+        { id: 'destinations', label: `Destinations · ${stats.destinations.length}`, icon: <Globe className="w-5 h-5" weight="duotone" />, color: 'emerald' as const },
+        { id: 'leave', label: 'Leave', icon: <SunHorizon className="w-5 h-5" weight="duotone" />, color: 'amber' as const },
     ];
 
-    const leavePercentage = Math.round(((user.takenLeave || 0) / (user.leaveBalance || 25)) * 100);
+    const statTiles = [
+        { label: 'Trips', value: stats.trips, icon: Suitcase, tone: 'text-primary-500' },
+        { label: 'Upcoming', value: stats.upcoming, icon: CalendarBlank, tone: 'text-sky-500' },
+        { label: 'Days travelled', value: stats.daysTravelled, icon: SunHorizon, tone: 'text-amber-500' },
+        { label: 'Destinations', value: stats.destinations.length, icon: Globe, tone: 'text-emerald-500' },
+        { label: 'Flights', value: stats.flights, icon: AirplaneTakeoff, tone: 'text-violet-500' },
+    ];
+
+    const passportRows: { label: string; value: string }[] = [
+        { label: 'Nationality', value: user.nationality || '' },
+        { label: 'Date of birth', value: user.dateOfBirth ? formatDate(user.dateOfBirth, 'long') : '' },
+        { label: 'Issued by', value: user.passportIssuingEntity || '' },
+        { label: 'Issued', value: user.passportIssueDate ? formatDate(user.passportIssueDate, 'short-with-year') : '' },
+        { label: 'Expires', value: user.passportExpiryDate ? formatDate(user.passportExpiryDate, 'short-with-year') : '' },
+    ];
+    const hasPassportData = !!user.passportNumber || passportRows.some(r => r.value);
+
+    const sectionHeader = (icon: React.ReactNode, title: string, right?: React.ReactNode) => (
+        <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between gap-3 bg-gradient-to-r from-primary-500/10 via-primary-500/5 to-transparent shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary-500 to-indigo-600 text-white shadow-md shadow-primary-500/20 flex items-center justify-center shrink-0">
+                    {icon}
+                </div>
+                <h2 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight truncate">{title}</h2>
+            </div>
+            {right}
+        </div>
+    );
 
     return (
         <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16 text-light-text dark:text-dark-text">
-            {/* HERO PROFILE HEADER */}
-            <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden shadow-glass-card">
-                <div className="relative p-6 sm:p-8 lg:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 sm:gap-8">
-                    <div className="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
-                        <div className="relative">
-                            <div className={`w-24 h-24 sm:w-28 sm:h-28 rounded-2xl flex items-center justify-center overflow-hidden text-5xl font-black text-white shadow-xl transition-all hover:scale-105 duration-300 border border-white/20
-                                ${user.role === 'Partner' ? 'bg-gradient-to-br from-blue-600 to-indigo-700 shadow-indigo-500/20' : 
-                                  user.role === 'Admin' ? 'bg-gradient-to-br from-purple-500 to-indigo-600 shadow-purple-500/20' : 
-                                  'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-teal-500/20'}`}>
-                                {user.profilePicture ? (
-                                    <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                                ) : (
-                                    user.name?.charAt(0) || '?'
+            {/* HERO HEADER */}
+            <div className="flex flex-row items-center justify-between gap-2.5 sm:gap-4 w-full pt-1 pb-1 text-left">
+                <div className="flex items-center justify-start gap-2 sm:gap-3 md:gap-4 min-w-0">
+                    <UserCircle className="w-6 h-6 sm:w-9 sm:h-9 md:w-12 md:h-12 text-primary-500 dark:text-primary-400 shrink-0" weight="duotone" />
+                    <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-dark-text tracking-tight leading-tight sm:leading-none truncate">
+                        Profile
+                    </h1>
+                </div>
+                <div className="flex items-center justify-end gap-2 shrink-0">
+                    <Button variant="secondary" onClick={onBack} icon={<ArrowLeft className="w-4 h-4" />} aria-label="Back to dashboard">
+                        <span className="hidden sm:inline">Dashboard</span>
+                    </Button>
+                    <Button variant="primary" onClick={openEditProfile} icon={<PencilSimple className="w-4 h-4" />}>
+                        Edit
+                    </Button>
+                </div>
+            </div>
+
+            {/* IDENTITY + STATS */}
+            <GlassPanel className="wg-glass-card shadow-glass-card overflow-hidden border border-black/5 dark:border-white/10" overrides={{ borderRadius: 28 }} padding="0px">
+                <div className="rounded-[28px] overflow-hidden">
+                    <div className="p-5 sm:p-8 flex flex-col sm:flex-row items-center sm:items-center gap-5 sm:gap-8 bg-gradient-to-r from-primary-500/10 via-primary-500/5 to-transparent">
+                        <div className={`w-24 h-24 sm:w-32 sm:h-32 rounded-3xl flex items-center justify-center overflow-hidden text-5xl font-black text-white shadow-xl border-2 border-white/20 shrink-0 bg-gradient-to-br ${roleGradient}`}>
+                            {user.profilePicture ? (
+                                <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            ) : (
+                                <span aria-hidden="true">{user.name?.charAt(0)?.toUpperCase() || '?'}</span>
+                            )}
+                        </div>
+                        <div className="min-w-0 flex-1 text-center sm:text-left space-y-2">
+                            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+                                <h2 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight truncate max-w-full">{user.name}</h2>
+                                <Badge color={roleColor}>{user.role}</Badge>
+                            </div>
+                            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-5 gap-y-1 text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary">
+                                {user.email && (
+                                    <span className="inline-flex items-center gap-1.5 min-w-0">
+                                        <Envelope className="w-4 h-4 shrink-0" weight="duotone" />
+                                        <span className="truncate">{user.email}</span>
+                                    </span>
+                                )}
+                                {user.nationality && (
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <Globe className="w-4 h-4 shrink-0" weight="duotone" />
+                                        {user.nationality}
+                                    </span>
                                 )}
                             </div>
-                            <div className="absolute -bottom-2 -right-2 bg-white dark:bg-gray-800 px-3 py-1 rounded-xl shadow-md border border-gray-100 dark:border-white/10">
-                                <span className={`text-2xs font-bold uppercase tracking-wider ${
-                                    user.role === 'Partner' ? 'text-blue-500' : 
-                                    user.role === 'Admin' ? 'text-purple-500' : 
-                                    'text-emerald-500'}`}>{user.role}</span>
-                            </div>
                         </div>
-                        
-                        <div className="space-y-2">
-                            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
-                                <h1 className="text-2xl sm:text-3xl lg:text-5xl font-black text-light-text dark:text-dark-text tracking-tight leading-none">{user.name}</h1>
-                                <button 
-                                    type="button"
-                                    onClick={() => {
-                                        setEditName(user.name || '');
-                                        setEditPassword('');
-                                        setEditWeekendRule(user.holidayWeekendRule || 'none');
-                                        setEditLeaveBalance(user.leaveBalance ?? 25);
-                                        setEditTakenLeave(user.takenLeave ?? 0);
-                                        setEditProfilePicture(user.profilePicture || '');
-                                        setEditNationality(user.nationality || '');
-                                        setEditDateOfBirth(user.dateOfBirth || '');
-                                        setEditPassportNumber(user.passportNumber || '');
-                                        setEditPassportIssuingEntity(user.passportIssuingEntity || '');
-                                        setEditPassportIssueDate(user.passportIssueDate || '');
-                                        setEditPassportExpiryDate(user.passportExpiryDate || '');
-                                        setIsEditing(true);
-                                    }}
-                                    className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-blue-500 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
-                                    title="Edit Profile Details"
-                                    aria-label="Edit Profile Details"
-                                >
-                                    <PencilSimple className="w-5 h-5 block" />
-                                </button>
-                            </div>
-                            {user.email && (
-                                <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary font-semibold font-mono tracking-tight">{user.email}</p>
-                            )}
-                            <div className="flex items-center justify-center sm:justify-start gap-2 mt-2 select-none">
-                                <span className="text-2xs font-mono tracking-widest font-bold text-gray-400 dark:text-zinc-500 uppercase block">CREDENTIAL-KEY: <span className="text-teal-500 font-black">{user.id}</span></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 self-stretch sm:self-auto shrink-0 flex-wrap justify-center">
-                        <Button variant="secondary" className="!rounded-xl min-h-[44px]" onClick={onBack} icon={<ArrowLeft className="w-4 h-4" />} aria-label="Back to dashboard">
-                            Core Dashboard
-                        </Button>
-                        {onLogout && (
-                            <Button 
-                                variant="danger" 
-                                className="!rounded-xl border-none min-h-[44px]" 
-                                onClick={onLogout} 
-                                icon={<SignOut className="w-4 h-4" />}
-                                aria-label="Sign out"
-                            >
-                                Secure Exit
+                        {isOwnProfile && onLogout && (
+                            <Button variant="danger" onClick={onLogout} icon={<SignOut className="w-4 h-4" />} className="shrink-0 w-full sm:w-auto">
+                                Sign out
                             </Button>
                         )}
                     </div>
-                </div>
 
-                {/* PASSPORT STATISTICS STATS GRID */}
-                <div className="grid grid-cols-2 md:grid-cols-5 border-t border-black/5 dark:border-white/5 divide-x divide-y md:divide-y-0 divide-black/5 dark:divide-white/5 bg-gray-50/40 dark:bg-zinc-950/20">
-                    <div className="p-6 flex flex-col items-center justify-center text-center gap-1">
-                        <AirplaneTakeoff weight="duotone" className="w-7 h-7 text-blue-500" />
-                        <span className="text-3xl font-black text-light-text dark:text-dark-text mt-1">{stats.total}</span>
-                        <span className="text-2xs font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-widest font-mono">Active Trips</span>
-                    </div>
-
-                    <div className="p-6 flex flex-col items-center justify-center text-center gap-1 border-t md:border-t-0">
-                        <Clock weight="duotone" className="w-7 h-7 text-amber-500" />
-                        <span className="text-3xl font-black text-light-text dark:text-dark-text mt-1">{stats.upcoming}</span>
-                        <span className="text-2xs font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-widest font-mono">Upcoming Journeys</span>
-                    </div>
-
-                    <div className="p-6 flex flex-col items-center justify-center text-center gap-1 border-t md:border-t-0">
-                        <CheckCircle weight="duotone" className="w-7 h-7 text-emerald-500" />
-                        <span className="text-3xl font-black text-light-text dark:text-dark-text mt-1">{stats.completed}</span>
-                        <span className="text-2xs font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-widest font-mono">Completed Voyages</span>
-                    </div>
-
-                    <div className="p-6 flex flex-col items-center justify-center text-center gap-1 border-t md:border-t-0">
-                        <MapPin weight="duotone" className="w-7 h-7 text-purple-500" />
-                        <span className="text-3xl font-black text-light-text dark:text-dark-text mt-1">{stats.uniqueDestinations}</span>
-                        <span className="text-2xs font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-widest font-mono">Destinations Visited</span>
-                    </div>
-
-                    <div className="p-6 flex flex-col items-center justify-center text-center gap-1 col-span-2 md:col-span-1 border-t md:border-t-0">
-                        <CalendarBlank weight="duotone" className="w-7 h-7 text-indigo-500" />
-                        <span className="text-3xl font-black text-light-text dark:text-dark-text mt-1">{stats.totalDays}</span>
-                        <span className="text-2xs font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-widest font-mono">Total Days on Voyage</span>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 border-t border-black/5 dark:border-white/5 divide-x divide-black/5 dark:divide-white/5">
+                        {statTiles.map((tile, i) => {
+                            const TileIcon = tile.icon;
+                            return (
+                                <div
+                                    key={tile.label}
+                                    className={`p-4 sm:p-5 flex flex-col items-center text-center gap-1 ${i >= 2 ? 'border-t sm:border-t-0 border-black/5 dark:border-white/5' : ''} ${i === 4 ? 'col-span-2 sm:col-span-1' : ''}`}
+                                >
+                                    <TileIcon className={`w-6 h-6 ${tile.tone}`} weight="duotone" />
+                                    <span className="text-2xl sm:text-3xl font-black tabular-nums">{tile.value}</span>
+                                    <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">{tile.label}</span>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </GlassPanel>
 
-            {/* LOWER PORTION: TWO COLUMN DETAILS */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full">
-                {/* Left side: Vacation leave progress & Passport stamps */}
-                <div className="lg:col-span-4 space-y-8 h-full w-full">
-                    {/* ACCRUED LEAVE STATS CARD */}
-                    <Card noPadding className="rounded-3xl overflow-hidden">
-                        <div className="p-6 border-b border-gray-100/40 dark:border-white/5 bg-gradient-to-r from-teal-500/5 to-emerald-500/5 flex justify-between items-center bg-gray-50/50 dark:bg-white/5">
-                            <div>
-                                <h3 className="font-extrabold text-gray-900 dark:text-white text-base">Leave & Entitlements</h3>
-                                <p className="text-2xs font-mono text-gray-500 dark:text-gray-400 uppercase tracking-widest font-bold">Vacation Days Allocations</p>
-                            </div>
-                            <Badge color={leavePercentage > 80 ? 'red' : leavePercentage > 40 ? 'amber' : 'green'}>
-                                {leavePercentage}% Consumed
-                            </Badge>
-                        </div>
-                        <div className="p-6 space-y-6">
-                            {/* Linear percentage gauges */}
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-center text-xs font-bold">
-                                        <span className="text-gray-500 dark:text-gray-400">Accrued Annual Leave</span>
-                                        <span className="text-gray-800 dark:text-zinc-200">{user.leaveBalance ?? 25} Days</span>
-                                    </div>
-                                    <div className="w-full h-2.5 bg-gray-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                        <div className="h-full bg-indigo-500 rounded-full" style={{ width: '100%' }} />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-center text-xs font-bold">
-                                        <span className="text-gray-500 dark:text-gray-400">Consumed Days Taken</span>
-                                        <span className="text-gray-800 dark:text-zinc-200">{user.takenLeave ?? 0} of {user.leaveBalance ?? 25} Days</span>
-                                    </div>
-                                    <div className="w-full h-2.5 bg-gray-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                        <div className={`h-full rounded-full transition-all ${leavePercentage > 85 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(leavePercentage, 100)}%` }} />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="pt-4 border-t border-gray-100 dark:border-white/5 grid grid-cols-2 gap-4 text-left p-3.5 bg-slate-50/50 dark:bg-black/10 rounded-xl leading-none">
-                                <div>
-                                    <span className="text-2xs font-bold text-zinc-500 dark:text-zinc-400 block uppercase tracking-wide">Remaining Balance</span>
-                                    <span className="text-lg font-black text-slate-800 dark:text-zinc-200 block mt-1">{(user.leaveBalance ?? 25) - (user.takenLeave ?? 0)} Days</span>
-                                </div>
-                                <div>
-                                    <span className="text-2xs font-bold text-zinc-500 dark:text-zinc-400 block uppercase tracking-wide">Weekend Rule</span>
-                                    <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 block mt-2.5 uppercase font-mono truncate">{user.holidayWeekendRule || 'None'}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </Card>
-
-                    {/* MOOD BOOSTER PASSPORT STAMPS */}
-                    <Card noPadding className="rounded-3xl">
-                        <div className="p-6 border-b border-gray-100/45 dark:border-white/5 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 bg-gray-50/50 dark:bg-white/5">
-                            <h3 className="font-extrabold text-gray-900 dark:text-white text-base">Travel Stamps</h3>
-                            <p className="text-2xs font-mono text-gray-500 dark:text-gray-400 uppercase tracking-widest font-bold">Aero Passport Stamp Seal Roster</p>
-                        </div>
-                        <div className="p-6">
-                            {stats.uniqueDestinations === 0 ? (
-                                <div className="py-12 text-center text-zinc-500 dark:text-zinc-400 border border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl select-none">
-                                    <Ticket weight="duotone" className="w-10 h-10 mx-auto text-zinc-500 dark:text-zinc-400" />
-                                    <p className="text-xs font-mono tracking-widest font-bold uppercase mt-3">No active country seals stamped</p>
-                                    <p className="text-xs opacity-75 mt-1">Stamps are visual seals dynamically minted from flight logs.</p>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-2 gap-4">
-                                    {stats.destinationsList.slice(0, 6).map((dest, i) => {
-                                        const colorIdx = i % stampColors.length;
-                                        return (
-                                            <div 
-                                                key={dest} 
-                                                className={`p-4 border-2 rounded-2xl border-dashed flex flex-col items-center justify-center text-center relative overflow-hidden select-none h-28 transform hover:scale-103 transition-transform ${stampColors[colorIdx]}`}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+                {/* PASSPORT */}
+                <div className="lg:col-span-4 flex flex-col overflow-hidden rounded-[28px]">
+                    <GlassPanel className="wg-glass-card shadow-glass-card overflow-hidden border border-black/5 dark:border-white/10" overrides={{ borderRadius: 28 }} padding="0px">
+                        <div className="flex flex-col w-full overflow-hidden rounded-[28px]">
+                            {sectionHeader(
+                                <IdentificationCard className="w-5 h-5" weight="duotone" />,
+                                'Passport',
+                                passportStatus && <Badge color={passportStatus.color}>{passportStatus.label}</Badge>
+                            )}
+                            {hasPassportData ? (
+                                <dl className="p-5 sm:p-6 space-y-4">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <dt className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Number</dt>
+                                            <dd className="text-lg font-mono font-bold tracking-wide truncate">
+                                                {user.passportNumber ? (showPassportNumber ? user.passportNumber : maskedPassport) : '—'}
+                                            </dd>
+                                        </div>
+                                        {user.passportNumber && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassportNumber(v => !v)}
+                                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors shrink-0 cursor-pointer"
+                                                aria-label={showPassportNumber ? 'Hide passport number' : 'Show passport number'}
+                                                aria-pressed={showPassportNumber}
                                             >
-                                                {/* Retro flight details circles */}
-                                                <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full border border-current opacity-20" />
-                                                <div className="absolute -bottom-3 -right-3 w-10 h-10 rounded-full border border-current opacity-20" />
-                                                
-                                                <span className="text-2xs font-mono font-bold uppercase tracking-widest opacity-80 leading-none">BORDER ENTRANCE</span>
-                                                <span className="text-sm font-black uppercase tracking-tight truncate max-w-full my-1">{dest}</span>
-                                                <span className="text-2xs font-mono font-bold tracking-wider leading-none opacity-90">{2026 - i}.0{(i % 8) + 1}.{(i % 24) + 1}</span>
-                                                <div className="mt-1.5 px-2 py-0.5 rounded border border-current text-2xs font-mono font-bold scale-90 uppercase tracking-wider">APPROVED</div>
-                                            </div>
-                                        );
-                                    })}
+                                                {showPassportNumber ? <EyeSlash className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                            </button>
+                                        )}
+                                    </div>
+                                    {passportRows.filter(r => r.value).map(row => (
+                                        <div key={row.label} className="flex items-baseline justify-between gap-4 pt-3 border-t border-black/5 dark:border-white/5">
+                                            <dt className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary shrink-0">{row.label}</dt>
+                                            <dd className="text-sm font-semibold text-right truncate">{row.value}</dd>
+                                        </div>
+                                    ))}
+                                </dl>
+                            ) : (
+                                <div className="p-5 sm:p-6">
+                                    <EmptyState
+                                        compact
+                                        icon={<IdentificationCard className="w-8 h-8" weight="duotone" />}
+                                        title="No passport details"
+                                        action={{ label: 'Add details', onClick: openEditProfile, icon: <Plus className="w-4 h-4" />, variant: 'secondary' }}
+                                    />
                                 </div>
                             )}
                         </div>
-                    </Card>
+                    </GlassPanel>
                 </div>
 
-                {/* Right side: Expeditions, Trips & Flights list */}
-                <div className="lg:col-span-8 space-y-6 w-full">
-                    <div className="flex justify-between items-center px-1">
-                        <div className="space-y-1">
-                            <h2 className="text-2xl font-black text-light-text dark:text-dark-text tracking-tight">Expeditions Passport</h2>
-                            <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">Chronological travel roster and calendar entries</p>
-                        </div>
-                    </div>
+                {/* TABBED CONTENT */}
+                <div className="lg:col-span-8 flex flex-col gap-5 min-w-0">
+                    <Tabs tabs={profileTabs} activeTab={activeTab} onChange={id => setActiveTab(id as 'trips' | 'destinations' | 'leave')} />
 
-                    {trips.length === 0 ? (
-                        <GlassPanel className="wg-glass-card rounded-[28px] p-16 text-center select-none shadow-glass-card">
-                            <Compass weight="duotone" className="w-14 h-14 mx-auto text-gray-300 dark:text-gray-700" />
-                            <p className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-4">No active expeditions found for this traveler</p>
-                            <p className="text-xs text-gray-500 max-w-xs mx-auto mt-2">When this user joins or gets assigned to a trip, their complete flight route details will appear beautifully styled here.</p>
-                        </GlassPanel>
-                    ) : (
-                        <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden shadow-glass-card">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="border-b border-black/5 dark:border-white/5 bg-gray-50/40 dark:bg-white/5 text-xs font-bold uppercase tracking-widest text-light-text-secondary dark:text-dark-text-secondary">
-                                            <th className="py-4 px-6">Expedition</th>
-                                            <th className="py-4 px-6">Schedule</th>
-                                            <th className="py-4 px-6 text-center">Status</th>
-                                            <th className="py-4 px-6 text-center">Stats</th>
-                                            <th className="py-4 px-6 text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-black/5 dark:divide-white/5">
-                                        {trips.map(trip => {
-                                            const ongoing = new Date(trip.startDate) <= new Date() && new Date() <= new Date(trip.endDate);
-                                            const departuresStr = formatDate(trip.startDate, 'short-with-year');
-                                            const returnStr = formatDate(trip.endDate, 'short-with-year');
-                                            const flightCount = (trip.transports?.filter(t => t.mode === 'Flight').length) || 0;
-                                            const overnightsCount = trip.accommodations?.length || 0;
+                    {activeTab === 'trips' && (
+                        trips.length === 0 ? (
+                            <EmptyState
+                                icon={<Compass className="w-10 h-10" weight="duotone" />}
+                                title="No trips yet"
+                                description="Trips this member joins appear here."
+                            />
+                        ) : (
+                            <GlassPanel className="wg-glass-card shadow-glass-card overflow-hidden border border-black/5 dark:border-white/10" overrides={{ borderRadius: 28 }} padding="0px">
+                                <ul className="divide-y divide-black/5 dark:divide-white/5 rounded-[28px] overflow-hidden">
+                                    {sortedTrips.map(trip => {
+                                        const phase = getPhase(trip);
+                                        const isBundle = trip.isBundleOnly || trip.hideInPlanner;
+                                        const flightCount = trip.transports?.filter(t => t.mode === 'Flight').length || 0;
+                                        const stayCount = trip.accommodations?.length || 0;
+                                        return (
+                                            <li key={trip.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors">
+                                                <div className="flex items-center gap-4 min-w-0 flex-1">
+                                                    <div className="w-11 h-11 rounded-2xl bg-primary-500/10 text-primary-500 flex items-center justify-center shrink-0">
+                                                        <Suitcase className="w-6 h-6" weight="duotone" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <h3 className="font-bold text-sm sm:text-base leading-snug truncate" title={trip.name}>{trip.name}</h3>
+                                                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium flex items-center gap-1.5 mt-0.5 min-w-0">
+                                                            <MapPin className="w-3.5 h-3.5 shrink-0" />
+                                                            <span className="truncate">{trip.location}</span>
+                                                            <span aria-hidden="true">·</span>
+                                                            <span className="whitespace-nowrap">{formatDate(trip.startDate, 'short')} – {formatDate(trip.endDate, 'short-with-year')}</span>
+                                                        </p>
+                                                    </div>
+                                                </div>
 
-                                            return (
-                                                <tr key={trip.id} className="hover:bg-gray-50/40 dark:hover:bg-white/5 transition-colors group">
-                                                    <td className="py-4 px-6">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/10 rounded-xl flex items-center justify-center text-blue-500 text-xl group-hover:scale-105 transition-transform shrink-0">
-                                                                <MapTrifold className="w-5 h-5" />
-                                                            </div>
-                                                            <div className="min-w-0">
-                                                                <h4 className="font-bold text-light-text dark:text-dark-text text-sm leading-snug truncate max-w-[12rem]" title={trip.name}>
-                                                                    {trip.name}
-                                                                </h4>
-                                                                <div className="flex items-center gap-1 text-xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5 font-medium">
-                                                                    <MapPin className="w-3.5 h-3.5 shrink-0" />
-                                                                    <span className="truncate max-w-[10rem]">{trip.location}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-4 px-6">
-                                                        <div className="flex flex-col text-xs font-mono text-light-text-secondary dark:text-dark-text-secondary font-semibold gap-0.5">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="text-2xs font-bold uppercase text-gray-300 dark:text-gray-600 tracking-wider">DEP</span>
-                                                                <span>{departuresStr}</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="text-2xs font-bold uppercase text-gray-300 dark:text-gray-600 tracking-wider">RET</span>
-                                                                <span>{returnStr}</span>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-4 px-6 text-center whitespace-nowrap">
-                                                        {trip.isBundleOnly || trip.hideInPlanner ? (
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleCreateTripFromBundle(trip);
-                                                                }}
-                                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 min-h-[36px] text-xs font-bold tracking-wide uppercase bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:hover:bg-blue-900/40 dark:text-blue-400 rounded-lg border border-blue-100 dark:border-blue-900/20 transition-all cursor-pointer shadow-xs active:scale-95"
-                                                                title="Add this travel schedule directly to your Planner boards"
-                                                                aria-label="Add this travel schedule directly to your Planner boards"
-                                                            >
-                                                                <Plus className="w-3.5 h-3.5" />
-                                                                <span>Create Trip</span>
-                                                            </button>
-                                                        ) : ongoing ? (
-                                                            <Badge color="amber" className="animate-pulse inline-block">Active Now</Badge>
-                                                        ) : (
-                                                            (() => {
-                                                                const plannerStatus = getTripPlannerStatus(trip);
-                                                                return (
-                                                                    <Badge color={plannerStatus.color} className="inline-block">
-                                                                        {plannerStatus.text}
-                                                                    </Badge>
-                                                                );
-                                                            })()
-                                                        )}
-                                                    </td>
-                                                    <td className="py-4 px-6 text-center">
-                                                        <div className="flex items-center justify-center gap-2.5 text-xs">
-                                                            <div className="flex items-center gap-1 bg-violet-50/50 dark:bg-violet-900/5 px-2 py-1 rounded-lg border border-violet-100/30 dark:border-violet-900/10" title={`${flightCount} Flight Legs`}>
-                                                                <AirplaneTilt className="w-3.5 h-3.5 text-violet-500 dark:text-violet-400" />
-                                                                <span className="font-extrabold text-light-text dark:text-dark-text">{flightCount}</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-1 bg-emerald-50/50 dark:bg-emerald-900/5 px-2 py-1 rounded-lg border border-emerald-100/30 dark:border-emerald-900/10" title={`${overnightsCount} Overnights`}>
-                                                                <Bed className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
-                                                                <span className="font-extrabold text-light-text dark:text-dark-text">{overnightsCount}</span>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-4 px-6 text-right">
-                                                        <div className="flex items-center justify-end gap-1.5">
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleStartEditTrip(trip);
-                                                                }}
-                                                                className="p-1 px-2.5 min-h-[36px] rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-blue-500 font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-200 dark:border-white/5 text-xs"
-                                                                title="Edit Trip Settings"
-                                                                aria-label="Edit Trip Settings"
-                                                            >
-                                                                <PencilSimple className="w-3.5 h-3.5" />
-                                                                <span>Edit</span>
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleDeleteTripClick(trip.id);
-                                                                }}
-                                                                className="p-1 px-2.5 min-h-[36px] rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-rose-950/20 text-rose-500 font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-200 dark:border-white/5 text-xs"
-                                                                title="Delete Trip"
-                                                                aria-label="Delete Trip"
-                                                            >
-                                                                <Trash className="w-3.5 h-3.5" />
-                                                                <span>Delete</span>
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
+                                                <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap shrink-0">
+                                                    <span className="inline-flex items-center gap-1 text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary" title={`${flightCount} flights`}>
+                                                        <AirplaneTilt className="w-4 h-4 text-violet-500" weight="duotone" />{flightCount}
+                                                    </span>
+                                                    <span className="inline-flex items-center gap-1 text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary" title={`${stayCount} stays`}>
+                                                        <Bed className="w-4 h-4 text-emerald-500" weight="duotone" />{stayCount}
+                                                    </span>
+                                                    {isBundle ? (
+                                                        <Button
+                                                            variant="secondary"
+                                                            size="sm"
+                                                            onClick={() => handleCreateTripFromBundle(trip)}
+                                                            icon={<Plus className="w-3.5 h-3.5" />}
+                                                        >
+                                                            Add to Planner
+                                                        </Button>
+                                                    ) : (
+                                                        <Badge color={PHASE_BADGE[phase]}>{phase}</Badge>
+                                                    )}
+                                                    <div className="flex items-center ml-auto sm:ml-0">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleStartEditTrip(trip)}
+                                                            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-primary-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                                                            aria-label={`Edit ${trip.name}`}
+                                                        >
+                                                            <PencilSimple className="w-5 h-5" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDeleteTripClick(trip.id)}
+                                                            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                                            aria-label={`Delete ${trip.name}`}
+                                                        >
+                                                            <Trash className="w-5 h-5" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </GlassPanel>
+                        )
+                    )}
+
+                    {activeTab === 'destinations' && (
+                        stats.destinations.length === 0 ? (
+                            <EmptyState
+                                icon={<Globe className="w-10 h-10" weight="duotone" />}
+                                title="No destinations yet"
+                                description="Destinations appear after a trip is completed."
+                            />
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                                {stats.destinations.map(dest => (
+                                    <GlassPanel key={dest.name} className="wg-glass-pill" overrides={{ borderRadius: 20 }} padding="16px">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                                                <MapPin className="w-5 h-5" weight="duotone" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-bold truncate" title={dest.name}>{dest.name}</p>
+                                                <p className="text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary">{formatDate(dest.date, 'month-year')}</p>
+                                            </div>
+                                        </div>
+                                    </GlassPanel>
+                                ))}
+                            </div>
+                        )
+                    )}
+
+                    {activeTab === 'leave' && (
+                        <GlassPanel className="wg-glass-card shadow-glass-card overflow-hidden border border-black/5 dark:border-white/10" overrides={{ borderRadius: 28 }} padding="0px">
+                            <div className="rounded-[28px] overflow-hidden">
+                                {sectionHeader(
+                                    <SunHorizon className="w-5 h-5" weight="duotone" />,
+                                    'Leave',
+                                    <Badge color={leavePercent > 85 ? 'red' : leavePercent > 60 ? 'amber' : 'green'}>{leavePercent}% used</Badge>
+                                )}
+                                <div className="p-5 sm:p-6 space-y-6">
+                                    <div className="flex items-end justify-between gap-4">
+                                        <div>
+                                            <span className="text-5xl font-black tabular-nums">{remaining}</span>
+                                            <span className="text-sm font-bold text-light-text-secondary dark:text-dark-text-secondary ml-2">days left</span>
+                                        </div>
+                                        <span className="text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary tabular-nums">{taken} of {allowance} taken</span>
+                                    </div>
+                                    <div
+                                        className="w-full h-3 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden"
+                                        role="progressbar"
+                                        aria-label="Leave used"
+                                        aria-valuemin={0}
+                                        aria-valuemax={100}
+                                        aria-valuenow={leavePercent}
+                                    >
+                                        <div className={`h-full rounded-full transition-all duration-500 ${leaveBarColor}`} style={{ width: `${leavePercent}%` }} />
+                                    </div>
+                                    <div className="pt-4 border-t border-black/5 dark:border-white/5 flex items-baseline justify-between gap-4">
+                                        <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Weekend holidays</span>
+                                        <span className="text-sm font-semibold">{weekendRuleLabel}</span>
+                                    </div>
+                                </div>
                             </div>
                         </GlassPanel>
                     )}
                 </div>
             </div>
 
-            {/* MODAL: SELF PROFILE DETAILS MODAL */}
-            <Modal 
-                isOpen={isEditing} 
-                onClose={() => setIsEditing(false)} 
-                title="Edit Inhabitant Details"
-                subtitle="Profile & identification"
+            {/* MODAL: EDIT PROFILE */}
+            <Modal
+                isOpen={isEditing}
+                onClose={() => setIsEditing(false)}
+                title="Edit Profile"
+                subtitle={user.email || 'Member details'}
                 icon="person"
             >
-                <div className="space-y-6 text-left font-sans">
-                    <div className="space-y-4">
-                        <div className="space-y-2">
-                            <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
-                                Traveler Display Name <span className="text-rose-500">*</span>
-                            </label>
-                            <Input 
-                                placeholder="e.g. Elena Rostova" 
-                                value={editName} 
-                                onChange={e => setEditName(e.target.value)} 
-                                className="h-14 !text-xl font-bold"
-                                autoFocus
-                            />
-                        </div>
-
-                        <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
-                            <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
-                                Account Access
-                            </span>
-                            <Input 
-                                label="Change Portal Password" 
-                                type="password"
-                                placeholder="Leave blank to keep it (8+ characters)" 
-                                value={editPassword} 
-                                onChange={e => setEditPassword(e.target.value)} 
-                            />
-                            {profileError && (
-                                <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400">{profileError}</p>
-                            )}
-                            
-                            <Select 
-                                label="Holiday Weekend Rule" 
-                                value={editWeekendRule} 
-                                onChange={(e: any) => setEditWeekendRule(e.target.value)}
-                                options={[
-                                    { label: 'Standard No Override', value: 'none' },
-                                    { label: 'Cycle Monday Policy', value: 'monday' },
-                                    { label: 'Compensate Lieu Rule', value: 'lieu' }
-                                ]}
-                            />
-                        </div>
-
-                        {/* Biometric & Passport details */}
-                        <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
-                            <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
-                                Passport & Biometrics
-                            </span>
-                            
-                            {/* Portrait Photo Dropzone */}
-                            <div className="space-y-1.5">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Portrait Biography Photo</label>
-                                <div 
-                                    onDragOver={handleDragOver}
-                                    onDragLeave={handleDragLeave}
-                                    onDrop={handleDrop}
-                                    className={`border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
-                                        isDragging 
-                                            ? 'border-primary-500 bg-primary-500/10' 
-                                            : 'border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 bg-white/50 dark:bg-black/10'
-                                    }`}
-                                    onClick={() => document.getElementById('profile-pic-input')?.click()}
-                                >
-                                    <input 
-                                        id="profile-pic-input" 
-                                        type="file" 
-                                        accept="image/*" 
-                                        className="hidden" 
-                                        onChange={handleFileChange} 
-                                    />
-                                    {editProfilePicture ? (
-                                        <div className="flex items-center gap-4 w-full">
-                                            <img src={editProfilePicture} className="w-16 h-16 rounded-xl object-cover shrink-0 border border-black/10 dark:border-white/10 shadow-sm" alt="Preview" />
-                                            <div className="flex-1 text-left">
-                                                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                                                    <CheckCircle weight="fill" className="w-4 h-4" /> Loaded Successfully
-                                                </span>
-                                                <button 
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setEditProfilePicture('');
-                                                    }}
-                                                    className="text-2xs text-rose-500 font-bold tracking-wider uppercase mt-1 hover:underline cursor-pointer"
-                                                >
-                                                    Remove Photo
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-2">
-                                            <Camera className="w-8 h-8 text-light-text-secondary dark:text-dark-text-secondary block mb-1 opacity-60 mx-auto" />
-                                            <span className="text-xs font-bold text-light-text dark:text-dark-text block">Drag & drop or click to select image</span>
-                                            <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary block font-mono mt-0.5 opacity-60">PNG, JPG, WebP</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <Input 
-                                    label="Nationality / Nationalities" 
-                                    placeholder="e.g. Lebanese, Italian" 
-                                    value={editNationality} 
-                                    onChange={e => setEditNationality(e.target.value)} 
-                                />
-                                <Input 
-                                    label="Date of Birth" 
-                                    type="date" 
-                                    value={editDateOfBirth} 
-                                    onChange={e => setEditDateOfBirth(e.target.value)} 
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Input 
-                                    label="Passport Number" 
-                                    placeholder="e.g. RL1234567" 
-                                    value={editPassportNumber} 
-                                    onChange={e => setEditPassportNumber(e.target.value)} 
-                                />
-                                <Input 
-                                    label="Issuing Entity" 
-                                    placeholder="e.g. WG Aviation HQ" 
-                                    value={editPassportIssuingEntity} 
-                                    onChange={e => setEditPassportIssuingEntity(e.target.value)} 
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <Input 
-                                    label="Issue Date" 
-                                    type="date" 
-                                    value={editPassportIssueDate} 
-                                    onChange={e => setEditPassportIssueDate(e.target.value)} 
-                                />
-                                <Input 
-                                    label="Expiry Date" 
-                                    type="date" 
-                                    value={editPassportExpiryDate} 
-                                    onChange={e => setEditPassportExpiryDate(e.target.value)} 
-                                />
-                            </div>
-                        </div>
-
-                        {/* Admin-only properties editable in User profile as well */}
-                        {user.role === 'Admin' && (
-                            <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
-                                <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
-                                    Administrative Allowance
-                                </span>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Input 
-                                        label="Accrued Vacation Allowance" 
-                                        type="number"
-                                        value={editLeaveBalance} 
-                                        onChange={e => setEditLeaveBalance(parseInt(e.target.value) || 0)} 
-                                    />
-                                    <Input 
-                                        label="Spent Days Consumed" 
-                                        type="number"
-                                        value={editTakenLeave} 
-                                        onChange={e => setEditTakenLeave(parseInt(e.target.value) || 0)} 
-                                    />
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex gap-3 pt-4 border-t border-black/5 dark:border-white/5 shrink-0 justify-end">
-                        <Button variant="secondary" onClick={() => setIsEditing(false)}>Cancel</Button>
-                        <Button 
-                            variant="primary" 
-                            disabled={!editName.trim()}
-                            onClick={handleSaveProfile}
-                            isLoading={saveLoading}
+                <div className="space-y-5 text-left font-sans">
+                    <div className="flex items-center gap-4">
+                        <div
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            className={`w-20 h-20 rounded-3xl overflow-hidden shrink-0 flex items-center justify-center border-2 border-dashed transition-all ${
+                                isDragging ? 'border-primary-500 bg-primary-500/10' : 'border-black/10 dark:border-white/15 bg-white/50 dark:bg-white/5'
+                            }`}
                         >
-                            Save Changes
-                        </Button>
+                            {editProfilePicture ? (
+                                <img src={editProfilePicture} alt="Profile preview" className="w-full h-full object-cover" />
+                            ) : (
+                                <Camera className="w-7 h-7 text-light-text-secondary dark:text-dark-text-secondary" weight="duotone" />
+                            )}
+                        </div>
+                        <input id="profile-pic-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={handleFileChange} />
+                        <div className="flex flex-wrap gap-2">
+                            <Button variant="secondary" size="sm" onClick={() => document.getElementById('profile-pic-input')?.click()} icon={<Camera className="w-4 h-4" />}>
+                                {editProfilePicture ? 'Change photo' : 'Upload photo'}
+                            </Button>
+                            {editProfilePicture && (
+                                <Button variant="secondary" size="sm" onClick={() => setEditProfilePicture('')}>Remove</Button>
+                            )}
+                        </div>
                     </div>
-                </div>
-            </Modal>
 
-            {/* MODAL: EDIT TRIP DETAILS MODAL */}
-            <Modal 
-                isOpen={isEditingTrip} 
-                onClose={() => setIsEditingTrip(false)} 
-                title="Edit Expedition Details"
-                subtitle="Modify Expedition Logistics"
-                icon="map"
-            >
-                <div className="space-y-6 text-left font-sans">
-                    <div className="space-y-4">
-                        <div className="space-y-2">
-                            <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
-                                Expedition Name <span className="text-rose-500">*</span>
-                            </label>
-                            <Input 
-                                placeholder="e.g. Summer Vacation" 
-                                value={editTripName} 
-                                onChange={e => setEditTripName(e.target.value)} 
-                                className="h-14 !text-xl font-bold"
-                                autoFocus
-                            />
+                    <Input
+                        label="Name"
+                        placeholder="Full name"
+                        value={editName}
+                        onChange={e => setEditName(e.target.value)}
+                        className="h-14 !text-xl font-bold"
+                        autoFocus
+                    />
+
+                    <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
+                        <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">Passport</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Input label="Nationality" placeholder="e.g. Lebanese, Italian" value={editNationality} onChange={e => setEditNationality(e.target.value)} />
+                            <DatePicker label="Date of birth" value={editDateOfBirth} onChange={setEditDateOfBirth} maxDate={new Date().toISOString().slice(0, 10)} />
+                            <Input label="Passport number" placeholder="e.g. RL1234567" value={editPassportNumber} onChange={e => setEditPassportNumber(e.target.value)} />
+                            <Input label="Issued by" placeholder="e.g. General Security" value={editPassportIssuingEntity} onChange={e => setEditPassportIssuingEntity(e.target.value)} />
+                            <DatePicker label="Issue date" value={editPassportIssueDate} onChange={setEditPassportIssueDate} />
+                            <DatePicker label="Expiry date" value={editPassportExpiryDate} onChange={setEditPassportExpiryDate} minDate={editPassportIssueDate || undefined} />
                         </div>
-                        <Input 
-                            label="Destination / Location" 
-                            placeholder="e.g. Paris, France" 
-                            value={editTripLocation} 
-                            onChange={e => setEditTripLocation(e.target.value)} 
+                    </div>
+
+                    <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
+                        <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">Account</span>
+                        <Input
+                            label="New password"
+                            type="password"
+                            autoComplete="new-password"
+                            placeholder="Leave blank to keep current (8+ characters)"
+                            value={editPassword}
+                            onChange={e => setEditPassword(e.target.value)}
                         />
-                        <div className="grid grid-cols-2 gap-4">
-                            <Input 
-                                label="Start Date" 
-                                type="date"
-                                value={editTripStartDate} 
-                                onChange={e => setEditTripStartDate(e.target.value)} 
-                            />
-                            <Input 
-                                label="End Date" 
-                                type="date"
-                                value={editTripEndDate} 
-                                onChange={e => setEditTripEndDate(e.target.value)} 
-                            />
-                        </div>
-                        <Select 
-                            label="Trip Status" 
-                            value={editTripStatus} 
-                            onChange={(e: any) => setEditTripStatus(e.target.value)}
+                        <Select
+                            label="Weekend holidays"
+                            value={editWeekendRule}
+                            onChange={(e: any) => setEditWeekendRule(e.target.value)}
                             options={[
-                                { label: 'Planning', value: 'Planning' },
-                                { label: 'Upcoming', value: 'Upcoming' },
-                                { label: 'Past', value: 'Past' },
-                                { label: 'Cancelled', value: 'Cancelled' }
+                                { label: 'Standard', value: 'none' },
+                                { label: 'Move to Monday', value: 'monday' },
+                                { label: 'Day in lieu', value: 'lieu' }
                             ]}
                         />
                     </div>
 
+                    {user.role === 'Admin' && (
+                        <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
+                            <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">Leave allowance</span>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Input label="Annual days" type="number" min={0} value={editLeaveBalance} onChange={e => setEditLeaveBalance(parseInt(e.target.value) || 0)} />
+                                <Input label="Days taken" type="number" min={0} value={editTakenLeave} onChange={e => setEditTakenLeave(parseInt(e.target.value) || 0)} />
+                            </div>
+                        </div>
+                    )}
+
+                    {profileError && (
+                        <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400">{profileError}</p>
+                    )}
+
                     <div className="flex gap-3 pt-4 border-t border-black/5 dark:border-white/5 shrink-0 justify-end">
-                        <Button variant="secondary" onClick={() => setIsEditingTrip(false)}>Cancel</Button>
-                        <Button 
-                            variant="primary" 
-                            disabled={!editTripName.trim() || !editTripLocation.trim()}
-                            onClick={handleSaveTrip}
-                            isLoading={saveLoading}
-                        >
-                            Save Expedition
+                        <Button variant="secondary" onClick={() => setIsEditing(false)}>Cancel</Button>
+                        <Button variant="primary" disabled={!editName.trim()} onClick={handleSaveProfile} isLoading={saveLoading}>
+                            Save changes
                         </Button>
                     </div>
                 </div>
             </Modal>
 
-            {/* MODAL: EXTRAPOLATED TRIPS DELETION CONFIRMATION */}
-            <Modal 
-                isOpen={isDeletingTripConfirm} 
-                onClose={() => setIsDeletingTripConfirm(false)} 
-                title="Delete Expedition"
-                subtitle="Permanent Archive"
+            {/* MODAL: EDIT TRIP */}
+            <Modal
+                isOpen={isEditingTrip}
+                onClose={() => setIsEditingTrip(false)}
+                title="Edit Trip"
+                subtitle={editingTrip?.name}
+                icon="map"
+            >
+                <div className="space-y-5 text-left font-sans">
+                    <Input
+                        label="Trip name"
+                        placeholder="e.g. Summer Vacation"
+                        value={editTripName}
+                        onChange={e => setEditTripName(e.target.value)}
+                        className="h-14 !text-xl font-bold"
+                        autoFocus
+                    />
+                    <Input label="Location" placeholder="e.g. Paris, France" value={editTripLocation} onChange={e => setEditTripLocation(e.target.value)} />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <DatePicker label="Start date" value={editTripStartDate} onChange={setEditTripStartDate} />
+                        <DatePicker label="End date" value={editTripEndDate} onChange={setEditTripEndDate} minDate={editTripStartDate || undefined} />
+                    </div>
+                    <Select
+                        label="Status"
+                        value={editTripStatus}
+                        onChange={(e: any) => setEditTripStatus(e.target.value)}
+                        options={[
+                            { label: 'Planning', value: 'Planning' },
+                            { label: 'Upcoming', value: 'Upcoming' },
+                            { label: 'Past', value: 'Past' },
+                            { label: 'Cancelled', value: 'Cancelled' }
+                        ]}
+                    />
+                    <div className="flex gap-3 pt-4 border-t border-black/5 dark:border-white/5 shrink-0 justify-end">
+                        <Button variant="secondary" onClick={() => setIsEditingTrip(false)}>Cancel</Button>
+                        <Button
+                            variant="primary"
+                            disabled={!editTripName.trim() || !editTripLocation.trim()}
+                            onClick={handleSaveTrip}
+                            isLoading={saveLoading}
+                        >
+                            Save trip
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* MODAL: DELETE TRIP */}
+            <Modal
+                isOpen={isDeletingTripConfirm}
+                onClose={() => setIsDeletingTripConfirm(false)}
+                title="Delete Trip"
+                subtitle="This can't be undone"
                 icon="delete_forever"
                 maxWidth="max-w-md"
             >
-                <div className="space-y-6 text-left font-sans">
-                    <div className="p-5 rounded-3xl bg-rose-500/10 border border-rose-500/20">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 mb-2">
-                            Aviation Archive Warning
-                        </h4>
-                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed font-medium">
-                            You are about to delete this expedition and permanently unregister all linked travel parameters from this user profile. Standard metrics like accrued overnights and flight logs associated with this schedule will be adjusted.
-                        </p>
-                    </div>
-
-                    <p className="text-xs font-bold text-light-text dark:text-dark-text">
-                        Are you sure you want to delete this trip forever? This action cannot be undone.
+                <div className="space-y-5 text-left font-sans">
+                    <p className="text-sm font-medium text-light-text dark:text-dark-text">
+                        Delete this trip and its linked flights and stays for everyone on it?
                     </p>
-
                     <div className="flex gap-3 pt-4 border-t border-black/5 dark:border-white/5 shrink-0 justify-end">
                         <Button variant="secondary" onClick={() => setIsDeletingTripConfirm(false)}>Cancel</Button>
-                        <Button
-                            variant="danger"
-                            onClick={handleConfirmDeleteTrip}
-                            isLoading={saveLoading}
-                        >
-                            Confirm Delete
-                        </Button>
+                        <Button variant="danger" onClick={handleConfirmDeleteTrip} isLoading={saveLoading}>Delete trip</Button>
                     </div>
                 </div>
             </Modal>
