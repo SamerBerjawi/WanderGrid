@@ -36,9 +36,9 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 ```
 - `npm start` is in the README but **does not exist**. Use `npm run dev`.
 - The backend defaults to `PORT=3000`, and that clashes with Vite. Set `PORT=3001` locally so the Vite proxy reaches it. I verified that it boots and that `/api/health` responds. Running it against a live Postgres was **not verified** because no Postgres or Docker was available.
-- Without a backend, run `VITE_LOCAL_MODE=true npm run dev`: the data layer then uses localStorage only (a "Local mode" badge is shown). Without that flag, dev talks to the API like production.
+- `npm run dev` runs in local mode by default (`.env.development` sets `VITE_LOCAL_MODE=true`): the data layer uses localStorage only and shows a "Local mode" badge, so no backend or Postgres is needed. To develop against the API, put `VITE_LOCAL_MODE=false` in `.env.development.local` (git-ignored) and run the backend on `PORT=3001`.
 - **There is no seed script.** The schema is created at startup by `initDb()` in `server.js` (`CREATE TABLE IF NOT EXISTS`, retried 10×/3s). `backend_files/schema.sql` mirrors it but nothing executes it. The global airport and carrier tables are populated automatically from external datasets. To get sample data, register a user in the UI or restore a backup JSON in Settings.
-- Frontend: no unit tests. End-to-end: `cd tests/e2e && npm install && npx playwright test` (production build + real server on pg-mem, desktop and mobile projects, ~45 min). CI runs tsc, backend tests and e2e before building the image.
+- Frontend: no unit tests. End-to-end: `cd tests/e2e && npm install && npx playwright test` (production build + real server on pg-mem, desktop and mobile projects, ~45 min). CI runs tsc, the token check and backend tests on every push and PR before building the image; the full e2e suite runs only for `v*` tags and manual runs (Actions tab → Run workflow).
 - A git `pre-commit` hook runs `scripts/bump-version.cjs`, so every commit also bumps `version.ts`/`package.json`.
 
 ## Directory map
@@ -68,7 +68,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 **Data flow**
 - Every collection is a Postgres table of shape `(id TEXT PK, data JSONB)`: users, trips, events, entitlements, configs, flights and visited. `settings` is a key/JSONB table. Generic `getResources/createResource/updateResource/deleteResource` handlers in `server.js` serve `/api/<collection>`, plus `/bulk` upserts for trips, flights and visited.
 - Client: components call `dataService` (in `services/mockDb.ts`). It calls `fetch('/api…')` with a Bearer token, a 10s timeout and exponential retry on network errors and 5xx responses (never for POST, which is not idempotent). After a successful POST/PUT/DELETE it dispatches the `wandergrid_db_updated` window event. `useWanderSync` (5s TTL in-memory cache) listens for that event and refetches.
-- **Dev vs prod persistence:** `dataService` uses the API unless the dev-only `VITE_LOCAL_MODE=true` is set, in which case it uses localStorage for the whole session. It never switches mid-session; API failures surface as errors.
+- **Dev vs prod persistence:** `dataService` uses the API unless the dev-only `VITE_LOCAL_MODE=true` is set (the default under `npm run dev`, via `.env.development`), in which case it uses localStorage for the whole session. Production builds always use the API. It never switches mid-session; API failures surface as errors.
 - Heavy jobs (backup, refresh, global data refresh) return 202 + `jobId`. Clients poll `/api/jobs/status/:jobId` (AGENTS.md §3).
 - Airports and carriers are served from in-memory maps loaded from the `global_airports` and `global_carriers` tables. A weekly `setInterval` refreshes them (`GLOBAL_DATA_REFRESH_MS`). Do not fetch them live per request (AGENTS.md §1).
 - Production: the Dockerfile builds the SPA, copies it to `client_build/`, and Express serves it statically along with the `*` SPA fallback. CI (`.github/workflows/build-and-publish.yml`) pushes the image to GHCR on main, master and `v*` tags.

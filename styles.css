@@ -888,3 +888,27 @@
   :root:not(.dark) .wg-glass-wrapper > .wg-glass-lite { background: rgba(255, 255, 255, 0.96); }
   .dark .wg-glass-wrapper > .wg-glass-lite { background: rgba(28, 28, 30, 0.96); }
 }
+
+/* ==========================================================================
+   Glass dropdown surface: autocomplete lists, select listboxes and filter popovers.
+   Translucent + blurred so it reads as the same material as dialogs (.wg-glass-lite).
+   ========================================================================== */
+.wg-glass-dropdown {
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+:root:not(.dark) .wg-glass-dropdown {
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 18px 40px -8px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.dark .wg-glass-dropdown {
+  background: rgba(30, 34, 40, 0.58);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 18px 40px -8px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .wg-glass-dropdown { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :root:not(.dark) .wg-glass-dropdown { background: rgba(255, 255, 255, 0.97); }
+  .dark .wg-glass-dropdown { background: rgba(28, 28, 30, 0.97); }
+}

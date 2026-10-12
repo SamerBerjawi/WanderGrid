@@ -222,7 +222,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
 // --- Select ---
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
-  options?: { label: string; value: string }[];
+  options?: { label: string; value: string; icon?: ReactNode }[];
   error?: string;
   leftElement?: ReactNode;
   containerClassName?: string;
@@ -593,56 +593,56 @@ export const CategoryBadge: React.FC<{ category?: string; className?: string }> 
     case 'business':
       return (
         <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 shrink-0", className)}>
-          <Storefront className="text-xs shrink-0" weight="bold" />
+          <Storefront className="w-3 h-3 shrink-0" weight="bold" />
           <span>Business</span>
         </span>
       );
     case 'building':
       return (
         <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 shrink-0", className)}>
-          <House className="text-xs shrink-0" weight="bold" />
+          <House className="w-3 h-3 shrink-0" weight="bold" />
           <span>Building</span>
         </span>
       );
     case 'street':
       return (
         <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0", className)}>
-          <RoadHorizon className="text-xs shrink-0" weight="bold" />
+          <RoadHorizon className="w-3 h-3 shrink-0" weight="bold" />
           <span>Street</span>
         </span>
       );
     case 'station':
       return (
         <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0", className)}>
-          <Train className="text-xs shrink-0" weight="bold" />
+          <Train className="w-3 h-3 shrink-0" weight="bold" />
           <span>Station</span>
         </span>
       );
     case 'port':
       return (
         <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 shrink-0", className)}>
-          <Anchor className="text-xs shrink-0" weight="bold" />
+          <Anchor className="w-3 h-3 shrink-0" weight="bold" />
           <span>Port</span>
         </span>
       );
     case 'airport':
       return (
         <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 shrink-0", className)}>
-          <AirplaneTilt className="text-xs shrink-0" weight="bold" />
+          <AirplaneTilt className="w-3 h-3 shrink-0" weight="bold" />
           <span>Airport</span>
         </span>
       );
     case 'city':
       return (
         <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shrink-0", className)}>
-          <Buildings className="text-xs shrink-0" weight="bold" />
+          <Buildings className="w-3 h-3 shrink-0" weight="bold" />
           <span>City</span>
         </span>
       );
     case 'country':
       return (
         <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 shrink-0", className)}>
-          <Globe className="text-xs shrink-0" weight="bold" />
+          <Globe className="w-3 h-3 shrink-0" weight="bold" />
           <span>Country</span>
         </span>
       );
@@ -652,7 +652,7 @@ export const CategoryBadge: React.FC<{ category?: string; className?: string }> 
     default:
       return (
         <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border border-black/10 dark:border-white/10 shrink-0", className)}>
-          <MapPin className="text-xs shrink-0" weight="bold" />
+          <MapPin className="w-3 h-3 shrink-0" weight="bold" />
           <span>{cat === 'region' ? 'Region' : cat === 'poi' ? 'Point' : 'Area'}</span>
         </span>
       );
@@ -676,6 +676,9 @@ interface AutocompleteProps {
   placeholder?: string;
   className?: string;
 }
+// Suggestion list never gets narrower than this, even under a narrow input.
+const SUGGESTION_MIN_WIDTH = 360;
+
 export const Autocomplete: React.FC<AutocompleteProps> = ({
   label,
   value,
@@ -717,9 +720,11 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     const rect = wrapperRef.current.getBoundingClientRect();
     if (rect.width === 0 && rect.height === 0) return;
 
-    const width = rect.width;
+    // Narrow inputs (e.g. one of three columns in a dialog) still need room for the full name and badge.
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 360;
+    const width = Math.min(Math.max(rect.width, SUGGESTION_MIN_WIDTH), viewportWidth - 24);
     let left = rect.left;
-    left = Math.max(12, Math.min((typeof window !== 'undefined' ? window.innerWidth : 360) - width - 12, left));
+    left = Math.max(12, Math.min(viewportWidth - width - 12, left));
 
     const dropdownHeight = dropdownRef.current?.offsetHeight || 300;
     const spaceBelow = window.innerHeight - rect.bottom;
@@ -886,7 +891,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
             maxWidth: coords.width,
             zIndex: 70, // z-popover
           }}
-          className="z-popover bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-2xl rounded-2xl overflow-hidden max-h-72 sm:max-h-80 overflow-y-auto animate-fade-in p-2 custom-scrollbar flex flex-col gap-1.5 box-border"
+          className="z-popover wg-glass-dropdown shadow-2xl rounded-2xl overflow-hidden max-h-72 sm:max-h-80 overflow-y-auto animate-fade-in p-2 custom-scrollbar flex flex-col gap-1.5 box-border"
         >
           {normalizedItems.map((item, index) => {
             const isSelected = index === activeIndex;
@@ -904,11 +909,11 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
                 title={item.label}
               >
                 <div className="flex flex-col justify-center min-w-0 flex-1 overflow-hidden gap-1">
-                  <span className="text-xs font-bold leading-snug truncate">
+                  <span className="text-xs font-bold leading-snug line-clamp-2 break-words">
                     {item.title}
                   </span>
                   {item.subtitle && (
-                    <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary truncate font-medium leading-normal">
+                    <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary line-clamp-2 break-words font-medium leading-normal">
                       {item.subtitle}
                     </span>
                   )}
