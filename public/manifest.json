@@ -48,12 +48,6 @@
       "type": "image/png",
       "sizes": "180x180",
       "purpose": "any"
-    },
-    {
-      "src": "/icon.svg",
-      "type": "image/svg+xml",
-      "sizes": "any",
-      "purpose": "any"
     }
   ],
   "shortcuts": [
@@ -62,36 +56,60 @@
       "short_name": "Planner",
       "description": "Open Trip Planner and Itineraries",
       "url": "/planner?source=pwa",
-      "icons": [{ "src": "/app-icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/app-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Flights Tracker",
       "short_name": "Flights",
       "description": "View Flights and Airline Coordinates",
       "url": "/flights?source=pwa",
-      "icons": [{ "src": "/app-icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/app-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Travel Atlas",
       "short_name": "Atlas",
       "description": "Explore Global Travel Atlas & Visited Lands",
       "url": "/atlas?source=pwa",
-      "icons": [{ "src": "/app-icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/app-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Vacation Calendar",
       "short_name": "Calendar",
       "description": "View Annual Leave & Vacation Calendar",
       "url": "/calendar?source=pwa",
-      "icons": [{ "src": "/app-icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/app-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Expedition Map",
       "short_name": "Map",
       "description": "View Interactive 3D World Expedition Map",
       "url": "/map?source=pwa",
-      "icons": [{ "src": "/app-icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/app-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }
-

@@ -30,6 +30,7 @@ export interface NewTripDrawerProps {
     onSubmit?: (trip: Trip, unassignedFlightsToRemove?: string[]) => Promise<void>;
     onTripCreated?: (trip: Trip) => void;
     onDelete?: (tripId: string) => Promise<void>;
+    onArchive?: (tripId: string) => Promise<void>;
     users?: User[];
     initialData?: Trip | null;
     initialStatus?: 'Planning' | 'Upcoming' | 'Past';
@@ -55,6 +56,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
     onSubmit,
     onTripCreated,
     onDelete,
+    onArchive,
     users = [],
     initialData = null,
     initialStatus = 'Planning'
@@ -90,7 +92,8 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
     // Submission & Deletion State
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    // Which destructive action is awaiting confirmation (Archive is reversible, Delete is not).
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState<false | 'archive' | 'delete'>(false);
 
     // Refs
     const destWrapperRef = useRef<HTMLDivElement>(null);
@@ -527,6 +530,22 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
             }
             handleClose();
         } catch (err: any) {
+            setErrorMsg(err?.message || 'Failed to delete trip.');
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleArchive = async () => {
+        if (!initialData?.id) return;
+        setIsSubmitting(true);
+        try {
+            if (onArchive) {
+                await onArchive(initialData.id);
+            } else {
+                await dataService.setTripsArchived([initialData.id], true);
+            }
+            handleClose();
+        } catch (err: any) {
             setErrorMsg(err?.message || 'Failed to archive trip.');
             setIsSubmitting(false);
         }
@@ -572,7 +591,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                         isVisible ? 'translate-x-0' : 'translate-x-full'
                     }`}
                 >
-                    <GlassPanel
+                    <GlassPanel liquid
                         className="wg-glass-card w-full h-full flex flex-col shadow-2xl overflow-hidden"
                         padding="0px"
                         overrides={{ borderRadius: 28 }}
@@ -607,9 +626,11 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                     <Trash weight="duotone" className="w-8 h-8" />
                                 </div>
                                 <div className="space-y-2 max-w-sm">
-                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">Archive Journey?</h3>
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">{showDeleteConfirm === 'delete' ? 'Delete Trip?' : 'Archive Trip?'}</h3>
                                     <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
-                                        This will permanently remove <strong>{title || initialData?.name}</strong> and its registered stops, itineraries, and timeline bookings.
+                                        {showDeleteConfirm === 'delete'
+                                            ? <>This will permanently remove <strong>{title || initialData?.name}</strong> and its stops, itinerary and bookings. This can't be undone.</>
+                                            : <><strong>{title || initialData?.name}</strong> will be hidden from the planner. You can restore it any time from "Archived".</>}
                                     </p>
                                 </div>
                                 <div className="flex gap-3 w-full max-w-xs pt-4">
@@ -625,11 +646,11 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                         type="button" 
                                         variant="danger" 
                                         className="flex-1"
-                                        onClick={handleDelete}
+                                        onClick={showDeleteConfirm === 'delete' ? handleDelete : handleArchive}
                                         isLoading={isSubmitting}
                                         icon={<Trash weight="duotone" className="w-4 h-4" />}
                                     >
-                                        Archive
+                                        {showDeleteConfirm === 'delete' ? 'Delete Trip' : 'Archive Trip'}
                                     </GlassButton>
                                 </div>
                             </div>
@@ -860,15 +881,26 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                 {/* Sticky Frosted Footer with Liquid Glass Actions */}
                                 <div className="p-4 sm:p-6 border-t border-black/5 dark:border-white/10 bg-white/30 dark:bg-white/[0.03] backdrop-blur-md flex items-center justify-between gap-3 shrink-0">
                                     {initialData && (onDelete || initialData.id) ? (
-                                        <GlassButton 
-                                            type="button" 
-                                            onClick={() => setShowDeleteConfirm(true)} 
-                                            variant="danger"
-                                            disabled={isSubmitting}
-                                            icon={<Trash weight="duotone" className="w-4 h-4" />}
-                                        >
-                                            Archive
-                                        </GlassButton>
+                                        <div className="flex items-center gap-2">
+                                            <GlassButton 
+                                                type="button" 
+                                                onClick={() => setShowDeleteConfirm('archive')} 
+                                                variant="secondary"
+                                                disabled={isSubmitting}
+                                            >
+                                                Archive
+                                            </GlassButton>
+                                            <GlassButton 
+                                                type="button" 
+                                                onClick={() => setShowDeleteConfirm('delete')} 
+                                                variant="danger"
+                                                disabled={isSubmitting}
+                                                icon={<Trash weight="duotone" className="w-4 h-4" />}
+                                                aria-label="Delete trip"
+                                            >
+                                                Delete
+                                            </GlassButton>
+                                        </div>
                                     ) : (
                                         <GlassButton 
                                             type="button" 

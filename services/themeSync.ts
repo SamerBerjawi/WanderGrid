@@ -48,8 +48,7 @@ export const syncThemeWithBasemap = (basemap: BasemapMode) => {
   // 3. Persist updated theme to workspace settings and notify subscribers
   dataService.getWorkspaceSettings().then((existing) => {
     if (existing.theme !== targetTheme) {
-      const updated = { ...existing, theme: targetTheme };
-      dataService.updateWorkspaceSettings(updated);
+      return dataService.updateWorkspaceSettings({ theme: targetTheme });
     }
   }).catch(() => {
     window.dispatchEvent(new CustomEvent('wandergrid_settings_updated', { detail: { theme: targetTheme } }));

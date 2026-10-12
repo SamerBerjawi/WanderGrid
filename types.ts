@@ -3,7 +3,9 @@ export interface User {
   id: string;
   name: string;
   email?: string; // New: Auth identifier
-  password?: string; // New: Mock password
+  password?: string; // Write-only: sent when setting a password, never returned by the API
+  passwordResetRequired?: boolean; // Set by the API when the account has no usable password
+  version?: number; // Server-managed edit counter for conflict detection
   role: 'Admin' | 'Partner' | 'Child';
   leaveBalance: number; // in days
   takenLeave: number;
@@ -193,6 +195,8 @@ export interface PackingItem {
 export interface Trip {
   id: string;
   name: string;
+  archived?: boolean; // Hidden from planning boards until restored (Archive is not Delete)
+  version?: number; // Server-managed edit counter for conflict detection
   originalName?: string;
   subtitle?: string;
   description?: string;
@@ -316,6 +320,8 @@ export interface WorkspaceSettings {
     defaultLandTransportMethod?: 'Train' | 'Bus' | 'Car Rental' | 'Personal Car';
     defaultBasemapLight?: 'liberty' | 'bright' | 'positron' | 'satellite' | 'snow' | 'vibrant' | 'ocean';
     defaultBasemapDark?: 'citylights' | 'ocean' | 'satellite' | 'onyx';
+    allowSelfRegistration?: boolean; // Public "Sign Up" after the first admin exists (default true)
+    configuredKeys?: Partial<Record<'googleGeminiApiKey' | 'aviationStackApiKey' | 'aeroDataBoxApiKey' | 'openAipApiKey', boolean>>; // Read-only, from the server
 }
 
 export enum ViewState {
@@ -323,15 +329,11 @@ export enum ViewState {
   SETTINGS = 'settings',
   USER_DETAIL = 'user_detail',
   PLANNER = 'planner',
-  PLANNER_2 = 'planner_2',
   TRIP_DETAIL = 'trip_detail',
-  TRIP_DETAIL_2 = 'trip_detail_2',
   MAP = 'map',
   GAMIFICATION = 'gamification',
   FLIGHTS = 'flights',
-  FLIGHTS_2 = 'flights_2',
   ROADTRIPS = 'roadtrips',
-  ROADTRIPS_2 = 'roadtrips_2',
   TRAVEL_ATLAS = 'travel_atlas',
   VACATION_CALENDAR = 'vacation_calendar'
 }

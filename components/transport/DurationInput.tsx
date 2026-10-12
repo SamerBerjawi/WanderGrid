@@ -45,7 +45,7 @@ export const DurationInput: React.FC<DurationInputProps> = ({
                             onChange(val * 60 + mins);
                         }}
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">h</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500 dark:text-gray-400">h</span>
                 </div>
                 <div className="relative flex-1">
                     <input 
@@ -59,7 +59,7 @@ export const DurationInput: React.FC<DurationInputProps> = ({
                             onChange(hours * 60 + val);
                         }}
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">m</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500 dark:text-gray-400">m</span>
                 </div>
             </div>
         </div>

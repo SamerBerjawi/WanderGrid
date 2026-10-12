@@ -409,12 +409,13 @@ interface CachedCarrier {
   name: string;
 }
 
+// True when the workspace has an AviationStack key (the value itself stays on the server).
 function getAviationStackApiKey(): string {
   try {
     const s = localStorage.getItem('wandergrid_settings');
     if (s) {
       const parsed = JSON.parse(s);
-      return parsed.aviationStackApiKey || '';
+      return parsed.configuredKeys?.aviationStackApiKey || parsed.aviationStackApiKey ? 'configured' : '';
     }
   } catch (e) {}
   return '';
@@ -502,13 +503,8 @@ async function triggerBackgroundAirportFetch(code: string) {
     const apiKey = getAviationStackApiKey();
     if (apiKey) {
       try {
-        let extRes: Response;
-        const isMockMode = localStorage.getItem('wandergrid_api_status') === 'unavailable';
-        if (isMockMode) {
-          extRes = await fetch(`https://api.aviationstack.com/v1/airports?access_key=${apiKey}&iata_code=${code}`);
-        } else {
-          extRes = await fetchWithAuth(`/api/proxy/airports?access_key=${apiKey}&iata_code=${code}`);
-        }
+        // The server injects the workspace's AviationStack key; it never travels from the browser.
+        const extRes = await fetchWithAuth(`/api/proxy/airports?iata_code=${encodeURIComponent(code)}`);
         if (extRes.ok) {
           const json = await extRes.json();
           if (json && json.data && Array.isArray(json.data) && json.data.length > 0) {
@@ -624,13 +620,8 @@ async function triggerBackgroundCarrierFetch(code: string) {
     const apiKey = getAviationStackApiKey();
     if (apiKey) {
       try {
-        let extRes: Response;
-        const isMockMode = localStorage.getItem('wandergrid_api_status') === 'unavailable';
-        if (isMockMode) {
-          extRes = await fetch(`https://api.aviationstack.com/v1/airlines?access_key=${apiKey}&iata_code=${code}`);
-        } else {
-          extRes = await fetchWithAuth(`/api/proxy/airlines?access_key=${apiKey}&iata_code=${code}`);
-        }
+        // The server injects the workspace's AviationStack key; it never travels from the browser.
+        const extRes = await fetchWithAuth(`/api/proxy/airlines?iata_code=${encodeURIComponent(code)}`);
         if (extRes.ok) {
           const json = await extRes.json();
           if (json && json.data && Array.isArray(json.data) && json.data.length > 0) {
@@ -1017,8 +1008,8 @@ export function getFlightStatusTags(flight: Transport) {
   if (isCanceled) {
     return {
       label: 'CANCELED' as const,
-      bgClass: 'bg-red-950/40 text-rose-450 border border-red-900/40 hover:bg-red-900/30 font-black',
-      textClass: 'text-red-650 dark:text-red-400',
+      bgClass: 'bg-red-950/40 text-rose-400 border border-red-900/40 hover:bg-red-900/30 font-black',
+      textClass: 'text-red-600 dark:text-red-400',
       dotClass: 'bg-red-600',
       depScheduledDate,
       depScheduledTime,
@@ -1035,7 +1026,7 @@ export function getFlightStatusTags(flight: Transport) {
   if (!hasActual) {
     return {
       label: 'SCHEDULED' as const,
-      bgClass: 'bg-zinc-150 text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700/50 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50',
+      bgClass: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700/50 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50',
       textClass: 'text-zinc-500 dark:text-zinc-400 font-extrabold',
       dotClass: 'bg-zinc-400 dark:bg-zinc-500',
       depScheduledDate,

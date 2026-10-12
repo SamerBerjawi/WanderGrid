@@ -58,20 +58,6 @@ export const PAGE_THEMES: Record<ViewState, PageThemeConfig> = {
     activeSidebarLight: 'bg-gradient-to-r from-emerald-500/15 to-teal-500/10 text-emerald-950 border border-emerald-500/30 shadow-[0_0_15px_-3px_rgba(16,185,129,0.2)]',
     indicator: 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]'
   },
-  [ViewState.PLANNER_2]: {
-    id: ViewState.PLANNER_2,
-    title: 'Planner-2',
-    color: 'text-teal-500 dark:text-teal-400',
-    accentHex: '#14b8a6',
-    glowGradients: {
-      primary: '#14b8a6',
-      secondary: '#06b6d4',
-      tertiary: '#10b981'
-    },
-    activeSidebarDark: 'bg-gradient-to-r from-teal-500/20 to-cyan-500/15 text-white border border-teal-400/30 shadow-[0_0_15px_-3px_rgba(20,184,166,0.25)]',
-    activeSidebarLight: 'bg-gradient-to-r from-teal-500/15 to-cyan-500/10 text-teal-950 border border-teal-500/30 shadow-[0_0_15px_-3px_rgba(20,184,166,0.2)]',
-    indicator: 'bg-teal-400 shadow-[0_0_8px_rgba(20,184,166,0.8)]'
-  },
   [ViewState.VACATION_CALENDAR]: {
     id: ViewState.VACATION_CALENDAR,
     title: 'Vacation Calendar',
@@ -114,37 +100,9 @@ export const PAGE_THEMES: Record<ViewState, PageThemeConfig> = {
     activeSidebarLight: 'bg-gradient-to-r from-cyan-500/15 to-sky-500/10 text-cyan-950 border border-cyan-500/30 shadow-[0_0_15px_-3px_rgba(6,182,212,0.2)]',
     indicator: 'bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]'
   },
-  [ViewState.FLIGHTS_2]: {
-    id: ViewState.FLIGHTS_2,
-    title: 'Flights-2',
-    color: 'text-cyan-500 dark:text-cyan-400',
-    accentHex: '#06b6d4',
-    glowGradients: {
-      primary: '#06b6d4',
-      secondary: '#0284c7',
-      tertiary: '#38bdf8'
-    },
-    activeSidebarDark: 'bg-gradient-to-r from-cyan-500/20 to-sky-500/15 text-white border border-cyan-400/30 shadow-[0_0_15px_-3px_rgba(6,182,212,0.25)]',
-    activeSidebarLight: 'bg-gradient-to-r from-cyan-500/15 to-sky-500/10 text-cyan-950 border border-cyan-500/30 shadow-[0_0_15px_-3px_rgba(6,182,212,0.2)]',
-    indicator: 'bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]'
-  },
   [ViewState.ROADTRIPS]: {
     id: ViewState.ROADTRIPS,
     title: 'Road Trips',
-    color: 'text-violet-500 dark:text-violet-400',
-    accentHex: '#8b5cf6',
-    glowGradients: {
-      primary: '#8b5cf6',
-      secondary: '#a855f7',
-      tertiary: '#d946ef'
-    },
-    activeSidebarDark: 'bg-gradient-to-r from-violet-500/20 to-fuchsia-500/15 text-white border border-violet-400/30 shadow-[0_0_15px_-3px_rgba(139,92,246,0.25)]',
-    activeSidebarLight: 'bg-gradient-to-r from-violet-500/15 to-fuchsia-500/10 text-violet-950 border border-violet-500/30 shadow-[0_0_15px_-3px_rgba(139,92,246,0.2)]',
-    indicator: 'bg-violet-400 shadow-[0_0_8px_rgba(139,92,246,0.8)]'
-  },
-  [ViewState.ROADTRIPS_2]: {
-    id: ViewState.ROADTRIPS_2,
-    title: 'Road Trips-2',
     color: 'text-violet-500 dark:text-violet-400',
     accentHex: '#8b5cf6',
     glowGradients: {
@@ -187,20 +145,6 @@ export const PAGE_THEMES: Record<ViewState, PageThemeConfig> = {
   [ViewState.TRIP_DETAIL]: {
     id: ViewState.TRIP_DETAIL,
     title: 'Trip Itinerary',
-    color: 'text-amber-500 dark:text-amber-400',
-    accentHex: '#f59e0b',
-    glowGradients: {
-      primary: '#f59e0b',
-      secondary: '#10b981',
-      tertiary: '#0ea5e9'
-    },
-    activeSidebarDark: 'bg-gradient-to-r from-amber-500/20 to-emerald-500/15 text-white border border-amber-400/30 shadow-[0_0_15px_-3px_rgba(245,158,11,0.25)]',
-    activeSidebarLight: 'bg-gradient-to-r from-amber-500/15 to-emerald-500/10 text-amber-950 border border-amber-500/30 shadow-[0_0_15px_-3px_rgba(245,158,11,0.2)]',
-    indicator: 'bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]'
-  },
-  [ViewState.TRIP_DETAIL_2]: {
-    id: ViewState.TRIP_DETAIL_2,
-    title: 'Trip Itinerary V2',
     color: 'text-amber-500 dark:text-amber-400',
     accentHex: '#f59e0b',
     glowGradients: {

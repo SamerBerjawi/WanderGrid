@@ -1,4 +1,7 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { confirmDialog } from '../services/confirm';
+import { affectsCollections } from '../hooks/useWanderSync';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import { createPortal } from 'react-dom';
 import { ViewState, VisitedItem, Trip, CountryResidenceStatus, getResidenceStatuses, toggleCountryResidenceStatus } from '../types';
 import { dataService } from '../services/mockDb';
@@ -33,6 +36,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
   // Modal / Form state for Add/Edit Country/City
   const [isModalOpen, setIsModalOpen] = useState(false);
+  useEscapeKey(isModalOpen, useCallback(() => setIsModalOpen(false), []));
   const [modalType, setModalType] = useState<'country' | 'city'>('country');
   const [editingItem, setEditingItem] = useState<VisitedItem | null>(null);
 
@@ -83,8 +87,8 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
   // Sync / Listen for updates
   useEffect(() => {
-    const handleUpdate = () => {
-      void loadData();
+    const handleUpdate = (e: Event) => {
+      if (affectsCollections(e, ['visited', 'trips', 'flights'])) void loadData();
     };
     window.addEventListener('wandergrid_db_updated', handleUpdate);
     return () => {
@@ -526,7 +530,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
   // Delete visited item
   const handleDeleteItem = async (id: string) => {
-    if (!window.confirm("Are you sure you want to remove this item from your Atlas? This will update your maps and statistics dynamically.")) return;
+    if (!(await confirmDialog({ title: 'Remove from Atlas?', message: 'Remove this item from your Atlas? Your maps and statistics update straight away.', confirmLabel: 'Remove', danger: true }))) return;
     try {
       await dataService.deleteVisited(id);
       void loadData();
@@ -885,9 +889,9 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
       ) : null}
 
       {/* Main Tabs Navigation (Liquid Glass Pill) */}
-      <div className="flex justify-center w-full my-2">
+      <div className="flex justify-center w-full my-2 min-w-0">
         <GlassPanel
-          className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
+          className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 max-w-full min-w-0"
           padding="4px 6px"
           overrides={{ borderRadius: 9999 }}
         >
@@ -895,7 +899,8 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
           <button 
             type="button"
             onClick={() => setActiveTab('visited')}
-            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
+            aria-label="Visited"
+            className={`relative px-3 sm:px-4 py-2 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer z-raised shrink-0 ${
               activeTab === 'visited'
                 ? 'text-primary-600 dark:text-primary-400 font-extrabold'
                 : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
@@ -918,7 +923,8 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
           <button 
             type="button"
             onClick={() => setActiveTab('layovers')}
-            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
+            aria-label="Layovers"
+            className={`relative px-3 sm:px-4 py-2 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer z-raised shrink-0 ${
               activeTab === 'layovers'
                 ? 'text-amber-600 dark:text-amber-400 font-extrabold'
                 : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
@@ -941,7 +947,8 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
           <button 
             type="button"
             onClick={() => setActiveTab('wishlist')}
-            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
+            aria-label="Wishlist"
+            className={`relative px-3 sm:px-4 py-2 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer z-raised shrink-0 ${
               activeTab === 'wishlist'
                 ? 'text-rose-600 dark:text-rose-400 font-extrabold'
                 : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
@@ -964,7 +971,8 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
           <button 
             type="button"
             onClick={() => setActiveTab('cities')}
-            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
+            aria-label="Cities"
+            className={`relative px-3 sm:px-4 py-2 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer z-raised shrink-0 ${
               activeTab === 'cities'
                 ? 'text-blue-600 dark:text-blue-400 font-extrabold'
                 : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
@@ -987,7 +995,8 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
           <button 
             type="button"
             onClick={() => setActiveTab('sync')}
-            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
+            aria-label="Sync Scanner"
+            className={`relative px-3 sm:px-4 py-2 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer z-raised shrink-0 ${
               activeTab === 'sync'
                 ? 'text-primary-600 dark:text-primary-400 font-extrabold'
                 : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
@@ -1036,6 +1045,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
           <div className="md:col-span-4 select-none">
             <Select 
+              aria-label="Filter by region"
               id="region-filter"
               value={regionFilter}
               onChange={(e) => setRegionFilter(e.target.value)}
@@ -1048,7 +1058,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
       {/* Main Tab Content */}
       <div className="min-h-[300px]">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 text-gray-400">
+          <div className="flex flex-col items-center justify-center py-24 text-gray-500 dark:text-gray-400">
             <RefreshCw className="w-10 h-10 animate-spin text-indigo-500 mb-3" />
             <span className="text-xs font-bold uppercase tracking-wider">Syncing Atlas Registry...</span>
           </div>
@@ -1065,7 +1075,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
               >
                 {filteredVisitedCountries.length === 0 ? (
-                  <div className="col-span-full py-16 text-center text-gray-400 bg-white/40 dark:bg-zinc-900/20 border border-dashed border-gray-200 dark:border-white/5 rounded-3xl">
+                  <div className="col-span-full py-16 text-center text-gray-500 dark:text-gray-400 bg-white/40 dark:bg-zinc-900/20 border border-dashed border-gray-200 dark:border-white/5 rounded-3xl">
                     <Globe className="w-10 h-10 mx-auto text-gray-300 dark:text-zinc-700 mb-2" />
                     <p className="text-sm font-bold">No visited countries resolved yet</p>
                     <p className="text-xs text-gray-500 mt-1">Try to Scan history from top right, or manually register your first visited country.</p>
@@ -1193,7 +1203,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
               >
                 {filteredLayoverCountries.length === 0 ? (
-                  <div className="col-span-full py-16 text-center text-gray-400 bg-white/40 dark:bg-zinc-900/20 border border-dashed border-amber-500/20 dark:border-amber-500/10 rounded-3xl">
+                  <div className="col-span-full py-16 text-center text-gray-500 dark:text-gray-400 bg-white/40 dark:bg-zinc-900/20 border border-dashed border-amber-500/20 dark:border-amber-500/10 rounded-3xl">
                     <Plane className="w-10 h-10 mx-auto text-amber-400 dark:text-amber-500/40 mb-2 rotate-45" />
                     <p className="text-sm font-bold text-light-text dark:text-dark-text">No Layover Countries Catalogued</p>
                     <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1 max-w-sm mx-auto">
@@ -1303,7 +1313,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
               >
                 {wishlistCountriesList.length === 0 ? (
-                  <div className="col-span-full py-16 text-center text-gray-400 bg-white/40 dark:bg-zinc-900/20 border border-dashed border-rose-500/20 dark:border-rose-500/10 rounded-3xl">
+                  <div className="col-span-full py-16 text-center text-gray-500 dark:text-gray-400 bg-white/40 dark:bg-zinc-900/20 border border-dashed border-rose-500/20 dark:border-rose-500/10 rounded-3xl">
                     <Star className="w-10 h-10 mx-auto text-rose-400 dark:text-rose-500/40 mb-2" />
                     <p className="text-sm font-bold text-light-text dark:text-dark-text">No Wishlist Destinations Added</p>
                     <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1 max-w-sm mx-auto">
@@ -1488,7 +1498,9 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                   {/* Controls / Info */}
                   <div className="lg:col-span-4 space-y-6">
-                    <Card className="!bg-gradient-to-b from-indigo-500//5 to-blue-500/5 border border-indigo-500/10 !rounded-3xl">
+                    {/* CSS glass (not liquid-glass Card): the measured glass wrapper mis-sized these on phones and the
+                        text spilled over the Register button (decision C-1: liquid glass for hero surfaces only). */}
+                    <div className="bg-white/70 dark:bg-white/[0.08] backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-glass-light-card dark:shadow-glass-card rounded-3xl p-5">
                       <h3 className="font-black text-lg tracking-tight mb-2">Automated Scanner</h3>
                       <p className="text-xs text-gray-500 leading-relaxed mb-4">
                         WanderGrid scans all historical details across flight paths and georoute itineraries to extract visited territory candidates.
@@ -1522,9 +1534,9 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                           </>
                         )}
                       </Button>
-                    </Card>
+                    </div>
 
-                    <Card className="!rounded-3xl border border-gray-100 dark:border-white/5">
+                    <div className="bg-white/70 dark:bg-white/[0.08] backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-glass-light-card dark:shadow-glass-card rounded-3xl p-5">
                       <div className="flex items-start gap-2.5">
                         <Info className="w-5 h-5 text-indigo-500 shrink-0" />
                         <div className="text-xs leading-relaxed text-gray-500">
@@ -1532,7 +1544,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                           When layovers are discovered, WanderGrid marks them as transits so your map does not highlight countries you did not actively explore. Uncheck anything you want to omit before importing.
                         </div>
                       </div>
-                    </Card>
+                    </div>
                   </div>
 
                   {/* Scanned Candidates results */}
@@ -1696,9 +1708,12 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
       </div>
 
       {/* Unified Register Visited Country / City Add & Edit Slide Tray Dialog */}
-      <AnimatePresence>
-        {isModalOpen && createPortal(
-          <div className="fixed inset-0 z-modal flex items-center justify-center p-4 font-sans">
+      {/* AnimatePresence must live inside the portal: it drops children that aren't React elements, and a portal isn't one.
+          The overlay scrolls: on phones the form is taller than the screen. */}
+      {createPortal(
+        <AnimatePresence>
+        {isModalOpen && (
+          <div role="dialog" aria-modal="true" aria-label={editingItem ? 'Edit atlas record' : 'Add to atlas'} className="fixed inset-0 z-modal flex items-start sm:items-center justify-center p-4 font-sans overflow-y-auto">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1710,7 +1725,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg z-10"
+              className="w-full max-w-lg z-raised"
             >
               <GlassPanel
                 className="wg-glass-card w-full shadow-2xl overflow-hidden"
@@ -1992,10 +2007,11 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                 </div>
               </GlassPanel>
             </motion.div>
-          </div>,
-          document.body
+          </div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
 
     </div>
   );

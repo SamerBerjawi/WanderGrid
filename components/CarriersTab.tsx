@@ -447,7 +447,7 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                         type="button"
                                         onClick={() => setViewMode('cards')}
                                         className={`min-h-[36px] px-3 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${viewMode === 'cards'
-                                                ? 'bg-white dark:bg-dark-card text-primary-500 shadow-xs'
+                                                ? 'bg-white dark:bg-dark-card text-primary-800 dark:text-primary-400 shadow-xs'
                                                 : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text'
                                             }`}
                                         aria-label="Grid view"
@@ -459,7 +459,7 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                         type="button"
                                         onClick={() => setViewMode('table')}
                                         className={`min-h-[36px] px-3 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${viewMode === 'table'
-                                                ? 'bg-white dark:bg-dark-card text-primary-500 shadow-xs'
+                                                ? 'bg-white dark:bg-dark-card text-primary-800 dark:text-primary-400 shadow-xs'
                                                 : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text'
                                             }`}
                                         aria-label="Table view"
@@ -569,7 +569,7 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                 /* Dense Desktop Table View */
                                 <div className="bg-white/40 dark:bg-dark-card/40 border border-black/5 dark:border-white/5 rounded-2xl overflow-y-auto overflow-x-auto custom-scrollbar">
                                     <table className="w-full text-left border-collapse min-w-[540px]">
-                                        <thead className="sticky top-0 z-10 bg-light-fill/90 dark:bg-dark-fill/90 backdrop-blur-md">
+                                        <thead className="sticky top-0 z-raised bg-light-fill/90 dark:bg-dark-fill/90 backdrop-blur-md">
                                             <tr className="border-b border-black/5 dark:border-white/5 text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
                                                 <th className="py-3.5 pl-4 w-[68px]">Logo</th>
                                                 <th className="py-3.5 px-3">Carrier Name</th>

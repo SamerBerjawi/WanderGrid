@@ -195,7 +195,7 @@ export const AchievementMilestones: React.FC<AchievementMilestonesProps> = ({
                 <div className="absolute right-0 top-0 w-24 h-24 bg-primary-500/5 dark:bg-primary-400/5 rounded-full blur-2xl pointer-events-none -translate-y-1/2 translate-x-1/3" />
               )}
 
-              <div className="flex gap-3 justify-between items-start relative z-10 w-full">
+              <div className="flex gap-3 justify-between items-start relative z-raised w-full">
                 <div className="flex gap-2.5 sm:gap-3 min-w-0">
                   <div
                     className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
@@ -223,8 +223,8 @@ export const AchievementMilestones: React.FC<AchievementMilestonesProps> = ({
                 />
               </div>
 
-              <div className="space-y-1.5 relative z-10">
-                <div className="flex justify-between items-end text-3xs sm:text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary">
+              <div className="space-y-1.5 relative z-raised">
+                <div className="flex justify-between items-end text-2xs sm:text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary">
                   <span className="uppercase">
                     {isUnlocked ? 'Unlocked' : 'In Progress'}
                   </span>

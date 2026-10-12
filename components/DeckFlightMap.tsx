@@ -40,8 +40,8 @@ try {
             : 'unavailable';
         if (rtlStatus === 'unavailable') {
             const pluginUrl = typeof window !== 'undefined' && window.location?.origin
-                ? `${window.location.origin}/vendor/mapbox-gl-rtl-text.min.js`
-                : '/vendor/mapbox-gl-rtl-text.min.js';
+                ? `${window.location.origin}/vendor/mapbox-gl-rtl-text.mjs`
+                : '/vendor/mapbox-gl-rtl-text.mjs'; // .mjs => loaded via import(), no eval (CSP)
             (maplibregl as any).setRTLTextPlugin(pluginUrl, false);
         }
     }
@@ -101,6 +101,16 @@ import { MAP_SETTINGS_LABELS } from './mapSettings/labels';
 
 // --- Country Matching Helper for Scratch Map & Overlays ---
 let geoJsonMemoryCache: any = null;
+
+// OpenAIP tiles come through our authenticated proxy, which adds the workspace key server-side.
+const OPENAIP_PROXY_TILES = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/proxy/openaip/{z}/{x}/{y}`;
+const withApiAuth = (url: string) => {
+    if (typeof window !== 'undefined' && url.startsWith(`${window.location.origin}/api/`)) {
+        const token = localStorage.getItem('wandergrid_session_token');
+        if (token) return { url, headers: { Authorization: `Bearer ${token}` } };
+    }
+    return { url };
+};
 
 const isCountryVisited = (f: any, visitedList: string[]): boolean => {
     if (!visitedList || visitedList.length === 0) return false;
@@ -461,7 +471,7 @@ export const createMapLibreStyle = (
     if (canEnableOpenAip) {
         sources[OPENAIP_AIRSPACE_SOURCE_ID] = {
             type: 'vector',
-            tiles: [`https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.pbf?apiKey=${encodeURIComponent(sanitizedOpenAipKey)}`],
+            tiles: [OPENAIP_PROXY_TILES],
             minzoom: 0,
             maxzoom: 14,
             attribution: '<a href="https://www.openaip.net" target="_blank" rel="noopener noreferrer">openAIP</a>'
@@ -685,7 +695,7 @@ const syncOpenAipOverlayOnMap = (
         try {
             map.addSource(OPENAIP_AIRSPACE_SOURCE_ID, {
                 type: 'vector',
-                tiles: [`https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.pbf?apiKey=${encodeURIComponent(sanitizedKey)}`],
+                tiles: [OPENAIP_PROXY_TILES],
                 minzoom: 0,
                 maxzoom: 14,
                 attribution: '<a href="https://www.openaip.net" target="_blank" rel="noopener noreferrer">openAIP</a>'
@@ -801,7 +811,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     const { data: workspaceSettings } = useWanderSync<WorkspaceSettings>(
         'settings',
         () => dataService.getWorkspaceSettings(),
-        []
+        [],
+        { collections: ['settings'] }
     );
 
     // Synchronous & Reactive CARTO API Key Management
@@ -2538,6 +2549,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
         const map = new maplibregl.Map({
             container: mapContainerRef.current,
+            transformRequest: withApiAuth,
             style,
             center: initialCamera.center,
             zoom: initialCamera.zoom,
@@ -3520,7 +3532,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     };
 
     return (
-        <div className={`relative w-full h-full overflow-hidden select-none ${effectiveProjection === 'globe' ? (isDark ? 'bg-[#010206]' : 'bg-[#f8fafc]') : (isDark ? 'bg-black' : 'bg-white')}`}>
+        <div className={`relative w-full h-full overflow-hidden select-none ${effectiveProjection === 'globe' ? (isDark ? 'bg-[#010206]' : 'bg-light-fill') : (isDark ? 'bg-black' : 'bg-white')}`}>
             {/* Atmospheric & Rotating Celestial Deep Space Canvas */}
             <GlobeAtmosphericBackground
                 map={mapInstance || mapRef.current}
@@ -3531,7 +3543,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             />
 
             {/* MapLibre GL 60 FPS Canvas with Interleaved Deck.gl Engine */}
-            <div ref={mapContainerRef} className="w-full h-full relative z-10 transition-opacity duration-300 ease-out" />
+            <div ref={mapContainerRef} className="w-full h-full relative z-raised transition-opacity duration-300 ease-out" />
 
             {/* P-04a Basemap Fallback Toast (One toast per outage, liquid glass styling) */}
             <AnimatePresence>
@@ -3565,7 +3577,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
             {/* P-04c NASA GIBS Recent Satellite Daily Date Stepper Pill */}
             {FEATURE_FLAGS.GEV_P04C_GIBS_DAILY && activeAppearance.gibsDaily && (
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-auto animate-fade-in">
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-float pointer-events-auto animate-fade-in">
                     <GlassPanel
                         padding="2px"
                         overrides={{ borderRadius: 999 }}
@@ -3627,7 +3639,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
             {/* Top-Right Floating "Mission Control" Quick Config Pill (hidden when delegated to parent view) */}
             {!onOpenMissionControl && (
-                <div className="absolute top-3 right-3 z-20 pointer-events-auto animate-fade-in">
+                <div className="absolute top-3 right-3 z-float pointer-events-auto animate-fade-in">
                     <GlassPanel
                         padding="2px"
                         overrides={{ borderRadius: 999 }}
@@ -3635,7 +3647,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     >
                         <button
                             onClick={() => setIsAppearanceModalOpen(true)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-xs font-bold text-light-text dark:text-dark-text hover:text-primary-500 dark:hover:text-primary-400 transition-colors active:scale-95 rounded-full"
+                            className="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] min-w-[44px] justify-center cursor-pointer text-xs font-bold text-light-text dark:text-dark-text hover:text-primary-500 dark:hover:text-primary-400 transition-colors active:scale-95 rounded-full"
                             title={MAP_SETTINGS_LABELS.panelTitle}
                             aria-label={MAP_SETTINGS_LABELS.panelTitle}
                         >
@@ -3647,7 +3659,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             )}
 
             {/* Zoom & View Navigation Controls with Liquid Glass (Bottom Left) */}
-            <div className={`absolute bottom-3 md:bottom-6 z-20 flex flex-col gap-2 pointer-events-auto transition-all duration-300 ${isEmbedded ? 'left-3' : (sidebarCollapsed ? 'left-3 md:left-28' : 'left-3 md:left-80')}`}>
+            {/* Full-page maps on phones sit under the tab bar and the map's view-mode pill; lift the controls above both (M-30). */}
+            <div className={`absolute ${isEmbedded ? 'bottom-3 md:bottom-6' : 'bottom-[calc(9rem+env(safe-area-inset-bottom,0px))] md:bottom-6'} z-float flex flex-col gap-2 pointer-events-auto transition-all duration-300 ${isEmbedded ? 'left-3' : (sidebarCollapsed ? 'left-3 md:left-28' : 'left-3 md:left-80')}`}>
                 <GlassPanel
                     padding="0px"
                     overrides={{ borderRadius: 20 }}
@@ -3656,35 +3669,35 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     <div className="flex flex-col divide-y divide-black/10 dark:divide-white/10">
                         <button
                             onClick={handleZoomIn}
-                            className="w-10 h-10 flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-lg transition-colors active:scale-95"
+                            className="w-11 h-11 flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-lg transition-colors active:scale-95"
                             title="Zoom In (+)"
                         >
                             +
                         </button>
                         <button
                             onClick={handleZoomOut}
-                            className="w-10 h-10 flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-lg transition-colors active:scale-95"
+                            className="w-11 h-11 flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-lg transition-colors active:scale-95"
                             title="Zoom Out (−)"
                         >
                             −
                         </button>
                         <button
                             onClick={handleReset100}
-                            className="w-10 h-10 flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-xs tracking-tight transition-colors active:scale-95"
+                            className="w-11 h-11 flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-xs tracking-tight transition-colors active:scale-95"
                             title="100% Standard View"
                         >
                             100%
                         </button>
                         <button
                             onClick={handleFitBounds}
-                            className="w-10 h-10 flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition-colors active:scale-95"
+                            className="w-11 h-11 flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition-colors active:scale-95"
                             title="Fit View to All Routes"
                         >
                             <Scan className="w-4 h-4" />
                         </button>
                         <button
                             onClick={() => (onOpenMissionControl ? onOpenMissionControl() : setIsAppearanceModalOpen(true))}
-                            className="w-10 h-10 flex items-center justify-center text-primary-500 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition-colors active:scale-95"
+                            className="w-11 h-11 flex items-center justify-center text-primary-500 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition-colors active:scale-95"
                             title="Mission Control: Basemaps, Flights, Radar & Telemetry Settings"
                             aria-label="Open Mission Control"
                         >
@@ -3693,7 +3706,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         {effectiveProjection === 'globe' && (
                             <button
                                 onClick={handleToggleAtmosphere}
-                                className={`w-10 h-10 flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${activeAppearance.atmosphere !== false
+                                className={`w-11 h-11 flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${activeAppearance.atmosphere !== false
                                         ? 'text-sky-500 dark:text-sky-400 bg-sky-500/10 dark:bg-sky-400/10'
                                         : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10'
                                     }`}
@@ -3708,7 +3721,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             </div>
 
             {/* P-07: Dynamic Data Credits Popover (Bottom Right) */}
-            <div className="absolute bottom-3 right-3 md:bottom-6 md:right-6 z-20 pointer-events-auto">
+            <div className="absolute bottom-3 right-3 md:bottom-6 md:right-6 z-float pointer-events-auto">
                 <DataCreditsPopover
                     currentBasemap={currentLayer}
                     activeAppearance={activeAppearance}
@@ -3717,7 +3730,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
             {/* Top-Center Floating "Back to previous view" Button with Liquid Glass (Positioned just below Tab Selector) */}
             {selectedCorridor && (
-                <div className="absolute top-[74px] left-1/2 -translate-x-1/2 z-30 pointer-events-auto animate-fade-in">
+                <div className="absolute top-[74px] left-1/2 -translate-x-1/2 z-dropdown pointer-events-auto animate-fade-in">
                     <GlassPanel
                         padding="6px 14px"
                         overrides={{ borderRadius: 999 }}
@@ -3737,7 +3750,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             {/* Left Scratch Map Country Inspector & Labeling Card */}
             {selectedCountry && (
                 <div
-                    className={`absolute top-5 z-30 w-80 max-h-[calc(100%-2.5rem)] flex flex-col rounded-3xl bg-white/95 dark:bg-dark-card/95 backdrop-blur-sm border border-black/10 dark:border-white/15 shadow-glass-modal overflow-hidden text-light-text dark:text-dark-text animate-fade-in transition-all duration-300 ${isEmbedded ? 'left-3 max-w-[calc(100%-1.5rem)]' : (sidebarCollapsed ? 'left-5 md:left-28' : 'left-5 md:left-80')}`}
+                    className={`absolute top-5 z-dropdown w-80 max-h-[calc(100%-2.5rem)] flex flex-col rounded-3xl bg-white/95 dark:bg-dark-card/95 backdrop-blur-sm border border-black/10 dark:border-white/15 shadow-glass-modal overflow-hidden text-light-text dark:text-dark-text animate-fade-in transition-all duration-300 ${isEmbedded ? 'left-3 max-w-[calc(100%-1.5rem)]' : (sidebarCollapsed ? 'left-5 md:left-28' : 'left-5 md:left-80')}`}
                     style={{ WebkitBackdropFilter: 'blur(4px)' }}
                 >
                     {(() => {
@@ -3943,7 +3956,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 const summary = getRouteTransportSummary(selectedCorridor);
                 return (
                     <div
-                        className={`absolute top-20 z-30 w-[360px] sm:w-[380px] max-h-[calc(100vh-6rem)] flex flex-col animate-airtrail-slide-in pointer-events-auto transition-all duration-300 ${isEmbedded ? 'left-3 max-w-[calc(100%-1.5rem)]' : (sidebarCollapsed ? 'left-5 md:left-28' : 'left-5 md:left-80')}`}
+                        className={`absolute top-20 z-dropdown w-[360px] sm:w-[380px] max-h-[calc(100vh-6rem)] flex flex-col animate-airtrail-slide-in pointer-events-auto transition-all duration-300 ${isEmbedded ? 'left-3 max-w-[calc(100%-1.5rem)]' : (sidebarCollapsed ? 'left-5 md:left-28' : 'left-5 md:left-80')}`}
                     >
                         <GlassPanel
                             className="wg-glass-card w-full max-h-[calc(100vh-6.5rem)] flex flex-col shadow-2xl relative"
@@ -4136,7 +4149,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                                             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-normal flex items-center gap-2 flex-wrap">
                                                                 <span>{hasCustomProvider ? f.provider : legMode}</span>
                                                                 {hasCustomProvider && (
-                                                                    <span className="px-1.5 py-0.2 rounded text-3xs font-semibold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-gray-400">
+                                                                    <span className="px-1.5 py-0.2 rounded text-2xs font-semibold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-gray-400">
                                                                         {legMode}
                                                                     </span>
                                                                 )}
@@ -4165,7 +4178,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             {/* Interactive Object Hover HUD Tooltip with Liquid Glass */}
             {hoverInfo?.object && !selectedCorridor && !selectedCountry && (
                 <div
-                    className="absolute z-50 transition-all duration-75 pointer-events-auto cursor-pointer"
+                    className="absolute z-modal-backdrop transition-all duration-75 pointer-events-auto cursor-pointer"
                     style={{ left: hoverInfo.x + 12, top: hoverInfo.y + 12 }}
                     onClick={() => {
                         if (hoverInfo.object?.corridorId) {
@@ -4194,7 +4207,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                         <span className="text-xs font-extrabold uppercase tracking-wider text-primary-600 dark:text-primary-400">
                                             Route
                                         </span>
-                                        <span className="px-1.5 py-0.5 rounded-md text-3xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary ml-1">
+                                        <span className="px-1.5 py-0.5 rounded-md text-2xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary ml-1">
                                             {summary.singleActivityLabel}
                                         </span>
                                     </div>

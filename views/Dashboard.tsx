@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
+import { affectsCollections } from '../hooks/useWanderSync';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '../components/ui';
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
@@ -211,8 +212,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   }, []);
 
   useEffect(() => {
-    const handleDbUpdate = () => {
-      refreshData();
+    const handleDbUpdate = (e: Event) => {
+      if (affectsCollections(e, ['trips', 'flights', 'visited', 'users', 'entitlements', 'configs'])) refreshData();
     };
     window.addEventListener('wandergrid_db_updated', handleDbUpdate);
     return () => {
@@ -370,6 +371,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                           }
                           return c;
                       };
+
+                      // Resolve each unknown place once, in parallel (PERF-010); the loop below then reads the cache.
+                      const missing = new Set<string>();
+                      for (const trip of combinedState) {
+                          for (const tr of trip.transports || []) {
+                              if (tr.origin && (!tr.originLat || !tr.originLng)) missing.add(tr.origin);
+                              if (tr.destination && (!tr.destLat || !tr.destLng)) missing.add(tr.destination);
+                          }
+                      }
+                      await mapWithConcurrency(Array.from(missing), resolveCoordsAsync, GEO_CONCURRENCY_LIMIT);
 
                       let updated = false;
                       for (const trip of combinedState) {
@@ -727,42 +738,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         });
         const visitedData = finalized.sort((a, b) => a.name.localeCompare(b.name));
 
-        try {
-            const bulkSeed: any[] = [];
-            finalized.forEach(c => {
-                bulkSeed.push({
-                    id: `country_${c.code}`,
-                    type: 'country',
-                    code: c.code,
-                    name: c.name,
-                    visitDate: c.lastVisit instanceof Date ? c.lastVisit.toISOString().split('T')[0] : String(c.lastVisit),
-                    isTransit: false,
-                    isManual: false,
-                    notes: 'Auto-seeded from travel history'
-                });
-
-                Array.from(c.cities).forEach((city: any) => {
-                    bulkSeed.push({
-                        id: `city_${city.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`,
-                        type: 'city',
-                        code: city,
-                        name: city,
-                        countryCode: c.code,
-                        countryName: c.name,
-                        visitDate: c.lastVisit instanceof Date ? c.lastVisit.toISOString().split('T')[0] : String(c.lastVisit),
-                        isManual: false,
-                        notes: 'Auto-seeded city'
-                    });
-                });
-            });
-
-            if (bulkSeed.length > 0) {
-                void dataService.addVisitedBulk(bulkSeed);
-            }
-            localStorage.setItem('wandergrid_visited_seeded', 'true');
-        } catch (seedErr) {
-            console.error("Auto seeding of central Visited database failed:", seedErr);
-        }
+        // Read-only: stats are derived from trips here. Adding these footprints to the Atlas is an
+        // explicit action there (Travel Atlas › Scan), never a side effect of opening the Dashboard.
 
         setTotalCities(totalC);
         setTotalDistance(totalDistance);
@@ -937,7 +914,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   }
 
   return (
-    <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
+    <div className="relative overflow-x-clip w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
         
         {/* Soft background ambient glow */}
         <div className="absolute top-0 left-1/4 w-[40rem] h-[30rem] bg-gradient-to-tr from-primary-500/[0.04] to-indigo-500/[0.04] dark:from-primary-600/[0.07] dark:to-indigo-500/[0.05] rounded-full blur-[140px] pointer-events-none select-none -z-10" />
@@ -966,6 +943,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     className="shrink-0 min-h-[44px]"
                     onClick={() => setIsFlightTrackerOpen(true)}
                     icon={<AirplaneTakeoff className="w-4 h-4" weight="bold" />}
+                    aria-label="Track Flight"
                 >
                     <span className="hidden xs:inline sm:inline">Track Flight</span>
                     <span className="xs:hidden sm:hidden">Track</span>
@@ -977,7 +955,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         {/* 2. DYNAMIC ISLAND & CONTEXTUAL STATUS STRIP (Mobile First)*/}
         {/* ========================================================= */}
         <GlassPanel className="wg-glass-card rounded-2xl sm:rounded-[28px] overflow-hidden p-3.5 sm:p-5 shadow-xs border border-black/5 dark:border-white/10">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 relative z-10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 relative z-raised">
                 
                 {/* Explorer Profile & Beacon */}
                 <div className="flex items-center gap-3 min-w-0">
@@ -989,7 +967,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-primary-500/10 dark:bg-primary-400/10 text-primary-600 dark:text-primary-400 flex items-center justify-center font-black text-base sm:text-lg border border-primary-500/20 shadow-xs transition-transform group-hover:scale-105">
                             {currentUser?.name ? currentUser.name.charAt(0) : currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : 'E'}
                         </div>
-                        <div className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 rounded-full p-0.5 sm:p-1 border-2 border-white dark:border-[#0c0c0e]">
+                        <div className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 rounded-full p-0.5 sm:p-1 border-2 border-white dark:border-dark-bg">
                             <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping absolute" />
                             <div className="w-1.5 h-1.5 bg-white rounded-full" />
                         </div>
@@ -1000,7 +978,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             <h2 className="text-sm sm:text-base font-bold text-light-text dark:text-dark-text tracking-tight truncate">
                                 Welcome, {currentUser?.name || currentUser?.email?.split('@')[0] || 'Explorer'}
                             </h2>
-                            <span className="px-1.5 py-0.5 rounded-full text-3xs sm:text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 inline-flex items-center gap-1 shrink-0">
+                            <span className="px-1.5 py-0.5 rounded-full text-2xs sm:text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 inline-flex items-center gap-1 shrink-0">
                                 <Shield className="w-2.5 h-2.5 sm:w-3 sm:h-3" weight="duotone" /> Active
                             </span>
                         </div>
@@ -1085,7 +1063,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     padding="0px"
                 >
                     {/* Map Banner Header */}
-                    <div className="p-3.5 sm:p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/10 via-primary-500/5 to-transparent shrink-0 z-10">
+                    <div className="p-3.5 sm:p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/10 via-primary-500/5 to-transparent shrink-0 z-raised">
                         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-primary-500 to-indigo-600 text-white shadow-md shadow-primary-500/20 flex items-center justify-center shrink-0">
                                 <Globe className="w-4 h-4 sm:w-5 sm:h-5" weight="duotone" />
@@ -1104,10 +1082,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                 localStorage.setItem('wandergrid_map_view_mode', nextMode);
                             }}
                             aria-label={mapViewMode === '3d' ? 'Switch to 2D Map' : 'Switch to 3D Globe'}
-                            className="bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/15 px-3 py-1.5 rounded-xl sm:rounded-2xl border border-black/10 dark:border-white/15 flex items-center gap-2 shadow-xs min-h-[40px] cursor-pointer transition-all text-light-text dark:text-dark-text"
+                            className="bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/15 px-3 py-1.5 min-h-[44px] rounded-xl sm:rounded-2xl border border-black/10 dark:border-white/15 flex items-center gap-2 shadow-xs min-h-[40px] cursor-pointer transition-all text-light-text dark:text-dark-text"
                             title={mapViewMode === '3d' ? 'Switch to 2D Map' : 'Switch to 3D Globe'}
                         >
-                            <Planet className={`w-4 h-4 transition-colors ${mapViewMode === '3d' ? 'text-primary-500' : 'text-zinc-400'}`} weight="duotone" />
+                            <Planet className={`w-4 h-4 transition-colors ${mapViewMode === '3d' ? 'text-primary-500' : 'text-zinc-500 dark:text-zinc-400'}`} weight="duotone" />
                             <span className="text-xs font-bold tracking-tight select-none">
                                 {mapViewMode === '3d' ? '3D' : '2D'}
                             </span>
@@ -1153,7 +1131,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     overrides={{ borderRadius: 28 }}
                     padding="0px"
                 >
-                    <div className="p-5 sm:p-6 h-full flex flex-col justify-between relative z-10">
+                    <div className="p-5 sm:p-6 h-full flex flex-col justify-between relative z-raised">
                         {/* Iridescent shimmer overlays */}
                         <div className="absolute -top-10 -right-10 w-36 h-36 bg-gradient-to-br from-primary-500/15 via-indigo-500/10 to-transparent rounded-full blur-[40px] pointer-events-none" />
                         <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-gradient-to-tr from-amber-500/15 via-pink-500/10 to-transparent rounded-full blur-[40px] pointer-events-none" />
@@ -1181,13 +1159,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             {/* Cardholder Footnote */}
                             <div className="flex justify-between items-end border-t border-black/10 dark:border-white/10 pt-2">
                                 <div>
-                                    <span className="block text-3xs font-mono text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-widest">Cardholder</span>
+                                    <span className="block text-2xs font-mono text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-widest">Cardholder</span>
                                     <span className="text-xs font-bold text-light-text dark:text-dark-text uppercase tracking-wider truncate max-w-[130px] block">
                                         {currentUser?.name ? currentUser.name : currentUser?.email ? currentUser.email.split('@')[0] : 'EXPLORER'}
                                     </span>
                                 </div>
                                 <div className="text-right">
-                                    <span className="block text-3xs font-mono text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-widest">Tier</span>
+                                    <span className="block text-2xs font-mono text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-widest">Tier</span>
                                     <span className="text-xs font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider">
                                         {currentLevel.name}
                                     </span>
@@ -1227,7 +1205,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         
                         {upcomingTripsList.length === 0 ? (
                             <div className="p-4 py-6 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-dashed border-black/10 dark:border-white/10 flex flex-col items-center justify-center text-center">
-                                <Compass className="w-5 h-5 text-zinc-400 mb-1" weight="duotone" />
+                                <Compass className="w-5 h-5 text-zinc-500 dark:text-zinc-400 mb-1" weight="duotone" />
                                 <p className="text-xs font-mono text-light-text-secondary dark:text-dark-text-secondary">No upcoming trips</p>
                             </div>
                         ) : (
@@ -1239,17 +1217,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                         className="relative overflow-hidden p-2.5 bg-white/50 dark:bg-white/[0.04] border border-black/5 dark:border-white/10 rounded-xl flex items-center justify-between hover:bg-white/80 dark:hover:bg-white/[0.08] cursor-pointer transition-all duration-150 min-h-[44px] group"
                                         title="View expedition details"
                                     >
-                                        <div className="flex items-center gap-2.5 min-w-0 z-10">
+                                        <div className="flex items-center gap-2.5 min-w-0 z-raised">
                                             <div className="w-7 h-7 rounded-lg bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-600 dark:text-primary-400 shrink-0">
                                                 <span className="text-xs">{t.icon || '✈️'}</span>
                                             </div>
                                             <div className="min-w-0">
                                                 <span className="block text-xs font-bold text-light-text dark:text-dark-text truncate">{t.name}</span>
-                                                <span className="block text-3xs font-mono text-light-text-secondary dark:text-dark-text-secondary uppercase truncate">{t.location}</span>
+                                                <span className="block text-2xs font-mono text-light-text-secondary dark:text-dark-text-secondary uppercase truncate">{t.location}</span>
                                             </div>
                                         </div>
                                         
-                                        <div className="text-right shrink-0 font-mono z-10 pl-2">
+                                        <div className="text-right shrink-0 font-mono z-raised pl-2">
                                             <span className="block text-xs font-bold text-primary-600 dark:text-primary-400 uppercase">
                                                 {formatDate(t.startDate, 'short')}
                                             </span>
@@ -1291,7 +1269,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                     key={tab.id}
                                     onClick={() => setActiveStatsTab(tab.id)}
                                     aria-label={tab.label}
-                                    className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 min-h-[44px] ${
+                                    className={`relative rounded-full min-h-[44px] min-w-[44px] text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 min-h-[44px] ${
                                         isSelected
                                             ? 'text-primary-700 dark:text-primary-300 px-3.5 sm:px-5 py-2'
                                             : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 sm:px-4 py-2'
@@ -1305,13 +1283,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                             transition={{ type: "spring", stiffness: 450, damping: 32 }}
                                         />
                                     )}
-                                    <span className="relative z-10 flex items-center gap-1.5 sm:gap-2">
+                                    <span className="relative z-raised flex items-center gap-1.5 sm:gap-2">
                                         <IconComponent className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" weight="duotone" />
                                         <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden sm:inline'}`}>
                                             {tab.label}
                                         </span>
                                         {tab.count !== undefined && (
-                                            <span className="text-3xs font-mono px-1.5 py-0.2 rounded-full font-bold border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10">
+                                            <span className="text-2xs font-mono px-1.5 py-0.2 rounded-full font-bold border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10">
                                                 {tab.count}
                                             </span>
                                         )}
@@ -1339,7 +1317,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         {/* Interactive Pill Filtering Bar */}
                         <GlassPanel className="wg-glass-card rounded-2xl sm:rounded-[28px] overflow-hidden p-2.5 sm:p-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 border border-black/5 dark:border-white/10">
                              <div className="relative shrink-0 sm:w-56">
-                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 w-3.5 h-3.5" />
+                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400 w-3.5 h-3.5" />
                                  <input
                                      type="text"
                                      placeholder="Search stamps..."
@@ -1351,7 +1329,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                      <button 
                                          onClick={() => setStampSearch('')} 
                                          aria-label="Clear stamp search"
-                                         className="w-6 h-6 flex items-center justify-center absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black dark:hover:text-white rounded-lg transition-colors cursor-pointer"
+                                         className="w-6 h-6 flex items-center justify-center absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400 hover:text-black dark:hover:text-white rounded-lg transition-colors cursor-pointer"
                                      >
                                          <X className="w-3.5 h-3.5" />
                                      </button>
@@ -1366,7 +1344,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                           <button
                                               key={region}
                                               onClick={() => setSelectedRegion(region)}
-                                              className={`px-3 py-1.5 min-h-[40px] rounded-xl border text-2xs font-mono font-bold uppercase tracking-wide shrink-0 transition-all duration-150 cursor-pointer ${
+                                              className={`px-3 py-1.5 min-h-[44px] rounded-xl border text-2xs font-mono font-bold uppercase tracking-wide shrink-0 transition-all duration-150 cursor-pointer ${
                                                   isSelected
                                                       ? 'bg-primary-500/20 border-primary-500/30 text-primary-700 dark:text-primary-300 shadow-xs'
                                                       : 'bg-white/50 dark:bg-white/[0.04] border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:bg-white/80 dark:hover:bg-white/[0.08]'
@@ -1382,7 +1360,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         {/* Stamped Passports Compact Multi-Column Grid */}
                         {filteredVisitedData.length === 0 ? (
                             <EmptyState 
-                                icon={<Compass className="w-8 h-8 text-zinc-400" weight="duotone" />}
+                                icon={<Compass className="w-8 h-8 text-zinc-500 dark:text-zinc-400" weight="duotone" />}
                                 title="No Stamps Found"
                                 description="Try adjusting your active filter."
                             />
@@ -1466,7 +1444,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             </div>
 
                             <div className="relative">
-                                <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-400">
+                                <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500 dark:text-zinc-400">
                                     <Search className="w-3.5 h-3.5" />
                                 </span>
                                 <input

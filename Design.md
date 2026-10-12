@@ -7,7 +7,7 @@ This document establishes the official design system, component standards, visua
 ## 1. Core Principles & Aesthetic Foundation
 
 WanderGrid's design language is built on three immutable pillars:
-1. **Liquid Glass Everywhere**: Every card, floating pill, modal, dropdown, and button leverages Apple-inspired Liquid Glass (`@nkzw/liquid-glass` via the standardized `<GlassPanel />` and `<GlassButton />` wrappers).
+1. **Glass Everywhere, Liquid Where It Counts**: Every card, floating pill, modal, dropdown, and button is a glass surface via the standardized `<GlassPanel />` and `<GlassButton />` wrappers. Content surfaces use the lightweight CSS glass; full Apple-inspired Liquid Glass (`@nkzw/liquid-glass`, `<GlassPanel liquid>`) is reserved for hero surfaces — navigation, dialogs/drawers and the floating tab pill — to keep scrolling at full frame rate.
 2. **The Planner Standard**: The page layout, typography, icon treatment, action buttons, tab switcher, and multi-column grid established in `PlannerView.tsx` serves as the universal template for all views across WanderGrid.
 3. **Radical Simplicity (Zero Text Clutter)**: The interface must remain clean, direct, and uncluttered. Obvious explanatory text, wordy helper paragraphs, and generic informational clutter are strictly prohibited. Every string must be purposeful and straight to the point.
 4. **Fluid Mobile Responsiveness**: Every screen adapts seamlessly to mobile devices—compact horizontal gutters, centered hero headers, 44px Apple HIG touch targets, and natural column stacking.
@@ -279,3 +279,29 @@ Every component and view must pass this mobile checklist:
 ---
 
 *This specification is active and binding for all development on WanderGrid.*
+
+## Type Scale Floor (accessibility)
+- The root font size is the browser default (no `html { font-size }` override).
+- `text-2xs` is **11px** and is the smallest size in the system — status pills, badges and counters only.
+- Informational text (labels, helper text, table metadata) uses `text-xs` (12px) or larger.
+- `text-3xs` and arbitrary `text-[Npx]` sizes below 11px are not used.
+- Pinch-zoom is never disabled (`user-scalable=no` / `maximum-scale` are forbidden in the viewport meta).
+
+## Glossary (user-facing terms)
+
+Use one word per concept in labels, buttons, messages and empty states (UI-013). Internal names in code may differ.
+
+| Use | Means | Avoid in UI copy |
+|---|---|---|
+| **Trip** | Any planned, upcoming or past journey record on the Planner | expedition, voyage, itinerary (as the object name) |
+| **Road trip** | A land journey on the Road Trips page | land journey, road trip record, travel ticket |
+| **Flight** | One flight log entry; several legs grouped are a **bundle** | boarding stub (as the object name) |
+| **Stay** | A hotel, rental or other accommodation within a trip | accommodation, lodging |
+| **Activity** | A dated item in the Daily Planner | excursion (as the object name) |
+| **Member** | A person in the workspace; managed under Settings › Members | personnel, explorer, traveler (as a role) |
+| **Archive** / **Restore** | Hide a trip from the board and bring it back; reversible | "archive" for something that deletes |
+| **Delete** | Permanently remove; always confirmed | remove, dismiss (for permanent deletion) |
+| **Sign in** / **Sign out** | Session actions | authorize session, log in/out (mixed) |
+| **Drop-off** | Where or when a rental car is returned (hyphenated) | dropoff, drop off |
+
+Error messages say what went wrong and what to do next, in plain language ("Invalid credentials: the email or password is incorrect."). Avoid system jargon such as "coordinates", "provision" or "initialize".

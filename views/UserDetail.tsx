@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { EmptyState } from '../components/EmptyState';
 import { Card, Button, Badge, Input, Select, Modal } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
 import { 
@@ -23,6 +24,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
 
     // Profile Edit States
     const [isEditing, setIsEditing] = useState(false);
+    const [profileError, setProfileError] = useState('');
     const [editName, setEditName] = useState('');
     const [editPassword, setEditPassword] = useState('');
     const [editWeekendRule, setEditWeekendRule] = useState<'none' | 'monday' | 'lieu'>('none');
@@ -49,16 +51,29 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
         setIsDragging(false);
     };
 
+    // Avatars are stored inside the user record, so downscale to 512px JPEG (well under the 1 MB limit).
     const processFile = (file: File) => {
-        if (file && file.type.startsWith('image/')) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                if (event.target?.result) {
-                    setEditProfilePicture(event.target.result as string);
-                }
-            };
-            reader.readAsDataURL(file);
+        if (!file || !/^image\/(png|jpe?g|webp|gif)$/.test(file.type)) {
+            setProfileError('Choose a PNG, JPEG, WebP or GIF image.');
+            return;
         }
+        setProfileError('');
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+            const scale = Math.min(1, 512 / Math.max(img.width, img.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(img.width * scale));
+            canvas.height = Math.max(1, Math.round(img.height * scale));
+            canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
+            URL.revokeObjectURL(url);
+            setEditProfilePicture(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            setProfileError('That image could not be read.');
+        };
+        img.src = url;
     };
 
     const handleDrop = (e: React.DragEvent) => {
@@ -182,7 +197,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                 if (foundUser) {
                     setUser(foundUser);
                     setEditName(foundUser.name || '');
-                    setEditPassword(foundUser.password || '');
+                    setEditPassword('');
                     setEditWeekendRule(foundUser.holidayWeekendRule || 'none');
                     setEditLeaveBalance(foundUser.leaveBalance ?? 25);
                     setEditTakenLeave(foundUser.takenLeave ?? 0);
@@ -240,6 +255,11 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
 
     const handleSaveProfile = async () => {
         if (!user || !editName.trim()) return;
+        if (editPassword.trim() && editPassword.trim().length < 8) {
+            setProfileError('Password must be at least 8 characters.');
+            return;
+        }
+        setProfileError('');
         setSaveLoading(true);
         try {
             const updatedUser: User = {
@@ -258,39 +278,56 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                 passportExpiryDate: editPassportExpiryDate
             };
             await dataService.updateUser(updatedUser);
-            setUser(updatedUser);
+            // Keep the typed password out of component state and localStorage.
+            const { password: _typedPassword, ...savedUser } = updatedUser;
+            setUser(savedUser as User);
+            setEditPassword('');
             setIsEditing(false);
             // If editing own session, update cached user
             const sessionRaw = localStorage.getItem('wandergrid_session_user');
             if (sessionRaw) {
                 const sessionUser = JSON.parse(sessionRaw);
                 if (sessionUser.id === userId) {
-                    localStorage.setItem('wandergrid_session_user', JSON.stringify(updatedUser));
+                    localStorage.setItem('wandergrid_session_user', JSON.stringify(savedUser));
                 }
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error("Failed to update user profile details", e);
+            setProfileError(e?.message || 'Could not save your profile.');
         } finally {
             setSaveLoading(false);
         }
     };
 
+    if (!loading && !user) {
+        return (
+            <div className="w-full max-w-[1680px] mx-auto pt-12 px-4">
+                <EmptyState
+                    icon="person_off"
+                    title="Traveler not found"
+                    description="This profile doesn't exist or has been removed."
+                    action={{ label: 'Return to Dashboard', onClick: onBack }}
+                />
+            </div>
+        );
+    }
+
     if (loading || !user) {
         return (
-            <div className="flex flex-col items-center justify-center p-24 text-gray-400 gap-4 animate-pulse w-full">
+            <div className="flex flex-col items-center justify-center p-24 text-gray-500 dark:text-gray-400 gap-4 animate-pulse w-full">
                 <Spinner className="w-12 h-12 animate-spin text-primary-500" />
-                <p className="font-bold text-xs uppercase tracking-widest text-zinc-550">Retrieving Traveler ID...</p>
+                <p className="font-bold text-xs uppercase tracking-widest text-zinc-500">Retrieving Traveler ID...</p>
             </div>
         );
     }
 
     // Dynamic ink colors for airport stamps
     const stampColors = [
-        'border-blue-600/70 text-blue-600/85 bg-blue-50/5 dark:border-blue-550/50 dark:text-blue-400/80',
-        'border-rose-600/70 text-rose-600/85 bg-rose-50/5 dark:border-rose-550/50 dark:text-rose-400/80',
-        'border-emerald-600/70 text-emerald-600/85 bg-emerald-50/5 dark:border-emerald-550/50 dark:text-emerald-400/80',
-        'border-indigo-600/70 text-indigo-600/85 bg-indigo-50/5 dark:border-indigo-550/50 dark:text-indigo-400/80',
-        'border-amber-600/70 text-amber-600/85 bg-amber-50/5 dark:border-amber-550/50 dark:text-amber-400/80',
+        'border-blue-600/70 text-blue-600/85 bg-blue-50/5 dark:border-blue-500/50 dark:text-blue-400/80',
+        'border-rose-600/70 text-rose-600/85 bg-rose-50/5 dark:border-rose-500/50 dark:text-rose-400/80',
+        'border-emerald-600/70 text-emerald-600/85 bg-emerald-50/5 dark:border-emerald-500/50 dark:text-emerald-400/80',
+        'border-indigo-600/70 text-indigo-600/85 bg-indigo-50/5 dark:border-indigo-500/50 dark:text-indigo-400/80',
+        'border-amber-600/70 text-amber-600/85 bg-amber-50/5 dark:border-amber-500/50 dark:text-amber-400/80',
     ];
 
     const leavePercentage = Math.round(((user.takenLeave || 0) / (user.leaveBalance || 25)) * 100);
@@ -304,7 +341,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                         <div className="relative">
                             <div className={`w-24 h-24 sm:w-28 sm:h-28 rounded-2xl flex items-center justify-center overflow-hidden text-5xl font-black text-white shadow-xl transition-all hover:scale-105 duration-300 border border-white/20
                                 ${user.role === 'Partner' ? 'bg-gradient-to-br from-blue-600 to-indigo-700 shadow-indigo-500/20' : 
-                                  user.role === 'Admin' ? 'bg-gradient-to-br from-purple-500 to-indigo-650 shadow-purple-500/20' : 
+                                  user.role === 'Admin' ? 'bg-gradient-to-br from-purple-500 to-indigo-600 shadow-purple-500/20' : 
                                   'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-teal-500/20'}`}>
                                 {user.profilePicture ? (
                                     <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
@@ -327,7 +364,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                     type="button"
                                     onClick={() => {
                                         setEditName(user.name || '');
-                                        setEditPassword(user.password || '');
+                                        setEditPassword('');
                                         setEditWeekendRule(user.holidayWeekendRule || 'none');
                                         setEditLeaveBalance(user.leaveBalance ?? 25);
                                         setEditTakenLeave(user.takenLeave ?? 0);
@@ -340,7 +377,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                         setEditPassportExpiryDate(user.passportExpiryDate || '');
                                         setIsEditing(true);
                                     }}
-                                    className="p-2 text-zinc-400 hover:text-blue-500 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
+                                    className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-blue-500 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
                                     title="Edit Profile Details"
                                     aria-label="Edit Profile Details"
                                 >
@@ -379,31 +416,31 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                     <div className="p-6 flex flex-col items-center justify-center text-center gap-1">
                         <AirplaneTakeoff weight="duotone" className="w-7 h-7 text-blue-500" />
                         <span className="text-3xl font-black text-light-text dark:text-dark-text mt-1">{stats.total}</span>
-                        <span className="text-2xs font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Active Trips</span>
+                        <span className="text-2xs font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-widest font-mono">Active Trips</span>
                     </div>
 
                     <div className="p-6 flex flex-col items-center justify-center text-center gap-1 border-t md:border-t-0">
                         <Clock weight="duotone" className="w-7 h-7 text-amber-500" />
                         <span className="text-3xl font-black text-light-text dark:text-dark-text mt-1">{stats.upcoming}</span>
-                        <span className="text-2xs font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Upcoming Journeys</span>
+                        <span className="text-2xs font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-widest font-mono">Upcoming Journeys</span>
                     </div>
 
                     <div className="p-6 flex flex-col items-center justify-center text-center gap-1 border-t md:border-t-0">
                         <CheckCircle weight="duotone" className="w-7 h-7 text-emerald-500" />
                         <span className="text-3xl font-black text-light-text dark:text-dark-text mt-1">{stats.completed}</span>
-                        <span className="text-2xs font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Completed Voyages</span>
+                        <span className="text-2xs font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-widest font-mono">Completed Voyages</span>
                     </div>
 
                     <div className="p-6 flex flex-col items-center justify-center text-center gap-1 border-t md:border-t-0">
                         <MapPin weight="duotone" className="w-7 h-7 text-purple-500" />
                         <span className="text-3xl font-black text-light-text dark:text-dark-text mt-1">{stats.uniqueDestinations}</span>
-                        <span className="text-2xs font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Destinations Visited</span>
+                        <span className="text-2xs font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-widest font-mono">Destinations Visited</span>
                     </div>
 
                     <div className="p-6 flex flex-col items-center justify-center text-center gap-1 col-span-2 md:col-span-1 border-t md:border-t-0">
                         <CalendarBlank weight="duotone" className="w-7 h-7 text-indigo-500" />
                         <span className="text-3xl font-black text-light-text dark:text-dark-text mt-1">{stats.totalDays}</span>
-                        <span className="text-2xs font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Total Days on Voyage</span>
+                        <span className="text-2xs font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-widest font-mono">Total Days on Voyage</span>
                     </div>
                 </div>
             </GlassPanel>
@@ -414,10 +451,10 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                 <div className="lg:col-span-4 space-y-8 h-full w-full">
                     {/* ACCRUED LEAVE STATS CARD */}
                     <Card noPadding className="rounded-3xl overflow-hidden">
-                        <div className="p-6 border-b border-gray-150/40 dark:border-white/5 bg-gradient-to-r from-teal-500/5 to-emerald-500/5 flex justify-between items-center bg-gray-50/50 dark:bg-white/5">
+                        <div className="p-6 border-b border-gray-100/40 dark:border-white/5 bg-gradient-to-r from-teal-500/5 to-emerald-500/5 flex justify-between items-center bg-gray-50/50 dark:bg-white/5">
                             <div>
                                 <h3 className="font-extrabold text-gray-900 dark:text-white text-base">Leave & Entitlements</h3>
-                                <p className="text-2xs font-mono text-gray-400 uppercase tracking-widest font-bold">Vacation Days Allocations</p>
+                                <p className="text-2xs font-mono text-gray-500 dark:text-gray-400 uppercase tracking-widest font-bold">Vacation Days Allocations</p>
                             </div>
                             <Badge color={leavePercentage > 80 ? 'red' : leavePercentage > 40 ? 'amber' : 'green'}>
                                 {leavePercentage}% Consumed
@@ -432,7 +469,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                         <span className="text-gray-800 dark:text-zinc-200">{user.leaveBalance ?? 25} Days</span>
                                     </div>
                                     <div className="w-full h-2.5 bg-gray-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                        <div className="h-full bg-indigo-550 rounded-full" style={{ width: '100%' }} />
+                                        <div className="h-full bg-indigo-500 rounded-full" style={{ width: '100%' }} />
                                     </div>
                                 </div>
 
@@ -449,11 +486,11 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
 
                             <div className="pt-4 border-t border-gray-100 dark:border-white/5 grid grid-cols-2 gap-4 text-left p-3.5 bg-slate-50/50 dark:bg-black/10 rounded-xl leading-none">
                                 <div>
-                                    <span className="text-2xs font-bold text-zinc-400 block uppercase tracking-wide">Remaining Balance</span>
+                                    <span className="text-2xs font-bold text-zinc-500 dark:text-zinc-400 block uppercase tracking-wide">Remaining Balance</span>
                                     <span className="text-lg font-black text-slate-800 dark:text-zinc-200 block mt-1">{(user.leaveBalance ?? 25) - (user.takenLeave ?? 0)} Days</span>
                                 </div>
                                 <div>
-                                    <span className="text-2xs font-bold text-zinc-400 block uppercase tracking-wide">Weekend Rule</span>
+                                    <span className="text-2xs font-bold text-zinc-500 dark:text-zinc-400 block uppercase tracking-wide">Weekend Rule</span>
                                     <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 block mt-2.5 uppercase font-mono truncate">{user.holidayWeekendRule || 'None'}</span>
                                 </div>
                             </div>
@@ -462,14 +499,14 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
 
                     {/* MOOD BOOSTER PASSPORT STAMPS */}
                     <Card noPadding className="rounded-3xl">
-                        <div className="p-6 border-b border-gray-150/45 dark:border-white/5 bg-gradient-to-r from-indigo-550/5 to-purple-550/5 bg-gray-50/50 dark:bg-white/5">
+                        <div className="p-6 border-b border-gray-100/45 dark:border-white/5 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 bg-gray-50/50 dark:bg-white/5">
                             <h3 className="font-extrabold text-gray-900 dark:text-white text-base">Travel Stamps</h3>
-                            <p className="text-2xs font-mono text-gray-400 uppercase tracking-widest font-bold">Aero Passport Stamp Seal Roster</p>
+                            <p className="text-2xs font-mono text-gray-500 dark:text-gray-400 uppercase tracking-widest font-bold">Aero Passport Stamp Seal Roster</p>
                         </div>
                         <div className="p-6">
                             {stats.uniqueDestinations === 0 ? (
-                                <div className="py-12 text-center text-zinc-400 border border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl select-none">
-                                    <Ticket weight="duotone" className="w-10 h-10 mx-auto text-zinc-400" />
+                                <div className="py-12 text-center text-zinc-500 dark:text-zinc-400 border border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl select-none">
+                                    <Ticket weight="duotone" className="w-10 h-10 mx-auto text-zinc-500 dark:text-zinc-400" />
                                     <p className="text-xs font-mono tracking-widest font-bold uppercase mt-3">No active country seals stamped</p>
                                     <p className="text-xs opacity-75 mt-1">Stamps are visual seals dynamically minted from flight logs.</p>
                                 </div>
@@ -511,7 +548,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                     {trips.length === 0 ? (
                         <GlassPanel className="wg-glass-card rounded-[28px] p-16 text-center select-none shadow-glass-card">
                             <Compass weight="duotone" className="w-14 h-14 mx-auto text-gray-300 dark:text-gray-700" />
-                            <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mt-4">No active expeditions found for this traveler</p>
+                            <p className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-4">No active expeditions found for this traveler</p>
                             <p className="text-xs text-gray-500 max-w-xs mx-auto mt-2">When this user joins or gets assigned to a trip, their complete flight route details will appear beautifully styled here.</p>
                         </GlassPanel>
                     ) : (
@@ -556,11 +593,11 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                                     <td className="py-4 px-6">
                                                         <div className="flex flex-col text-xs font-mono text-light-text-secondary dark:text-dark-text-secondary font-semibold gap-0.5">
                                                             <div className="flex items-center gap-1.5">
-                                                                <span className="text-2xs font-bold uppercase text-gray-350 dark:text-gray-650 tracking-wider">DEP</span>
+                                                                <span className="text-2xs font-bold uppercase text-gray-300 dark:text-gray-600 tracking-wider">DEP</span>
                                                                 <span>{departuresStr}</span>
                                                             </div>
                                                             <div className="flex items-center gap-1.5">
-                                                                <span className="text-2xs font-bold uppercase text-gray-350 dark:text-gray-650 tracking-wider">RET</span>
+                                                                <span className="text-2xs font-bold uppercase text-gray-300 dark:text-gray-600 tracking-wider">RET</span>
                                                                 <span>{returnStr}</span>
                                                             </div>
                                                         </div>
@@ -613,7 +650,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                                                     e.stopPropagation();
                                                                     handleStartEditTrip(trip);
                                                                 }}
-                                                                className="p-1 px-2.5 min-h-[36px] rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-blue-500 font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-200 dark:border-white/5 text-xs"
+                                                                className="p-1 px-2.5 min-h-[36px] rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-blue-500 font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-200 dark:border-white/5 text-xs"
                                                                 title="Edit Trip Settings"
                                                                 aria-label="Edit Trip Settings"
                                                             >
@@ -651,7 +688,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                 isOpen={isEditing} 
                 onClose={() => setIsEditing(false)} 
                 title="Edit Inhabitant Details"
-                subtitle="Personnel Parameters & Identification"
+                subtitle="Profile & identification"
                 icon="person"
             >
                 <div className="space-y-6 text-left font-sans">
@@ -676,10 +713,13 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                             <Input 
                                 label="Change Portal Password" 
                                 type="password"
-                                placeholder="Type a secure password" 
+                                placeholder="Leave blank to keep it (8+ characters)" 
                                 value={editPassword} 
                                 onChange={e => setEditPassword(e.target.value)} 
                             />
+                            {profileError && (
+                                <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400">{profileError}</p>
+                            )}
                             
                             <Select 
                                 label="Holiday Weekend Rule" 

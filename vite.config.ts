@@ -301,9 +301,32 @@ function viteDevApiPlugin() {
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
+      // `vite preview` (used by the e2e suite) sends the same Content-Security-Policy as the Express server
+      // (backend_files/server.js CSP_DIRECTIVES), so policy breakages show up in tests. Keep them in sync.
+      preview: {
+        headers: {
+          'Content-Security-Policy': [
+            "default-src 'self'",
+            "script-src 'self' 'wasm-unsafe-eval' blob:",
+            "worker-src 'self' blob:",
+            "child-src 'self' blob:",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: blob: https:",
+            "font-src 'self' data:",
+            "connect-src 'self' https: data: blob:",
+            "media-src 'self' data: blob: https:",
+            "object-src 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+            "frame-ancestors 'self'",
+          ].join('; '),
+        },
+      },
       server: {
         port: 3000,
-        host: true,
+        // Loopback only by default: the dev server and its unauthenticated proxy middleware must not be
+        // reachable from the LAN unless you opt in with VITE_DEV_HOST=0.0.0.0 (SEC-018).
+        host: env.VITE_DEV_HOST || 'localhost',
         proxy: {
           '/api': {
             target: 'http://localhost:3001',
@@ -317,7 +340,6 @@ export default defineConfig(({ mode }) => {
         VitePWA({
           registerType: 'autoUpdate',
           includeAssets: [
-            'icon.svg', 
             'apple-touch-icon.png', 
             'favicon.ico', 
             'favicon-32x32.png', 
@@ -328,8 +350,20 @@ export default defineConfig(({ mode }) => {
           ],
           manifest: false, // Maintained in /public/manifest.json
           workbox: {
-            globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,json}'],
-            maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB limit for large chunks like deck.gl
+            // Precache only the app shell (PERF-006). Route chunks, map libraries and datasets are cached
+            // at runtime the first time they are used (see the same-origin /assets/ rule below).
+            globPatterns: [
+              'index.html',
+              'assets/index-*.{js,css}',
+              'assets/runtime-helpers-*.js',
+              'assets/vendor-motion-*.js',
+              'favicon*.{png,ico}',
+              'apple-touch-icon.png',
+              'app-icon-192.png',
+              'app-icon-512.png',
+              'manifest.json',
+            ],
+            maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
             navigateFallback: '/index.html',
             navigateFallbackDenylist: [/^\/api\//],
             skipWaiting: true,
@@ -337,26 +371,13 @@ export default defineConfig(({ mode }) => {
             cleanupOutdatedCaches: true,
             runtimeCaching: [
               {
-                urlPattern: /^https:\/\/fonts\.googleapis\.com\//,
-                handler: 'StaleWhileRevalidate',
-                options: {
-                  cacheName: 'google-fonts-stylesheets',
-                },
-              },
-              {
-                urlPattern: /^https:\/\/fonts\.gstatic\.com\//,
+                // Hashed, immutable build chunks: cached on first use so visited routes work offline.
+                urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/assets/'),
                 handler: 'CacheFirst',
                 options: {
-                  cacheName: 'google-fonts-webfonts',
-                  expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
-                },
-              },
-              {
-                urlPattern: /^https:\/\/(unpkg\.com|cdn\.tailwindcss\.com)\//,
-                handler: 'StaleWhileRevalidate',
-                options: {
-                  cacheName: 'cdn-assets',
-                  expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 30 },
+                  cacheName: 'app-assets',
+                  expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 60 },
+                  cacheableResponse: { statuses: [200] },
                 },
               },
               {
@@ -451,10 +472,7 @@ export default defineConfig(({ mode }) => {
           },
         }),
       ],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
+      // No API keys are inlined into the bundle (SEC-010): GEMINI_API_KEY is read by the server only.
       resolve: {
         alias: {
           '@': path.resolve('.'),
@@ -479,15 +497,17 @@ export default defineConfig(({ mode }) => {
         rollupOptions: {
           output: {
             manualChunks(id) {
+              // Vite's dynamic-import preload helper is used by every lazy view; left to Rollup it landed in
+              // vendor-deckgl, making the login page download the whole map stack (PERF-001).
+              if (id.includes('vite/preload-helper') || id.includes('commonjsHelpers')) {
+                return 'runtime-helpers';
+              }
               if (id.includes('node_modules')) {
                 if (id.includes('@deck.gl') || id.includes('@luma.gl') || id.includes('@loaders.gl') || id.includes('maplibre-gl')) {
                   return 'vendor-deckgl';
                 }
                 if (id.includes('motion') || id.includes('framer-motion')) {
                   return 'vendor-motion';
-                }
-                if (id.includes('@phosphor-icons')) {
-                  return 'vendor-icons';
                 }
               }
             }

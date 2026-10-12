@@ -129,7 +129,7 @@ export const GearSettingsTab: React.FC<GearSettingsTabProps> = ({ config, setCon
                                     type="button"
                                     onClick={handleAddGearItem} 
                                     aria-label="Add item to master list"
-                                    className="min-w-[44px] min-h-[44px] h-11 px-4 rounded-xl bg-primary-500 hover:bg-primary-600 active:scale-95 text-white flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider shadow-md shadow-primary-500/20 transition-all cursor-pointer shrink-0"
+                                    className="min-w-[44px] min-h-[44px] h-11 px-4 rounded-xl bg-primary-500 hover:bg-primary-600 active:scale-95 text-slate-950 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider shadow-md shadow-primary-500/20 transition-all cursor-pointer shrink-0"
                                 >
                                     <Plus className="w-4 h-4" />
                                     <span className="sm:hidden">Add Item</span>
@@ -150,7 +150,7 @@ export const GearSettingsTab: React.FC<GearSettingsTabProps> = ({ config, setCon
                                         purple: { bg: 'bg-purple-500/5 dark:bg-purple-500/10 border-purple-500/15', text: 'text-purple-600 dark:text-purple-400', icon: 'text-purple-500' },
                                         amber: { bg: 'bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/15', text: 'text-amber-600 dark:text-amber-400', icon: 'text-amber-500' },
                                         rose: { bg: 'bg-rose-500/5 dark:bg-rose-500/10 border-rose-500/15', text: 'text-rose-600 dark:text-rose-400', icon: 'text-rose-500' },
-                                        gray: { bg: 'bg-zinc-500/5 dark:bg-zinc-500/10 border-zinc-500/15', text: 'text-zinc-600 dark:text-zinc-400', icon: 'text-zinc-400' }
+                                        gray: { bg: 'bg-zinc-500/5 dark:bg-zinc-500/10 border-zinc-500/15', text: 'text-zinc-600 dark:text-zinc-400', icon: 'text-zinc-500 dark:text-zinc-400' }
                                     };
                                     const t = themeMap[cat.color] || themeMap.gray;
 

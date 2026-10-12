@@ -106,7 +106,7 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
   if (!isOpen && !isVisible) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-modal overflow-hidden font-sans">
+    <div className="fixed inset-0 z-modal overflow-hidden font-sans" role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>
       {/* 1. Backdrop Blur Overlay */}
       <div 
         className={`fixed inset-0 backdrop-blur-md bg-black/5 dark:bg-black/15 transition-all duration-300 ${
@@ -122,7 +122,7 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
             isVisible ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
-          <GlassPanel
+          <GlassPanel liquid
             ref={modalRef}
             className="wg-glass-card w-full h-full flex flex-col shadow-2xl overflow-hidden"
             padding="0px"
@@ -132,7 +132,7 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
             {/* Header */}
             <div className="p-4 sm:p-6 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-primary-500 shrink-0 shadow-md transition-transform hover:scale-105">
+              <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-slate-950 bg-primary-500 shrink-0 shadow-md transition-transform hover:scale-105">
                 <Icon className="text-2xl" name={icon}/>
               </div>
               <div className="min-w-0">

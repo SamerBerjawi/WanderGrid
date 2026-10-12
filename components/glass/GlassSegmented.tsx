@@ -158,7 +158,7 @@ export function GlassSegmented<T extends string = string>({
             <div className="flex flex-col items-center justify-center min-w-0">
               <span className="text-xs font-bold leading-tight truncate">{option.label}</span>
               {option.description && (
-                <span className="text-3xs opacity-75 mt-0.5 leading-none truncate">{option.description}</span>
+                <span className="text-2xs opacity-75 mt-0.5 leading-none truncate">{option.description}</span>
               )}
             </div>
             {showCheckOnSelected && selected && (

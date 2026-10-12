@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { confirmDialog } from '../services/confirm';
 import { 
     CalendarBlank, 
     AirplaneTilt, 
@@ -426,7 +427,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                         <button
                             type="button"
                             onClick={() => setMobileViewMode('day')}
-                            className={`px-3 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                            className={`px-3 py-1.5 min-h-[44px] rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                                 mobileViewMode === 'day'
                                 ? 'bg-white dark:bg-dark-card text-primary-600 dark:text-primary-400 shadow-sm'
                                 : 'text-light-text-secondary dark:text-dark-text-secondary'
@@ -437,7 +438,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                         <button
                             type="button"
                             onClick={() => setMobileViewMode('canvas')}
-                            className={`px-3 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                            className={`px-3 py-1.5 min-h-[44px] rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                                 mobileViewMode === 'canvas'
                                 ? 'bg-white dark:bg-dark-card text-primary-600 dark:text-primary-400 shadow-sm'
                                 : 'text-light-text-secondary dark:text-dark-text-secondary'
@@ -452,7 +453,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                         <button
                             type="button"
                             onClick={() => onEditTransport(undefined, tripDates[0])}
-                            className="h-9 px-3 rounded-xl text-2xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
+                            className="h-11 px-3 rounded-xl text-2xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
                         >
                             <Plus className="w-3.5 h-3.5" />
                             <span>Transport</span>
@@ -460,7 +461,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                         <button
                             type="button"
                             onClick={() => onEditAccommodation(undefined, tripDates[0])}
-                            className="h-9 px-3 rounded-xl text-2xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
+                            className="h-11 px-3 rounded-xl text-2xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
                         >
                             <Plus className="w-3.5 h-3.5" />
                             <span>Stay</span>
@@ -468,7 +469,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                         <button
                             type="button"
                             onClick={() => onEditActivity(tripDates[0])}
-                            className="h-9 px-3 rounded-xl text-2xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
+                            className="h-11 px-3 rounded-xl text-2xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
                         >
                             <Plus className="w-3.5 h-3.5" />
                             <span>Activity</span>
@@ -527,13 +528,13 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                         {onDeleteActivity && (
                                             <button
                                                 type="button"
-                                                onClick={(e) => {
+                                                onClick={async (e) => {
                                                     e.stopPropagation();
-                                                    if (window.confirm(`Delete activity "${act.title}"?`)) {
+                                                    if (await confirmDialog({ message: `Delete activity "${act.title}"?`, confirmLabel: 'Delete', danger: true })) {
                                                         onDeleteActivity(act.id);
                                                     }
                                                 }}
-                                                className="opacity-0 group-hover:opacity-100 hover:text-rose-500 p-1 rounded-lg transition-all text-light-text-secondary dark:text-dark-text-secondary hover:bg-rose-500/10 cursor-pointer min-w-[28px] min-h-[28px] flex items-center justify-center"
+                                                className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-rose-500 p-1 wg-touch-target flex items-center justify-center rounded-lg transition-all text-light-text-secondary dark:text-dark-text-secondary hover:bg-rose-500/10 cursor-pointer min-w-[28px] min-h-[28px] flex items-center justify-center"
                                                 aria-label={`Delete activity ${act.title}`}
                                                 title="Delete activity"
                                             >
@@ -570,7 +571,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                 onClick={() => setSelectedDayIndex(idx)}
                                 className={`px-3.5 py-2.5 rounded-2xl flex flex-col items-center justify-center shrink-0 min-w-[72px] min-h-[58px] transition-all border cursor-pointer ${
                                     isSelected
-                                    ? 'bg-primary-500 text-white border-primary-500 shadow-md shadow-primary-500/20 scale-102'
+                                    ? 'bg-primary-500 text-slate-950 border-primary-500 shadow-md shadow-primary-500/20 scale-102'
                                     : 'bg-white/80 dark:bg-dark-card/80 border-black/10 dark:border-white/10 text-light-text dark:text-dark-text'
                                 }`}
                             >
@@ -613,7 +614,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                             <GlassPanel className="wg-glass-card rounded-3xl p-4 flex items-center justify-between" overrides={{ borderRadius: 24 }}>
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <span className="px-2.5 py-0.5 rounded-full text-2xs font-black uppercase tracking-wider bg-primary-500 text-white">
+                                        <span className="px-2.5 py-0.5 rounded-full text-2xs font-black uppercase tracking-wider bg-primary-500 text-slate-950">
                                             Day {selectedDayIndex + 1}
                                         </span>
                                         <h3 className="text-sm font-bold text-light-text dark:text-dark-text">
@@ -638,7 +639,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => onEditTransport(undefined, activeDateStr)}
-                                        className="text-2xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                                        className="min-h-[44px] inline-flex items-center text-2xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                                     >
                                         + Add Transport
                                     </button>
@@ -694,7 +695,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => onEditAccommodation(undefined, activeDateStr)}
-                                        className="text-2xs font-bold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
+                                        className="min-h-[44px] inline-flex items-center text-2xs font-bold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
                                     >
                                         + Add Stay
                                     </button>
@@ -751,7 +752,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => onEditActivity(activeDateStr)}
-                                        className="text-2xs font-bold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                                        className="min-h-[44px] inline-flex items-center text-2xs font-bold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
                                     >
                                         + Add Activity
                                     </button>
@@ -793,9 +794,9 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                                         {onDeleteActivity && (
                                                             <button
                                                                 type="button"
-                                                                onClick={(e) => {
+                                                                onClick={async (e) => {
                                                                     e.stopPropagation();
-                                                                    if (window.confirm(`Delete activity "${act.title}"?`)) {
+                                                                    if (await confirmDialog({ message: `Delete activity "${act.title}"?`, confirmLabel: 'Delete', danger: true })) {
                                                                         onDeleteActivity(act.id);
                                                                     }
                                                                 }}
@@ -841,7 +842,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                     
                     {/* Col 1 Header: Day */}
                     <GlassPanel 
-                        className="sticky top-2 z-20 wg-glass-card shadow-sm flex items-center justify-between mb-3" 
+                        className="sticky top-2 z-float wg-glass-card shadow-sm flex items-center justify-between mb-3" 
                         overrides={{ borderRadius: 20 }}
                         padding="14px"
                         style={{ gridColumn: 1, gridRow: 1, marginBottom: '12px' }}
@@ -857,7 +858,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
 
                     {/* Col 2 Header: Transport */}
                     <GlassPanel 
-                        className="sticky top-2 z-20 wg-glass-card shadow-sm flex items-center justify-between mb-3" 
+                        className="sticky top-2 z-float wg-glass-card shadow-sm flex items-center justify-between mb-3" 
                         overrides={{ borderRadius: 20 }}
                         padding="14px"
                         style={{ gridColumn: 2, gridRow: 1, marginBottom: '12px' }}
@@ -873,7 +874,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
 
                     {/* Col 3 Header: Accommodation */}
                     <GlassPanel 
-                        className="sticky top-2 z-20 wg-glass-card shadow-sm flex items-center justify-between mb-3" 
+                        className="sticky top-2 z-float wg-glass-card shadow-sm flex items-center justify-between mb-3" 
                         overrides={{ borderRadius: 20 }}
                         padding="14px"
                         style={{ gridColumn: 3, gridRow: 1, marginBottom: '12px' }}
@@ -889,7 +890,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
 
                     {/* Col 4 Header: Activities */}
                     <GlassPanel 
-                        className="sticky top-2 z-20 wg-glass-card shadow-sm flex items-center justify-between mb-3" 
+                        className="sticky top-2 z-float wg-glass-card shadow-sm flex items-center justify-between mb-3" 
                         overrides={{ borderRadius: 20 }}
                         padding="14px"
                         style={{ gridColumn: 4, gridRow: 1, marginBottom: '12px' }}
@@ -942,7 +943,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                         <div className="space-y-1.5">
                                             <div className="flex items-center justify-between gap-1">
                                                 <span className={`px-2 py-0.5 rounded-lg text-2xs font-black uppercase tracking-wider ${
-                                                    isToday ? 'bg-primary-500 text-white shadow-xs' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
+                                                    isToday ? 'bg-primary-500 text-slate-950 shadow-xs' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
                                                 }`}>
                                                     Day {dIdx + 1}
                                                 </span>
@@ -1074,13 +1075,13 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                                             {onDeleteActivity && (
                                                                 <button
                                                                     type="button"
-                                                                    onClick={(e) => {
+                                                                    onClick={async (e) => {
                                                                         e.stopPropagation();
-                                                                        if (window.confirm(`Delete activity "${act.title}"?`)) {
+                                                                        if (await confirmDialog({ message: `Delete activity "${act.title}"?`, confirmLabel: 'Delete', danger: true })) {
                                                                             onDeleteActivity(act.id);
                                                                         }
                                                                     }}
-                                                                    className="opacity-0 group-hover:opacity-100 hover:text-rose-500 p-1 rounded-lg transition-all text-light-text-secondary dark:text-dark-text-secondary hover:bg-rose-500/10 cursor-pointer min-w-[26px] min-h-[26px] flex items-center justify-center"
+                                                                    className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-rose-500 p-1 wg-touch-target flex items-center justify-center rounded-lg transition-all text-light-text-secondary dark:text-dark-text-secondary hover:bg-rose-500/10 cursor-pointer min-w-[26px] min-h-[26px] flex items-center justify-center"
                                                                     aria-label={`Delete activity ${act.title}`}
                                                                     title="Delete activity"
                                                                 >

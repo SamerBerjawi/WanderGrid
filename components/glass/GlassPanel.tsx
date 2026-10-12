@@ -20,6 +20,12 @@ export const WANDERGRID_GLASS_CONFIG: WanderGridGlassConfig = {
   borderRadius: 32,
 };
 
+// Users who ask for less motion/transparency never get the displacement filter, even on hero surfaces.
+const prefersLiquidGlass = () => {
+  if (typeof window === 'undefined' || !window.matchMedia) return true;
+  return !window.matchMedia('(prefers-reduced-motion: reduce), (prefers-reduced-transparency: reduce)').matches;
+};
+
 export type GlassPanelProps = {
   children: ReactNode;
   className?: string;
@@ -31,6 +37,12 @@ export type GlassPanelProps = {
   mouseContainer?: RefObject<HTMLElement | null> | null;
   /** Escape hatch for one-off overrides. Prefer not to use this. */
   overrides?: Partial<WanderGridGlassConfig>;
+  /**
+   * Render real liquid glass (SVG displacement + per-instance mouse tracking). Reserved for hero
+   * surfaces — sidebar, mobile tab bar, dialogs/drawers and floating tab pills. Everything else gets the
+   * CSS-only glass recipe, which looks alike but costs no filter/compositing work (PERF-002, decision C-1).
+   */
+  liquid?: boolean;
 };
 
 export const GlassPanel = forwardRef<HTMLDivElement, GlassPanelProps>(({
@@ -43,6 +55,7 @@ export const GlassPanel = forwardRef<HTMLDivElement, GlassPanelProps>(({
   onClick,
   mouseContainer,
   overrides,
+  liquid = false,
 }, ref) => {
   const config = { ...WANDERGRID_GLASS_CONFIG, ...overrides };
 
@@ -101,6 +114,40 @@ export const GlassPanel = forwardRef<HTMLDivElement, GlassPanelProps>(({
   const isFullHeight = className.includes('h-full') || outerClassName.includes('h-full') || hasExplicitHeight;
   const isFullWidth = isCard || className.includes('w-full') || outerClassName.includes('w-full');
 
+  const content = innerClassName ? (
+    <div className={`w-full ${isFullHeight ? 'h-full flex-1 min-h-0' : ''} ${innerClassName}`.trim()}>
+      {children}
+    </div>
+  ) : isFullHeight ? (
+    <div className="w-full h-full flex-1 min-h-0 flex flex-col">
+      {children}
+    </div>
+  ) : (
+    children
+  );
+
+  if (!liquid || !prefersLiquidGlass()) {
+    // Same DOM nesting as LiquidGlass (panel > container > content) so the layout CSS keeps working.
+    return (
+      <div
+        ref={ref}
+        id={id}
+        className={`wg-glass-wrapper ${variantClass} ${outerClassName}`.trim()}
+        style={{ borderRadius: resolvedBorderRadius, ...style }}
+        onClick={onClick}
+      >
+        <div
+          className={`wg-glass-panel wg-glass-lite ${variantClass} ${isFullHeight ? 'h-full' : ''} ${isFullWidth ? 'w-full' : ''}`.trim()}
+          style={{ borderRadius: resolvedBorderRadius }}
+        >
+          <div className="wg-glass-lite-body" style={{ padding: resolvedPadding, borderRadius: resolvedBorderRadius }}>
+            <div className="wg-glass-lite-content">{content}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={ref}
@@ -124,17 +171,7 @@ export const GlassPanel = forwardRef<HTMLDivElement, GlassPanelProps>(({
         overLight={overLight}
         mouseContainer={mouseContainer}
       >
-        {innerClassName ? (
-          <div className={`w-full ${isFullHeight ? 'h-full flex-1 min-h-0' : ''} ${innerClassName}`.trim()}>
-            {children}
-          </div>
-        ) : isFullHeight ? (
-          <div className="w-full h-full flex-1 min-h-0 flex flex-col">
-            {children}
-          </div>
-        ) : (
-          children
-        )}
+        {content}
       </LiquidGlass>
     </div>
   );

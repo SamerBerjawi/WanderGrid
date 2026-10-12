@@ -133,7 +133,7 @@ export const LiquidGlassSelect: React.FC<LiquidGlassSelectProps> = ({
                     ref={buttonRef}
                     type="button"
                     onClick={handleToggle}
-                    className={`${isFull ? 'w-full' : 'w-auto'} h-10 sm:h-11 px-2.5 sm:px-3.5 rounded-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-xs font-bold text-light-text dark:text-dark-text flex items-center justify-between gap-1.5 sm:gap-2 transition-all cursor-pointer select-none active:scale-95 whitespace-nowrap shrink-0 ${
+                    className={`${isFull ? 'w-full' : 'w-auto'} h-11 px-2.5 sm:px-3.5 rounded-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-xs font-bold text-light-text dark:text-dark-text flex items-center justify-between gap-1.5 sm:gap-2 transition-all cursor-pointer select-none active:scale-95 whitespace-nowrap shrink-0 ${
                         isOpen ? 'ring-2 ring-emerald-500/30' : ''
                     } ${value !== 'all' && value !== '' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''}`}
                 >
@@ -356,7 +356,7 @@ export const LiquidGlassMultiSelect: React.FC<LiquidGlassMultiSelectProps> = ({
                     ref={buttonRef}
                     type="button"
                     onClick={handleToggle}
-                    className={`w-full h-10 sm:h-11 px-3.5 rounded-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-xs font-bold text-light-text dark:text-dark-text flex items-center justify-between gap-2 transition-all cursor-pointer select-none active:scale-[0.99] whitespace-nowrap shrink-0 ${
+                    className={`w-full h-11 px-3.5 rounded-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-xs font-bold text-light-text dark:text-dark-text flex items-center justify-between gap-2 transition-all cursor-pointer select-none active:scale-[0.99] whitespace-nowrap shrink-0 ${
                         isOpen ? 'ring-2 ring-emerald-500/30' : ''
                     } ${value.length > 0 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''}`}
                 >
@@ -366,7 +366,7 @@ export const LiquidGlassMultiSelect: React.FC<LiquidGlassMultiSelectProps> = ({
                         )}
                         <span className="truncate text-left">{displayLabel}</span>
                         {value.length > 1 && (
-                            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                            <span className="px-1.5 py-0.2 rounded-full text-2xs font-mono font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
                                 {value.length}
                             </span>
                         )}

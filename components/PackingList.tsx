@@ -1,5 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { confirmDialog } from '../services/confirm';
+import { toast } from '../services/toast';
 import { Trip, PackingItem, WorkspaceSettings } from '../types';
 import { Button, Input, Select, Badge } from './ui';
 import { EmptyState } from './EmptyState';
@@ -7,7 +9,6 @@ import {
   Backpack, Sparkle, Plus, Check, X, TShirt, Drop, 
   DeviceMobile, FileText, FirstAid, SquaresFour 
 } from '@phosphor-icons/react';
-import { GoogleGenAI, Type } from "@google/genai";
 import { dataService } from '../services/mockDb';
 
 interface PackingListProps {
@@ -83,24 +84,13 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
         if (newItems.length > 0) {
             onUpdate([...items, ...newItems]);
         } else {
-            alert("All master list items are already added.");
+            toast.info("All master list items are already added.");
         }
     };
 
     const handleAiGenerate = async () => {
         setIsGenerating(true);
         try {
-            const settings = await dataService.getWorkspaceSettings();
-            const apiKey = settings.googleGeminiApiKey || process.env.API_KEY;
-            
-            if (!apiKey) {
-                alert("Please configure Google Gemini API Key in Settings.");
-                setIsGenerating(false);
-                return;
-            }
-
-            const ai = new GoogleGenAI({ apiKey });
-            
             const prompt = `
                 Generate a comprehensive packing list for a trip to ${trip.location}.
                 Dates: ${trip.startDate} to ${trip.endDate}.
@@ -108,28 +98,12 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                 Accommodation: ${trip.accommodations?.map(a => a.type).join(', ') || 'Hotel'}.
                 
                 Provide a list of 15-20 essential items grouped by category (Clothing, Toiletries, Electronics, Documents, Health, Misc).
-                Return ONLY JSON.
+                Return ONLY a JSON array of objects with "category" and "item" string fields.
             `;
 
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: prompt,
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                category: { type: Type.STRING },
-                                item: { type: Type.STRING }
-                            }
-                        }
-                    }
-                }
-            });
-
-            const rawJson = JSON.parse(response.text || '[]');
+            // Gemini runs on the server, which holds the API key.
+            const text = await dataService.generateAI([{ role: 'user', text: prompt }], 'application/json');
+            const rawJson = JSON.parse(text || '[]');
             
             const newItems: PackingItem[] = rawJson.map((entry: any) => ({
                 id: Math.random().toString(36).substr(2, 9),
@@ -141,9 +115,9 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
             // Merge with existing
             onUpdate([...items, ...newItems]);
 
-        } catch (e) {
+        } catch (e: any) {
             console.error("AI Generation failed", e);
-            alert("Could not generate list. Please try again.");
+            toast.error(e?.message || "Could not generate list. Please try again.");
         } finally {
             setIsGenerating(false);
         }
@@ -171,7 +145,7 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
             <div className="flex flex-col md:flex-row justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
                 
-                <div className="flex items-center gap-6 relative z-10 w-full md:w-auto">
+                <div className="flex items-center gap-6 relative z-raised w-full md:w-auto">
                     <div className="relative w-20 h-20 flex-shrink-0">
                         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                             <path className="text-white/20" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
@@ -185,9 +159,12 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                     </div>
                 </div>
 
-                <div className="relative z-10 w-full md:w-auto mt-6 md:mt-0 flex gap-3 flex-wrap justify-end">
+                <div className="relative z-raised w-full md:w-auto mt-6 md:mt-0 flex gap-3 flex-wrap justify-end">
                     <Button 
-                        onClick={() => onUpdate([])} 
+                        onClick={async () => {
+                            if (items.length === 0) return;
+                            if (await confirmDialog({ title: 'Clear packing list?', message: `Remove all ${items.length} item${items.length === 1 ? '' : 's'} from this packing list? This can't be undone.`, confirmLabel: 'Clear All', danger: true })) onUpdate([]);
+                        }} 
                         variant="ghost" 
                         className="text-white/70 hover:text-white hover:bg-white/10"
                     >
@@ -252,7 +229,7 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                     };
                     const iconMap: Record<string, string> = {
                         blue: 'text-blue-500', teal: 'text-teal-500', purple: 'text-purple-500',
-                        amber: 'text-amber-500', rose: 'text-rose-500', gray: 'text-gray-400'
+                        amber: 'text-amber-500', rose: 'text-rose-500', gray: 'text-gray-500 dark:text-gray-400'
                     };
                     const CatIcon = cat.Icon;
 
@@ -261,7 +238,7 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                             <div className="flex items-center gap-3 mb-4">
                                 <CatIcon className={`w-5 h-5 ${iconMap[cat.color]}`} />
                                 <h3 className="font-black text-gray-800 dark:text-gray-200">{cat.id}</h3>
-                                <span className="ml-auto text-xs font-bold text-gray-400">{catItems.filter(i => i.isChecked).length}/{catItems.length}</span>
+                                <span className="ml-auto text-xs font-bold text-gray-500 dark:text-gray-400">{catItems.filter(i => i.isChecked).length}/{catItems.length}</span>
                             </div>
                             <div className="space-y-2">
                                 {catItems.map(item => (
@@ -279,7 +256,7 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                                         <button 
                                             type="button"
                                             onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
-                                            className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-semantic-red p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer"
+                                            className="opacity-0 group-hover:opacity-100 text-gray-500 dark:text-gray-400 hover:text-semantic-red p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer"
                                             aria-label={`Delete ${item.text}`}
                                         >
                                             <X className="w-4 h-4" />

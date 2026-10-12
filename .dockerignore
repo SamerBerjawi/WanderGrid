@@ -9,4 +9,6 @@ coverage
 .env.*
 postgres_data
 *.log
-.DS_Store
+.DS_Storetests/e2e/node_modules
+tests/e2e/.dist
+tests/e2e/test-results

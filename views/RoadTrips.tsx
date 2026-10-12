@@ -1,4 +1,8 @@
-import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
+import { toast } from '../services/toast';
+import { confirmDialog } from '../services/confirm';
+// recharts is loaded only when the transit chart renders (PERF-004)
+const TransitFootprintChart = lazy(() => import('../components/TransitFootprintChart').then(m => ({ default: m.TransitFootprintChart })));
 import { 
   Plus, MagnifyingGlass as Search, CalendarBlank as Calendar, MapPin, Trash as Trash2, PencilSimple as Edit2, 
   CaretDown as ChevronDown, CaretUp as ChevronUp, Clock, CurrencyDollar as DollarSign, Compass, Car, 
@@ -16,7 +20,6 @@ import { fetchRoute } from '../services/multiModalRouting';
 import { formatDate, formatCurrency } from '../utils/formatters';
 
 import { EmptyState } from '../components/EmptyState';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { TooltipContent } from '../components/TooltipContent';
 
 // Drag & Drop via @dnd-kit for Waypoints
@@ -144,7 +147,7 @@ const SortableWaypointItem: React.FC<SortableWaypointItemProps> = ({ waypoint, o
           <DotsSixVertical className="w-4 h-4" />
         </button>
         <span className="font-semibold text-light-text dark:text-dark-text truncate">{waypoint.name}</span>
-        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary-500/10 text-primary-600 dark:text-primary-400 shrink-0">
+        <span className="text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary-500/10 text-primary-600 dark:text-primary-400 shrink-0">
           {waypoint.type}
         </span>
         {waypoint.notes && (
@@ -166,6 +169,7 @@ const SortableWaypointItem: React.FC<SortableWaypointItemProps> = ({ waypoint, o
 };
 
 export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ onTripClick }) => {
+  const savingRef = useRef(false);
   const [roadTrips, setRoadTrips] = useState<any[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
@@ -466,30 +470,33 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
   const handleBulkDelete = async () => {
     if (selectedTripIds.size === 0) return;
     const count = selectedTripIds.size;
-    if (!window.confirm(`Are you sure you want to delete ${count} selected road trip record${count > 1 ? 's' : ''}?`)) {
+    if (!(await confirmDialog({ title: 'Delete journeys?', message: `Delete ${count} selected land journey${count > 1 ? 's' : ''}? This can't be undone.`, confirmLabel: 'Delete', danger: true }))) {
       return;
     }
 
     try {
       setLoading(true);
-      for (const id of selectedTripIds) {
+      // One atomic request: delete the journeys and strip them from each linked trip exactly once
+      // (the per-item loop re-saved the same trip from a stale copy and undid earlier removals).
+      const ids = Array.from(selectedTripIds);
+      const removedByTrip: Record<string, string[]> = {};
+      for (const id of ids) {
         const item = roadTrips.find(r => r.id === id);
-        await dataService.deleteFlight(id);
-        if (item?.tripId) {
-          const linkedTrip = trips.find(t => t.id === item.tripId);
-          if (linkedTrip && linkedTrip.transports) {
-            const updated = linkedTrip.transports.filter(tx => tx.id !== id);
-            await dataService.updateTrip({ ...linkedTrip, transports: updated });
-          }
-        }
+        if (item?.tripId) (removedByTrip[item.tripId] = removedByTrip[item.tripId] || []).push(id);
       }
+      const upsertTrips = Object.entries(removedByTrip)
+        .map(([tripId, removed]) => {
+          const linkedTrip = trips.find(t => t.id === tripId);
+          return linkedTrip ? { ...linkedTrip, transports: (linkedTrip.transports || []).filter(tx => !removed.includes(tx.id)) } : null;
+        })
+        .filter(Boolean) as typeof trips;
+      await dataService.applyBatch({ deleteFlights: ids, upsertTrips });
       setSelectedTripIds(new Set());
       setIsMultiEditing(false);
-      window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
       await loadData();
     } catch (err: any) {
       console.error(err);
-      alert(err.message || 'Failed to bulk delete records.');
+      toast.error(err.message || 'Could not delete the selected journeys.');
     } finally {
       setLoading(false);
     }
@@ -714,7 +721,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
 
   const handleCalculateRoute = async () => {
     if (!formOrigin.trim() || !formDestination.trim()) {
-      alert("Please enter origin and destination cities first.");
+      toast.info("Enter the origin and destination first.");
       return;
     }
     setIsCalculatingRoute(true);
@@ -776,6 +783,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       setFormDistance(String(fallbackDist));
       setIsDistanceEstimated(true);
       setRouteAttribution(null);
+      toast.info("Routing service unavailable. The distance was estimated from the schedule; you can edit it.");
     } finally {
       setIsCalculatingRoute(false);
     }
@@ -783,11 +791,13 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
 
   const handleSaveTransport = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (savingRef.current) return; // a double click must not create two journeys (REL-006)
     if (!formOrigin.trim() || !formDestination.trim() || !formDepDate) {
-      alert("Origin, destination, and departure date are required fields.");
+      toast.error("Origin, destination and departure date are required.");
       return;
     }
 
+    savingRef.current = true;
     try {
       setLoading(true);
 
@@ -864,14 +874,15 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       await loadData();
     } catch (err: any) {
       console.error(err);
-      alert(err.message || 'Failed saving land journey record.');
+      toast.error(err.message || 'Could not save this journey.');
     } finally {
+      savingRef.current = false;
       setLoading(false);
     }
   };
 
   const handleDeleteTransport = async (id: string, tripId?: string) => {
-    if (!window.confirm("Are you sure you want to delete this land journey?")) return;
+    if (!(await confirmDialog({ title: 'Delete journey?', message: 'Delete this land journey? This can\'t be undone.', confirmLabel: 'Delete', danger: true }))) return;
     try {
       setLoading(true);
       await dataService.deleteFlight(id);
@@ -891,7 +902,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       loadData();
     } catch (err: any) {
       console.error(err);
-      alert(err.message || 'Failure deleting travel ticket.');
+      toast.error(err.message || 'Could not delete this journey.');
     } finally {
       setLoading(false);
     }
@@ -951,7 +962,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
             }}
             className={`min-w-[44px] min-h-[44px] px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
               isMultiEditing
-                ? 'bg-primary-500 text-white border-primary-500 shadow-sm'
+                ? 'bg-primary-500 text-slate-950 border-primary-500 shadow-sm'
                 : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text border-black/10 dark:border-white/10'
             }`}
             title="Toggle bulk selection"
@@ -1083,9 +1094,9 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
               <button
                 type="button"
                 onClick={() => setHubTab('map')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   hubTab === 'map' 
-                    ? 'bg-white text-primary-500 shadow-sm dark:bg-dark-card' 
+                    ? 'bg-white text-primary-800 dark:text-primary-400 shadow-sm dark:bg-dark-card' 
                     : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text'
                 }`}
               >
@@ -1095,9 +1106,9 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
               <button
                 type="button"
                 onClick={() => setHubTab('chart')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   hubTab === 'chart' 
-                    ? 'bg-white text-primary-500 shadow-sm dark:bg-dark-card' 
+                    ? 'bg-white text-primary-800 dark:text-primary-400 shadow-sm dark:bg-dark-card' 
                     : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text'
                 }`}
               >
@@ -1144,38 +1155,9 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                     <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Shows travel distance (km) and total time spent (hours) across car, bus, train, ferry, and cruise modes.</p>
                   </div>
                   <div className="w-full h-[280px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} />
-                        <XAxis dataKey="name" stroke={isDark ? "#888" : "#555"} fontSize={10} tickLine={false} />
-                        <YAxis yAxisId="left" stroke="#3b82f6" label={{ value: 'Distance (km)', angle: -90, position: 'insideLeft', style: {fontSize: 10, fill: '#3b82f6'} }} fontSize={10} tickLine={false} />
-                        <YAxis yAxisId="right" orientation="right" stroke="#10b981" label={{ value: 'Duration (hours)', angle: 90, position: 'insideRight', style: {fontSize: 10, fill: '#10b981'} }} fontSize={10} tickLine={false} />
-                        <Tooltip 
-                          cursor={{ fill: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)' }}
-                          content={({ active, payload, label }) => {
-                            if (active && payload && payload.length) {
-                              const rows = payload.map((entry) => ({
-                                color: entry.color || '#3b82f6',
-                                label: String(entry.name || entry.dataKey || ''),
-                                value: entry.dataKey === 'Duration' 
-                                  ? `${Number(entry.value).toFixed(1)} hrs` 
-                                  : `${Number(entry.value).toLocaleString()} km`
-                              }));
-                              return (
-                                <TooltipContent
-                                  title={String(label)}
-                                  rows={rows}
-                                />
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Legend wrapperStyle={{ fontSize: '10px' }} />
-                        <Bar yAxisId="left" dataKey="Distance" fill="#3b82f6" name="Distance (km)" radius={[4, 4, 0, 0]} />
-                        <Bar yAxisId="right" dataKey="Duration" fill="#10b981" name="Duration (hrs)" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <Suspense fallback={<div className="w-full h-full animate-pulse rounded-2xl bg-black/5 dark:bg-white/5" aria-hidden="true" />}>
+                      <TransitFootprintChart data={chartData} isDark={isDark} />
+                    </Suspense>
                   </div>
                 </div>
               )}
@@ -1325,7 +1307,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-sticky"
+            className="fixed bottom-floating-bar left-1/2 -translate-x-1/2 z-sticky"
           >
             <GlassPanel
               className="wg-glass-pill shadow-2xl border border-primary-500/30"
@@ -1916,7 +1898,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
             <Button variant="secondary" type="button" onClick={() => setIsModalOpen(false)} className="min-h-[44px]">
               Cancel
             </Button>
-            <Button variant="primary" type="submit" className="min-h-[44px]">
+            <Button variant="primary" type="submit" className="min-h-[44px]" disabled={loading}>
               {editingTransport ? "Save Itinerary" : "Create Journey"}
             </Button>
           </div>

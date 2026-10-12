@@ -116,7 +116,7 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
 
   if (total === 0) {
     return (
-      <div className="text-3xs uppercase font-bold text-light-text-secondary dark:text-dark-text-secondary opacity-60 py-1 text-center font-mono">
+      <div className="text-2xs uppercase font-bold text-light-text-secondary dark:text-dark-text-secondary opacity-60 py-1 text-center font-mono">
         No admission seals
       </div>
     );
@@ -141,7 +141,7 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
       })}
       {needsOverflow && remainingCount > 0 && (
         <span 
-          className="w-6 h-6 rounded-full border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 flex items-center justify-center text-3xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary shrink-0 shadow-2xs"
+          className="w-6 h-6 rounded-full border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 flex items-center justify-center text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary shrink-0 shadow-2xs"
           title={`${remainingCount} more admitted countries`}
         >
           +{remainingCount}
@@ -185,7 +185,7 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
                   Global Passport
                 </span>
               </div>
-              <span className="px-2 py-0.5 rounded-full text-3xs font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+              <span className="px-2 py-0.5 rounded-full text-2xs font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                 {passportNumber}
               </span>
             </div>
@@ -203,7 +203,7 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
                 <h4 className="text-xs font-black uppercase text-light-text dark:text-dark-text tracking-tight truncate">
                   {travelerName}
                 </h4>
-                <div className="flex items-center gap-1 mt-0.5 text-3xs font-bold text-light-text-secondary dark:text-dark-text-secondary truncate">
+                <div className="flex items-center gap-1 mt-0.5 text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary truncate">
                   <span className="text-blue-600 dark:text-blue-400 font-extrabold uppercase">{nationality}</span>
                   <span>&bull;</span>
                   <span className="font-mono">DOB {dobStr}</span>
@@ -214,11 +214,11 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
             {/* Visa Seals Dynamically Filling Empty Space */}
             <div className="pt-2 border-t border-black/5 dark:border-white/10 flex-1 min-h-0 flex flex-col justify-between overflow-hidden">
               <div className="flex items-center justify-between mb-0.5 shrink-0">
-                <span className="text-3xs font-extrabold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
+                <span className="text-2xs font-extrabold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
                   <Award className="w-3 h-3 text-emerald-500" />
                   Visa Seals
                 </span>
-                <span className="text-3xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">
+                <span className="text-2xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">
                   {stats.flags.length} Admitted
                 </span>
               </div>
@@ -247,7 +247,7 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
                       </span>
                     </div>
                   </div>
-                  <span className={`px-2 py-0.5 rounded-full text-3xs font-black uppercase tracking-wider shrink-0 ${
+                  <span className={`px-2 py-0.5 rounded-full text-2xs font-black uppercase tracking-wider shrink-0 ${
                     isFuture
                       ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
                       : 'bg-black/5 dark:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary'
@@ -262,13 +262,13 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
                     <span className="text-lg sm:text-xl font-black text-light-text dark:text-dark-text leading-none font-mono">
                       {flight.origin}
                     </span>
-                    <span className="block text-3xs font-bold text-light-text-secondary dark:text-dark-text-secondary truncate max-w-[65px] mt-0.5">
+                    <span className="block text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary truncate max-w-[65px] mt-0.5">
                       {getCityName(flight.origin)}
                     </span>
                   </div>
 
                   <div className="flex-1 flex flex-col items-center justify-center px-2">
-                    <span className="text-3xs font-extrabold uppercase text-blue-600 dark:text-blue-400 tracking-wider mb-0.5 font-mono">
+                    <span className="text-2xs font-extrabold uppercase text-blue-600 dark:text-blue-400 tracking-wider mb-0.5 font-mono">
                       {flight.duration ? `${Math.floor(flight.duration / 60)}h ${flight.duration % 60}m` : 'Direct'}
                     </span>
                     <div className="relative w-full flex items-center justify-center">
@@ -281,27 +281,27 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
                     <span className="text-lg sm:text-xl font-black text-light-text dark:text-dark-text leading-none font-mono">
                       {flight.destination}
                     </span>
-                    <span className="block text-3xs font-bold text-light-text-secondary dark:text-dark-text-secondary truncate max-w-[65px] mt-0.5">
+                    <span className="block text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary truncate max-w-[65px] mt-0.5">
                       {getCityName(flight.destination)}
                     </span>
                   </div>
                 </div>
 
                 {/* Departure & Seat Details Bar */}
-                <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-white/40 dark:bg-white/[0.04] rounded-xl border border-black/5 dark:border-white/5 text-3xs shrink-0">
+                <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-white/40 dark:bg-white/[0.04] rounded-xl border border-black/5 dark:border-white/5 text-2xs shrink-0">
                   <div>
-                    <span className="block text-3xs font-extrabold uppercase text-light-text-secondary dark:text-dark-text-secondary">
+                    <span className="block text-2xs font-extrabold uppercase text-light-text-secondary dark:text-dark-text-secondary">
                       Departure
                     </span>
-                    <span className="font-mono text-3xs font-black text-light-text dark:text-dark-text mt-0.5 block truncate">
+                    <span className="font-mono text-2xs font-black text-light-text dark:text-dark-text mt-0.5 block truncate">
                       {flight.departureDate} &bull; <strong className="text-blue-600 dark:text-blue-400">{flight.departureTime || 'TBD'}</strong>
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="block text-3xs font-extrabold uppercase text-light-text-secondary dark:text-dark-text-secondary">
+                    <span className="block text-2xs font-extrabold uppercase text-light-text-secondary dark:text-dark-text-secondary">
                       Seat &bull; Class
                     </span>
-                    <span className="font-mono text-3xs font-black text-light-text dark:text-dark-text mt-0.5 block truncate">
+                    <span className="font-mono text-2xs font-black text-light-text dark:text-dark-text mt-0.5 block truncate">
                       {flight.seatNumber ? `Row ${flight.seatNumber}` : 'Standard'} &bull; {flight.travelClass || 'Economy'}
                     </span>
                   </div>
@@ -315,7 +315,7 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
                 <span className="text-2xs font-extrabold uppercase text-light-text dark:text-dark-text tracking-wider">
                   No Upcoming Flight
                 </span>
-                <span className="text-3xs text-light-text-secondary dark:text-dark-text-secondary font-medium mt-0.5">
+                <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium mt-0.5">
                   Ready for your next journey
                 </span>
               </div>
@@ -336,16 +336,16 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
       padding="0px"
     >
       {/* Floating Status Indicator Tag */}
-      <div className="absolute top-3 left-3 z-10 bg-white/80 dark:bg-black/50 px-2.5 py-1 rounded-xl border border-black/5 dark:border-white/10 backdrop-blur-md shadow-xs pointer-events-none">
-        <div className="flex items-center gap-1.5 text-3xs font-extrabold uppercase tracking-widest text-light-text dark:text-dark-text">
+      <div className="absolute top-3 left-3 z-raised bg-white/80 dark:bg-black/50 px-2.5 py-1 rounded-xl border border-black/5 dark:border-white/10 backdrop-blur-md shadow-xs pointer-events-none">
+        <div className="flex items-center gap-1.5 text-2xs font-extrabold uppercase tracking-widest text-light-text dark:text-dark-text">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping shrink-0" />
           Route Network
         </div>
       </div>
 
       {/* Floating Network Statistics Tag */}
-      <div className="absolute top-3 right-3 z-10 bg-white/80 dark:bg-black/50 px-2.5 py-1 rounded-xl border border-black/5 dark:border-white/10 backdrop-blur-md shadow-xs pointer-events-none">
-        <div className="flex items-center gap-1 text-3xs font-bold text-light-text-secondary dark:text-dark-text-secondary">
+      <div className="absolute top-3 right-3 z-raised bg-white/80 dark:bg-black/50 px-2.5 py-1 rounded-xl border border-black/5 dark:border-white/10 backdrop-blur-md shadow-xs pointer-events-none">
+        <div className="flex items-center gap-1 text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary">
           <Globe className="w-3 h-3 text-indigo-500" />
           {stats.routes.length} Active Segments
         </div>
@@ -407,7 +407,7 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
       </div>
 
       {/* Subtle Bottom Ticker */}
-      <div className="px-4 py-2 bg-white/40 dark:bg-white/[0.03] border-t border-black/5 dark:border-white/5 flex items-center justify-between text-3xs font-mono text-light-text-secondary dark:text-dark-text-secondary shrink-0">
+      <div className="px-4 py-2 bg-white/40 dark:bg-white/[0.03] border-t border-black/5 dark:border-white/5 flex items-center justify-between text-2xs font-mono text-light-text-secondary dark:text-dark-text-secondary shrink-0">
         <span>{stats.airports} AIRPORTS CONNECTED</span>
         <span>{stats.airlines} AIRLINES</span>
       </div>
@@ -433,7 +433,7 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
             Flight Analytics
           </span>
         </div>
-        <span className="px-2 py-0.5 rounded-full text-3xs font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+        <span className="px-2 py-0.5 rounded-full text-2xs font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
           {yearFilter === 'all' ? 'All Time' : yearFilter}
         </span>
       </div>
@@ -441,7 +441,7 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
       {/* Metric Ticker */}
       <div className="grid grid-cols-3 gap-1.5 py-1.5">
         <div className="p-1.5 bg-white/40 dark:bg-white/[0.04] rounded-xl border border-black/5 dark:border-white/5 text-center">
-          <span className="block text-3xs font-extrabold uppercase text-light-text-secondary dark:text-dark-text-secondary">
+          <span className="block text-2xs font-extrabold uppercase text-light-text-secondary dark:text-dark-text-secondary">
             Spend
           </span>
           <span className="text-xs font-black text-amber-500 font-mono mt-0.5 block truncate">
@@ -449,15 +449,15 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
           </span>
         </div>
         <div className="p-1.5 bg-white/40 dark:bg-white/[0.04] rounded-xl border border-black/5 dark:border-white/5 text-center">
-          <span className="block text-3xs font-extrabold uppercase text-light-text-secondary dark:text-dark-text-secondary">
-            Airward
+          <span className="block text-2xs font-extrabold uppercase text-light-text-secondary dark:text-dark-text-secondary">
+            Airborne
           </span>
           <span className="text-xs font-black text-light-text dark:text-dark-text font-mono mt-0.5 block truncate">
             {daysHour}d {remHours}h
           </span>
         </div>
         <div className="p-1.5 bg-white/40 dark:bg-white/[0.04] rounded-xl border border-black/5 dark:border-white/5 text-center">
-          <span className="block text-3xs font-extrabold uppercase text-light-text-secondary dark:text-dark-text-secondary">
+          <span className="block text-2xs font-extrabold uppercase text-light-text-secondary dark:text-dark-text-secondary">
             Top Airline
           </span>
           <span className="text-xs font-black text-light-text dark:text-dark-text mt-0.5 block truncate" title={metrics.topAirline}>
@@ -472,8 +472,8 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={monthlyData} margin={{ top: 2, right: 2, left: -36, bottom: -2 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#888888" strokeOpacity={0.08} />
-              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 8, fill: '#888888', fontWeight: 700 }} />
-              <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 8, fill: '#888888', fontWeight: 700 }} />
+              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#888888', fontWeight: 700 }} />
+              <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#888888', fontWeight: 700 }} />
               <Tooltip 
                 cursor={{ fill: 'rgba(59, 130, 246, 0.05)' }}
                 content={({ active, payload }) => {
@@ -496,7 +496,7 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
       </div>
 
       {/* Subtle Bottom Ticker */}
-      <div className="pt-1.5 border-t border-black/5 dark:border-white/10 flex items-center justify-between text-3xs font-mono text-light-text-secondary dark:text-dark-text-secondary shrink-0">
+      <div className="pt-1.5 border-t border-black/5 dark:border-white/10 flex items-center justify-between text-2xs font-mono text-light-text-secondary dark:text-dark-text-secondary shrink-0">
         <span>{statsFlights.length} FLIGHTS LOGGED</span>
         <span>{stats.distance.toLocaleString()} KM TOTAL</span>
       </div>
@@ -522,7 +522,7 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
                 key={tab.id}
                 type="button"
                 onClick={() => setMobileTab(tab.id)}
-                className={`relative flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] ${
+                className={`relative flex-1 min-w-0 px-1 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] ${
                   isSelected 
                     ? 'text-blue-600 dark:text-blue-400 font-extrabold' 
                     : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
@@ -536,8 +536,8 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
                     transition={{ type: "spring", stiffness: 450, damping: 32 }}
                   />
                 )}
-                <span className="relative z-10 flex items-center gap-1.5">
-                  <TabIcon className="w-3.5 h-3.5" weight="duotone" />
+                <span className="relative z-raised flex items-center gap-1.5 min-w-0">
+                  <TabIcon className="w-3.5 h-3.5 shrink-0" weight="duotone" />
                   <span className="text-2xs truncate">{tab.label}</span>
                 </span>
               </button>

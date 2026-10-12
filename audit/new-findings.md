@@ -1,0 +1,20 @@
+# WanderGrid — New Findings (found during remediation)
+
+Issues noticed while implementing `audit/plan.md` that are **not** covered by an existing finding.
+They were not fixed unless the Status says so. IDs continue the audit numbering with the `NEW-` prefix.
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| NEW-001 | High | Settings › Personnel (`views/Settings.tsx` `handleSaveUser`) | Editing a member with the password field left blank sent `password: 'password'`, silently resetting the member's password to `password` once the server hashed it. | **Fixed in WP-1.3**: blank keeps the current password; new members require 8+ characters. |
+| NEW-002 | Medium | Profile (`views/UserDetail.tsx`) | After saving a profile, the typed plaintext password was kept in component state and written into `localStorage.wandergrid_session_user`. | **Fixed in WP-1.3**: the password is stripped before state/localStorage. |
+| NEW-003 | Medium | Settings (all admin tabs) | Non-admin users see the Workspace, Integrations, Gear, Carriers, Personnel and Data Management controls. Since WP-1.2a the server answers 403, so a Partner can fill in forms whose save always fails. The admin-only tabs should be hidden or read-only for non-admins. | Open |
+| NEW-004 | Low | Flights, Road Trips, Travel Atlas | Edit/Delete controls are shown on records the user may not change (another member's flight or atlas entry). Since WP-1.2b these actions return 403. Hide or disable them using `ownerId`. | Open |
+| NEW-005 | Low | `GET /api/<collection>` (`getResources`) | `limit`/`offset` are applied in SQL before the ownership filter, so a page can contain fewer than `limit` readable rows. No client passes these parameters today (PERF-009); fix together with WP-3.4 pagination. | Open |
+| NEW-006 | Low | `POST /api/restore` (replace mode) | `restoreOptions.currentUser` from the request body is inserted into `users` when the caller's account isn't in the file. Admin-only since WP-1.2a, but it is still an unvalidated user record; build it from the server's own row instead. | Open |
+| NEW-007 | Info | Test harness (`pg-mem`) | pg-mem ignores `ROLLBACK` and cannot parse a single multi-megabyte string parameter. The test helpers now emulate rollback with snapshots; very large single-record payloads must be tested against real Postgres. | Documented |
+| NEW-008 | Medium | `components/ui/VirtualListItem.tsx` | Virtualised rows observed the viewport, but the app scrolls `<main>`: rows below the fold were never mounted, so find-in-page, screen readers and automation couldn't reach them (this produced QA-D-002). | **Fixed in WP-2.3**: the observer uses the nearest scroll container as root. |
+| NEW-009 | Low | Travel Atlas › Scan (mobile) | The two liquid-glass info cards were mis-sized on phones and their text overlapped the "Register to Atlas" button. | **Fixed in WP-2.3**: CSS glass cards (decision C-1). |
+| NEW-010 | Info | `/api/batch`, `/bulk` | Responses now include `versions` so clients can keep editing after a batch without self-conflicts. | Documented |
+| NEW-011 | Low | Road Trips › Calculate Route | When the routing service is unreachable the distance silently falls back to an estimate; only a small "Estimated" badge changes. (Previously untestable because the browser could reach OSRM directly; the CSP from WP-2.12 blocks those direct calls, so the failure path now happens.) | **Fixed during the e2e retry**: an info toast explains the estimate. |
+| NEW-012 | Low | Overlays with text fields (Flights form, Excursion, Atlas) | Escape closed the whole overlay even while typing, discarding the form. | **Fixed in WP-4.4**: overlay Escape is ignored inside text fields and when an open suggestion list consumes it. |
+| NEW-013 | Medium | Vacation Calendar (`views/VacationCalendar.tsx`) | "Today" was hard-coded to 7 June 2026 in five places (initial month, Today button, upcoming/ended logic), so the calendar always opened on June 2026 and labelled events relative to that date. This is why "Inspect Trip Logistics" was untestable. | **Fixed during the e2e retry**: uses the real current date. |

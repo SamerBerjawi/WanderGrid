@@ -1,4 +1,5 @@
 import React, { useRef, useState, useMemo, useEffect } from 'react';
+import { toast } from '../services/toast';
 import * as XLSX from 'xlsx';
 import { Trip, Transport, User, BackupSelectionOptions, RestoreOptions } from '../types';
 import { Button, Input, Select } from './ui';
@@ -769,7 +770,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                     setBackupRestoreError('');
                 } catch (err: any) {
                     console.error(err);
-                    alert("This JSON file does not appear to be a valid backup file.");
+                    toast.error("This JSON file does not appear to be a valid backup file.");
                     setBackupDataState(null);
                     setBackupParsedCount(null);
                 }
@@ -791,7 +792,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                 const jsonRows = XLSX.utils.sheet_to_json(sheet) as any[];
 
                 if (jsonRows.length === 0) {
-                    alert("The uploaded file contains no rows.");
+                    toast.error("The uploaded file contains no rows.");
                     return;
                 }
 
@@ -849,7 +850,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                 setStep(2);
             } catch (err) {
                 console.error(err);
-                alert("Failed to read sheet. Ensure it is a valid Excel or CSV table.");
+                toast.error("Failed to read sheet. Ensure it is a valid Excel or CSV table.");
             }
         };
         reader.readAsArrayBuffer(file);
@@ -864,7 +865,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
         // Validation: Verify key items have some mapping
         const missingRequired = TARGET_FIELDS.find(t => t.required && !columnMapping[t.key]);
         if (missingRequired) {
-            alert(`Please map the required field: ${missingRequired.label}`);
+            toast.error(`Please map the required field: ${missingRequired.label}`);
             return;
         }
         setStep(3);
@@ -930,7 +931,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
             onClose();
         } catch (e) {
             console.error('Import error', e);
-            alert('An error occurred while saving imported data.');
+            toast.error('An error occurred while saving imported data.');
         } finally {
             setIsProcessing(false);
         }
@@ -938,6 +939,9 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
 
     return (
         <div 
+            role="dialog"
+            aria-modal="true"
+            aria-label="Import flights"
             className="fixed inset-0 backdrop-blur-md bg-black/5 dark:bg-black/15 flex items-center justify-center z-modal p-4 safe-top safe-bottom safe-x text-light-text dark:text-dark-text animate-fade-in font-sans"
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
@@ -947,7 +951,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                 {/* Header section with stepper and close button */}
                 <div className="p-5 sm:p-6 border-b border-black/5 dark:border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
                     <div className="flex items-center gap-3.5">
-                        <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-primary-500 shrink-0 shadow-md transition-transform hover:scale-105">
+                        <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-slate-950 bg-primary-500 shrink-0 shadow-md transition-transform hover:scale-105">
                             <Plane className="w-6 h-6" weight="duotone" />
                         </div>
                         <div>
@@ -961,17 +965,17 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                     <div className="flex items-center gap-3 self-stretch md:self-auto justify-between md:justify-end">
                         {/* Stepper display */}
                         <div className="flex items-center gap-1.5 sm:gap-2">
-                            <div className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${step === 1 ? 'bg-primary-500 text-white shadow-sm' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'}`}>
+                            <div className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${step === 1 ? 'bg-primary-500 text-slate-950 shadow-sm' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'}`}>
                                 <span className="w-4 h-4 rounded-full bg-white/20 text-center text-2xs leading-4 font-bold">1</span>
                                 <span>Upload</span>
                             </div>
                             <ChevronRight className="w-3.5 h-3.5 text-light-text-secondary/50 dark:text-dark-text-secondary/50" />
-                            <div className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${step === 2 ? 'bg-primary-500 text-white shadow-sm' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'}`}>
+                            <div className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${step === 2 ? 'bg-primary-500 text-slate-950 shadow-sm' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'}`}>
                                 <span className="w-4 h-4 rounded-full bg-white/20 text-center text-2xs leading-4 font-bold">2</span>
                                 <span>Mapping</span>
                             </div>
                             <ChevronRight className="w-3.5 h-3.5 text-light-text-secondary/50 dark:text-dark-text-secondary/50" />
-                            <div className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${step === 3 ? 'bg-primary-500 text-white shadow-sm' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'}`}>
+                            <div className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${step === 3 ? 'bg-primary-500 text-slate-950 shadow-sm' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'}`}>
                                 <span className="w-4 h-4 rounded-full bg-white/20 text-center text-2xs leading-4 font-bold">3</span>
                                 <span>Confirm</span>
                             </div>
@@ -1156,7 +1160,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                         { key: 'flights', label: 'Flights & Itineraries', count: backupParsedCount?.flights || 0, icon: <Plane className="w-4 h-4" /> },
                                                         { key: 'roadTrips', label: 'Road Trips & Overland', count: backupParsedCount?.roadTrips || 0, icon: <Car className="w-4 h-4" /> },
                                                         { key: 'visited', label: 'Travel Atlas (Visited)', count: backupParsedCount?.visited || 0, icon: <MapPin className="w-4 h-4" /> },
-                                                        { key: 'users', label: 'Personnel & Roster', count: backupParsedCount?.users || 0, icon: <Users className="w-4 h-4" /> },
+                                                        { key: 'users', label: 'Members', count: backupParsedCount?.users || 0, icon: <Users className="w-4 h-4" /> },
                                                         { key: 'calendar', label: 'Calendar & Leave Policies', count: backupParsedCount?.calendar || 0, icon: <Calendar className="w-4 h-4" /> },
                                                         { key: 'settings', label: 'Workspace Configuration', count: backupParsedCount?.settings ? 1 : 0, icon: <Gear className="w-4 h-4" /> },
                                                     ].map(item => {
@@ -1181,7 +1185,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                                 <div className="flex items-center gap-2.5 min-w-0">
                                                                     <div className={cn(
                                                                         "w-8 h-8 rounded-xl flex items-center justify-center shrink-0",
-                                                                        isChecked ? "bg-primary-500 text-white" : "bg-black/5 dark:bg-white/10 text-light-text-secondary"
+                                                                        isChecked ? "bg-primary-500 text-slate-950" : "bg-black/5 dark:bg-white/10 text-light-text-secondary"
                                                                     )}>
                                                                         {item.icon}
                                                                     </div>
@@ -1194,7 +1198,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                                 </div>
                                                                 <div className={cn(
                                                                     "w-5 h-5 rounded-md flex items-center justify-center shrink-0 border",
-                                                                    !isAvailable ? "border-black/10 opacity-30" : isChecked ? "bg-primary-500 border-primary-500 text-white" : "border-black/20 dark:border-white/20"
+                                                                    !isAvailable ? "border-black/10 opacity-30" : isChecked ? "bg-primary-500 border-primary-500 text-slate-950" : "border-black/20 dark:border-white/20"
                                                                 )}>
                                                                     {isChecked && isAvailable && <Check weight="bold" className="w-3 h-3" />}
                                                                 </div>
@@ -1356,7 +1360,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                         <span className="text-xs font-mono text-light-text-secondary dark:text-dark-text-secondary block">{f.departureTime}</span>
                                                     </div>
                                                     <div>
-                                                        <span className="text-2xs uppercase font-bold text-zinc-400 block">Aircraft / Tail</span>
+                                                        <span className="text-2xs uppercase font-bold text-zinc-500 dark:text-zinc-400 block">Aircraft / Tail</span>
                                                         <span className="text-xs font-bold text-gray-800 dark:text-zinc-200 truncate block">{f.vehicleModel || 'N/A'}</span>
                                                         {f.tailNumber && <span className="text-2xs font-mono text-zinc-500 block">{f.tailNumber}</span>}
                                                     </div>
@@ -1641,7 +1645,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                             try {
                                                 const flightsToSaveIndexes = Array.from(selectedImportIndexes);
                                                 if (flightsToSaveIndexes.length === 0) {
-                                                    alert("Please select at least one flight to import.");
+                                                    toast.error("Please select at least one flight to import.");
                                                     setIsProcessing(false);
                                                     return;
                                                 }
@@ -1742,7 +1746,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                 onClose();
                                             } catch (e) {
                                                 console.error('Import error', e);
-                                                alert('An error occurred while saving imported data.');
+                                                toast.error('An error occurred while saving imported data.');
                                             } finally {
                                                 setIsProcessing(false);
                                             }

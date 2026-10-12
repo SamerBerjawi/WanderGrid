@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { affectsCollections } from '../hooks/useWanderSync';
 import { ViewState, Trip, User } from '../types';
 import { dataService } from '../services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';
@@ -11,7 +12,8 @@ import {
   Sun, 
   Desktop, 
   SidebarSimple, 
-  Compass
+  Compass,
+  SignOut
 } from '@phosphor-icons/react';
 import { APP_VERSION } from '../version';
 
@@ -98,8 +100,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     loadNextTrip();
 
-    const handleDbUpdate = () => {
-      loadNextTrip();
+    const handleDbUpdate = (e: Event) => {
+      if (affectsCollections(e, ['trips'])) loadNextTrip();
     };
     window.addEventListener('wandergrid_db_updated', handleDbUpdate);
     return () => window.removeEventListener('wandergrid_db_updated', handleDbUpdate);
@@ -111,7 +113,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { label: 'Dashboard', value: ViewState.DASHBOARD, icon: 'grid_view' },
     { label: 'Map', value: ViewState.MAP, icon: 'public' },
     { label: 'Planner', value: ViewState.PLANNER, icon: 'map' }, 
-    { label: 'Planner-2', value: ViewState.PLANNER_2, icon: 'calendar_month' }, 
     { label: 'Vacation Calendar', value: ViewState.VACATION_CALENDAR, icon: 'calendar_today' }, 
     { label: 'Travel Atlas', value: ViewState.TRAVEL_ATLAS, icon: 'explore' },
     { label: 'Flights', value: ViewState.FLIGHTS, icon: 'flight_takeoff' }, 
@@ -140,9 +141,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* Desktop Fixed Sidebar with Liquid Glass */}
-      <aside className={`hidden md:flex flex-shrink-0 flex-col fixed top-4 left-4 bottom-4 z-40 transition-all duration-300 pointer-events-none ${isCollapsed ? 'w-20' : 'w-72'}`}>
+      <aside className={`hidden md:flex flex-shrink-0 flex-col fixed top-4 left-4 bottom-4 z-sticky transition-all duration-300 pointer-events-none ${isCollapsed ? 'w-20' : 'w-72'}`}>
         <div className="relative w-full h-full pointer-events-auto">
-          <GlassPanel
+          <GlassPanel liquid
             className="wg-glass-card shadow-2xl h-full flex flex-col"
             overrides={{ borderRadius: 28 }}
             padding="0px"
@@ -151,7 +152,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className={`p-6 ${isCollapsed ? 'px-2' : 'px-6'} pb-4`}>
                 <div className={`flex items-center gap-3.5 mb-8 ${isCollapsed ? 'justify-center' : ''}`}>
                   <img 
-                    src="/app-icon.png" 
+                    src="/app-icon-192.png" 
                     alt="WanderGrid" 
                     className="w-10 h-10 rounded-xl object-contain shrink-0 shadow-md transition-transform group-hover:scale-105" 
                   />
@@ -170,7 +171,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         onClick={() => onNavigate(item.value)}
                         className={`flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold select-none cursor-pointer relative transition-all duration-200 group
                           ${isActive 
-                            ? 'font-black z-10' 
+                            ? 'font-black z-raised' 
                             : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-white/[0.08] z-0'
                           }
                           ${isCollapsed ? 'justify-center px-0 w-12 h-12 border border-transparent' : 'w-full'}
@@ -187,17 +188,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         )}
                         <Icon 
                           name={item.icon} 
-                          className={`text-xl relative z-20 shrink-0 transition-transform duration-200 group-hover:scale-105 ${itemTheme.color} ${
+                          className={`text-xl relative z-float shrink-0 transition-transform duration-200 group-hover:scale-105 ${itemTheme.color} ${
                             isActive ? 'opacity-100' : 'opacity-75 group-hover:opacity-100'
                           }`} 
                         />
                         {!isCollapsed && (
-                          <span className={`relative z-20 font-bold tracking-tight ${isActive ? itemTheme.color : ''}`}>
+                          <span className={`relative z-float font-bold tracking-tight ${isActive ? itemTheme.color : ''}`}>
                             {item.label}
                           </span>
                         )}
                         {isActive && !isCollapsed && (
-                          <span className={`ml-auto relative z-20 w-1.5 h-3.5 rounded-full ${itemTheme.indicator}`} />
+                          <span className={`ml-auto relative z-float w-1.5 h-3.5 rounded-full ${itemTheme.indicator}`} />
                         )}
                       </button>
                     );
@@ -213,12 +214,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       overrides={{ borderRadius: 20 }}
                       padding="14px"
                     >
-                      <div onClick={() => onNavigate(ViewState.TRIP_DETAIL, nextTrip.id)}>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Open ${nextTrip.name}`}
+                        onClick={() => onNavigate(ViewState.TRIP_DETAIL, nextTrip.id)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate(ViewState.TRIP_DETAIL, nextTrip.id); } }}
+                      >
                         <div className="flex items-center justify-between mb-1.5">
                           <p className="text-2xs font-bold text-zinc-500 dark:text-zinc-300 uppercase tracking-widest">
                             {nextTrip.status === 'Planning' ? 'Planned Trip' : 'Coming Up Next'}
                           </p>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                          <span className={`text-2xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
                             nextTrip.status === 'Planning' 
                               ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20' 
                               : 'bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/20'
@@ -240,7 +247,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </div>
                     </GlassPanel>
                   ) : (
-                    <div className="p-4 rounded-2xl bg-white/5 dark:bg-white/[0.08] border border-dashed border-zinc-250 dark:border-white/20 text-center">
+                    <div className="p-4 rounded-2xl bg-white/5 dark:bg-white/[0.08] border border-dashed border-zinc-200 dark:border-white/20 text-center">
                       <Compass size={22} weight="duotone" className="w-5 h-5 text-zinc-400 dark:text-zinc-300 mx-auto mb-1.5" />
                       <p className="text-xs font-bold text-zinc-500 dark:text-zinc-300 uppercase tracking-widest leading-none">No trips planned</p>
                       <button 
@@ -280,7 +287,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {currentUser && (
                         <button 
                             onClick={() => onNavigate(ViewState.USER_DETAIL, currentUser.id)}
-                            className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center transition-all border cursor-pointer overflow-hidden p-0.5 group hover:scale-105 active:scale-95 ${
+                            className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all border cursor-pointer overflow-hidden p-0.5 group hover:scale-105 active:scale-95 ${
                                 currentView === ViewState.USER_DETAIL 
                                 ? `${isDark ? PAGE_THEMES[ViewState.USER_DETAIL].activeSidebarDark : PAGE_THEMES[ViewState.USER_DETAIL].activeSidebarLight} border-primary-500/50` 
                                 : 'bg-transparent border-transparent hover:border-zinc-200/40 dark:hover:border-white/20 hover:bg-zinc-200/30 dark:hover:bg-white/[0.08]'
@@ -299,7 +306,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {/* 2. Theme Toggle (Dark / Light / Auto) */}
                     <button 
                         onClick={handleThemeCycle}
-                        className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.08] transition-all cursor-pointer hover:scale-105 active:scale-95`}
+                        className={`w-11 h-11 rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.08] transition-all cursor-pointer hover:scale-105 active:scale-95`}
                         title={
                           theme === 'dark' 
                             ? 'Appearance: Dark Mode (Click for Light)' 
@@ -317,10 +324,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         )}
                     </button>
 
+                    {/* Sign out */}
+                    {onLogout && (
+                      <button 
+                          type="button"
+                          onClick={onLogout}
+                          className={`w-11 h-11 rounded-xl flex items-center justify-center text-zinc-500 hover:text-rose-600 dark:text-zinc-200 dark:hover:text-rose-400 hover:bg-zinc-200/30 dark:hover:bg-white/[0.08] transition-all cursor-pointer hover:scale-105 active:scale-95`}
+                          title="Sign out"
+                          aria-label="Sign out"
+                      >
+                          <SignOut weight="duotone" className="w-5 h-5" />
+                      </button>
+                    )}
+
                     {/* 3. Collapse Button (Moved from top right of sidebar) */}
                     <button 
                         onClick={toggleCollapse}
-                        className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.08] transition-all cursor-pointer hover:scale-105 active:scale-95`}
+                        className={`w-11 h-11 rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.08] transition-all cursor-pointer hover:scale-105 active:scale-95`}
                         title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                     >
                         <SidebarSimple weight="duotone" className="w-5 h-5" />
@@ -330,7 +350,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {/* Version Detail */}
                 <div 
                     className={`pt-2 font-mono font-medium text-zinc-400 dark:text-zinc-500 text-center select-none truncate transition-all ${
-                        isCollapsed ? 'text-[9px] tracking-tight' : 'text-xs tracking-wider opacity-70'
+                        isCollapsed ? 'text-2xs tracking-tight' : 'text-xs tracking-wider opacity-70'
                     }`}
                     title={`WanderGrid ${APP_VERSION}`}
                 >
@@ -343,8 +363,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </aside>
 
       {/* Mobile Bottom Navigation with Liquid Glass */}
-      <div className="flex md:hidden fixed bottom-safe-nav left-0 right-0 z-50 items-center justify-center px-3 pointer-events-none safe-x">
-        <GlassPanel
+      <div className="flex md:hidden fixed bottom-safe-nav left-0 right-0 z-modal-backdrop items-center justify-center px-3 pointer-events-none safe-x">
+        <GlassPanel liquid
           className="wg-glass-pill shadow-2xl pointer-events-auto w-full max-w-md"
           overrides={{ borderRadius: 28 }}
           padding="4px 10px"
@@ -372,7 +392,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }`}
                 >
                   <Icon name={item.icon} className={`text-xl leading-none ${isActive ? itemTheme.color : ''}`} />
-                  <span className={`text-[10px] font-bold uppercase tracking-tight mt-1 text-center leading-tight max-w-full truncate font-sans ${isActive ? itemTheme.color : ''}`}>
+                  <span className={`text-2xs font-bold uppercase tracking-tight mt-1 text-center leading-tight max-w-full truncate font-sans ${isActive ? itemTheme.color : ''}`}>
                     {item.shortLabel || item.label}
                   </span>
                   {isActive && (
@@ -392,7 +412,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {/* Dynamic More popup trigger */}
             {(() => {
-              const isMoreActive = (currentView === ViewState.PLANNER || currentView === ViewState.PLANNER_2 || currentView === ViewState.VACATION_CALENDAR || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS);
+              const isMoreActive = (currentView === ViewState.PLANNER || currentView === ViewState.VACATION_CALENDAR || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS);
               const moreTheme = isMoreActive ? (PAGE_THEMES[currentView] || PAGE_THEMES[ViewState.PLANNER]) : null;
               return (
                 <button
@@ -404,7 +424,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }`}
                 >
                   <Icon name="more_horiz" className={`text-xl leading-none ${isMoreActive ? moreTheme?.color : ''}`} />
-                  <span className={`text-[10px] font-bold uppercase tracking-tight mt-1 text-center leading-tight font-sans ${isMoreActive ? moreTheme?.color : ''}`}>More</span>
+                  <span className={`text-2xs font-bold uppercase tracking-tight mt-1 text-center leading-tight font-sans ${isMoreActive ? moreTheme?.color : ''}`}>More</span>
                   {isMoreActive && (
                     <motion.div 
                       layoutId="mobileActiveIndicatorDot"
@@ -443,7 +463,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               transition={{ type: "spring", stiffness: 450, damping: 32 }}
               className="md:hidden fixed bottom-safe-menu right-4 w-60 z-modal safe-right"
             >
-              <GlassPanel
+              <GlassPanel liquid
                 className="wg-glass-card shadow-2xl overflow-hidden"
                 overrides={{ borderRadius: 24 }}
                 padding="0px"
@@ -451,7 +471,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="flex flex-col gap-1 w-full p-2 bg-white/85 dark:bg-dark-card/90 backdrop-blur-xl border border-black/10 dark:border-white/15 rounded-3xl">
                   {[
                     { label: 'Planner', value: ViewState.PLANNER, icon: 'map' },
-                    { label: 'Planner-2', value: ViewState.PLANNER_2, icon: 'calendar_month' },
                     { label: 'Vacation Calendar', value: ViewState.VACATION_CALENDAR, icon: 'calendar_today' },
                     { label: 'Road Trips', value: ViewState.ROADTRIPS, icon: 'directions_car' },
                     { label: 'Settings', value: ViewState.SETTINGS, icon: 'gear' },
@@ -566,8 +585,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </>
                   )}
 
+                  {onLogout && (
+                    <button
+                      type="button"
+                      onClick={() => { setIsMoreOpen(false); onLogout(); }}
+                      className="flex items-center gap-3 w-full h-11 px-3.5 rounded-2xl text-left text-xs font-bold font-sans transition-all duration-150 cursor-pointer text-rose-600 dark:text-rose-400 hover:bg-rose-500/10"
+                    >
+                      <SignOut weight="duotone" className="w-5 h-5" />
+                      <span>Sign out</span>
+                    </button>
+                  )}
+
                   {/* Version Detail */}
-                  <div className="pt-2 pb-1 text-center font-mono text-[10px] font-medium text-zinc-400 dark:text-zinc-500 select-none tracking-wider opacity-70">
+                  <div className="pt-2 pb-1 text-center font-mono text-2xs font-medium text-zinc-400 dark:text-zinc-500 select-none tracking-wider opacity-70">
                     {APP_VERSION}
                   </div>
                 </div>

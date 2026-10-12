@@ -58,8 +58,8 @@ const ACCENT_THEMES: Record<string, AccentTheme> = {
     triggerRing: 'ring-2 ring-primary-500/35 border-primary-500/60',
     triggerBorderFocus: 'border-primary-500/60',
     iconBox: 'bg-primary-500/15 text-primary-600 dark:text-primary-400',
-    selectedDay: 'bg-primary-500 text-white shadow-md shadow-primary-500/30 font-black scale-105',
-    doneBtn: 'bg-primary-500 hover:bg-primary-600 text-white shadow-sm shadow-primary-500/20',
+    selectedDay: 'bg-primary-500 text-slate-950 shadow-md shadow-primary-500/30 font-black scale-105',
+    doneBtn: 'bg-primary-500 hover:bg-primary-600 text-slate-950 shadow-sm shadow-primary-500/20',
     durationBadge: 'text-primary-600 dark:text-primary-400',
   }
 };
@@ -497,7 +497,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                   {/* Weekday Header Row */}
                   <div className="grid grid-cols-7 gap-1 text-center py-2">
                     {WEEKDAYS.map((w, idx) => (
-                      <div key={idx} className="text-3xs font-extrabold text-light-text-secondary dark:text-dark-text-secondary">
+                      <div key={idx} className="text-2xs font-extrabold text-light-text-secondary dark:text-dark-text-secondary">
                         {w}
                       </div>
                     ))}
@@ -528,7 +528,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                             type="button"
                             disabled={isDisabled}
                             onClick={() => handleSelectDate(dateStr)}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all relative z-10 cursor-pointer ${
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all relative z-raised cursor-pointer ${
                               isSelected
                                 ? theme.selectedDay
                                 : isDisabled

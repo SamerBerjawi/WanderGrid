@@ -286,7 +286,7 @@ export const PassportIdCard: React.FC<PassportIdCardProps> = ({ flights, yearFil
   const mrz = generateMRZ(travelerName, flights.length, yearFilter, currentUser?.passportIssueDate || "24 MAY 26");
 
   return (
-    <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-zinc-950 border border-zinc-200/50 dark:border-white/5 shadow-2xl rounded-3xl p-6 text-white flex flex-col justify-between h-full group transition-all duration-300 hover:shadow-indigo-500/10 hover:border-zinc-805/50">
+    <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-zinc-950 border border-zinc-200/50 dark:border-white/5 shadow-2xl rounded-3xl p-6 text-white flex flex-col justify-between h-full group transition-all duration-300 hover:shadow-indigo-500/10 hover:border-zinc-800/50">
       {/* Background patterns */}
       <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
       <div 
@@ -300,7 +300,7 @@ export const PassportIdCard: React.FC<PassportIdCardProps> = ({ flights, yearFil
       <div className="space-y-4">
         {/* Visual header */}
         <div className="flex justify-between items-center border-b border-white/5 pb-3">
-          <div className="flex items-center gap-1.5 text-2xs font-bold uppercase tracking-widest text-zinc-400">
+          <div className="flex items-center gap-1.5 text-2xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
             <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
             GLOBAL PASSPORT • PORTAL
           </div>
@@ -319,13 +319,13 @@ export const PassportIdCard: React.FC<PassportIdCardProps> = ({ flights, yearFil
               
               {/* Profile icon structure */}
               {currentUser?.profilePicture ? (
-                <img src={currentUser.profilePicture} alt={travelerName} className="w-full h-full object-cover relative z-10" referrerPolicy="no-referrer" />
+                <img src={currentUser.profilePicture} alt={travelerName} className="w-full h-full object-cover relative z-raised" referrerPolicy="no-referrer" />
               ) : (
                 <>
-                  <div className="w-12 h-12 rounded-full bg-zinc-700/80 border border-zinc-600 flex items-center justify-center text-zinc-300 relative z-10 shrink-0 font-bold text-lg shadow-sm">
+                  <div className="w-12 h-12 rounded-full bg-zinc-700/80 border border-zinc-600 flex items-center justify-center text-zinc-300 relative z-raised shrink-0 font-bold text-lg shadow-sm">
                     {initials}
                   </div>
-                  <div className="w-20 h-10 rounded-t-[50%] bg-zinc-700/50 border border-zinc-650/40 relative z-10 -mt-2 shadow-sm" />
+                  <div className="w-20 h-10 rounded-t-[50%] bg-zinc-700/50 border border-zinc-600/40 relative z-raised -mt-2 shadow-sm" />
                 </>
               )}
               
@@ -338,33 +338,33 @@ export const PassportIdCard: React.FC<PassportIdCardProps> = ({ flights, yearFil
                 </div>
               </div>
             </div>
-            <span className="text-2xs font-bold tracking-widest uppercase text-zinc-400 font-mono text-center">BIOMETRIC PASS</span>
+            <span className="text-2xs font-bold tracking-widest uppercase text-zinc-500 dark:text-zinc-400 font-mono text-center">BIOMETRIC PASS</span>
           </div>
 
           {/* Core metadata columns */}
           <div className="flex-1 grid grid-cols-2 gap-y-3 gap-x-2.5">
             <div>
-              <span className="block text-2xs text-zinc-400 font-bold uppercase tracking-wider">Surname</span>
+              <span className="block text-2xs text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">Surname</span>
               <span className="text-xs font-bold uppercase tracking-tight text-white">{surname}</span>
             </div>
             <div>
-              <span className="block text-2xs text-zinc-400 font-bold uppercase tracking-wider">Given Names</span>
+              <span className="block text-2xs text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">Given Names</span>
               <span className="text-xs font-bold uppercase tracking-tight text-white">{givenNames}</span>
             </div>
             <div>
-              <span className="block text-2xs text-zinc-400 font-bold uppercase tracking-wider">Nationality</span>
+              <span className="block text-2xs text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">Nationality</span>
               <span className="text-xs font-bold uppercase tracking-tight text-white">{nationality}</span>
             </div>
             <div>
-              <span className="block text-2xs text-zinc-400 font-bold uppercase tracking-wider">Sex / DOB</span>
+              <span className="block text-2xs text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">Sex / DOB</span>
               <span className="text-xs font-bold uppercase tracking-tight text-white">M / {dobStr}</span>
             </div>
             <div>
-              <span className="block text-2xs text-zinc-400 font-bold uppercase tracking-wider">Authority</span>
+              <span className="block text-2xs text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">Authority</span>
               <span className="text-xs font-bold uppercase tracking-tight text-zinc-300 truncate leading-none block">{authority}</span>
             </div>
             <div>
-              <span className="block text-2xs text-zinc-400 font-bold uppercase tracking-wider">Document Type</span>
+              <span className="block text-2xs text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">Document Type</span>
               <span className="text-xs font-bold uppercase tracking-tight text-zinc-300">P / CITIZEN</span>
             </div>
           </div>
@@ -373,15 +373,15 @@ export const PassportIdCard: React.FC<PassportIdCardProps> = ({ flights, yearFil
         {/* Dynamic numerical tracking summary */}
         <div className="grid grid-cols-3 gap-2 border-t border-b border-dashed border-white/5 py-3 my-2 text-center">
           <div>
-            <span className="block text-2xs font-bold uppercase text-zinc-400">Total Flights</span>
+            <span className="block text-2xs font-bold uppercase text-zinc-500 dark:text-zinc-400">Total Flights</span>
             <span className="text-xs font-black text-blue-400 font-mono mt-0.5 block">{flights.length}</span>
           </div>
           <div>
-            <span className="block text-2xs font-bold uppercase text-zinc-400">Distance</span>
-            <span className="text-xs font-black text-zinc-200 font-mono mt-0.5 block truncate">{stats.distance.toLocaleString()} <span className="text-2xs font-sans text-zinc-400">km</span></span>
+            <span className="block text-2xs font-bold uppercase text-zinc-500 dark:text-zinc-400">Distance</span>
+            <span className="text-xs font-black text-zinc-200 font-mono mt-0.5 block truncate">{stats.distance.toLocaleString()} <span className="text-2xs font-sans text-zinc-500 dark:text-zinc-400">km</span></span>
           </div>
           <div>
-            <span className="block text-2xs font-bold uppercase text-zinc-400">Hours Airward</span>
+            <span className="block text-2xs font-bold uppercase text-zinc-500 dark:text-zinc-400">Hours Airborne</span>
             <span className="text-xs font-black text-zinc-200 font-mono mt-0.5 block">{daysHour}d {remHours}h</span>
           </div>
         </div>
@@ -425,7 +425,7 @@ export const PassportStampsPage: React.FC<PassportStampsPageProps> = ({ flights,
             <Award className="w-4 h-4 text-emerald-500" />
             Visa stamps
           </h3>
-          <span className="text-2xs font-black uppercase tracking-widest text-zinc-400 bg-zinc-150 dark:bg-zinc-800 px-2.5 py-0.5 rounded-full">
+          <span className="text-2xs font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2.5 py-0.5 rounded-full">
             {stats.flags.length} ADMITTED
           </span>
         </div>
@@ -436,10 +436,10 @@ export const PassportStampsPage: React.FC<PassportStampsPageProps> = ({ flights,
             {stats.flags.map((stamp, idx) => {
               const name = COUNTRY_NAMES[stamp.code] || stamp.code;
               const colors = [
-                { text: 'text-sky-600 dark:text-sky-400', border: 'border-sky-500/20 dark:border-sky-450/20', bg: 'bg-gradient-to-tr from-sky-500/[0.02] to-sky-500/[0.08]' },
-                { text: 'text-rose-600 dark:text-rose-405', border: 'border-rose-500/20 dark:border-rose-455/20', bg: 'bg-gradient-to-tr from-rose-500/[0.02] to-rose-500/[0.08]' },
+                { text: 'text-sky-600 dark:text-sky-400', border: 'border-sky-500/20 dark:border-sky-400/20', bg: 'bg-gradient-to-tr from-sky-500/[0.02] to-sky-500/[0.08]' },
+                { text: 'text-rose-600 dark:text-rose-400', border: 'border-rose-500/20 dark:border-rose-400/20', bg: 'bg-gradient-to-tr from-rose-500/[0.02] to-rose-500/[0.08]' },
                 { text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-500/20 dark:border-emerald-400/20', bg: 'bg-gradient-to-tr from-emerald-500/[0.02] to-emerald-500/[0.08]' },
-                { text: 'text-indigo-600 dark:text-indigo-405', border: 'border-indigo-500/20 dark:border-indigo-405/20', bg: 'bg-gradient-to-tr from-indigo-500/[0.02] to-indigo-500/[0.08]' },
+                { text: 'text-indigo-600 dark:text-indigo-400', border: 'border-indigo-500/20 dark:border-indigo-400/20', bg: 'bg-gradient-to-tr from-indigo-500/[0.02] to-indigo-500/[0.08]' },
                 { text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-500/20 dark:border-amber-400/20', bg: 'bg-gradient-to-tr from-amber-500/[0.02] to-amber-500/[0.08]' },
               ];
               const color = colors[idx % colors.length];
@@ -469,13 +469,13 @@ export const PassportStampsPage: React.FC<PassportStampsPageProps> = ({ flights,
             })}
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center w-full text-center py-7 text-2xs uppercase font-bold text-zinc-400 border border-dashed border-zinc-200/50 dark:border-white/5 rounded-2xl bg-zinc-500/5 select-none">
+          <div className="flex-1 flex flex-col items-center justify-center w-full text-center py-7 text-2xs uppercase font-bold text-zinc-500 dark:text-zinc-400 border border-dashed border-zinc-200/50 dark:border-white/5 rounded-2xl bg-zinc-500/5 select-none">
             No stamps recorded for this era
           </div>
         )}
       </div>
 
-      <div className="mt-3 text-2xs font-bold uppercase text-zinc-400/60 font-mono tracking-widest text-center border-t border-dashed border-zinc-200/50 dark:border-white/5 pt-3 select-none">
+      <div className="mt-3 text-2xs font-bold uppercase text-zinc-500 dark:text-zinc-400/60 font-mono tracking-widest text-center border-t border-dashed border-zinc-200/50 dark:border-white/5 pt-3 select-none">
         WanderGrid ADMISSION SEALS
       </div>
     </div>
@@ -496,15 +496,15 @@ export const PassportTravelMap: React.FC<PassportTravelMapProps> = ({ flights, y
   return (
     <div className="relative overflow-hidden bg-white/70 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-white/5 shadow-xl rounded-3xl backdrop-blur-xl h-full flex flex-col justify-end group transition-all duration-300 hover:shadow-2xl">
       {/* Floating Status Indicator Tag */}
-      <div className="absolute top-5 left-5 z-20 bg-white/90 dark:bg-black/55 px-3 py-2 rounded-2xl border border-zinc-200 dark:border-white/10 backdrop-blur-md shadow-sm pointer-events-none">
-        <div className="flex items-center gap-2 text-2xs font-bold uppercase tracking-widest text-zinc-800 dark:text-zinc-250">
+      <div className="absolute top-5 left-5 z-float bg-white/90 dark:bg-black/55 px-3 py-2 rounded-2xl border border-zinc-200 dark:border-white/10 backdrop-blur-md shadow-sm pointer-events-none">
+        <div className="flex items-center gap-2 text-2xs font-bold uppercase tracking-widest text-zinc-800 dark:text-zinc-200">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping shrink-0" />
           Live Route Network
         </div>
       </div>
 
       {/* Floating Network Statistics Tag */}
-      <div className="absolute top-5 right-5 z-20 bg-white/90 dark:bg-black/55 px-3 py-2 rounded-2xl border border-zinc-200 dark:border-white/10 backdrop-blur-md shadow-sm pointer-events-none">
+      <div className="absolute top-5 right-5 z-float bg-white/90 dark:bg-black/55 px-3 py-2 rounded-2xl border border-zinc-200 dark:border-white/10 backdrop-blur-md shadow-sm pointer-events-none">
         <div className="flex items-center gap-1 text-2xs font-bold text-zinc-500 dark:text-zinc-400">
           <Globe className="w-3.5 h-3.5 text-indigo-500" />
           {stats.routes.length} Active Segments
@@ -528,7 +528,7 @@ export const PassportTravelMap: React.FC<PassportTravelMapProps> = ({ flights, y
                     fill="#e2e8f0" 
                     stroke="#cbd5e1"
                     strokeWidth={0.5} 
-                    className="dark:fill-zinc-800/80 dark:stroke-zinc-750 transition-colors"
+                    className="dark:fill-zinc-800/80 dark:stroke-zinc-700 transition-colors"
                     style={{
                       default: { outline: "none" },
                       hover: { outline: "none" },

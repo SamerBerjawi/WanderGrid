@@ -1,5 +1,7 @@
 
-import React, { useEffect, useState, useRef, useMemo, Suspense } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback, Suspense } from 'react';
+import { useEscapeKey } from '../hooks/useEscapeKey';
+import { toast } from '../services/toast';
 import { 
     CaretUp as ChevronUp, 
     CaretDown as ChevronDown,
@@ -69,7 +71,6 @@ import { flightImporter } from '../services/flightImportExport';
 import { calendarService } from '../services/calendarExport';
 import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, TransportMode, LocationEntry, EntitlementType, PublicHoliday, SavedConfig, PackingItem, Carrier } from '../types';
 import { searchLocations, resolvePlaceName, getCoordinates, getCoordinatesSync, formatProperLocationName } from '../services/geocoding';
-import { GoogleGenAI } from "@google/genai";
 const DeckFlightMap = React.lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 const FlightImportWizard = React.lazy(() => import('../components/FlightImportWizard').then(m => ({ default: m.FlightImportWizard })));
 import { getMerchantLogoUrl } from '../utils/brandfetch';
@@ -352,7 +353,7 @@ const getWeatherVibeStyle = (code: number | undefined): WeatherVibe => {
         border: "border-gray-200/50 dark:border-white/5",
         icon: "cloud",
         label: "Weather loading...",
-        pillBg: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-250 dark:border-blue-500/10"
+        pillBg: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/10"
     };
 
     if (code <= 1) return { // Clear/Sunny
@@ -371,10 +372,10 @@ const getWeatherVibeStyle = (code: number | undefined): WeatherVibe => {
     };
     if (code <= 48) return { // Foggy
         bg: "from-zinc-400/15 via-teal-300/[0.06] to-transparent dark:from-zinc-700/10 dark:via-teal-950/[0.03] dark:to-transparent",
-        border: "border-zinc-300/50 dark:border-zinc-650/10",
+        border: "border-zinc-300/50 dark:border-zinc-600/10",
         icon: "foggy",
         label: "Foggy",
-        pillBg: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-300/50 dark:border-zinc-650/10"
+        pillBg: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-300/50 dark:border-zinc-600/10"
     };
     if (code <= 67 || (code >= 80 && code <= 82)) return { // Rainy/Showers
         bg: "from-sky-500/20 via-indigo-400/[0.08] to-transparent dark:from-sky-950/25 dark:via-indigo-950/[0.05] dark:to-transparent",
@@ -392,10 +393,10 @@ const getWeatherVibeStyle = (code: number | undefined): WeatherVibe => {
     };
     if (code <= 99) return { // Thunderstorm
         bg: "from-purple-500/20 via-fuchsia-400/[0.06] to-transparent dark:from-purple-950/25 dark:via-fuchsia-950/[0.04] dark:to-transparent",
-        border: "border-purple-200/60 dark:border-purple-550/10",
+        border: "border-purple-200/60 dark:border-purple-500/10",
         icon: "thunderstorm",
         label: "Thunderstorm",
-        pillBg: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200/60 dark:border-purple-550/10"
+        pillBg: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200/60 dark:border-purple-500/10"
     };
 
     return {
@@ -427,17 +428,6 @@ const NomadGuide: React.FC<{ trip: Trip }> = ({ trip }) => {
         setLoading(true);
 
         try {
-            const settings = await dataService.getWorkspaceSettings();
-            const apiKey = settings.googleGeminiApiKey || process.env.API_KEY;
-            
-            if (!apiKey) {
-                setMessages(prev => [...prev, { role: 'model', text: "Please configure Google Gemini API Key in Settings." }]);
-                setLoading(false);
-                return;
-            }
-
-            const ai = new GoogleGenAI({ apiKey });
-            
             const context = `
                 You are NomadGuide, an expert travel assistant.
                 Current Trip Context:
@@ -450,19 +440,16 @@ const NomadGuide: React.FC<{ trip: Trip }> = ({ trip }) => {
                 Format with Markdown.
             `;
 
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: [
-                    { role: 'user', parts: [{ text: context }] },
-                    ...messages.map(m => ({ role: m.role, parts: [{ text: m.text }] })),
-                    { role: 'user', parts: [{ text: userMsg }] }
-                ]
-            });
-
-            const text = response.text || "I couldn't retrieve that info right now.";
+            // Gemini runs on the server, which holds the API key.
+            const reply = await dataService.generateAI([
+                { role: 'user', text: context },
+                ...messages.map(m => ({ role: m.role as 'user' | 'model', text: m.text })),
+                { role: 'user', text: userMsg }
+            ]);
+            const text = reply || "I couldn't retrieve that info right now.";
             setMessages(prev => [...prev, { role: 'model', text }]);
-        } catch (e) {
-            setMessages(prev => [...prev, { role: 'model', text: "Connection error. Please check your API key." }]);
+        } catch (e: any) {
+            setMessages(prev => [...prev, { role: 'model', text: e?.message || "Connection error. Please try again." }]);
         } finally {
             setLoading(false);
         }
@@ -485,10 +472,10 @@ const NomadGuide: React.FC<{ trip: Trip }> = ({ trip }) => {
                     <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm ${
                             m.role === 'user' 
-                            ? 'bg-primary-500 text-white rounded-tr-sm' 
+                            ? 'bg-primary-500 text-slate-950 rounded-tr-sm' 
                             : 'bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/10 text-light-text dark:text-dark-text rounded-tl-sm'
                         }`}>
-                            <div dangerouslySetInnerHTML={{ __html: m.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>') }} />
+                            <div><ChatText text={m.text} /></div>
                         </div>
                     </div>
                 ))}
@@ -528,6 +515,19 @@ const NomadGuide: React.FC<{ trip: Trip }> = ({ trip }) => {
     );
 };
 
+// Renders chat text with **bold** and line breaks as React elements, so trip data and AI output
+// can never be interpreted as HTML.
+const ChatText: React.FC<{ text: string }> = ({ text }) => (
+    <>
+        {text.split('\n').map((line, li) => (
+            <React.Fragment key={li}>
+                {li > 0 && <br />}
+                {line.split(/\*\*(.*?)\*\*/g).map((part, pi) => (pi % 2 === 1 ? <strong key={pi}>{part}</strong> : part))}
+            </React.Fragment>
+        ))}
+    </>
+);
+
 export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const [trip, setTrip] = useState<Trip | null>(null);
     const [users, setUsers] = useState<User[]>([]);
@@ -535,6 +535,9 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const [entitlements, setEntitlements] = useState<EntitlementType[]>([]);
     const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
     const [allTrips, setAllTrips] = useState<Trip[]>([]);
+    const [standaloneFlights, setStandaloneFlights] = useState<any[]>([]);
+    const [isAssigningFlights, setIsAssigningFlights] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
     
     // View State
     const [activeTab, setActiveTab] = useState('planner'); 
@@ -548,6 +551,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const [isEditTripOpen, setIsEditTripOpen] = useState(false);
     const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
     const [isCinematicOpen, setIsCinematicOpen] = useState(false);
+    const closeCinematic = useCallback(() => setIsCinematicOpen(false), []);
+    useEscapeKey(isCinematicOpen, closeCinematic);
     
     // Import State
     const [isImportWizardOpen, setIsImportWizardOpen] = useState(false);
@@ -616,9 +621,12 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         fetchTripWeather();
     }, [trip?.location, trip?.coordinates]);
 
+    // Loading a trip is read-only. Standalone flights that fall inside this trip's dates are only
+    // offered for assignment (see matchingFlights); nothing is moved until the user asks.
     const loadData = () => {
         setLoading(true);
-        Promise.all([
+        setLoadError(null);
+        return Promise.all([
             dataService.getTrips(), 
             dataService.getUsers(),
             dataService.getWorkspaceSettings(),
@@ -626,71 +634,51 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             dataService.getSavedConfigs(),
             dataService.getFlights()
         ]).then(([tripsList, allUsers, s, ents, configs, independentFlights]) => {
-            const runAutoAssignment = async () => {
-                let hasChanges = false;
-                const updatedTrips = [...tripsList];
-                const flightsToDelete: string[] = [];
-
-                for (const flight of (independentFlights || [])) {
-                    // Only auto-assign flights that are truly independent (unassigned)
-                    if (flight.tripId && flight.tripId !== 'unassigned') continue;
-                    if (!flight.departureDate) continue;
-                    const fDate = new Date(flight.departureDate);
-                    if (isNaN(fDate.getTime())) continue;
-
-                    // Match with a trip
-                    const matchingTripIndex = updatedTrips.findIndex(tripItem => {
-                        if (!tripItem.startDate || !tripItem.endDate) return false;
-                        const sDate = new Date(tripItem.startDate);
-                        const eDate = new Date(tripItem.endDate);
-                        return fDate >= sDate && fDate <= eDate;
-                    });
-
-                    if (matchingTripIndex >= 0) {
-                        const trip = updatedTrips[matchingTripIndex];
-                        if (!trip.transports) trip.transports = [];
-
-                        if (!trip.transports.some(item => item.id === flight.id)) {
-                            trip.transports.push({ ...flight, mode: 'Flight' });
-                            flightsToDelete.push(flight.id);
-                            hasChanges = true;
-                        }
-                    }
-                }
-
-                if (hasChanges) {
-                    for (const trip of updatedTrips) {
-                        const gotAdded = trip.transports?.some(item => flightsToDelete.includes(item.id));
-                        if (gotAdded) {
-                            await dataService.updateTrip(trip);
-                        }
-                    }
-                    for (const fId of flightsToDelete) {
-                        await dataService.deleteFlight(fId);
-                    }
-                    // Fetch latest trips to synchronize state
-                    const freshTrips = await dataService.getTrips();
-                    return freshTrips;
-                }
-                return tripsList;
-            };
-
-            runAutoAssignment().then(finalTrips => {
-                const t = finalTrips.find(x => x.id === tripId);
-                setTrip(t || null);
-                if (t) setCalendarDate(new Date(t.startDate));
-                setUsers(allUsers);
-                setSettings(s);
-                setAllTrips(finalTrips);
-                setEntitlements(ents);
-                const flatHolidays = configs.flatMap(c => c.holidays.map(h => ({ ...h, configId: c.id })));
-                setHolidays(flatHolidays);
-                setLoading(false);
-            });
+            const t = tripsList.find(x => x.id === tripId);
+            setTrip(t || null);
+            if (t) setCalendarDate(new Date(t.startDate));
+            setUsers(allUsers);
+            setSettings(s);
+            setAllTrips(tripsList);
+            setEntitlements(ents);
+            setStandaloneFlights(independentFlights || []);
+            const flatHolidays = (configs || []).flatMap(c => (c.holidays ?? []).map(h => ({ ...h, configId: c.id })));
+            setHolidays(flatHolidays);
+            setLoading(false);
         }).catch(err => {
             console.error("Failed to load trip details:", err);
+            setLoadError(err?.message || 'Could not load this trip.');
             setLoading(false);
         });
+    };
+
+    // Unassigned flights departing within this trip's dates (candidates for "Add to this trip").
+    const matchingFlights = useMemo(() => {
+        if (!trip?.startDate || !trip?.endDate) return [];
+        const start = trip.startDate.slice(0, 10);
+        const end = trip.endDate.slice(0, 10);
+        const already = new Set((trip.transports || []).map(tr => tr.id));
+        return standaloneFlights.filter(f =>
+            (!f.tripId || f.tripId === 'unassigned') &&
+            typeof f.departureDate === 'string' &&
+            f.departureDate.slice(0, 10) >= start && f.departureDate.slice(0, 10) <= end &&
+            !already.has(f.id));
+    }, [trip, standaloneFlights]);
+
+    const handleAssignMatchingFlights = async () => {
+        if (!trip || matchingFlights.length === 0) return;
+        setIsAssigningFlights(true);
+        try {
+            await dataService.applyBatch({
+                upsertTrips: [{ ...trip, transports: [...(trip.transports || []), ...matchingFlights.map(f => ({ ...f, mode: 'Flight' as const }))] }],
+                deleteFlights: matchingFlights.map(f => f.id)
+            });
+            await loadData();
+        } catch (err: any) {
+            toast.error(`Could not add the flights to this trip. Nothing was changed. ${err?.message || ''}`.trim());
+        } finally {
+            setIsAssigningFlights(false);
+        }
     };
 
     const calculateRelevance = (currentTrip: Trip, candidateTrip: Trip): number => {
@@ -741,6 +729,11 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
     const handleDeleteTrip = async (id: string) => {
         await dataService.deleteTrip(id);
+        onBack();
+    };
+
+    const handleArchiveTrip = async (id: string) => {
+        await dataService.setTripsArchived([id], true);
         onBack();
     };
 
@@ -797,7 +790,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 setImportFilters({ search: '', minDate: '', maxDate: '', minConfidence: '0', airline: '' });
                 setImportPreview({ open: true, candidates });
             } else {
-                alert("No valid flights found in file.");
+                toast.info("No valid flights were found in that file.");
             }
         };
         reader.readAsText(file);
@@ -1077,7 +1070,20 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         return getTransportScheduleEventsForDate(trip?.transports, dateStr);
     };
 
-    if (loading) return <div className="p-8 text-gray-400 animate-pulse">Loading Trip Data...</div>;
+    if (loading) return <div className="p-8 text-gray-500 dark:text-gray-400 animate-pulse">Loading Trip Data...</div>;
+
+    if (loadError) {
+        return (
+            <div className="w-full max-w-[1680px] mx-auto pt-12 px-4 flex flex-col items-center justify-center">
+                <EmptyState
+                    icon="cloud_off"
+                    title="Couldn't load this trip"
+                    description={loadError}
+                    action={{ label: "Try Again", onClick: () => { void loadData(); } }}
+                />
+            </div>
+        );
+    }
 
     if (!trip) {
         return (
@@ -1537,6 +1543,17 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 );
             })()}
 
+            {matchingFlights.length > 0 && (
+                <div role="status" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-sky-500/10 border border-sky-500/20">
+                    <p className="text-sm font-semibold text-light-text dark:text-dark-text">
+                        {matchingFlights.length} standalone flight{matchingFlights.length === 1 ? '' : 's'} fall{matchingFlights.length === 1 ? 's' : ''} within this trip's dates.
+                    </p>
+                    <Button variant="secondary" onClick={handleAssignMatchingFlights} disabled={isAssigningFlights} className="shrink-0 min-h-[44px]">
+                        {isAssigningFlights ? 'Adding…' : `Add ${matchingFlights.length === 1 ? 'it' : 'them'} to this trip`}
+                    </Button>
+                </div>
+            )}
+
             {/* 2. Top Bento: 5 Stat Cards + Embedded 2D Route Map Overview */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch">
                 {/* 5 Stat Cards */}
@@ -1565,7 +1582,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
                 {/* Right Card: Embedded 2D Route Map Overview */}
                 <GlassPanel className="lg:col-span-4 wg-glass-card rounded-[28px] overflow-hidden min-h-[180px] h-full relative flex flex-col border border-black/5 dark:border-white/10" overrides={{ borderRadius: 28 }} padding="0px">
-                    <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-black/40 text-white backdrop-blur px-3 py-1 rounded-full border border-white/10 shadow-sm pointer-events-none text-2xs font-bold uppercase tracking-wider">
+                    <div className="absolute top-3 left-3 z-raised flex items-center gap-1.5 bg-black/40 text-white backdrop-blur px-3 py-1 rounded-full border border-white/10 shadow-sm pointer-events-none text-2xs font-bold uppercase tracking-wider">
                         <Compass className="w-3.5 h-3.5 text-primary-500" weight="duotone" />
                         <span>Route Map 2D</span>
                     </div>
@@ -1591,7 +1608,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             </div>
 
             {/* 3. Floating Liquid-Glass Tab Navigation & Subviews Switcher */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 py-1">
+            <div className="flex flex-col md:flex-row md:flex-wrap justify-between items-center gap-4 py-1 min-w-0">
                 <Tabs 
                     tabs={[
                         { id: 'planner', label: 'Daily Planner', icon: <CalendarBlank className="w-4 h-4 text-amber-500" weight="duotone" />, color: 'amber' }, 
@@ -1872,7 +1889,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                         // Table View - Keep exact same structure with GlassPanel
                         <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden">
                             <table className="w-full text-left border-collapse">
-                                <thead className="bg-light-fill dark:bg-dark-fill/50 border-b border-black/5 dark:border-white/5 text-2xs font-bold uppercase tracking-widest text-light-text-secondary dark:text-dark-text-secondary sticky top-0 z-20">
+                                <thead className="bg-light-fill dark:bg-dark-fill/50 border-b border-black/5 dark:border-white/5 text-2xs font-bold uppercase tracking-widest text-light-text-secondary dark:text-dark-text-secondary sticky top-0 z-float">
                                     <tr>
                                         <th className="p-6 w-32">Time</th>
                                         <th className="p-6 w-48">Category</th>
@@ -2150,17 +2167,17 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                                 key={wp.id || wIdx}
                                                                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-light-text dark:text-dark-text shadow-2xs"
                                                                             >
-                                                                                <span className="w-4 h-4 rounded-full bg-amber-500 text-white font-bold text-3xs flex items-center justify-center shrink-0">
+                                                                                <span className="w-4 h-4 rounded-full bg-amber-500 text-white font-bold text-2xs flex items-center justify-center shrink-0">
                                                                                     {wIdx + 1}
                                                                                 </span>
                                                                                 <span className="font-bold text-amber-800 dark:text-amber-200">{wp.name}</span>
                                                                                 {wp.type && wp.type !== 'Stop' && (
-                                                                                    <span className="text-3xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 uppercase font-mono font-bold">
+                                                                                    <span className="text-2xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 uppercase font-mono font-bold">
                                                                                         {wp.type}
                                                                                     </span>
                                                                                 )}
                                                                                 {wp.addToVisited !== false && (
-                                                                                    <span className="text-3xs text-emerald-600 dark:text-emerald-400 font-bold ml-0.5" title="Added to Visited Places">
+                                                                                    <span className="text-2xs text-emerald-600 dark:text-emerald-400 font-bold ml-0.5" title="Added to Visited Places">
                                                                                         ✓ Visited
                                                                                     </span>
                                                                                 )}
@@ -2309,7 +2326,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                         </div>
                                                         <div className="w-1.5 h-1.5 rounded-full bg-amber-500 border border-amber-400 shrink-0"></div>
                                                     </div>
-                                                    <span className="text-3xs font-mono font-bold uppercase tracking-wider text-light-text-secondary/70 dark:text-dark-text-secondary/70 mt-1.5">
+                                                    <span className="text-2xs font-mono font-bold uppercase tracking-wider text-light-text-secondary/70 dark:text-dark-text-secondary/70 mt-1.5">
                                                         {formatDateRange(stay.checkInDate, stay.checkOutDate, settings)}
                                                     </span>
                                                 </div>
@@ -2491,7 +2508,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                     </svg>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                                         <span className="text-xl font-black text-light-text dark:text-dark-text">{formatCurrency(totalCost)}</span>
-                                        <span className="text-3xs uppercase tracking-widest font-bold text-light-text-secondary dark:text-dark-text-secondary">Total Spend</span>
+                                        <span className="text-2xs uppercase tracking-widest font-bold text-light-text-secondary dark:text-dark-text-secondary">Total Spend</span>
                                     </div>
                                 </div>
 
@@ -2617,6 +2634,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 onClose={() => setIsEditTripOpen(false)} 
                 onSubmit={handleUpdateTrip}
                 onDelete={handleDeleteTrip}
+                onArchive={handleArchiveTrip}
                 users={users}
                 initialData={trip}
             />
@@ -2641,7 +2659,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
             {/* Cinematic Modal */}
             {isCinematicOpen && (
-                <div className="fixed inset-0 z-modal bg-black safe-top safe-bottom safe-x">
+                <div className="fixed inset-0 z-modal bg-black safe-top safe-bottom safe-x" role="dialog" aria-modal="true" aria-label="Cinematic trip view">
                     <div className="absolute top-[calc(1.5rem+env(safe-area-inset-top,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))] z-popover">
                         <button 
                             onClick={() => setIsCinematicOpen(false)} 

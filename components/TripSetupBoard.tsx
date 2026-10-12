@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
     Compass, 
@@ -256,6 +256,23 @@ export const AirlineLogoBadge: React.FC<{ carrier: string; className?: string }>
     );
 };
 
+// The in-progress wizard is kept in sessionStorage so a page refresh restores it (QA-B-006).
+const TRIP_DRAFT_KEY = 'wandergrid_trip_wizard_draft';
+type TripDraft = { title: string; destination: string; startDate: string; endDate: string; status: 'Planning' | 'Upcoming' | 'Past'; transportsList: Partial<Transport>[]; accommodationsList: Partial<Accommodation>[] };
+
+export const readTripDraft = (): TripDraft | null => {
+    try {
+        const raw = sessionStorage.getItem(TRIP_DRAFT_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+};
+
+export const clearTripDraft = () => {
+    try { sessionStorage.removeItem(TRIP_DRAFT_KEY); } catch { /* storage unavailable */ }
+};
+
 export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     isOpen,
     onClose,
@@ -264,8 +281,10 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     users = []
 }) => {
     // Workspace settings & active currency
-    const { data: settings } = useWanderSync<WorkspaceSettings>('settings', () => dataService.getWorkspaceSettings());
+    const { data: settings } = useWanderSync<WorkspaceSettings>('settings', () => dataService.getWorkspaceSettings(), [], { collections: ['settings'] });
     const activeCurrency = settings?.currency || 'USD';
+
+    const [draft] = useState(readTripDraft);
 
     // Current Active Stage
     const [currentStage, setCurrentStage] = useState<StageKey>('basics');
@@ -275,12 +294,12 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     const [editingAccommodationIndex, setEditingAccommodationIndex] = useState<number | null>(null);
 
     // Stage 1: Trip Basics State
-    const [title, setTitle] = useState('');
-    const [destination, setDestination] = useState('');
+    const [title, setTitle] = useState(draft?.title ?? '');
+    const [destination, setDestination] = useState(draft?.destination ?? '');
     const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lng: number } | undefined>();
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [status, setStatus] = useState<'Planning' | 'Upcoming' | 'Past'>(initialStatus);
+    const [startDate, setStartDate] = useState(draft?.startDate ?? '');
+    const [endDate, setEndDate] = useState(draft?.endDate ?? '');
+    const [status, setStatus] = useState<'Planning' | 'Upcoming' | 'Past'>(draft?.status ?? initialStatus);
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>(users.length > 0 ? [users[0].id] : []);
     const [basicsError, setBasicsError] = useState<string | null>(null);
 
@@ -300,7 +319,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     // Stage 2: Transport Sub-Steps State
     const [transportMode, setTransportMode] = useState<TransportMode>('Flight');
     const [transportStructure, setTransportStructure] = useState<'Round Trip' | 'One-Way'>('Round Trip');
-    const [transportsList, setTransportsList] = useState<Partial<Transport>[]>([]);
+    const [transportsList, setTransportsList] = useState<Partial<Transport>[]>(draft?.transportsList ?? []);
     
     // Transport fields
     const [outboundOrigin, setOutboundOrigin] = useState('');
@@ -427,7 +446,25 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     };
 
     // Stage 3: Accommodation Sub-Steps State
-    const [accommodationsList, setAccommodationsList] = useState<Partial<Accommodation>[]>([]);
+    const [accommodationsList, setAccommodationsList] = useState<Partial<Accommodation>[]>(draft?.accommodationsList ?? []);
+
+    // Latest non-empty draft, assigned during render so it is current even if the effect below hasn't flushed yet.
+    const isDraftEmpty = !title && !destination && !startDate && transportsList.length === 0 && accommodationsList.length === 0;
+    const latestDraft = useRef<TripDraft | null>(null);
+    latestDraft.current = isDraftEmpty ? null : { title, destination, startDate, endDate, status, transportsList, accommodationsList };
+
+    const persistDraft = () => {
+        if (!latestDraft.current) return;
+        try { sessionStorage.setItem(TRIP_DRAFT_KEY, JSON.stringify(latestDraft.current)); } catch { /* storage unavailable */ }
+    };
+
+    useEffect(persistDraft, [title, destination, startDate, endDate, status, transportsList, accommodationsList]);
+
+    // A refresh or tab close right after typing must not lose the last edit (QA-B-006).
+    useEffect(() => {
+        window.addEventListener('pagehide', persistDraft);
+        return () => window.removeEventListener('pagehide', persistDraft);
+    }, []);
     const [accType, setAccType] = useState<Accommodation['type']>('Hotel');
     const [accName, setAccName] = useState('');
     const [accAddress, setAccAddress] = useState('');
@@ -635,10 +672,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
             setBasicsError("Please provide a trip title.");
             return;
         }
-        if (!destination.trim()) {
-            setBasicsError("Please enter a destination.");
-            return;
-        }
+        // Same rules as Create Trip: title and dates are required, the destination is optional (QA-B-004).
         if (!startDate || !endDate) {
             setBasicsError("Please select both a start and end date.");
             return;
@@ -649,20 +683,21 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
         }
 
         // Pre-seed subsequent stages
-        if (!outboundDest) setOutboundDest(destination);
+        const hasDestination = !!destination.trim();
+        if (!outboundDest && hasDestination) setOutboundDest(destination);
         if (!outboundDate) {
             setOutboundDate(startDate);
             setOutboundArrivalDate(startDate);
         }
         if (!returnDate) setReturnDate(endDate);
 
-        if (!accName) setAccName(`${destination} Stay`);
-        if (!accAddress) setAccAddress(destination);
+        if (!accName && hasDestination) setAccName(`${destination} Stay`);
+        if (!accAddress && hasDestination) setAccAddress(destination);
         if (!accCheckIn) setAccCheckIn(startDate);
         if (!accCheckOut) setAccCheckOut(endDate);
 
         // Resolve destination coordinates in background
-        if (!destinationCoords) {
+        if (!destinationCoords && hasDestination) {
             getCoordinates(destination).then(c => {
                 if (c) setDestinationCoords(c);
             }).catch(() => {});
@@ -1468,7 +1503,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                         onClick={() => setTravelClass(opt.value as any)}
                                                         className={`flex-1 min-h-[36px] py-1.5 px-1 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center ${
                                                             isSelected
-                                                                ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
+                                                                ? 'bg-white dark:bg-dark-card text-primary-800 dark:text-primary-400 shadow-sm'
                                                                 : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
                                                         }`}
                                                     >
@@ -1569,7 +1604,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                                             onClick={() => handleConnectingLegChange(legIdx, 'travelClass', opt.value as any)}
                                                                             className={`flex-1 min-h-[36px] py-1.5 px-1 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center ${
                                                                                 isSelected
-                                                                                    ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
+                                                                                    ? 'bg-white dark:bg-dark-card text-primary-800 dark:text-primary-400 shadow-sm'
                                                                                     : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
                                                                             }`}
                                                                         >
@@ -1637,7 +1672,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                         onClick={() => setReturnTravelClass(opt.value as any)}
                                                         className={`flex-1 min-h-[36px] py-1.5 px-1 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center ${
                                                             isSelected
-                                                                ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
+                                                                ? 'bg-white dark:bg-dark-card text-primary-800 dark:text-primary-400 shadow-sm'
                                                                 : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
                                                         }`}
                                                     >
@@ -1991,16 +2026,16 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             <span className="font-bold text-xs text-light-text dark:text-dark-text truncate">
                                                 {t.origin} &rarr; {t.destination}
                                             </span>
-                                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary">
+                                            <span className="px-1.5 py-0.2 rounded text-2xs font-bold uppercase bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary">
                                                 {t.mode}
                                             </span>
                                             {isConnecting && (
-                                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                                                <span className="px-1.5 py-0.2 rounded text-2xs font-bold uppercase bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
                                                     Connecting
                                                 </span>
                                             )}
                                             {isBeingEdited && (
-                                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-500/30">
+                                                <span className="px-1.5 py-0.2 rounded text-2xs font-bold uppercase bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-500/30">
                                                     Editing
                                                 </span>
                                             )}
@@ -2075,11 +2110,11 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             <span className="font-bold text-xs text-light-text dark:text-dark-text truncate">
                                                 {a.name}
                                             </span>
-                                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                            <span className="px-1.5 py-0.2 rounded text-2xs font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400">
                                                 {a.type}
                                             </span>
                                             {isBeingEdited && (
-                                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                                                <span className="px-1.5 py-0.2 rounded text-2xs font-bold uppercase bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                                                     Editing
                                                 </span>
                                             )}
@@ -2160,7 +2195,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         overrides={{ borderRadius: 9999 }}
                     >
                         <div className="flex items-center gap-2 h-11 leading-none">
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                            <span className="text-2xs uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
                                 Est. Total
                             </span>
                             <span className="text-xs font-mono font-black text-primary-600 dark:text-primary-400">
@@ -2230,7 +2265,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     type="button"
                                     onClick={() => setCurrentStage(stageKey)}
                                     title={config.label}
-                                    className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 ${
+                                    className={`relative rounded-full min-h-[44px] min-w-[44px] text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 ${
                                         isSelected
                                             ? `${config.activeText} px-4 sm:px-5 py-2.5`
                                             : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 sm:px-5 py-2.5'
@@ -2244,7 +2279,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             transition={{ type: "spring", stiffness: 450, damping: 32 }}
                                         />
                                     )}
-                                    <span className="relative z-10 flex items-center gap-2 sm:gap-2.5">
+                                    <span className="relative z-raised flex items-center gap-2 sm:gap-2.5">
                                         <IconComponent 
                                             className={`w-5 h-5 shrink-0 transition-colors duration-200 ${config.color}`} 
                                             weight="duotone" 
@@ -2252,7 +2287,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                         <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden sm:inline'}`}>
                                             {config.label}
                                         </span>
-                                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold border transition-colors ${config.badgeStyle} ${
+                                        <span className={`text-2xs font-mono px-2 py-0.5 rounded-full font-bold border transition-colors ${config.badgeStyle} ${
                                             isSelected 
                                                 ? 'inline shadow-xs' 
                                                 : 'hidden sm:inline opacity-90 hover:opacity-100'
@@ -2445,7 +2480,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                         {u.profilePicture ? (
                                                             <img src={u.profilePicture} alt={u.name} className="w-4 h-4 rounded-full object-cover" />
                                                         ) : (
-                                                            <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-[9px] font-bold">
+                                                            <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-2xs font-bold">
                                                                 {u.name.charAt(0)}
                                                             </div>
                                                         )}
@@ -2536,7 +2571,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             }`}
                                         >
                                             <IconM className="w-4 h-4 mb-0.5" weight={isSel ? "duotone" : "regular"} />
-                                            <span className="text-[10px] font-semibold uppercase tracking-tight leading-tight">{m.label}</span>
+                                            <span className="text-2xs font-semibold uppercase tracking-tight leading-tight">{m.label}</span>
                                         </button>
                                     );
                                 })}
@@ -2698,7 +2733,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             }`}
                                             title={t}
                                         >
-                                            <span className="text-[10px] font-semibold uppercase tracking-tight leading-tight truncate w-full">{t}</span>
+                                            <span className="text-2xs font-semibold uppercase tracking-tight leading-tight truncate w-full">{t}</span>
                                         </button>
                                     );
                                 })}
@@ -2720,7 +2755,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                         <MapPin className="w-3.5 h-3.5 text-amber-500" />
                                         <span>Address / Google Maps Location</span>
                                     </label>
-                                    <span className="text-[10px] text-amber-500 font-semibold">Live Lookup</span>
+                                    <span className="text-2xs text-amber-500 font-semibold">Live Lookup</span>
                                 </div>
                                 <Autocomplete 
                                     placeholder="Street address, hotel name, or paste Google Maps link..." 
@@ -2977,7 +3012,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                     {u.profilePicture ? (
                                                         <img src={u.profilePicture} alt={u.name} className="w-4 h-4 rounded-full object-cover" />
                                                     ) : (
-                                                        <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-[9px] font-bold">
+                                                        <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-2xs font-bold">
                                                             {u.name.charAt(0)}
                                                         </div>
                                                     )}
@@ -3061,7 +3096,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                 }`}
                                             >
                                                 <IconM className="w-5 h-5 mb-1" />
-                                                <span className="text-[10px] font-semibold uppercase tracking-tight leading-tight">{m.label}</span>
+                                                <span className="text-2xs font-semibold uppercase tracking-tight leading-tight">{m.label}</span>
                                             </button>
                                         );
                                     })}
@@ -3214,7 +3249,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                 }`}
                                                 title={t}
                                             >
-                                                <span className="text-[10px] font-semibold uppercase tracking-tight leading-tight truncate w-full">{t}</span>
+                                                <span className="text-2xs font-semibold uppercase tracking-tight leading-tight truncate w-full">{t}</span>
                                             </button>
                                         );
                                     })}
@@ -3230,7 +3265,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             <MapPin className="w-3.5 h-3.5 text-amber-500" />
                                             <span>Address / Google Maps Location</span>
                                         </label>
-                                        <span className="text-[10px] text-amber-500 font-semibold">Live Lookup</span>
+                                        <span className="text-2xs text-amber-500 font-semibold">Live Lookup</span>
                                     </div>
                                     <Autocomplete 
                                         placeholder="Street address, hotel name, or paste Google Maps link..." 

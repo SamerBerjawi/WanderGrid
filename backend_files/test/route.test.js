@@ -10,10 +10,10 @@ describe('P-02 Real Road Routing Proxy', () => {
   });
 
   test('normalizes supported routing profiles', () => {
-    assert.deepEqual(normalizeProfile('car'), { profile: 'car', osrmPath: 'routed-car/route/v1/driving' });
-    assert.deepEqual(normalizeProfile('driving'), { profile: 'car', osrmPath: 'routed-car/route/v1/driving' });
-    assert.deepEqual(normalizeProfile('bike'), { profile: 'bike', osrmPath: 'routed-bike/route/v1/bicycle' });
-    assert.deepEqual(normalizeProfile('foot'), { profile: 'foot', osrmPath: 'routed-foot/route/v1/foot' });
+    assert.deepEqual(normalizeProfile('car'), { profile: 'car', costing: 'auto', osrmPath: 'routed-car/route/v1/driving' });
+    assert.deepEqual(normalizeProfile('driving'), { profile: 'car', costing: 'auto', osrmPath: 'routed-car/route/v1/driving' });
+    assert.deepEqual(normalizeProfile('bike'), { profile: 'bike', costing: 'bicycle', osrmPath: 'routed-bike/route/v1/bicycle' });
+    assert.deepEqual(normalizeProfile('foot'), { profile: 'foot', costing: 'pedestrian', osrmPath: 'routed-foot/route/v1/foot' });
     assert.equal(normalizeProfile('rocket'), null);
   });
 });
