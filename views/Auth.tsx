@@ -232,7 +232,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     // The sign-in form renders immediately; if the server reports an empty workspace the screen switches to
     // Initial System Setup. (Waiting for that request first delayed the login page's LCP by ~1 s, PERF-001.)
     return (
-        <div className="flex min-h-screen items-center justify-center p-6 relative overflow-hidden">
+        <main className="flex min-h-screen items-center justify-center p-6 relative overflow-hidden">
             {/* Background elements */}
             <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/3 rounded-full blur-3xl pointer-events-none animate-pulse"></div>
             <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/3 rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDelay: '1s' }}></div>
@@ -244,9 +244,9 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                         alt="WanderGrid" 
                         className="w-16 h-16 mx-auto rounded-2xl shadow-lg mb-6 object-contain" 
                     />
-                    <h2 className="text-2xl font-black text-light-text dark:text-dark-text tracking-tight mb-2">
+                    <h1 className="text-2xl font-black text-light-text dark:text-dark-text tracking-tight mb-2">
                         {mode === 'setup_admin' ? 'Initial System Setup' : mode === 'signin' ? 'Welcome Back' : mode === 'reset' ? 'Reset Password' : 'Join WanderGrid'}
-                    </h2>
+                    </h1>
                     <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary font-medium">
                         {mode === 'setup_admin' 
                             ? 'Configure the primary Administrator account.' 
@@ -413,6 +413,6 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             <div className="absolute bottom-6 text-center w-full">
                 <p className="text-2xs font-bold text-gray-400 uppercase tracking-[0.2em] opacity-50">WanderGrid Systems v2.2</p>
             </div>
-        </div>
+        </main>
     );
 };

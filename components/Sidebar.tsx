@@ -214,7 +214,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       overrides={{ borderRadius: 20 }}
                       padding="14px"
                     >
-                      <div onClick={() => onNavigate(ViewState.TRIP_DETAIL, nextTrip.id)}>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Open ${nextTrip.name}`}
+                        onClick={() => onNavigate(ViewState.TRIP_DETAIL, nextTrip.id)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate(ViewState.TRIP_DETAIL, nextTrip.id); } }}
+                      >
                         <div className="flex items-center justify-between mb-1.5">
                           <p className="text-2xs font-bold text-zinc-500 dark:text-zinc-300 uppercase tracking-widest">
                             {nextTrip.status === 'Planning' ? 'Planned Trip' : 'Coming Up Next'}

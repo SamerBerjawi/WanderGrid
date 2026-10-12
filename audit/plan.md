@@ -821,6 +821,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
   - Overflow tests from WP-4.5 still pass, since larger text may wrap.
 
 ### WP-4.2 Contrast
+- **Status: ✅ Done.** M-58 (decision C-3): primary/danger buttons and all coloured `GlassButton` pills use the tinted style (15–22% tint; 800-shade text in light mode, 300 in dark, all ≥4.5:1, versus 2.2–3.8:1 for the old white text). 34 solid orange fills switch to dark text; 107 light-mode `*-400` grey text uses become `*-500` (with `dark:*-400`); 10 active segmented tabs use `primary-800`/`primary-400`. New `tests/e2e/a11y/axe.spec.ts` runs axe on 8 pages × light/dark × desktop/mobile and fails on any serious or critical violation; it passes.
 - **Covers:** M-58 (UI-003); see C-3.
 - **Files:**
   - `constants.ts:10-11`: `BTN_PRIMARY_STYLE`.
@@ -832,6 +833,7 @@ This phase includes the **Medium security hardening** items (WP-2.9 to WP-2.12).
 - **Verify:** axe `color-contrast` reports 0 serious violations on 9 pages × 2 widths × both themes. Add an `@axe-core/playwright` check to the e2e suite.
 
 ### WP-4.3 Labels and accessible names
+- **Status: ✅ Done.** M-59: label/control association via `useId` (quick win #18); `aria-label`s on the Atlas region filter, the Atlas mobile tab buttons and Track Flight; the Calendar timeline scroller is focusable with a label; the Planner card arrow is `aria-hidden`; the sign-in page has `<main>` and an `<h1>`; the sidebar next-trip card is keyboard-operable. The Atlas dialog scrolls on phones (the form outgrew the screen with the larger type). axe reports no serious or critical issues. Remaining moderate items (heading order, other clickable `div`s) are left to component consolidation.
 - **Covers:** M-59 (UI-004, UI-015, QA-D-004).
 - **Files:**
   - `components/glass/GlassSelect.tsx:32-49`, `components/ui.tsx:113-116`, `:176`, `:230-233`: `useId` and `htmlFor`, plus an `aria-label` prop.

@@ -37,7 +37,7 @@ export async function seedSession(page: Page, token: string, user: any) {
   }, [token, user]);
 }
 
-export const authHeading = (page: Page) => page.getByRole('heading', { level: 2 }).filter({ hasText: /Welcome Back|Join WanderGrid|Initial System Setup/ });
+export const authHeading = (page: Page) => page.getByRole('heading', { level: 1 }).filter({ hasText: /Welcome Back|Join WanderGrid|Initial System Setup/ });
 
 export async function waitForAuthScreen(page: Page) {
   await expect(authHeading(page)).toBeVisible({ timeout: 20_000 });

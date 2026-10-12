@@ -1705,11 +1705,12 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
       </div>
 
       {/* Unified Register Visited Country / City Add & Edit Slide Tray Dialog */}
-      {/* AnimatePresence must live inside the portal: it drops children that aren't React elements, and a portal isn't one. */}
+      {/* AnimatePresence must live inside the portal: it drops children that aren't React elements, and a portal isn't one.
+          The overlay scrolls: on phones the form is taller than the screen. */}
       {createPortal(
         <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-modal flex items-center justify-center p-4 font-sans">
+          <div className="fixed inset-0 z-modal flex items-start sm:items-center justify-center p-4 font-sans overflow-y-auto">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
