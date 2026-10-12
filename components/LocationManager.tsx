@@ -16,7 +16,11 @@ import {
     LockOpen as Unlock, 
     Path as Route, 
     Globe as Earth, 
-    DotsSixVertical as GripVertical 
+    DotsSixVertical as GripVertical,
+    Car,
+    CarProfile,
+    Boat,
+    Warning
 } from '@phosphor-icons/react';
 import {
     DndContext,
@@ -271,6 +275,45 @@ const SortableLegCard: React.FC<SortableLegCardProps> = ({
                                                 )}
                                             </div>
                                         )}
+                                        {/* Reorder & delete controls */}
+                                        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                                            <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    onClick={() => moveSegment(leg.id, idx, 'up')}
+                                                    disabled={isFirst}
+                                                    className={`min-h-[44px] min-w-[44px] p-0 rounded-xl ${isFirst ? 'opacity-30 cursor-not-allowed' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}
+                                                    title={isFirst ? undefined : "Move segment up"}
+                                                    aria-label="Move segment up"
+                                                >
+                                                    <ArrowUp className="w-3.5 h-3.5" />
+                                                </Button>
+                                                
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    onClick={() => moveSegment(leg.id, idx, 'down')}
+                                                    disabled={isLast}
+                                                    className={`min-h-[44px] min-w-[44px] p-0 rounded-xl ${isLast ? 'opacity-30 cursor-not-allowed' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}
+                                                    title={isLast ? undefined : "Move segment down"}
+                                                    aria-label="Move segment down"
+                                                >
+                                                    <ArrowDown className="w-3.5 h-3.5" />
+                                                </Button>
+
+                                                {leg.segments.length > 1 && (
+                                                    <Button 
+                                                        variant="danger" 
+                                                        size="sm" 
+                                                        onClick={() => deleteSegment(leg.id, seg.id)}
+                                                        className="min-h-[44px] min-w-[44px] p-0 rounded-xl text-rose-500 hover:bg-rose-500/10 border-0 shrink-0"
+                                                        title="Delete segment"
+                                                        aria-label="Delete segment"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </Button>
+                                                )}
+                                        </div>
                                     </div>
 
 
@@ -291,7 +334,7 @@ const SortableLegCard: React.FC<SortableLegCardProps> = ({
                                     <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 sm:gap-4 items-start">
                                     
                                         {/* Start City Selection with Inline Lock Toggle */}
-                                        <div className="md:col-span-3 space-y-1.5 min-w-0 relative">
+                                        <div className="md:col-span-3 xl:col-span-3 space-y-1.5 min-w-0 relative">
                                             <div className="flex items-center justify-between h-5">
                                                 <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Start City</label>
                                                 {prevSegment ? (
@@ -340,7 +383,7 @@ const SortableLegCard: React.FC<SortableLegCardProps> = ({
                                         </div>
 
                                         {/* Departure Date Picker with Link Toggle */}
-                                        <div className="md:col-span-2 space-y-1.5 min-w-0">
+                                        <div className="md:col-span-3 space-y-1.5 min-w-0">
                                             <div className="flex items-center justify-between h-5">
                                                 <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Departure</label>
                                                 {prevSegment ? (
@@ -375,7 +418,7 @@ const SortableLegCard: React.FC<SortableLegCardProps> = ({
                                         </div>
 
                                         {/* Transport Mode Selection */}
-                                        <div className="md:col-span-2 space-y-1.5 min-w-0">
+                                        <div className="md:col-span-3 space-y-1.5 min-w-0">
                                             <div className="flex items-center justify-between h-5">
                                                 <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Transport</label>
                                             </div>
@@ -383,60 +426,16 @@ const SortableLegCard: React.FC<SortableLegCardProps> = ({
                                                 value={seg.transportMode}
                                                 onChange={(e) => updateSegment(leg.id, seg.id, 'transportMode', e.target.value as TransportMode)}
                                                 options={[
-                                                    { label: '✈️ Flight', value: 'Flight' },
-                                                    { label: '🚄 Train', value: 'Train' },
-                                                    { label: '🚌 Bus', value: 'Bus' },
-                                                    { label: '🚗 Rental Car', value: 'Car Rental' },
-                                                    { label: '🚘 Own Car', value: 'Personal Car' },
-                                                    { label: '🚢 Ferry / Cruise', value: 'Cruise' }
+                                                    { label: 'Flight', value: 'Flight', icon: <Plane className="w-4 h-4" weight="duotone" /> },
+                                                    { label: 'Train', value: 'Train', icon: <Train className="w-4 h-4" weight="duotone" /> },
+                                                    { label: 'Bus', value: 'Bus', icon: <Bus className="w-4 h-4" weight="duotone" /> },
+                                                    { label: 'Rental Car', value: 'Car Rental', icon: <Car className="w-4 h-4" weight="duotone" /> },
+                                                    { label: 'Own Car', value: 'Personal Car', icon: <CarProfile className="w-4 h-4" weight="duotone" /> },
+                                                    { label: 'Ferry / Cruise', value: 'Cruise', icon: <Boat className="w-4 h-4" weight="duotone" /> }
                                                 ]}
                                             />
                                         </div>
 
-                                        {/* Reorders & Deletion controls */}
-                                        <div className="md:col-span-2 space-y-1.5 min-w-0">
-                                            <div className="flex items-center justify-end h-5">
-                                                <span className="text-2xs font-bold uppercase tracking-wider text-transparent select-none">Actions</span>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 min-h-[44px] justify-end shrink-0">
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="sm" 
-                                                    onClick={() => moveSegment(leg.id, idx, 'up')}
-                                                    disabled={isFirst}
-                                                    className={`min-h-[44px] min-w-[44px] p-0 rounded-xl ${isFirst ? 'opacity-30 cursor-not-allowed' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}
-                                                    title={isFirst ? undefined : "Move segment up"}
-                                                    aria-label="Move segment up"
-                                                >
-                                                    <ArrowUp className="w-3.5 h-3.5" />
-                                                </Button>
-                                                
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="sm" 
-                                                    onClick={() => moveSegment(leg.id, idx, 'down')}
-                                                    disabled={isLast}
-                                                    className={`min-h-[44px] min-w-[44px] p-0 rounded-xl ${isLast ? 'opacity-30 cursor-not-allowed' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}
-                                                    title={isLast ? undefined : "Move segment down"}
-                                                    aria-label="Move segment down"
-                                                >
-                                                    <ArrowDown className="w-3.5 h-3.5" />
-                                                </Button>
-
-                                                {leg.segments.length > 1 && (
-                                                    <Button 
-                                                        variant="danger" 
-                                                        size="sm" 
-                                                        onClick={() => deleteSegment(leg.id, seg.id)}
-                                                        className="min-h-[44px] min-w-[44px] p-0 rounded-xl text-rose-500 hover:bg-rose-500/10 border-0 shrink-0"
-                                                        title="Delete segment"
-                                                        aria-label="Delete segment"
-                                                    >
-                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </div>
                                     </div>
 
                                     {/* Linking triggers */}
@@ -489,7 +488,7 @@ const SortableLegCard: React.FC<SortableLegCardProps> = ({
                 {!validation.isValid && (
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-rose-500/10 p-4 border border-rose-500/20 rounded-2xl text-xs mt-4">
                         <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold">
-                            <span>⚠️</span>
+                            <Warning className="w-4 h-4 shrink-0" weight="duotone" />
                             <span>{validation.errorMessage}</span>
                         </div>
                         <Button 
@@ -1181,32 +1180,34 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
             {/* Top Stats Dashboard Section */}
             <div className="lg:col-span-12">
                 <GlassPanel
-                    className="wg-glass-card rounded-[28px] overflow-hidden p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border border-black/5 dark:border-white/10"
+                    className="wg-glass-card rounded-[28px] overflow-hidden border border-black/5 dark:border-white/10"
                     overrides={{ borderRadius: 28 }}
                     padding="0px"
                 >
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-primary-500/10 border border-primary-500/20 text-primary-500 flex items-center justify-center shrink-0 shadow-sm">
-                            <Route className="w-6 h-6 text-primary-500" weight="duotone" />
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4 sm:px-6">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-11 h-11 rounded-2xl bg-primary-500/10 border border-primary-500/20 text-primary-500 flex items-center justify-center shrink-0 shadow-sm">
+                                <Route className="w-6 h-6 text-primary-500" weight="duotone" />
+                            </div>
+                            <div className="min-w-0">
+                                <h2 className="text-lg sm:text-xl font-black tracking-tight text-light-text dark:text-dark-text truncate">
+                                    Multi-Stop Route Builder
+                                </h2>
+                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium mt-0.5 truncate">
+                                    Reorder excursions, link stops, sync dates.
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-light-text dark:text-dark-text">
-                                Multi-Stop Route Builder
-                            </h2>
-                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium mt-0.5">
-                                Drag to reorder excursions, connect stop destinations, and synchronize dates.
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-3 items-center">
-                        <div className="bg-white/50 dark:bg-white/[0.05] backdrop-blur-md px-5 py-3 rounded-2xl border border-black/5 dark:border-white/10 flex flex-col min-w-[120px]">
-                            <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Total Distance</span>
-                            <span className="text-xl font-black tracking-tight mt-0.5 text-light-text dark:text-dark-text">{statsDistance.toLocaleString()} km</span>
-                        </div>
-                        <div className="bg-white/50 dark:bg-white/[0.05] backdrop-blur-md px-5 py-3 rounded-2xl border border-black/5 dark:border-white/10 flex flex-col min-w-[120px]">
-                            <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Estimated CO2</span>
-                            <span className="text-xl font-black tracking-tight mt-0.5 text-emerald-600 dark:text-emerald-400 font-mono">{statsCarbonEmissions} kg</span>
+
+                        <div className="flex gap-3 items-center shrink-0">
+                            <div className="bg-white/50 dark:bg-white/[0.05] backdrop-blur-md px-4 py-2 rounded-2xl border border-black/5 dark:border-white/10 flex flex-col min-w-[120px]">
+                                <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Total Distance</span>
+                                <span className="text-lg font-black tracking-tight text-light-text dark:text-dark-text">{statsDistance.toLocaleString()} km</span>
+                            </div>
+                            <div className="bg-white/50 dark:bg-white/[0.05] backdrop-blur-md px-4 py-2 rounded-2xl border border-black/5 dark:border-white/10 flex flex-col min-w-[120px]">
+                                <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Estimated CO2</span>
+                                <span className="text-lg font-black tracking-tight text-emerald-600 dark:text-emerald-400 font-mono">{statsCarbonEmissions} kg</span>
+                            </div>
                         </div>
                     </div>
                 </GlassPanel>

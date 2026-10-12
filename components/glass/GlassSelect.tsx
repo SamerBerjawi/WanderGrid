@@ -8,6 +8,8 @@ import { CaretDown, Check } from '@phosphor-icons/react';
 export interface GlassSelectOption {
   value: string;
   label: string;
+  /** Optional leading icon shown in the trigger and the list (Phosphor, per Design.md). */
+  icon?: ReactNode;
 }
 
 export interface GlassSelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
@@ -251,7 +253,10 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(({
               onKeyDown={onKeyDown}
               className={`flex-1 min-w-0 text-left bg-transparent text-xs font-bold text-light-text dark:text-dark-text focus:outline-none cursor-pointer pr-7 py-2.5 truncate disabled:cursor-not-allowed ${className}`}
             >
-              {selected?.label ?? ''}
+              <span className="flex items-center gap-2 min-w-0">
+                {selected?.icon && <span className="shrink-0 text-primary-500">{selected.icon}</span>}
+                <span className="truncate">{selected?.label ?? ''}</span>
+              </span>
             </button>
 
             <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-light-text-secondary dark:text-dark-text-secondary opacity-70">
@@ -298,7 +303,10 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(({
                         : 'cursor-pointer text-light-text dark:text-dark-text border-transparent'
                   }`}
                 >
-                  <span className="truncate">{item.label}</span>
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    {item.icon && <span className="shrink-0 text-primary-500">{item.icon}</span>}
+                    <span className="truncate">{item.label}</span>
+                  </span>
                   {isSelected && <Check className="w-3.5 h-3.5 shrink-0 text-primary-500" weight="bold" />}
                 </li>
               </React.Fragment>

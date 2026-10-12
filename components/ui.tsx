@@ -222,7 +222,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
 // --- Select ---
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
-  options?: { label: string; value: string }[];
+  options?: { label: string; value: string; icon?: ReactNode }[];
   error?: string;
   leftElement?: ReactNode;
   containerClassName?: string;
