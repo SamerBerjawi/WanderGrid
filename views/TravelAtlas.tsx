@@ -953,11 +953,12 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
         </div>
       </div>
 
-      {/* STATS + REGION SPLIT */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch">
-        <GlassPanel className="wg-glass-card shadow-glass-card overflow-hidden border border-black/5 dark:border-white/10 lg:col-span-7" overrides={{ borderRadius: 28 }} padding="0px">
-          <div className="rounded-[28px] overflow-hidden h-full flex flex-col">
-            <div className="grid grid-cols-2 flex-1 divide-x divide-black/5 dark:divide-white/5">
+      {/* OVERVIEW: stats + coverage + region split in one compact card */}
+      <GlassPanel className="atlas-viz wg-glass-card shadow-glass-card overflow-hidden border border-black/5 dark:border-white/10" overrides={{ borderRadius: 28 }} padding="0px">
+        <div className="rounded-[28px] overflow-hidden grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-black/5 dark:divide-white/5">
+          {/* Stats + coverage */}
+          <div className="lg:col-span-7 flex flex-col">
+            <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-black/5 dark:divide-white/5 flex-1">
               {statTiles.map((tile, i) => {
                 const TileIcon = tile.icon;
                 return (
@@ -965,25 +966,22 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                     key={tile.label}
                     type="button"
                     onClick={() => setActiveTab(tile.tab)}
-                    className={`p-5 sm:p-6 flex items-center gap-4 text-left min-h-[44px] hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors cursor-pointer ${i >= 2 ? 'border-t border-black/5 dark:border-white/5' : ''}`}
+                    className={`px-4 py-3.5 min-h-[44px] flex items-center gap-3 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors cursor-pointer ${i >= 2 ? 'border-t sm:border-t-0 border-black/5 dark:border-white/5' : ''}`}
                     aria-label={`${tile.label}: ${tile.value}`}
                   >
-                    <TileIcon className={`w-8 h-8 shrink-0 ${tile.tone}`} weight="duotone" />
+                    <TileIcon className={`w-6 h-6 shrink-0 ${tile.tone}`} weight="duotone" />
                     <span className="min-w-0">
-                      <span className="block text-3xl sm:text-4xl font-black tabular-nums leading-none">{tile.value}</span>
-                      <span className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mt-1.5">{tile.label}</span>
+                      <span className="block text-2xl font-black tabular-nums leading-none">{tile.value}</span>
+                      <span className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mt-1 truncate">{tile.label}</span>
                     </span>
                   </button>
                 );
               })}
             </div>
-            <div className="p-5 sm:p-6 border-t border-black/5 dark:border-white/5 flex flex-col gap-2">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">World coverage</span>
-                <span className="text-lg font-black tabular-nums">{stats.worldPercentage}%</span>
-              </div>
+            <div className="px-4 py-3 border-t border-black/5 dark:border-white/5 flex items-center gap-3">
+              <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary shrink-0">World</span>
               <div
-                className="w-full h-2 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden"
+                className="flex-1 h-2 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden"
                 role="progressbar"
                 aria-label="World coverage"
                 aria-valuemin={0}
@@ -992,81 +990,67 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
               >
                 <div className="h-full rounded-full bg-primary-500 transition-all duration-500" style={{ width: `${stats.worldPercentage}%` }} />
               </div>
-              <span className="text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary tabular-nums">{stats.totalCountries} of 198 countries</span>
+              <span className="text-xs font-bold tabular-nums shrink-0">{stats.worldPercentage}% · {stats.totalCountries}/198</span>
             </div>
           </div>
-        </GlassPanel>
 
-        {/* REGION SPLIT (donut) */}
-        <GlassPanel className="atlas-viz wg-glass-card shadow-glass-card overflow-hidden border border-black/5 dark:border-white/10 lg:col-span-5" overrides={{ borderRadius: 28 }} padding="0px">
-          <div className="rounded-[28px] overflow-hidden h-full flex flex-col">
-            <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center gap-3 bg-gradient-to-r from-primary-500/10 via-primary-500/5 to-transparent">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary-500 to-indigo-600 text-white shadow-md shadow-primary-500/20 flex items-center justify-center shrink-0">
-                <MapIcon className="w-5 h-5" weight="duotone" />
-              </div>
-              <h2 className="text-base font-bold tracking-tight">By region</h2>
-            </div>
-
+          {/* Region split */}
+          <div className="lg:col-span-5 p-4 flex items-center gap-4">
             {regionSlices.length === 0 ? (
-              <div className="p-5 sm:p-6 flex-1 flex items-center justify-center text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary">
-                No visited countries yet
-              </div>
+              <p className="text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary">No visited countries yet</p>
             ) : (
-              <div className="p-5 sm:p-6 flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center gap-5 sm:gap-6 flex-1">
-                <div className="relative w-40 h-40 shrink-0">
+              <>
+                <div className="relative w-24 h-24 shrink-0">
                   <svg
                     viewBox="0 0 100 100"
                     className="w-full h-full -rotate-90"
                     role="img"
                     aria-label={`Visited countries by region: ${regionSlices.map(s => `${s.label} ${s.count}`).join(', ')}`}
                   >
-                    {regionSlices.map(slice => {
-                      const isDim = hoverRegion !== null && hoverRegion !== slice.label;
-                      return (
-                        <circle
-                          key={slice.label}
-                          cx="50" cy="50" r={DONUT_R} fill="none"
-                          stroke={`var(${slice.color})`}
-                          strokeWidth={hoverRegion === slice.label ? 15 : 13}
-                          strokeDasharray={`${slice.dash} ${DONUT_C - slice.dash}`}
-                          strokeDashoffset={-slice.offset}
-                          opacity={isDim ? 0.35 : 1}
-                          style={{ transition: 'opacity 150ms, stroke-width 150ms' }}
-                          onMouseEnter={() => setHoverRegion(slice.label)}
-                          onMouseLeave={() => setHoverRegion(null)}
-                        />
-                      );
-                    })}
+                    {regionSlices.map(slice => (
+                      <circle
+                        key={slice.label}
+                        cx="50" cy="50" r={DONUT_R} fill="none"
+                        stroke={`var(${slice.color})`}
+                        strokeWidth={hoverRegion === slice.label ? 17 : 14}
+                        strokeDasharray={`${slice.dash} ${DONUT_C - slice.dash}`}
+                        strokeDashoffset={-slice.offset}
+                        opacity={hoverRegion !== null && hoverRegion !== slice.label ? 0.35 : 1}
+                        style={{ transition: 'opacity 150ms, stroke-width 150ms' }}
+                        onMouseEnter={() => setHoverRegion(slice.label)}
+                        onMouseLeave={() => setHoverRegion(null)}
+                      />
+                    ))}
                   </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none px-6">
-                    <span className="text-3xl font-black tabular-nums leading-none">{hoveredSlice ? hoveredSlice.count : stats.totalCountries}</span>
-                    <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mt-1 truncate max-w-full">
-                      {hoveredSlice ? hoveredSlice.label : 'Countries'}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none px-5">
+                    <span className="text-xl font-black tabular-nums leading-none">{hoveredSlice ? hoveredSlice.count : stats.totalCountries}</span>
+                    <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mt-0.5 truncate max-w-full">
+                      {hoveredSlice ? hoveredSlice.label : 'Total'}
                     </span>
                   </div>
                 </div>
 
-                <ul className="w-full min-w-0 flex-1 space-y-0.5">
+                <ul className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-x-3">
                   {regionSlices.map(slice => {
                     const isActive = !slice.isOther && regionFilter === slice.label;
                     const row = (
                       <>
-                        <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: `var(${slice.color})` }} aria-hidden="true" />
-                        <span className={`flex-1 min-w-0 text-sm font-semibold truncate text-left ${isActive ? 'text-primary-600 dark:text-primary-400' : ''}`}>{slice.label}</span>
-                        <span className="text-sm font-black tabular-nums">{slice.count}</span>
-                        <span className="w-10 text-right text-xs font-medium tabular-nums text-light-text-secondary dark:text-dark-text-secondary">{slice.percent}%</span>
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: `var(${slice.color})` }} aria-hidden="true" />
+                        <span className={`flex-1 min-w-0 text-xs font-semibold truncate text-left ${isActive ? 'text-primary-600 dark:text-primary-400' : ''}`}>{slice.label}</span>
+                        <span className="text-xs font-black tabular-nums">{slice.count}</span>
                       </>
                     );
                     return (
                       <li key={slice.label} onMouseEnter={() => setHoverRegion(slice.label)} onMouseLeave={() => setHoverRegion(null)}>
                         {slice.isOther ? (
-                          <div className="min-h-[44px] flex items-center gap-3 px-2">{row}</div>
+                          <div className="min-h-[44px] flex items-center gap-2 px-1">{row}</div>
                         ) : (
                           <button
                             type="button"
                             onClick={() => { setRegionFilter(isActive ? 'All' : slice.label); setActiveTab('visited'); }}
                             aria-pressed={isActive}
-                            className="w-full min-h-[44px] flex items-center gap-3 px-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                            title={`${slice.percent}% of visited countries`}
+                            className="w-full min-h-[44px] flex items-center gap-2 px-1 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
                           >
                             {row}
                           </button>
@@ -1075,11 +1059,11 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                     );
                   })}
                 </ul>
-              </div>
+              </>
             )}
           </div>
-        </GlassPanel>
-      </div>
+        </div>
+      </GlassPanel>
 
       {/* DUPLICATE RECORDS */}
       {cleanupCount > 0 && (
