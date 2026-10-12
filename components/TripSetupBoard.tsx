@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
     Compass, 
@@ -448,11 +448,23 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     // Stage 3: Accommodation Sub-Steps State
     const [accommodationsList, setAccommodationsList] = useState<Partial<Accommodation>[]>(draft?.accommodationsList ?? []);
 
+    // Latest non-empty draft, assigned during render so it is current even if the effect below hasn't flushed yet.
+    const isDraftEmpty = !title && !destination && !startDate && transportsList.length === 0 && accommodationsList.length === 0;
+    const latestDraft = useRef<TripDraft | null>(null);
+    latestDraft.current = isDraftEmpty ? null : { title, destination, startDate, endDate, status, transportsList, accommodationsList };
+
+    const persistDraft = () => {
+        if (!latestDraft.current) return;
+        try { sessionStorage.setItem(TRIP_DRAFT_KEY, JSON.stringify(latestDraft.current)); } catch { /* storage unavailable */ }
+    };
+
+    useEffect(persistDraft, [title, destination, startDate, endDate, status, transportsList, accommodationsList]);
+
+    // A refresh or tab close right after typing must not lose the last edit (QA-B-006).
     useEffect(() => {
-        if (!title && !destination && !startDate && transportsList.length === 0 && accommodationsList.length === 0) return;
-        const next: TripDraft = { title, destination, startDate, endDate, status, transportsList, accommodationsList };
-        try { sessionStorage.setItem(TRIP_DRAFT_KEY, JSON.stringify(next)); } catch { /* storage unavailable */ }
-    }, [title, destination, startDate, endDate, status, transportsList, accommodationsList]);
+        window.addEventListener('pagehide', persistDraft);
+        return () => window.removeEventListener('pagehide', persistDraft);
+    }, []);
     const [accType, setAccType] = useState<Accommodation['type']>('Hotel');
     const [accName, setAccName] = useState('');
     const [accAddress, setAccAddress] = useState('');

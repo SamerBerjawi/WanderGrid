@@ -522,7 +522,7 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
                 key={tab.id}
                 type="button"
                 onClick={() => setMobileTab(tab.id)}
-                className={`relative flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] ${
+                className={`relative flex-1 min-w-0 px-1 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px] ${
                   isSelected 
                     ? 'text-blue-600 dark:text-blue-400 font-extrabold' 
                     : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
@@ -536,8 +536,8 @@ const DynamicVisaSeals: React.FC<{ flags: Array<{ code: string; flag: string }> 
                     transition={{ type: "spring", stiffness: 450, damping: 32 }}
                   />
                 )}
-                <span className="relative z-raised flex items-center gap-1.5">
-                  <TabIcon className="w-3.5 h-3.5" weight="duotone" />
+                <span className="relative z-raised flex items-center gap-1.5 min-w-0">
+                  <TabIcon className="w-3.5 h-3.5 shrink-0" weight="duotone" />
                   <span className="text-2xs truncate">{tab.label}</span>
                 </span>
               </button>

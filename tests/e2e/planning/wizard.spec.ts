@@ -142,8 +142,9 @@ test('page refresh mid-flow keeps (or warns before losing) the draft', async ({ 
   page.on('dialog', async (d) => { dialog = true; await d.dismiss(); });
   await page.reload();
   await expectAppShell(page);
-  const restored = await titleInput(page).count() ? await titleInput(page).inputValue() : '';
-  expect(dialog || restored === 'QA Draft Survives Refresh', 'draft restored or beforeunload warning').toBe(true);
+  // Either a "leave page?" warning was shown, or the draft comes back. The Planner is lazy-loaded, so wait for it
+  // instead of reading the input once the shell appears (that read raced the chunk on slower runners).
+  if (!dialog) await expect(titleInput(page), 'draft restored after refresh').toHaveValue('QA Draft Survives Refresh', { timeout: 15_000 });
 });
 
 test('browser Back while the wizard is open returns to the Planner board', async ({ page }) => {

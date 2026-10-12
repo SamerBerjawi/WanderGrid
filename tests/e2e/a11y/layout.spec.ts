@@ -1,7 +1,7 @@
 /**
  * WP-4.5 layout gate (UI-006, UI-007): every main page, with a very long trip title and activity name,
  * has no horizontal overflow, and its controls meet the touch-target rules
- * (none under 24 px; fewer than 10 % under 44 px).
+ * (none under 24 px; fewer than 10 % under 44 px), measured with a wide fallback font so it matches CI.
  */
 import { test, expect, ADMIN, resetDb, apiRegister, seedSession, expectAppShell } from '../support/fixtures';
 import { seedTrip, isoDaysFromNow, overflowX } from '../support/planning';
@@ -24,6 +24,9 @@ for (const path of PAGES) {
   test(`${path}: no horizontal overflow and touch targets meet the minimum`, async ({ page }) => {
     await page.goto(path);
     await expectAppShell(page);
+    // Worst-case fallback font: CI's Linux Chrome has no SF Pro / system-ui metrics, and text there is wider than on a
+    // Mac. Forcing a wide font makes this gate give the same answer on every machine.
+    await page.addStyleTag({ content: 'html, body, button, input, select, textarea { font-family: Verdana, sans-serif !important; }' });
     await page.waitForTimeout(1500);
     expect(await overflowX(page), 'horizontal overflow (px)').toBeLessThanOrEqual(0);
 
