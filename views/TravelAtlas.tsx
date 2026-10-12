@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { ViewState, VisitedItem, Trip, CountryResidenceStatus, getResidenceStatuses, toggleCountryResidenceStatus } from '../types';
 import { dataService } from '../services/mockDb';
 import { getFlagEmoji, getRegion } from '../services/geoData';
-import { resolvePlaceName, getCoordinates, cleanCityName, formatPlaceName, refineUKCountry } from '../services/geocoding';
+import { resolvePlaceName, getCoordinates, cleanCityName, formatPlaceName, refineUKCountry, STATIC_GEO_DATA } from '../services/geocoding';
 import {
   mergeCountryRecords, planCountryCleanup, normalizeCountryCode, canonicalCountryName, countryId,
   findCountryRecord, ukNationsFromCities, excludedCountryCodes, type MergedCountry
@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { Compass, MapPin, Globe, Plus, Trash as Trash2, PencilSimpleLine as Edit3, MapTrifold as MapIcon, ArrowsClockwise as RefreshCw, CheckCircle as CheckCircle2, Stack as Layers, Info, X, Sparkle as Sparkles, Funnel as Filter, Check, Star, Airplane as Plane, House as Home, Bank as Landmark, MagnifyingGlass } from '@phosphor-icons/react';
 import { Button, Select, Tabs } from '../components/ui';
+import { mergeCityRecords, planCityCleanup, splitCombinedPlaces } from '../services/cityRegistry';
 import type { Tab } from '../components/ui';
 import { EmptyState } from '../components/EmptyState';
 import { formatDate } from '../utils/formatters';
@@ -98,6 +99,12 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
     };
   }, []);
 
+  const resolveAirportCity = useCallback((code: string) => {
+    const ap = STATIC_GEO_DATA[code];
+    if (!ap?.city) return undefined;
+    return { city: ap.city as string, countryCode: ap.iso as string, lat: parseFloat(ap.lat), lng: parseFloat(ap.lon) };
+  }, []);
+
   // Which UK nations a stored "Great Britain / United Kingdom" record stands for, judged by its tracked cities.
   const ukNationsFor = useCallback(
     () => ukNationsFromCities(visitedItems, name => refineUKCountry(name, 'United Kingdom', 'GB').countryCode),
@@ -114,7 +121,12 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
     () => planCountryCleanup(visitedItems, { ukConstituentsFor: ukNationsFor }),
     [visitedItems, ukNationsFor]
   );
-  const cleanupCount = cleanupPlan.upserts.length + cleanupPlan.deleteIds.length;
+  const cityCleanupPlan = useMemo(
+    () => planCityCleanup(visitedItems, { resolveAirport: resolveAirportCity }),
+    [visitedItems, resolveAirportCity]
+  );
+  const cleanupCount = cleanupPlan.upserts.length + cleanupPlan.deleteIds.length
+    + cityCleanupPlan.upserts.length + cityCleanupPlan.deleteIds.length;
   const [cleaningUp, setCleaningUp] = useState(false);
 
   // Scopes and Unique regions
@@ -196,8 +208,10 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
     // 2. Cities from active/completed trips
     const pastTrips = trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled');
     pastTrips.forEach(t => {
-      if (t.location) {
-        const canonicalCity = cleanCityName(t.location, t.coordinates?.countryCode);
+      const tripPlaces = t.location ? splitCombinedPlaces(t.location) : [];
+      tripPlaces.forEach(place => {
+        const single = tripPlaces.length === 1;
+        const canonicalCity = cleanCityName(place, t.coordinates?.countryCode);
         const code = (t.coordinates?.countryCode || 'XX').toUpperCase();
         const key = `${canonicalCity.toLowerCase()}_${code.toLowerCase()}`;
         if (!cityMap.has(key)) {
@@ -209,13 +223,13 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
             countryCode: code,
             countryName: t.coordinates?.country ? formatPlaceName(t.coordinates.country) : 'Imported',
             visitDate: t.endDate || t.startDate,
-            lat: t.coordinates?.lat,
-            lng: t.coordinates?.lng,
+            lat: single ? t.coordinates?.lat : undefined,
+            lng: single ? t.coordinates?.lng : undefined,
             notes: `Trip: ${t.name || t.location}`,
             isManual: false
           });
         }
-      }
+      });
 
       // Waypoints inside Route Manager
       t.locations?.forEach(l => {
@@ -354,7 +368,8 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
       }
     });
 
-    return Array.from(cityMap.values());
+    // The sources above describe the same place differently (country known/unknown, airport code, casing).
+    return mergeCityRecords(Array.from(cityMap.values()), { resolveAirport: resolveAirportCity });
   }, [visitedItems, trips, roadTrips, flights]);
 
   const filteredCities = useMemo(() => {
@@ -414,7 +429,8 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
     return rest;
   };
   const removeDuplicatesOf = async (item: VisitedItem) => {
-    const dup = (item as MergedCountry).duplicateIds || [];
+    const stored = new Set(visitedItems.map(v => v.id));
+    const dup = ((item as MergedCountry).duplicateIds || []).filter(id => stored.has(id));
     for (const id of dup) await dataService.deleteVisited(id);
   };
 
@@ -534,6 +550,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
         if (editingItem) {
           await dataService.updateVisited(payload);
+          await removeDuplicatesOf(editingItem);
         } else {
           await dataService.addVisited(payload);
         }
@@ -568,7 +585,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
     try {
       await dataService.deleteVisited(id);
       // A merged country may stand for several stored records; remove them all or the copy reappears.
-      const record = countryRecords.find(r => r.id === id);
+      const record = countryRecords.find(r => r.id === id) || allTrackedCities.find(r => r.id === id);
       if (record) await removeDuplicatesOf(record);
       void loadData();
       window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
@@ -582,11 +599,11 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
     setCleaningUp(true);
     try {
       const storedIds = new Set(visitedItems.map(v => v.id));
-      for (const record of cleanupPlan.upserts) {
+      for (const record of [...cleanupPlan.upserts, ...cityCleanupPlan.upserts]) {
         if (storedIds.has(record.id)) await dataService.updateVisited(record);
         else await dataService.addVisited(record);
       }
-      for (const id of cleanupPlan.deleteIds) await dataService.deleteVisited(id);
+      for (const id of [...cleanupPlan.deleteIds, ...cityCleanupPlan.deleteIds]) await dataService.deleteVisited(id);
       await loadData();
       window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
     } catch (err) {
@@ -1071,7 +1088,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
           <div className="flex items-center gap-3 min-w-0">
             <Layers className="w-6 h-6 text-primary-500 shrink-0" weight="duotone" />
             <p className="text-sm font-bold">
-              {cleanupCount} country {cleanupCount === 1 ? 'record' : 'records'} can be merged
+              {cleanupCount} duplicate {cleanupCount === 1 ? 'record' : 'records'} can be merged
             </p>
           </div>
           <Button variant="secondary" onClick={handleConsolidate} isLoading={cleaningUp} className="shrink-0">Merge</Button>
