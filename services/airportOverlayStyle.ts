@@ -5,6 +5,7 @@ import type { LayerSpecification, SourceSpecification } from 'maplibre-gl';
 
 export const AIRPORT_SOURCE_ID = 'airport-overlay';
 export const AIRPORT_PMTILES_URL = 'pmtiles:///airport-overlay.pmtiles';
+export const getAirportPmtilesUrl = (_customUrl?: string): string => AIRPORT_PMTILES_URL;
 export const GLYPHS_URL = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
 
 // ============================================================================
