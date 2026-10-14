@@ -31,7 +31,9 @@ import {
     FilmSlate,
     ShoppingBag,
     Sparkle,
-    Wine
+    Wine,
+    SignIn,
+    SignOut
 } from '@phosphor-icons/react';
 import GlassPanel from './glass/GlassPanel';
 import { EmptyState } from './EmptyState';
@@ -58,17 +60,22 @@ export interface DailyPlannerBoardProps {
 interface AccommodationSpan {
     accommodation: Accommodation;
     startDayIndex: number; // 0-based index in tripDates
-    endDayIndex: number;   // 0-based index in tripDates (day before checkout or clamp)
+    endDayIndex: number;   // 0-based index in tripDates
     totalNights: number;
+    startSlot: number;
+    endSlot: number;
     gridRowStart: number;
     gridRowEnd: number;
 }
 
 interface AccommodationGap {
-    startDayIndex: number;
-    endDayIndex: number;
+    startSlot: number;
+    endSlot: number;
     gridRowStart: number;
     gridRowEnd: number;
+    type: 'all-empty' | 'unbooked' | 'arrival' | 'departure';
+    defaultDate: string;
+    totalNights: number;
 }
 
 export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
@@ -300,17 +307,23 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
     // =========================================================================
     // Multi-Day Accommodation Spanning Logic for Bento Canvas
     // =========================================================================
+    // =========================================================================
+    // Multi-Day Accommodation Spanning Logic for Bento Canvas
+    // Starts in the 2nd half of the check-in day (PM) and ends in the 1st half
+    // of the check-out day (AM) to accurately reflect check-in & check-out times.
+    // =========================================================================
     const { accommodationSpans, accommodationGaps } = useMemo(() => {
         if (!tripDates || tripDates.length === 0) {
             return { accommodationSpans: [], accommodationGaps: [] };
         }
 
+        const totalSlots = tripDates.length * 2;
         const stays = (trip.accommodations || []).filter(a => Boolean(a.checkInDate));
         // Sort by check-in date
         stays.sort((a, b) => (a.checkInDate || '').localeCompare(b.checkInDate || ''));
 
         const spans: AccommodationSpan[] = [];
-        const coveredDayIndices = new Set<number>();
+        const coveredSlots = new Set<number>();
 
         stays.forEach(stay => {
             const inDate = stay.checkInDate;
@@ -318,71 +331,116 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
 
             // Find matching index in tripDates
             let startIdx = tripDates.findIndex(d => d === inDate);
+            const startedBeforeTrip = startIdx === -1 && inDate < tripDates[0];
             if (startIdx === -1) {
-                if (inDate < tripDates[0]) startIdx = 0;
+                if (startedBeforeTrip) startIdx = 0;
                 else return; // Outside trip window
             }
 
             let endIdx = tripDates.findIndex(d => d === outDate);
+            const endsAfterTrip = endIdx === -1 && outDate > tripDates[tripDates.length - 1];
             if (endIdx === -1) {
-                if (outDate > tripDates[tripDates.length - 1]) endIdx = tripDates.length;
+                if (endsAfterTrip) endIdx = tripDates.length;
                 else endIdx = startIdx + 1;
             }
 
-            // In travel planning, check-out date is departure morning.
-            // So if checking in Day 1 and checking out Day 7, the stay covers Day 1 through Day 6 nights.
-            // If check-in and check-out are on the same day, cover that 1 day.
-            const spanEndDayIndex = endIdx > startIdx ? endIdx - 1 : startIdx;
-
-            for (let i = startIdx; i <= spanEndDayIndex; i++) {
-                coveredDayIndices.add(i);
+            // If check-out date is same as check-in or earlier, default to 1 night
+            if (endIdx <= startIdx) {
+                endIdx = startIdx + 1;
             }
 
-            // In CSS Grid: Row 1 is Header. Row 2 is Day 0.
-            // gridRowStart = startIdx + 2
-            // gridRowEnd = Math.max(startIdx + 1, endIdx) + 2
-            const gridRowStart = startIdx + 2;
-            const gridRowEnd = Math.max(startIdx + 1, endIdx) + 2;
+            // Each day has 2 half-day slots:
+            //   Slot 2*d: First half (Morning / AM)
+            //   Slot 2*d + 1: Second half (Afternoon/Night / PM)
+            // Stay starts in 2nd half of startIdx (PM): slot 2*startIdx + 1
+            // Stay ends in 1st half of endIdx (AM): slot 2*endIdx
+            const startSlot = startedBeforeTrip ? 0 : 2 * startIdx + 1;
+            const endSlot = endsAfterTrip ? totalSlots - 1 : Math.min(totalSlots - 1, 2 * endIdx);
 
-            const nights = Math.max(1, spanEndDayIndex - startIdx + 1);
+            if (endSlot < startSlot) return;
+
+            for (let s = startSlot; s <= endSlot; s++) {
+                coveredSlots.add(s);
+            }
+
+            // In CSS Grid: Row 1 is Header. Slot 0 starts at Row 2.
+            // Grid line for slot s start: s + 2
+            // Grid line for slot s end: s + 3
+            const gridRowStart = startSlot + 2;
+            const gridRowEnd = endSlot + 3;
+
+            // Calculate nights
+            let nights = Math.max(1, Math.round((endSlot - startSlot + 1) / 2));
+            if (stay.checkInDate && stay.checkOutDate) {
+                const dIn = new Date(stay.checkInDate);
+                const dOut = new Date(stay.checkOutDate);
+                const diffDays = Math.round((dOut.getTime() - dIn.getTime()) / (1000 * 60 * 60 * 24));
+                if (diffDays > 0) nights = diffDays;
+            }
 
             spans.push({
                 accommodation: stay,
                 startDayIndex: startIdx,
-                endDayIndex: spanEndDayIndex,
+                endDayIndex: Math.min(tripDates.length - 1, endIdx),
                 totalNights: nights,
+                startSlot,
+                endSlot,
                 gridRowStart,
                 gridRowEnd
             });
         });
 
-        // Compute Gaps (days with no accommodation booked)
+        // Compute Gaps (half-day slots with no accommodation booked)
         const gaps: AccommodationGap[] = [];
-        let gapStart: number | null = null;
 
-        for (let i = 0; i < tripDates.length; i++) {
-            if (!coveredDayIndices.has(i)) {
-                if (gapStart === null) gapStart = i;
-            } else {
-                if (gapStart !== null) {
-                    gaps.push({
-                        startDayIndex: gapStart,
-                        endDayIndex: i - 1,
-                        gridRowStart: gapStart + 2,
-                        gridRowEnd: i + 2
-                    });
-                    gapStart = null;
+        if (spans.length === 0) {
+            // Entire trip has no accommodation
+            gaps.push({
+                startSlot: 0,
+                endSlot: totalSlots - 1,
+                gridRowStart: 2,
+                gridRowEnd: totalSlots + 2,
+                type: 'all-empty',
+                defaultDate: tripDates[0],
+                totalNights: tripDates.length
+            });
+        } else {
+            let gapStartSlot: number | null = null;
+
+            for (let s = 0; s < totalSlots; s++) {
+                if (!coveredSlots.has(s)) {
+                    if (gapStartSlot === null) gapStartSlot = s;
+                } else {
+                    if (gapStartSlot !== null) {
+                        const gapEndSlot = s - 1;
+                        const isArrival = gapStartSlot === 0 && gapEndSlot === 0;
+                        gaps.push({
+                            startSlot: gapStartSlot,
+                            endSlot: gapEndSlot,
+                            gridRowStart: gapStartSlot + 2,
+                            gridRowEnd: gapEndSlot + 3,
+                            type: isArrival ? 'arrival' : 'unbooked',
+                            defaultDate: tripDates[Math.min(tripDates.length - 1, Math.floor(gapStartSlot / 2))],
+                            totalNights: Math.max(1, Math.round((gapEndSlot - gapStartSlot + 1) / 2))
+                        });
+                        gapStartSlot = null;
+                    }
                 }
             }
-        }
 
-        if (gapStart !== null) {
-            gaps.push({
-                startDayIndex: gapStart,
-                endDayIndex: tripDates.length - 1,
-                gridRowStart: gapStart + 2,
-                gridRowEnd: tripDates.length + 2
-            });
+            if (gapStartSlot !== null) {
+                const gapEndSlot = totalSlots - 1;
+                const isDeparture = gapStartSlot === totalSlots - 1 && gapEndSlot === totalSlots - 1;
+                gaps.push({
+                    startSlot: gapStartSlot,
+                    endSlot: gapEndSlot,
+                    gridRowStart: gapStartSlot + 2,
+                    gridRowEnd: gapEndSlot + 3,
+                    type: isDeparture ? 'departure' : 'unbooked',
+                    defaultDate: tripDates[Math.min(tripDates.length - 1, Math.floor(gapStartSlot / 2))],
+                    totalNights: Math.max(1, Math.round((gapEndSlot - gapStartSlot + 1) / 2))
+                });
+            }
         }
 
         return { accommodationSpans: spans, accommodationGaps: gaps };
@@ -833,7 +891,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                     className="min-w-[980px] grid gap-3 items-stretch font-sans"
                     style={{
                         gridTemplateColumns: 'minmax(200px, 230px) minmax(260px, 1fr) minmax(280px, 1.25fr) minmax(270px, 1.1fr)',
-                        gridTemplateRows: `auto repeat(${tripDates.length}, minmax(110px, auto))`
+                        gridTemplateRows: `auto repeat(${tripDates.length * 2}, minmax(55px, auto))`
                     }}
                 >
                     {/* ========================================================== */}
@@ -922,7 +980,9 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                         const dayActivities = (trip.activities || [])
                             .filter(a => a.date === dateStr)
                             .sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
-                        const rowIndex = dIdx + 2;
+                        const rowStart = 2 + dIdx * 2;
+                        const rowEnd = rowStart + 2;
+                        const rowSpan = `${rowStart} / ${rowEnd}`;
 
                         return (
                             <React.Fragment key={dateStr}>
@@ -930,7 +990,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                 {/* ---------------------------------------------------- */}
                                 {/* COL 1: DAY CARD                                      */}
                                 {/* ---------------------------------------------------- */}
-                                <div style={{ gridColumn: 1, gridRow: rowIndex }} className="h-full">
+                                <div style={{ gridColumn: 1, gridRow: rowSpan }} className="h-full">
                                     <GlassPanel 
                                         className={`wg-glass-card shadow-xs h-full flex flex-col justify-between transition-all ${
                                             isToday
@@ -973,7 +1033,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                 {/* COL 2: TRANSPORT CELL                                */}
                                 {/* ---------------------------------------------------- */}
                                 <div 
-                                    style={{ gridColumn: 2, gridRow: rowIndex }}
+                                    style={{ gridColumn: 2, gridRow: rowSpan }}
                                     className="h-full"
                                 >
                                     {dayTransports.length === 0 ? (
@@ -1032,7 +1092,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                 {/* COL 4: ACTIVITIES CELL                               */}
                                 {/* ---------------------------------------------------- */}
                                 <div 
-                                    style={{ gridColumn: 4, gridRow: rowIndex }}
+                                    style={{ gridColumn: 4, gridRow: rowSpan }}
                                     className="h-full"
                                 >
                                     {dayActivities.length === 0 ? (
@@ -1165,23 +1225,23 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                         </div>
                                     </div>
 
-                                    <div className="mt-4 pt-3 border-t border-sky-500/15 flex flex-wrap items-center justify-between gap-2 text-2xs text-light-text-secondary">
-                                        <span>
-                                            In: <strong className="text-light-text dark:text-dark-text">{formatDate(new Date(stay.checkInDate), 'short', settings)}</strong> {stay.checkInTime ? `(${stay.checkInTime})` : ''}
-                                        </span>
-                                        <span>
-                                            Out: <strong className="text-light-text dark:text-dark-text">{stay.checkOutDate ? formatDate(new Date(stay.checkOutDate), 'short', settings) : ''}</strong> {stay.checkOutTime ? `(${stay.checkOutTime})` : ''}
-                                        </span>
+                                    <div className="mt-3 pt-2.5 border-t border-sky-500/15 flex flex-wrap items-center justify-between gap-2 text-2xs text-light-text-secondary">
+                                        <div className="flex items-center gap-1">
+                                            <SignIn className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" weight="bold" />
+                                            <span>In: <strong className="text-light-text dark:text-dark-text">{formatDate(new Date(stay.checkInDate), 'short', settings)}</strong> {stay.checkInTime ? `(${stay.checkInTime})` : '(Afternoon)'}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <SignOut className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" weight="bold" />
+                                            <span>Out: <strong className="text-light-text dark:text-dark-text">{stay.checkOutDate ? formatDate(new Date(stay.checkOutDate), 'short', settings) : ''}</strong> {stay.checkOutTime ? `(${stay.checkOutTime})` : '(Morning)'}</span>
+                                        </div>
                                     </div>
                                 </GlassPanel>
                             </div>
                         );
                     })}
 
-                    {/* 2. Gaps (Days with no accommodation) */}
+                    {/* 2. Gaps (Days / half-days with no accommodation) */}
                     {accommodationGaps.map((gap, gIdx) => {
-                        const gapDays = gap.endDayIndex - gap.startDayIndex + 1;
-                        const defaultDate = tripDates[gap.startDayIndex];
                         return (
                             <div
                                 key={`gap-${gIdx}`}
@@ -1191,20 +1251,82 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                 }}
                                 className="h-full"
                             >
-                                <GlassPanel
-                                    onClick={() => onEditAccommodation(undefined, defaultDate)}
-                                    className="wg-glass-card wg-glass-card-dashed h-full flex flex-col items-center justify-center text-light-text-secondary hover:border-sky-500/60 hover:bg-sky-500/5 transition-all cursor-pointer group"
-                                    overrides={{ borderRadius: 24 }}
-                                    padding="16px"
-                                >
-                                    <Bed className="w-5 h-5 text-sky-500/50 group-hover:text-sky-500 group-hover:scale-110 transition-all" weight="duotone" />
-                                    <span className="text-xs font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400 mt-2">
-                                        + Book Stay
-                                    </span>
-                                    <span className="text-2xs text-light-text-secondary opacity-60 mt-0.5">
-                                        No stay booked ({gapDays} {gapDays === 1 ? 'day' : 'days'})
-                                    </span>
-                                </GlassPanel>
+                                {gap.type === 'arrival' ? (
+                                    <GlassPanel
+                                        onClick={() => onEditAccommodation(undefined, gap.defaultDate)}
+                                        className="wg-glass-card wg-glass-card-dashed h-full flex items-center justify-between px-3.5 py-2 text-light-text-secondary hover:border-sky-500/60 hover:bg-sky-500/5 transition-all cursor-pointer group"
+                                        overrides={{ borderRadius: 16 }}
+                                        padding="10px"
+                                    >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                                                <SignIn className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" weight="duotone" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <span className="text-2xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text block truncate">
+                                                    Morning Arrival
+                                                </span>
+                                                <span className="text-[10px] text-light-text-secondary opacity-70 block truncate">
+                                                    Check-in from afternoon
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span className="text-2xs font-bold text-sky-600 dark:text-sky-400 opacity-60 group-hover:opacity-100 uppercase tracking-wider shrink-0">
+                                            + Early Stay
+                                        </span>
+                                    </GlassPanel>
+                                ) : gap.type === 'departure' ? (
+                                    <GlassPanel
+                                        onClick={() => onEditAccommodation(undefined, gap.defaultDate)}
+                                        className="wg-glass-card wg-glass-card-dashed h-full flex items-center justify-between px-3.5 py-2 text-light-text-secondary hover:border-sky-500/60 hover:bg-sky-500/5 transition-all cursor-pointer group"
+                                        overrides={{ borderRadius: 16 }}
+                                        padding="10px"
+                                    >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                                                <SignOut className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" weight="duotone" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <span className="text-2xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text block truncate">
+                                                    Afternoon Departure
+                                                </span>
+                                                <span className="text-[10px] text-light-text-secondary opacity-70 block truncate">
+                                                    Check-out in morning
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span className="text-2xs font-bold text-sky-600 dark:text-sky-400 opacity-60 group-hover:opacity-100 uppercase tracking-wider shrink-0">
+                                            + Extra Stay
+                                        </span>
+                                    </GlassPanel>
+                                ) : (gap.endSlot - gap.startSlot > 0 || gap.type === 'all-empty') ? (
+                                    <GlassPanel
+                                        onClick={() => onEditAccommodation(undefined, gap.defaultDate)}
+                                        className="wg-glass-card wg-glass-card-dashed h-full flex flex-col items-center justify-center text-light-text-secondary hover:border-sky-500/60 hover:bg-sky-500/5 transition-all cursor-pointer group"
+                                        overrides={{ borderRadius: 20 }}
+                                        padding="16px"
+                                    >
+                                        <Bed className="w-5 h-5 text-sky-500/50 group-hover:text-sky-500 group-hover:scale-110 transition-all" weight="duotone" />
+                                        <span className="text-xs font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400 mt-2">
+                                            + Book Stay
+                                        </span>
+                                        <span className="text-2xs text-light-text-secondary opacity-60 mt-0.5">
+                                            No stay booked ({gap.totalNights} {gap.totalNights === 1 ? 'night' : 'nights'})
+                                        </span>
+                                    </GlassPanel>
+                                ) : (
+                                    <GlassPanel
+                                        onClick={() => onEditAccommodation(undefined, gap.defaultDate)}
+                                        className="wg-glass-card wg-glass-card-dashed h-full flex items-center justify-center gap-2 text-light-text-secondary hover:border-sky-500/60 hover:bg-sky-500/5 transition-all cursor-pointer group"
+                                        overrides={{ borderRadius: 16 }}
+                                        padding="10px"
+                                    >
+                                        <Bed className="w-4 h-4 text-sky-500/60 group-hover:text-sky-500 group-hover:scale-110 transition-all" weight="duotone" />
+                                        <span className="text-2xs font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400">
+                                            + Book Stay
+                                        </span>
+                                    </GlassPanel>
+                                )}
                             </div>
                         );
                     })}
