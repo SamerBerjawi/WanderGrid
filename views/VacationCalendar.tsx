@@ -1483,24 +1483,25 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
             {selectedItemDetails.type === 'trip' && selectedItemDetails.meta && (
               <div className="space-y-4 pt-1">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3.5 bg-white dark:bg-dark-card rounded-2xl border border-black/5 dark:border-white/5 shadow-sm">
+                  <div className="p-3.5 bg-light-fill dark:bg-dark-fill/50 rounded-2xl border border-black/5 dark:border-white/5">
                     <span className="text-2xs font-bold uppercase text-light-text-secondary dark:text-dark-text-secondary block tracking-wider">Destination</span>
                     <span className="text-xs font-bold text-light-text dark:text-dark-text block mt-0.5">{selectedItemDetails.meta.location}</span>
                   </div>
-                  <div className="p-3.5 bg-white dark:bg-dark-card rounded-2xl border border-black/5 dark:border-white/5 shadow-sm">
+                  <div className="p-3.5 bg-light-fill dark:bg-dark-fill/50 rounded-2xl border border-black/5 dark:border-white/5">
                     <span className="text-2xs font-bold uppercase text-light-text-secondary dark:text-dark-text-secondary block tracking-wider">Duration</span>
                     <span className="text-xs font-bold text-primary-800 dark:text-primary-400 block mt-0.5">{selectedItemDetails.meta.duration} Days</span>
                   </div>
-                  <div className="p-3.5 bg-white dark:bg-dark-card rounded-2xl border border-black/5 dark:border-white/5 shadow-sm col-span-2">
+                  <div className="p-3.5 bg-light-fill dark:bg-dark-fill/50 rounded-2xl border border-black/5 dark:border-white/5 col-span-2">
                     <span className="text-2xs font-bold uppercase text-light-text-secondary dark:text-dark-text-secondary block tracking-wider">Co-Travelers Participating</span>
                     <span className="text-xs font-bold text-light-text dark:text-dark-text block mt-0.5">{selectedItemDetails.meta.participantsNames || 'Only myself'}</span>
                   </div>
                 </div>
 
-                <div className="flex gap-3 justify-end pt-3 border-t border-black/5 dark:border-white/5">
+                <div className="flex items-center gap-3 justify-end pt-4 border-t border-black/10 dark:border-white/10 mt-6">
                   <Button 
                     variant="secondary" 
                     onClick={() => setSelectedItemDetails(null)}
+                    className="min-h-[44px]"
                   >
                     Dismiss
                   </Button>
@@ -1509,6 +1510,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                     <Button 
                       variant="primary" 
                       color="emerald"
+                      className="min-h-[44px]"
                       onClick={() => {
                         onTripClick(selectedItemDetails.meta.id);
                         setSelectedItemDetails(null);
@@ -1528,11 +1530,11 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                   <Info className="w-5 h-5 shrink-0" />
                   <span>Public holidays do not count as a personal out-of-office balance claim, they are automatically configured on calculation.</span>
                 </div>
-                <div className="flex gap-2 justify-end pt-3">
+                <div className="flex gap-2 justify-end pt-4 border-t border-black/10 dark:border-white/10 mt-6">
                   <Button 
                     variant="secondary" 
                     size="md" 
-                    className="rounded-xl text-xs font-black uppercase w-full"
+                    className="rounded-xl text-xs font-black uppercase w-full min-h-[44px]"
                     onClick={() => setSelectedItemDetails(null)}
                   >
                     Got It
@@ -1548,11 +1550,11 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                   <Info className="w-5 h-5 shrink-0" />
                   <span>This non-working event has been mapped within the team schedule to align offsite projects.</span>
                 </div>
-                <div className="flex gap-2 justify-end pt-3">
+                <div className="flex gap-2 justify-end pt-4 border-t border-black/10 dark:border-white/10 mt-6">
                   <Button 
                     variant="secondary" 
                     size="md" 
-                    className="rounded-xl text-xs font-black uppercase w-full"
+                    className="rounded-xl text-xs font-black uppercase w-full min-h-[44px]"
                     onClick={() => setSelectedItemDetails(null)}
                   >
                     Got It

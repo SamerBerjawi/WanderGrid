@@ -1688,19 +1688,19 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-black/5 dark:border-white/5 flex gap-3">
+                <div className="pt-4 border-t border-black/10 dark:border-white/10 mt-6 flex gap-3">
                   <Button 
                     type="button" 
                     variant="secondary" 
                     onClick={() => setIsModalOpen(false)}
-                    className="flex-1 text-xs"
+                    className="flex-1 text-xs min-h-[44px]"
                   >
                     Cancel
                   </Button>
                   <Button 
                     type="submit" 
                     variant="primary"
-                    className="flex-1 text-xs"
+                    className="flex-1 text-xs min-h-[44px]"
                   >
                     {editingItem ? 'Save Record' : 'Register to Atlas'}
                   </Button>

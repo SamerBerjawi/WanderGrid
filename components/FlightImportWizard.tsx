@@ -946,7 +946,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
             <GlassPanel className="wg-glass-card shadow-2xl overflow-hidden flex flex-col w-full max-w-6xl h-[88vh] max-h-[calc(88dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] animate-scale-up" overrides={{ borderRadius: 28 }} padding="0px">
-                <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px] bg-white/95 dark:bg-dark-card/95 backdrop-blur-2xl">
+                <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
                 
                 {/* Header section with stepper and close button */}
                 <div className="p-5 sm:p-6 border-b border-black/5 dark:border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
@@ -1030,7 +1030,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                     </div>
                                     <div 
                                         onClick={() => fileInputRef.current?.click()}
-                                        className="border-2 border-dashed border-black/15 dark:border-white/15 hover:border-primary-500 dark:hover:border-primary-500 rounded-3xl p-14 cursor-pointer bg-white/40 dark:bg-white/[0.03] group transition-all duration-300"
+                                        className="border-2 border-dashed border-black/15 dark:border-white/15 hover:border-primary-500 dark:hover:border-primary-500 rounded-2xl p-14 cursor-pointer bg-light-fill dark:bg-dark-fill/50 group transition-all duration-300"
                                     >
                                         <Upload className="w-12 h-12 text-primary-500 mx-auto mb-4 group-hover:-translate-y-1 transition-transform" />
                                         <p className="text-base font-bold text-light-text dark:text-dark-text mb-1">Click to browse computer files</p>
@@ -1050,7 +1050,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                             </div>
                                             <div 
                                                 onClick={() => fileInputRef.current?.click()}
-                                                className="border-2 border-dashed border-black/15 dark:border-white/15 hover:border-primary-500 dark:hover:border-primary-500 rounded-3xl p-14 cursor-pointer bg-white/40 dark:bg-white/[0.03] group transition-all duration-300"
+                                                className="border-2 border-dashed border-black/15 dark:border-white/15 hover:border-primary-500 dark:hover:border-primary-500 rounded-2xl p-14 cursor-pointer bg-light-fill dark:bg-dark-fill/50 group transition-all duration-300"
                                             >
                                                 <Upload className="w-12 h-12 text-primary-500 mx-auto mb-4 group-hover:-translate-y-1 transition-transform" />
                                                 <p className="text-base font-bold text-light-text dark:text-dark-text mb-1">Select backup .json file</p>
@@ -1059,7 +1059,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                             <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleFileChange} />
                                         </div>
                                     ) : (
-                                        <div className="max-w-2xl mx-auto text-left space-y-6 p-6 rounded-3xl bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl border border-black/8 dark:border-white/10 shadow-lg font-sans">
+                                        <div className="max-w-2xl mx-auto text-left space-y-6 p-6 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 font-sans">
                                             {/* File header */}
                                             <div className="flex items-start justify-between gap-3 pb-4 border-b border-black/5 dark:border-white/5">
                                                 <div className="flex items-center gap-3">
@@ -1255,7 +1255,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                             </div>
 
                             {/* Carrier Format Input Toggle */}
-                            <div className="p-4 rounded-3xl bg-white/50 dark:bg-white/[0.04] border border-black/5 dark:border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-left">
+                            <div className="p-4 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-left">
                                 <div>
                                     <p className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Carrier Code Column Format</p>
                                     <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Is your spreadsheet using 2-letter IATA (DL) or 3-letter ICAO (DAL) codes for airlines?</p>
@@ -1321,9 +1321,9 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                     <span className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider flex items-center gap-1.5 ml-1">
                                         <Eye className="w-4 h-4 text-primary-500" /> Intelligent Preview (First 4 Rows)
                                     </span>
-                                    <div className="border border-black/10 dark:border-white/10 bg-white/30 dark:bg-white/[0.02] rounded-3xl p-4 flex-1 overflow-y-auto max-h-[48vh] space-y-3 custom-scrollbar">
+                                    <div className="border border-black/5 dark:border-white/5 bg-light-fill dark:bg-dark-fill/50 rounded-2xl p-4 flex-1 overflow-y-auto max-h-[48vh] space-y-3 custom-scrollbar">
                                         {mappedFlights.slice(0, 4).map((f, index) => (
-                                            <div key={index} className="p-4 rounded-2xl bg-white/80 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs text-left flex flex-col gap-3">
+                                            <div key={index} className="p-4 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 text-left flex flex-col gap-3">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
@@ -1378,9 +1378,9 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                 </div>
                             </div>
 
-                            <div className="flex gap-4 pt-4 border-t border-black/5 dark:border-white/10">
-                                <Button variant="secondary" onClick={() => setStep(1)} className="flex-1 py-3 font-bold !rounded-2xl">Cancel & Reupload</Button>
-                                <Button variant="primary" onClick={handleConfirmMapping} className="flex-1 py-3 font-bold !rounded-2xl">
+                            <div className="flex gap-4 pt-4 border-t border-black/10 dark:border-white/10 mt-6">
+                                <Button variant="secondary" onClick={() => setStep(1)} className="flex-1 min-h-[44px] py-3 font-bold !rounded-2xl">Cancel & Reupload</Button>
+                                <Button variant="primary" onClick={handleConfirmMapping} className="flex-1 min-h-[44px] py-3 font-bold !rounded-2xl">
                                     Next: Verify Flight Details
                                 </Button>
                             </div>
@@ -1561,7 +1561,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                         "p-4 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 text-left cursor-pointer select-none",
                                                         isSelected 
                                                             ? "bg-primary-500/10 border-primary-500/40 shadow-xs" 
-                                                            : "bg-white/70 dark:bg-white/[0.04] border-black/5 dark:border-white/5 opacity-70 hover:opacity-100"
+                                                            : "bg-light-fill dark:bg-dark-fill/50 border-black/5 dark:border-white/5 opacity-70 hover:opacity-100"
                                                     )}
                                                 >
                                                     <div className="flex items-center gap-3 font-sans">
@@ -1635,8 +1635,8 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                     )}
                                 </div>
 
-                                <div className="flex gap-4 pt-4 border-t border-black/5 dark:border-white/10">
-                                    <Button variant="secondary" onClick={() => setStep(2)} className="flex-1 py-3 font-bold !rounded-2xl">Modify Mapping</Button>
+                                <div className="flex gap-4 pt-4 border-t border-black/10 dark:border-white/10 mt-6">
+                                    <Button variant="secondary" onClick={() => setStep(2)} className="flex-1 min-h-[44px] py-3 font-bold !rounded-2xl">Modify Mapping</Button>
                                      <Button 
                                         variant="primary" 
                                         onClick={async () => {
@@ -1751,7 +1751,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                 setIsProcessing(false);
                                             }
                                         }} 
-                                        className="flex-1 py-3 font-bold !rounded-2xl" 
+                                        className="flex-1 min-h-[44px] py-3 font-bold !rounded-2xl shadow-lg shadow-primary-500/20" 
                                         disabled={isProcessing || selectedImportIndexes.size === 0}
                                     >
                                         {isProcessing ? 'Importing...' : `Import Selected Flights (${selectedImportIndexes.size})`}

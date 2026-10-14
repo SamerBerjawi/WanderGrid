@@ -168,7 +168,7 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                 )}
 
                 {/* Search Inputs */}
-                <div className="flex flex-col sm:flex-row gap-4 items-end bg-light-fill dark:bg-dark-fill/50 p-5 rounded-3xl border border-black/5 dark:border-white/5">
+                <div className="flex flex-col sm:flex-row gap-4 items-end bg-light-fill dark:bg-dark-fill/50 p-5 rounded-2xl border border-black/5 dark:border-white/5">
                     <Input 
                         label="Flight Number" 
                         placeholder="e.g. AA100" 
@@ -185,7 +185,7 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                     <Button 
                         onClick={() => handleTrack()} 
                         disabled={isLoading || !flightNum} 
-                        className="h-10 px-6 shrink-0 w-full sm:w-auto"
+                        className="h-11 min-h-[44px] px-6 shrink-0 w-full sm:w-auto"
                         isLoading={isLoading}
                     >
                         Search
@@ -193,9 +193,9 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                 </div>
 
                 {error && (
-                    <div className="p-6 text-center rounded-2xl bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/30">
-                        <AlertCircle className="w-10 h-10 text-rose-400 mx-auto mb-2" />
-                        <p className="text-rose-600 dark:text-rose-300 font-bold">{error}</p>
+                    <div className="p-5 text-center rounded-2xl bg-rose-500/10 border border-rose-500/20">
+                        <AlertCircle className="w-10 h-10 text-rose-500 mx-auto mb-2" />
+                        <p className="text-rose-600 dark:text-rose-400 font-bold text-sm">{error}</p>
                     </div>
                 )}
 
@@ -205,10 +205,10 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                         {/* Header Status */}
                         <div className="flex justify-between items-center">
                             <div>
-                                <h3 className="text-3xl font-black text-gray-900 dark:text-white leading-none">
+                                <h3 className="text-2xl sm:text-3xl font-black text-light-text dark:text-dark-text leading-none">
                                     {flightData.airline.name} {flightData.flight.iata}
                                 </h3>
-                                <p className="text-gray-500 dark:text-gray-400 text-sm font-bold mt-1">
+                                <p className="text-light-text-secondary dark:text-dark-text-secondary text-xs font-bold mt-1">
                                     {flightData.flight_date ? formatDate(flightData.flight_date, 'weekday-long') : 'Verified Route'}
                                 </p>
                             </div>
@@ -217,32 +217,31 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                                     Route verified · no schedule data
                                 </div>
                             ) : (
-                                <div className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg ${getStatusColor(flightData.flight_status)}`}>
+                                <div className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest shadow-md ${getStatusColor(flightData.flight_status)}`}>
                                     {flightData.flight_status || 'Scheduled'}
                                 </div>
                             )}
                         </div>
 
-
                         {/* Route Display */}
-                        <div className="relative flex justify-between items-center p-6 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-white/5 shadow-lg">
+                        <div className="relative flex justify-between items-center p-6 bg-light-fill dark:bg-dark-fill/50 rounded-2xl border border-black/5 dark:border-white/5">
                             <div className="text-center z-raised">
-                                <span className="text-4xl font-black text-gray-900 dark:text-white block mb-1">{flightData.departure.iata}</span>
-                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{flightData.departure.airport}</span>
+                                <span className="text-3xl sm:text-4xl font-black text-light-text dark:text-dark-text block mb-1">{flightData.departure.iata}</span>
+                                <span className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">{flightData.departure.airport}</span>
                             </div>
                             
                             {/* Plane Graphic */}
                             <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 flex items-center justify-center px-24 pointer-events-none opacity-20">
-                                <div className="h-0.5 w-full bg-gray-300 dark:bg-gray-600 relative">
-                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 p-2 rounded-full">
-                                        <AirplaneTilt className="w-6 h-6 transform rotate-90 text-gray-500 dark:text-gray-400" />
+                                <div className="h-0.5 w-full bg-black/20 dark:bg-white/20 relative">
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-light-fill dark:bg-dark-fill/80 p-2 rounded-full border border-black/5 dark:border-white/5">
+                                        <AirplaneTilt className="w-6 h-6 transform rotate-90 text-light-text-secondary dark:text-dark-text-secondary" />
                                     </div>
                                 </div>
                             </div>
 
                             <div className="text-center z-raised">
-                                <span className="text-4xl font-black text-gray-900 dark:text-white block mb-1">{flightData.arrival.iata}</span>
-                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{flightData.arrival.airport}</span>
+                                <span className="text-3xl sm:text-4xl font-black text-light-text dark:text-dark-text block mb-1">{flightData.arrival.iata}</span>
+                                <span className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">{flightData.arrival.airport}</span>
                             </div>
                         </div>
 
@@ -254,50 +253,50 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                         ) : (
                             <div className="grid grid-cols-2 gap-6">
                                 {/* Departure */}
-                                <div className="p-5 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
-                                    <h4 className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-white/10 pb-2">Departure</h4>
+                                <div className="p-5 bg-light-fill dark:bg-dark-fill/50 rounded-2xl border border-black/5 dark:border-white/5">
+                                    <h4 className="text-xs font-black text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest mb-4 border-b border-black/5 dark:border-white/10 pb-2">Departure</h4>
                                     <div className="space-y-3">
                                         <div className="flex justify-between">
-                                            <span className="text-sm text-gray-500 font-medium">Scheduled</span>
-                                            <span className="font-mono font-bold text-gray-900 dark:text-white">{formatTime(flightData.departure.scheduled)}</span>
+                                            <span className="text-sm text-light-text-secondary dark:text-dark-text-secondary font-medium">Scheduled</span>
+                                            <span className="font-mono font-bold text-light-text dark:text-dark-text">{formatTime(flightData.departure.scheduled)}</span>
                                         </div>
                                         <div className="flex justify-between">
-                                            <span className="text-sm text-gray-500 font-medium">Actual</span>
+                                            <span className="text-sm text-light-text-secondary dark:text-dark-text-secondary font-medium">Actual</span>
                                             <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{formatTime(flightData.departure.actual || flightData.departure.estimated)}</span>
                                         </div>
                                         <div className="pt-2 flex gap-2">
-                                            <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
-                                                <span className="block text-2xs font-bold text-gray-500 dark:text-gray-400 uppercase">Terminal</span>
-                                                <span className="font-bold text-gray-800 dark:text-white">{flightData.departure.terminal || '-'}</span>
+                                            <div className="flex-1 bg-black/5 dark:bg-white/5 p-2 rounded-xl text-center">
+                                                <span className="block text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase">Terminal</span>
+                                                <span className="font-bold text-light-text dark:text-dark-text">{flightData.departure.terminal || '-'}</span>
                                             </div>
-                                            <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
-                                                <span className="block text-2xs font-bold text-gray-500 dark:text-gray-400 uppercase">Gate</span>
-                                                <span className="font-bold text-gray-800 dark:text-white">{flightData.departure.gate || '-'}</span>
+                                            <div className="flex-1 bg-black/5 dark:bg-white/5 p-2 rounded-xl text-center">
+                                                <span className="block text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase">Gate</span>
+                                                <span className="font-bold text-light-text dark:text-dark-text">{flightData.departure.gate || '-'}</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Arrival */}
-                                <div className="p-5 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
-                                    <h4 className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-white/10 pb-2">Arrival</h4>
+                                <div className="p-5 bg-light-fill dark:bg-dark-fill/50 rounded-2xl border border-black/5 dark:border-white/5">
+                                    <h4 className="text-xs font-black text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest mb-4 border-b border-black/5 dark:border-white/10 pb-2">Arrival</h4>
                                     <div className="space-y-3">
                                         <div className="flex justify-between">
-                                            <span className="text-sm text-gray-500 font-medium">Scheduled</span>
-                                            <span className="font-mono font-bold text-gray-900 dark:text-white">{formatTime(flightData.arrival.scheduled)}</span>
+                                            <span className="text-sm text-light-text-secondary dark:text-dark-text-secondary font-medium">Scheduled</span>
+                                            <span className="font-mono font-bold text-light-text dark:text-dark-text">{formatTime(flightData.arrival.scheduled)}</span>
                                         </div>
                                         <div className="flex justify-between">
-                                            <span className="text-sm text-gray-500 font-medium">Estimated</span>
+                                            <span className="text-sm text-light-text-secondary dark:text-dark-text-secondary font-medium">Estimated</span>
                                             <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{formatTime(flightData.arrival.actual || flightData.arrival.estimated)}</span>
                                         </div>
                                         <div className="pt-2 flex gap-2">
-                                            <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
-                                                <span className="block text-2xs font-bold text-gray-500 dark:text-gray-400 uppercase">Terminal</span>
-                                                <span className="font-bold text-gray-800 dark:text-white">{flightData.arrival.terminal || '-'}</span>
+                                            <div className="flex-1 bg-black/5 dark:bg-white/5 p-2 rounded-xl text-center">
+                                                <span className="block text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase">Terminal</span>
+                                                <span className="font-bold text-light-text dark:text-dark-text">{flightData.arrival.terminal || '-'}</span>
                                             </div>
-                                            <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
-                                                <span className="block text-2xs font-bold text-gray-500 dark:text-gray-400 uppercase">Gate</span>
-                                                <span className="font-bold text-gray-800 dark:text-white">{flightData.arrival.gate || '-'}</span>
+                                            <div className="flex-1 bg-black/5 dark:bg-white/5 p-2 rounded-xl text-center">
+                                                <span className="block text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase">Gate</span>
+                                                <span className="font-bold text-light-text dark:text-dark-text">{flightData.arrival.gate || '-'}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -308,7 +307,7 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
 
                         {/* Aircraft Info */}
                         {flightData.aircraft && (
-                            <div className="flex items-center justify-between px-4 py-2 bg-gray-100 dark:bg-white/5 rounded-xl text-xs font-medium text-gray-500 dark:text-gray-400">
+                            <div className="flex items-center justify-between px-4 py-2.5 bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 rounded-2xl text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary">
                                 <span>Aircraft: {flightData.aircraft.model}</span>
                                 <span>Reg: {flightData.aircraft.registration}</span>
                             </div>
@@ -316,7 +315,7 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                         
                         {/* Live Lat/Lon if available */}
                         {flightData.live && (
-                            <div className="p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl flex items-center gap-3">
+                            <div className="p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl flex items-center gap-3">
                                 <NavigationArrow className="w-4 h-4 text-blue-500 animate-pulse" />
                                 <span className="text-xs font-bold text-blue-700 dark:text-blue-300">
                                     Live Position: {flightData.live.latitude.toFixed(4)}, {flightData.live.longitude.toFixed(4)} • Alt: {flightData.live.altitude}m
@@ -325,6 +324,12 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                         )}
                     </div>
                 )}
+
+                <div className="flex justify-end pt-4 border-t border-black/10 dark:border-white/10 mt-6">
+                    <Button variant="secondary" onClick={onClose} className="min-h-[44px]">
+                        Close
+                    </Button>
+                </div>
             </div>
         </Modal>
     );

@@ -21,7 +21,7 @@ export const ConfirmHost: React.FC = () => {
     <Modal isOpen={!!current} onClose={() => settle(false)} title={current?.title || 'Please confirm'} icon={current?.danger ? 'warning' : 'help'} maxWidth="max-w-md">
       <div className="space-y-6 text-left font-sans">
         <p className="text-sm text-light-text dark:text-dark-text leading-relaxed">{current?.message}</p>
-        <div className="flex gap-3 justify-end">
+        <div className="flex gap-3 justify-end pt-4 border-t border-black/10 dark:border-white/10 mt-6">
           <button type="button" onClick={() => settle(false)} className={`${BTN_SECONDARY_STYLE} px-4 py-2 text-xs font-bold uppercase`}>
             {current?.cancelLabel || 'Cancel'}
           </button>
@@ -29,7 +29,7 @@ export const ConfirmHost: React.FC = () => {
             type="button"
             autoFocus
             onClick={() => settle(true)}
-            className={`min-h-[44px] px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border ${current?.danger
+            className={`min-h-[44px] px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border cursor-pointer ${current?.danger
               ? 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-800 dark:text-rose-300 border-rose-500/35'
               : 'bg-primary-500/15 hover:bg-primary-500/25 text-primary-900 dark:text-primary-300 border-primary-500/35'}`}
           >

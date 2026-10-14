@@ -2116,7 +2116,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                     "flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer select-none",
                     isChecked
                       ? "bg-primary-500/10 border-primary-500/30 dark:bg-primary-500/15 dark:border-primary-500/40"
-                      : "bg-white/40 dark:bg-white/[0.03] border-black/5 dark:border-white/5 opacity-70 hover:opacity-100"
+                      : "bg-light-fill dark:bg-dark-fill/50 border-black/5 dark:border-white/5 opacity-70 hover:opacity-100"
                   )}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -2156,7 +2156,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between gap-3 pt-4 border-t border-black/5 dark:border-white/5">
+          <div className="flex items-center justify-between gap-3 pt-4 border-t border-black/10 dark:border-white/10 mt-6">
             <button
               type="button"
               onClick={() => setIsBackupModalOpen(false)}
@@ -2191,7 +2191,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
             <>
               {/* File inspection metadata strip */}
               {detectedRestoreStats && (
-                <div className="p-4 rounded-2xl bg-white/50 dark:bg-white/[0.04] backdrop-blur-md border border-black/8 dark:border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="p-4 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 flex flex-wrap items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                     <span className="font-bold text-light-text dark:text-dark-text truncate">
@@ -2373,7 +2373,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               )}
 
               {/* Footer action bar */}
-              <div className="flex gap-3 justify-end pt-4 border-t border-black/5 dark:border-white/5">
+              <div className="flex gap-3 justify-end pt-4 border-t border-black/10 dark:border-white/10 mt-6">
                 <button
                   type="button"
                   onClick={() => setIsRestoreModalOpen(false)}
@@ -2452,9 +2452,10 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
         title="Wipe Database State"
         subtitle="Irreversible Database Factory Reset"
         icon="warning"
+        iconContainerClassName="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
       >
         <div className="space-y-6 text-left font-sans">
-          <div className="p-5 rounded-3xl bg-rose-500/10 border border-rose-500/20">
+          <div className="p-5 rounded-2xl bg-rose-500/10 border border-rose-500/20">
             <p className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider mb-1">
               Permanent Destruction Warning
             </p>
@@ -2463,27 +2464,32 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
             </p>
           </div>
           
-          <Input 
-            label="To unlock Wipe Process, type DELETE below:"
-            placeholder="Type DELETE" 
-            value={resetConfirmText} 
-            onChange={(e) => setResetConfirmText(e.target.value)} 
-            className="font-mono text-center uppercase font-bold"
-          />
+          <div className="space-y-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+              To unlock Wipe Process, type DELETE below:
+            </label>
+            <Input 
+              placeholder="Type DELETE" 
+              value={resetConfirmText} 
+              onChange={(e) => setResetConfirmText(e.target.value)} 
+              className="font-mono text-center uppercase font-bold h-12 text-base tracking-widest"
+              autoFocus
+            />
+          </div>
 
-          <div className="flex gap-3 pt-4 border-t border-black/5 dark:border-white/5 justify-end">
+          <div className="flex gap-3 pt-4 border-t border-black/10 dark:border-white/10 mt-6 justify-end">
             <button 
-              type="button"
+              type="button" 
               onClick={() => { setIsResetModalOpen(false); setResetConfirmText(''); }}
-              className={`${BTN_SECONDARY_STYLE} px-4 py-2 text-xs font-bold uppercase`}
+              className={`${BTN_SECONDARY_STYLE} px-6 min-h-[44px] text-xs font-bold uppercase tracking-wider`}
             >
               Abort
             </button>
             <button 
-              type="button"
+              type="button" 
               onClick={handleWipeDatabase}
               disabled={resetConfirmText !== 'DELETE'}
-              className="px-5 py-2 rounded-2xl bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white text-xs font-bold uppercase tracking-wider shadow-md"
+              className="px-6 min-h-[44px] rounded-2xl bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white text-xs font-bold uppercase tracking-wider shadow-lg shadow-rose-600/20 cursor-pointer disabled:cursor-not-allowed transition-all"
             >
               Wipe Database
             </button>
@@ -2613,7 +2619,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           {memberFormError && (
             <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400">{memberFormError}</p>
           )}
-          <div className="flex gap-3 pt-4 border-t border-black/5 dark:border-white/5 shrink-0 justify-end">
+          <div className="flex gap-3 pt-4 border-t border-black/10 dark:border-white/10 mt-6 shrink-0 justify-end">
             <button
               type="button"
               onClick={() => setIsEditingUser(false)}
@@ -2649,7 +2655,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           <p data-testid="reset-code" className="text-center font-mono text-2xl font-black tracking-widest text-light-text dark:text-dark-text select-all">
             {resetCodeInfo?.code}
           </p>
-          <div className="flex justify-end">
+          <div className="flex justify-end pt-4 border-t border-black/10 dark:border-white/10 mt-6">
             <button type="button" onClick={() => setResetCodeInfo(null)} className={`${BTN_SECONDARY_STYLE} px-4 py-2 text-xs font-bold uppercase`}>
               Done
             </button>
@@ -2675,7 +2681,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           {deleteMemberError && (
             <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400">{deleteMemberError}</p>
           )}
-          <div className="flex gap-3 justify-end pt-4 border-t border-black/5 dark:border-white/5">
+          <div className="flex gap-3 justify-end pt-4 border-t border-black/10 dark:border-white/10 mt-6">
             <button
               type="button"
               onClick={() => setMemberToDelete(null)}

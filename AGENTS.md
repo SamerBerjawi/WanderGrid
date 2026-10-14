@@ -270,6 +270,215 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
 
 ---
 
+### 7.5 Master Liquid-Glass Modal Guidelines & Architecture
+
+All modal dialogs across WanderGrid must strictly adhere to the unified liquid-glass architectural pattern established by `ExcursionConfigurator` and `<Modal />`:
+
+#### 1. Unified Glass Shell (No Nested GlassPanels)
+* **Single Glass Authority:** The modal is encased in a single outer `<GlassPanel className="wg-glass-card shadow-2xl overflow-hidden" overrides={{ borderRadius: 28 }} padding="0px">`.
+* **Zero Nested GlassPanels / Zero Over-Imposition:** Never render `<GlassPanel className="wg-glass-card shadow-2xl">` or `shadow-lg` cards inside a modal! Stacking glass filters and heavy drop-shadows creates an artificial, "over-imposed" appearance.
+* **Integrated Sub-Containers:** Grouped parameter sections (e.g., Schedule, Route, Financials, Location) must use subtle integrated containers:
+  `p-4 sm:p-5 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-3`
+* **Direct Field Placement:** Primary inputs (Item Title/Name, Category pickers, Notes) sit directly on the modal canvas without artificial wrapper boxes.
+* **Segmented Pickers & Multi-Item Tabs:** Use subtle pill containers:
+  `bg-black/5 dark:bg-white/5 p-1 rounded-2xl border border-black/5 dark:border-white/5 flex gap-1`
+
+#### 2. Non-Floating, Integrated Footer Actions
+* **Never Floating:** The footer must **NEVER** be a detached, floating bar with negative margins (`-mx-... -mb-...`), `sticky bottom-0`, `backdrop-blur-md`, or rounded bottom borders (`rounded-b-[28px]`).
+* **Natural Flow Structure:** The footer is a direct child of the modal form, placed directly at the bottom with a hairline separator:
+  `flex items-center justify-between pt-4 border-t border-black/10 dark:border-white/10 mt-6`
+* **Left Slot (Destructive / Contextual):** Place the delete button with inline confirmation (`Delete this [item]? Confirm | No`) on the left, or an empty `<div />` if no destructive action exists.
+* **Right Slot (Action Pair):** `flex items-center gap-3` with **Cancel** (`${BTN_SECONDARY_STYLE} px-5 h-11 text-xs font-bold uppercase tracking-wider`) and **Save** (`${BTN_PRIMARY_STYLE} px-6 h-11 text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md`).
+* **Single Save Authority:** Never create dual save buttons (e.g. an "Update Item" button inside a subcard and a "Save" button in the footer). The modal footer is the sole authority for committing changes.
+
+#### 3. Canonical Modal Code Pattern
+
+```tsx
+import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Compass, X, Check, Trash, WarningCircle } from '@phosphor-icons/react';
+import GlassPanel from './glass/GlassPanel';
+import { Input } from './ui';
+import { 
+  BTN_PRIMARY_STYLE, 
+  BTN_SECONDARY_STYLE, 
+  BTN_DANGER_STYLE, 
+  CLOSE_BTN_STYLE, 
+  STATUS_DANGER_STYLE 
+} from '../constants';
+
+interface StandardModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (data: any) => void;
+  onDelete?: () => void;
+  initialData?: any;
+}
+
+export const StandardModal: React.FC<StandardModalProps> = ({
+  isOpen,
+  onClose,
+  onSave,
+  onDelete,
+  initialData,
+}) => {
+  const [title, setTitle] = useState(initialData?.title || '');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSave = () => {
+    if (!title.trim()) {
+      setErrorMsg("Please enter a title.");
+      return;
+    }
+    onSave({ title });
+    onClose();
+  };
+
+  return createPortal(
+    <div 
+      role="dialog" 
+      aria-modal="true" 
+      className="fixed inset-0 z-modal overflow-y-auto flex items-center justify-center p-4 sm:p-6 safe-top safe-bottom safe-x font-sans"
+    >
+      {/* 1. Translucent Backdrop */}
+      <div 
+        className="fixed inset-0 backdrop-blur-md bg-black/5 dark:bg-black/15 transition-all duration-300" 
+        onClick={onClose} 
+      />
+
+      {/* 2. Unified Liquid-Glass Shell */}
+      <GlassPanel 
+        className="wg-glass-card w-full max-w-2xl shadow-2xl overflow-hidden z-float animate-fade-in" 
+        overrides={{ borderRadius: 28 }} 
+        padding="0px"
+      >
+        <div className="p-6 sm:p-8 space-y-6">
+
+          {/* Header */}
+          <div className="flex items-center justify-between pb-4 border-b border-black/10 dark:border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 flex items-center justify-center shadow-sm shrink-0">
+                <Compass className="w-6 h-6" weight="duotone" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-light-text dark:text-dark-text tracking-tight">
+                  {initialData ? 'Edit Resource' : 'Add New Resource'}
+                </h3>
+                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
+                  Resource configuration & parameters
+                </p>
+              </div>
+            </div>
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className={CLOSE_BTN_STYLE} 
+              aria-label="Close dialog"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Inline Validation Error */}
+          {errorMsg && (
+            <div className={`p-3.5 rounded-2xl flex items-center justify-between text-xs font-semibold ${STATUS_DANGER_STYLE}`}>
+              <div className="flex items-center gap-2">
+                <WarningCircle className="w-4 h-4 shrink-0" weight="bold" />
+                <span>{errorMsg}</span>
+              </div>
+              <button type="button" onClick={() => setErrorMsg(null)} className="cursor-pointer">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Primary Identifier / Hero Input (sits directly on modal) */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+              Resource Title <span className="text-semantic-red">*</span>
+            </label>
+            <Input
+              placeholder="e.g. Primary Identifier"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              className="h-12 text-base font-bold"
+              autoFocus
+            />
+          </div>
+
+          {/* Integrated Sub-Container (No nested GlassPanel or shadow-2xl) */}
+          <div className="p-4 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-3">
+            <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+              Configuration Group
+            </span>
+            {/* Grouped controls go here */}
+          </div>
+
+          {/* Footer Actions (Non-floating, inline flow) */}
+          <div className="flex items-center justify-between pt-4 border-t border-black/10 dark:border-white/10 mt-6">
+            {initialData && onDelete ? (
+              showDeleteConfirm ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-semantic-red font-bold">Delete this item?</span>
+                  <button
+                    type="button"
+                    onClick={() => { onDelete(); onClose(); }}
+                    className={`${BTN_DANGER_STYLE} px-3 py-1.5 text-xs font-bold uppercase tracking-wider`}
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className={`${BTN_SECONDARY_STYLE} px-3 py-1.5 text-xs font-bold uppercase tracking-wider`}
+                  >
+                    No
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="text-semantic-red hover:bg-semantic-red/10 p-2.5 rounded-xl transition-colors flex items-center gap-1.5 font-bold text-xs min-h-[44px] cursor-pointer"
+                >
+                  <Trash className="w-4 h-4" />
+                  <span>Delete</span>
+                </button>
+              )
+            ) : <div />}
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className={`${BTN_SECONDARY_STYLE} px-5 h-11 text-xs font-bold uppercase tracking-wider cursor-pointer`}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                className={`${BTN_PRIMARY_STYLE} px-6 h-11 text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md`}
+              >
+                <span>Save Changes</span>
+                <Check className="w-4 h-4" weight="bold" />
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </GlassPanel>
+    </div>,
+    document.body
+  );
+};
+```
+
+---
+
 ## 8. Formatting, Stacking Hierarchy & Accessibility Rules
 
 - **Temporal & Monetary Engine:** Never write ad-hoc date/currency formatting logic or call `Date.toLocaleDateString()` directly in UI components. Always consume `formatDate`, `formatDateRange`, or `formatCurrency` from `/utils/formatters.ts` so that the user's workspace settings (`dateFormat`, `currency`) are respected uniformly.

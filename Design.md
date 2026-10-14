@@ -224,14 +224,12 @@ export const INPUT_BASE_STYLE =
 ### 3.5 Segmented Controls & Tabs (`Tabs`)
 - `<Tabs>` in `components/ui.tsx` automatically renders inside `GlassPanel` (`wg-glass-pill`) with spring indicator animations.
 
----
-
-- **Backdrop**: Clean translucent darkening scrim `bg-black/40 dark:bg-black/60` (no page blur to prevent double-blur since the modal container already has liquid glass).
-- **Container**: `GlassPanel` (`wg-glass-card`, `overrides={{ borderRadius: 28 }}`).
-- **Footer**: Sticky frosted glass footer (`bg-white/80 dark:bg-dark-card/80 backdrop-blur-md`).
-- **Touch Target**: Close button strictly `min-w-[44px] min-h-[44px]`.
-
----
+### 3.6 Modal Dialogs (`Modal`, `ExcursionConfigurator`)
+- **Backdrop**: Translucent darkening scrim `bg-black/5 dark:bg-black/15 backdrop-blur-md` with gentle fade transition.
+- **Container**: Single elevated `GlassPanel` (`wg-glass-card`, `overrides={{ borderRadius: 28 }}`).
+- **Zero Nested GlassPanels**: Subsections use subtle integrated containers (`bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 rounded-2xl`). Never stack nested `<GlassPanel className="wg-glass-card shadow-2xl">` or `shadow-lg` cards inside a modal.
+- **Inline Non-Floating Footer**: Integrated inline footer (`flex items-center justify-between pt-4 border-t border-black/10 dark:border-white/10 mt-6`) directly in the natural flow of the modal form. Never render a detached floating bar with negative margins (`-mx-... -mb-...`), `sticky bottom-0`, or duplicate save buttons.
+- **Touch Target**: Tactile close button strictly `min-w-[44px] min-h-[44px]` with `CLOSE_BTN_STYLE` and Phosphor `<X className="w-5 h-5" />`.
 
 ## 4. Radical Simplicity: Zero Unnecessary Text
 

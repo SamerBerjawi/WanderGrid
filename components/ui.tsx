@@ -410,10 +410,10 @@ export const Modal: React.FC<ModalProps> = ({
             {children}
           </div>
 
-          {/* Sticky Frosted Footer (optional) */}
+          {/* Integrated Footer (optional) */}
           {footerActions && (
             <div
-              className="p-4 sm:p-6 border-t border-black/10 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-md flex items-center justify-between gap-3 shrink-0"
+              className="p-4 sm:p-6 border-t border-black/10 dark:border-white/10 flex items-center justify-between gap-3 shrink-0"
             >
               {footerActions}
             </div>

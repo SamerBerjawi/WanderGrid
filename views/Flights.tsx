@@ -3731,11 +3731,11 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 This will separate them from their respective trip itinerary bundles and return them to independent flights.
               </p>
 
-              <div className="flex items-center gap-3 w-full justify-end">
+              <div className="flex items-center gap-3 w-full justify-end pt-4 border-t border-black/10 dark:border-white/10 mt-6">
                 <button
                   type="button"
                   onClick={() => setUnbundleConfirmTarget(null)}
-                  className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
+                  className={`${BTN_SECONDARY_STYLE} flex-1 min-h-[44px] py-2.5 px-4 text-xs font-bold uppercase tracking-wider text-center`}
                 >
                   Cancel
                 </button>
@@ -3791,11 +3791,11 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 )}
               </p>
 
-              <div className="flex items-center gap-3 w-full justify-end">
+              <div className="flex items-center gap-3 w-full justify-end pt-4 border-t border-black/10 dark:border-white/10 mt-6">
                 <button
                   type="button"
                   onClick={() => setDeleteConfirmTarget(null)}
-                  className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
+                  className={`${BTN_SECONDARY_STYLE} flex-1 min-h-[44px] py-2.5 px-4 text-xs font-bold uppercase tracking-wider text-center`}
                 >
                   Cancel
                 </button>
@@ -3885,11 +3885,11 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 w-full justify-end">
+              <div className="flex items-center gap-3 w-full justify-end pt-4 border-t border-black/10 dark:border-white/10 mt-6">
                 <button
                   type="button"
                   onClick={() => setIsBundling(false)}
-                  className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
+                  className={`${BTN_SECONDARY_STYLE} flex-1 min-h-[44px] py-2.5 px-4 text-xs font-bold uppercase tracking-wider text-center`}
                 >
                   Cancel
                 </button>
@@ -3897,7 +3897,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   type="button"
                   disabled={!bundleName.trim() || isBundlingInFlight}
                   onClick={executeBundle}
-                  className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-primary-500 hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 shadow-lg shadow-primary-500/20 transition-all cursor-pointer text-center"
+                  className={`${BTN_PRIMARY_STYLE} flex-1 min-h-[44px] py-2.5 px-4 text-xs font-bold uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-primary-500/20 text-center`}
                 >
                   Create Bundle
                 </button>
@@ -4003,8 +4003,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               </div>
             </div>
 
-            {/* Frosted Sticky Footer */}
-            <div className="p-4 sm:p-5 border-t border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.03] backdrop-blur-md flex items-center justify-between gap-3 shrink-0">
+            {/* Integrated Footer */}
+            <div className="p-4 sm:p-5 border-t border-black/10 dark:border-white/10 flex items-center justify-between gap-3 shrink-0">
               <button
                 type="button"
                 onClick={() => {
@@ -4433,27 +4433,25 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               {flightFormError && (
                 <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400 mb-2">{flightFormError}</p>
               )}
-              <div className="flex gap-3 pt-6 border-t border-dashed border-gray-100 dark:border-white/5">
-                <Button 
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-black/10 dark:border-white/10 mt-6">
+                <button 
                   type="button" 
-                  variant="ghost" 
-                  className="flex-1 rounded-2xl cursor-pointer"
+                  className={`${BTN_SECONDARY_STYLE} min-h-[44px] px-6 text-xs font-bold uppercase tracking-wider`}
                   onClick={() => {
                     setIsEditing(false);
                     setEditingFlight(null);
                   }}
                 >
                   Cancel
-                </Button>
-                <Button 
+                </button>
+                <button 
                   type="submit" 
-                  variant="primary" 
-                  color="blue"
-                  className="flex-1 rounded-2xl cursor-pointer"
+                  className={`${BTN_PRIMARY_STYLE} min-h-[44px] px-8 text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-primary-500/20`}
                   disabled={isSavingFlight}
                 >
-                  Save Boarding Stub
-                </Button>
+                  <span>Save Boarding Stub</span>
+                  <Check className="w-4 h-4" />
+                </button>
               </div>
 
             </form>

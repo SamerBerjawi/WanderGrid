@@ -1631,7 +1631,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                   className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all cursor-pointer min-h-[56px] ${
                     isActive 
                       ? 'bg-primary-500/15 border-primary-500/40 text-primary-600 dark:text-primary-400 shadow-sm' 
-                      : 'bg-white/60 dark:bg-white/[0.04] border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary'
+                      : 'bg-light-fill dark:bg-dark-fill/50 border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary'
                   }`}
                 >
                   <Icon className="w-5 h-5 mb-1" weight="duotone" />
@@ -1803,7 +1803,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
           </div>
 
           {/* Waypoint segment designer box with Proposed DnD-Kit Sorting */}
-          <div className="p-5 rounded-3xl bg-white/40 dark:bg-white/[0.03] border border-black/5 dark:border-white/5 space-y-4">
+          <div className="p-5 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1.5">
                 <Map className="w-4 h-4 text-emerald-500" /> Waypoints & Pit Stops (Drag to reorder)
@@ -1838,7 +1838,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
             )}
 
             {/* Waypoint insertion row */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end bg-white/60 dark:bg-white/[0.04] p-3 rounded-2xl border border-black/5 dark:border-white/5">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end bg-black/5 dark:bg-white/5 p-3 rounded-2xl border border-black/5 dark:border-white/5">
               <div className="md:col-span-5">
                 <Input 
                   label="Waypoint location" 
@@ -1886,7 +1886,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
           <div className="flex flex-col gap-2">
             <span className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Overall Itinerary notes / Driving directions</span>
             <textarea
-              className="w-full px-4 py-3 rounded-2xl bg-white/40 dark:bg-white/[0.03] border border-black/5 dark:border-white/5 text-xs focus:bg-white dark:focus:bg-dark-card focus:border-primary-500 outline-none text-light-text dark:text-dark-text placeholder-light-text-secondary/50 dark:placeholder-dark-text-secondary/50 font-medium"
+              className="w-full px-4 py-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 text-xs focus:bg-white dark:focus:bg-dark-card focus:border-primary-500 outline-none text-light-text dark:text-dark-text placeholder-light-text-secondary/50 dark:placeholder-dark-text-secondary/50 font-medium"
               rows={3}
               placeholder="Insert any relevant ticket details, driving rules, parking arrangements, or maps notes."
               value={formNotes}
@@ -1895,7 +1895,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
           </div>
 
           {/* Actions Footer */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-black/5 dark:border-white/5">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-black/10 dark:border-white/10 mt-6">
             <Button variant="secondary" type="button" onClick={() => setIsModalOpen(false)} className="min-h-[44px]">
               Cancel
             </Button>
@@ -1931,7 +1931,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                 const modeMeta = MODE_META[seg.mode as keyof typeof MODE_META];
                 const ModeIcon = modeMeta?.icon || Train;
                 return (
-                  <div key={seg.id || `${seg.origin}-${seg.destination}-${seg.departureDate}-${idx}`} className="p-4 rounded-2xl border border-black/5 dark:border-white/5 bg-white/70 dark:bg-dark-card/80 shadow-sm flex items-center gap-3">
+                  <div key={seg.id || `${seg.origin}-${seg.destination}-${seg.departureDate}-${idx}`} className="p-4 rounded-2xl border border-black/5 dark:border-white/5 bg-light-fill dark:bg-dark-fill/50 flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-2xl ${modeMeta?.bgClass || 'bg-primary-500/10'} ${modeMeta?.borderClass || 'border-primary-500/20'} border flex items-center justify-center ${modeMeta?.colorClass || 'text-primary-500'}`}>
                       <ModeIcon className="w-5 h-5" weight="duotone" />
                     </div>
@@ -1956,7 +1956,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-black/5 dark:border-white/5">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-black/10 dark:border-white/10 mt-6">
             <Button variant="secondary" onClick={() => setPendingSuggestions(null)} className="min-h-[44px]">
               Cancel
             </Button>

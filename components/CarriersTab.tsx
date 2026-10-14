@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Button, Input } from './ui';
 import GlassPanel from './glass/GlassPanel';
 import StandardDrawer from './StandardDrawer';
@@ -772,42 +773,41 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
             </StandardDrawer>
 
             {/* Remove Confirmation Modal */}
-            {deletingCarrier && (
-                <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
+            {deletingCarrier && createPortal(
+                <div role="dialog" aria-modal="true" aria-label="Remove Carrier" className="fixed inset-0 z-modal flex items-center justify-center p-4 font-sans animate-fade-in">
                     <div
                         className="fixed inset-0 backdrop-blur-md bg-black/5 dark:bg-black/15 transition-all duration-300"
                         onClick={() => setDeletingCarrier(null)}
                     />
-                    <div className="relative w-full max-w-sm">
-                        <GlassPanel className="wg-glass-card shadow-2xl p-6 rounded-[28px] overflow-hidden" overrides={{ borderRadius: 28 }} padding="0px">
-                            <div className="p-6 flex flex-col items-center text-center">
-                                <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center mb-4">
-                                    <Trash className="w-6 h-6" />
-                                </div>
-                                <h3 className="text-base font-bold text-light-text dark:text-dark-text">Remove Carrier?</h3>
-                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1.5">
-                                    Are you sure you want to remove <span className="font-bold text-light-text dark:text-dark-text">{deletingCarrier.name}</span> ({deletingCarrier.code})?
-                                </p>
-                                <div className="flex items-center gap-3 mt-6 w-full">
-                                    <Button
-                                        variant="secondary"
-                                        className="flex-1"
-                                        onClick={() => setDeletingCarrier(null)}
-                                    >
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        variant="danger"
-                                        className="flex-1"
-                                        onClick={handleConfirmDelete}
-                                    >
-                                        Remove
-                                    </Button>
-                                </div>
+                    <GlassPanel className="wg-glass-card w-full max-w-sm shadow-2xl overflow-hidden z-float" overrides={{ borderRadius: 28 }} padding="0px">
+                        <div className="p-6 flex flex-col items-center text-center">
+                            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center justify-center mb-4 shadow-sm">
+                                <Trash className="w-6 h-6" />
                             </div>
-                        </GlassPanel>
-                    </div>
-                </div>
+                            <h3 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">Remove Carrier?</h3>
+                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1.5 leading-relaxed">
+                                Are you sure you want to remove <span className="font-bold text-light-text dark:text-dark-text">{deletingCarrier.name}</span> ({deletingCarrier.code})?
+                            </p>
+                            <div className="flex items-center gap-3 mt-6 w-full pt-4 border-t border-black/10 dark:border-white/10">
+                                <Button
+                                    variant="secondary"
+                                    className="flex-1 h-11 text-xs font-bold uppercase tracking-wider"
+                                    onClick={() => setDeletingCarrier(null)}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    variant="danger"
+                                    className="flex-1 h-11 text-xs font-bold uppercase tracking-wider"
+                                    onClick={handleConfirmDelete}
+                                >
+                                    Remove
+                                </Button>
+                            </div>
+                        </div>
+                    </GlassPanel>
+                </div>,
+                document.body
             )}
         </div>
     );

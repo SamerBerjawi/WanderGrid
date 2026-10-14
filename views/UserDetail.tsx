@@ -783,7 +783,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                         <p role="alert" className="text-xs font-semibold text-rose-600 dark:text-rose-400">{profileError}</p>
                     )}
 
-                    <div className="flex gap-3 pt-4 border-t border-black/5 dark:border-white/5 shrink-0 justify-end">
+                    <div className="flex gap-3 pt-4 border-t border-black/10 dark:border-white/10 mt-6 shrink-0 justify-end">
                         <Button variant="secondary" onClick={() => setIsEditing(false)}>Cancel</Button>
                         <Button variant="primary" disabled={!editName.trim()} onClick={handleSaveProfile} isLoading={saveLoading}>
                             Save changes
@@ -825,7 +825,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                             { label: 'Cancelled', value: 'Cancelled' }
                         ]}
                     />
-                    <div className="flex gap-3 pt-4 border-t border-black/5 dark:border-white/5 shrink-0 justify-end">
+                    <div className="flex gap-3 pt-4 border-t border-black/10 dark:border-white/10 mt-6 shrink-0 justify-end">
                         <Button variant="secondary" onClick={() => setIsEditingTrip(false)}>Cancel</Button>
                         <Button
                             variant="primary"
@@ -852,7 +852,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                     <p className="text-sm font-medium text-light-text dark:text-dark-text">
                         Delete this trip and its linked flights and stays for everyone on it?
                     </p>
-                    <div className="flex gap-3 pt-4 border-t border-black/5 dark:border-white/5 shrink-0 justify-end">
+                    <div className="flex gap-3 pt-4 border-t border-black/10 dark:border-white/10 mt-6 shrink-0 justify-end">
                         <Button variant="secondary" onClick={() => setIsDeletingTripConfirm(false)}>Cancel</Button>
                         <Button variant="danger" onClick={handleConfirmDeleteTrip} isLoading={saveLoading}>Delete trip</Button>
                     </div>

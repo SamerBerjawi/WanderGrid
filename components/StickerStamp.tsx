@@ -341,9 +341,9 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
             </div>
 
             {/* Sticker Claim Log (Gamification Core) */}
-            <div className="p-5 rounded-3xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-100 dark:border-zinc-900/40 relative">
+            <div className="p-5 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 relative">
               <div className="flex justify-between items-center mb-4">
-                <h4 className="text-xs font-black uppercase text-zinc-400 dark:text-zinc-500 tracking-wider">
+                <h4 className="text-xs font-black uppercase text-light-text-secondary dark:text-dark-text-secondary tracking-wider">
                   Journal Entry & Logs
                 </h4>
                 {isUnlocked && (
@@ -368,16 +368,16 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
                   ) : null}
 
                   <div className="space-y-1">
-                    <span className="text-2xs text-zinc-500 dark:text-zinc-400 uppercase font-bold tracking-wide block">Visit Date</span>
-                    <p className="text-zinc-900 dark:text-white font-bold flex items-center gap-2">
+                    <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-wide block">Visit Date</span>
+                    <p className="text-light-text dark:text-dark-text font-bold flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-indigo-500" />
                       {formatDate(claim.claimDate, 'weekday-long')}
                     </p>
                   </div>
 
                   <div className="space-y-1">
-                    <span className="text-2xs text-zinc-500 dark:text-zinc-400 uppercase font-bold tracking-wide block">My Memories</span>
-                    <blockquote className="p-3 bg-zinc-100/50 dark:bg-zinc-900/60 rounded-xl italic text-zinc-700 dark:text-zinc-300 border-l-4 border-indigo-500">
+                    <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-wide block">My Memories</span>
+                    <blockquote className="p-3 bg-black/5 dark:bg-white/5 rounded-xl italic text-light-text dark:text-dark-text border-l-4 border-indigo-500">
                       "{claim.memo}"
                     </blockquote>
                   </div>
@@ -387,7 +387,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
                       <Button 
                         variant="ghost" 
                         size="sm"
-                        className="rounded-xl font-bold py-2 text-red-500 hover:bg-red-500/10"
+                        className="rounded-xl font-bold py-2 text-rose-500 hover:bg-rose-500/10 min-h-[44px]"
                         icon={<Trash2 className="w-4 h-4" />}
                         onClick={handleDeleteClaim}
                       >
@@ -399,7 +399,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
               ) : (
                 /* Form to claim visit manually */
                 <form onSubmit={handleSaveClaim} className="space-y-4">
-                  <p className="text-xs text-zinc-500 font-medium leading-relaxed mb-1">
+                  <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium leading-relaxed mb-1">
                     Have you stood before this iconic landmark? Unlock this beautiful adhesive sticker for your booklet by logging your prior travel memories here.
                   </p>
 
@@ -438,7 +438,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
                   <Button 
                     type="submit" 
                     variant="primary" 
-                    className="w-full rounded-2xl py-3 font-black text-sm uppercase tracking-wider"
+                    className="w-full rounded-2xl min-h-[44px] py-3 font-black text-sm uppercase tracking-wider"
                     icon={<Award className="w-4 h-4" />}
                   >
                     Unlock and Apply Sticker

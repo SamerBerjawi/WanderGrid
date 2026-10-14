@@ -2710,7 +2710,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                            const isExpanded = expandedCandidateId === t.id;
                            return (
                                <VirtualListItem key={t.id} minHeight={72}>
-                                   <div className={`border rounded-2xl transition-all ${isSelected ? 'border-primary-500 bg-primary-500/10' : 'border-black/10 dark:border-white/10 bg-light-card dark:bg-dark-card'}`}>
+                                   <div className={`border rounded-2xl transition-all ${isSelected ? 'border-primary-500 bg-primary-500/10' : 'border-black/5 dark:border-white/5 bg-light-fill dark:bg-dark-fill/50'}`}>
                                        <div className="p-4 flex items-center gap-4 cursor-pointer" onClick={() => toggleCandidateSelection(t.id)}>
                                            <div className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-primary-500 border-primary-500' : 'bg-white dark:bg-dark-fill border-gray-300 dark:border-gray-600'}`}>
                                                {isSelected && <Check className="w-3.5 h-3.5 text-white" weight="bold" />}
@@ -2724,7 +2724,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                        {isExpanded && t.transports && (
                                            <div className="border-t border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02] p-4 space-y-2">
                                                {t.transports.map((tr, idx) => (
-                                                   <div key={tr.id || `${tr.identifier}-${tr.departureDate}-${idx}`} className="flex items-center gap-3 text-xs p-2 bg-light-card dark:bg-dark-card rounded-lg border border-black/5 dark:border-white/5">
+                                                   <div key={tr.id || `${tr.identifier}-${tr.departureDate}-${idx}`} className="flex items-center gap-3 text-xs p-2 bg-light-fill dark:bg-dark-fill/50 rounded-lg border border-black/5 dark:border-white/5">
                                                        <span className="font-mono font-bold text-primary-600 dark:text-primary-400">{tr.departureTime}</span>
                                                        <span className="font-bold">{formatProperLocationName(tr.origin)} &rarr; {formatProperLocationName(tr.destination)}</span>
                                                        <span className="text-light-text-secondary">{tr.provider} {tr.identifier}</span>
@@ -2738,8 +2738,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                        })}
                        {filteredCandidates.length === 0 && <div className="text-center py-10 text-light-text-secondary">No flights match your filters.</div>}
                    </div>
-                   <div className="flex justify-end gap-3 pt-4 border-t border-black/5 dark:border-white/5">
-                        <Button variant="ghost" onClick={() => setImportPreview({ open: false, candidates: [] })}>Cancel</Button>
+                   <div className="flex justify-end gap-3 pt-4 border-t border-black/10 dark:border-white/10 mt-6">
+                        <Button variant="secondary" onClick={() => setImportPreview({ open: false, candidates: [] })} className="min-h-[44px]">Cancel</Button>
                         {trip && isImportWizardOpen && (
                             <React.Suspense fallback={null}>
                                 <FlightImportWizard 
@@ -2751,7 +2751,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 />
                             </React.Suspense>
                         )}
-                        <Button variant="primary" onClick={confirmImportFlights} disabled={selectedCount === 0}>Import {selectedCount} Trips</Button>
+                        <Button variant="primary" onClick={confirmImportFlights} disabled={selectedCount === 0} className="min-h-[44px]">Import {selectedCount} Trips</Button>
                    </div>
                </div>
             </Modal>
