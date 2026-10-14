@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Key, Clock, Speedometer } from '@phosphor-icons/react';
 import { Input, Autocomplete, TimeInput, DateRangePicker } from '../ui';
-import GlassPanel from '../glass/GlassPanel';
 import { CarForm } from './transportTypes';
 import { searchLocations, getCoordinates, calculateDistance } from '../../services/geocoding';
 import { PitStopManager } from './PitStopManager';
@@ -57,8 +56,7 @@ export const CarRentalForm: React.FC<CarRentalFormProps> = ({
     };
 
     return (
-        <GlassPanel className="wg-glass-card w-full shadow-2xl overflow-hidden relative" overrides={{ borderRadius: 28 }} padding="0px">
-            <div className="p-5 sm:p-6 space-y-4">
+        <div className="p-5 sm:p-6 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4 relative">
             <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
                 Rental Car Details
             </span>
@@ -175,7 +173,6 @@ export const CarRentalForm: React.FC<CarRentalFormProps> = ({
                     onChange={e => onUpdate({ notes: e.target.value })} 
                 />
             </div>
-            </div>
-        </GlassPanel>
+        </div>
     );
 };

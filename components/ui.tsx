@@ -253,7 +253,8 @@ interface ModalProps {
   title: string;
   subtitle?: string;
   tag?: string;
-  icon?: string;
+  icon?: ReactNode;
+  iconContainerClassName?: string;
   children: ReactNode;
   maxWidth?: string;
   footerActions?: ReactNode;
@@ -265,6 +266,7 @@ export const Modal: React.FC<ModalProps> = ({
   subtitle,
   tag,
   icon,
+  iconContainerClassName,
   children,
   maxWidth = 'max-w-lg',
   footerActions
@@ -358,7 +360,7 @@ export const Modal: React.FC<ModalProps> = ({
       />
 
       {/* 2. Elevated Liquid Glass Modal Container */}
-      <GlassPanel liquid
+      <GlassPanel
         ref={modalRef}
         className={cn(
           "wg-glass-card w-full shadow-2xl overflow-hidden transform transition-all duration-300 max-h-[calc(90dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] flex flex-col min-h-0 z-raised",
@@ -368,13 +370,13 @@ export const Modal: React.FC<ModalProps> = ({
         padding="0px"
         overrides={{ borderRadius: 28 }}
       >
-        <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px] bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl">
+        <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
           {/* Header */}
-          <div className="p-4 sm:p-6 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
+          <div className="p-4 sm:p-6 border-b border-black/10 dark:border-white/10 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3 min-w-0">
               {icon && (
-                <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-slate-950 bg-primary-500 shrink-0 shadow-md transition-transform hover:scale-105">
-                  <Icon className="text-2xl" name={icon} />
+                <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center shadow-sm shrink-0", iconContainerClassName || "bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20")}>
+                  {typeof icon === 'string' ? <Icon className="text-2xl" name={icon} /> : icon}
                 </div>
               )}
               <div className="min-w-0">
@@ -399,7 +401,7 @@ export const Modal: React.FC<ModalProps> = ({
               className={CLOSE_BTN_STYLE}
               aria-label="Close dialog"
             >
-              <Icon className="text-lg" name="close" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
@@ -411,7 +413,7 @@ export const Modal: React.FC<ModalProps> = ({
           {/* Sticky Frosted Footer (optional) */}
           {footerActions && (
             <div
-              className="p-4 sm:p-6 border-t border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-md flex items-center justify-between gap-3 shrink-0"
+              className="p-4 sm:p-6 border-t border-black/10 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-md flex items-center justify-between gap-3 shrink-0"
             >
               {footerActions}
             </div>

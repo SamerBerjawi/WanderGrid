@@ -20,12 +20,12 @@ export const DurationInput: React.FC<DurationInputProps> = ({
     return (
         <div className="flex flex-col gap-1.5 w-full">
             <div className="flex justify-between items-center">
-                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-1">Duration</label>
+                <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider ml-1">Duration</label>
                 {onAutoCalc && canAutoCalc && (
                     <button 
                         type="button"
                         onClick={onAutoCalc} 
-                        className="text-xs font-bold text-primary-500 hover:text-primary-600 flex items-center gap-1 bg-primary-500/10 px-2 py-0.5 rounded transition-colors cursor-pointer"
+                        className="text-xs font-bold text-primary-500 hover:text-primary-600 flex items-center gap-1 bg-primary-500/10 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
                         title="Estimate duration based on distance and speed"
                         aria-label="Estimate duration"
                     >
@@ -38,28 +38,28 @@ export const DurationInput: React.FC<DurationInputProps> = ({
                     <input 
                         type="number" 
                         min="0"
-                        className="w-full px-3 py-2.5 rounded-xl bg-white/80 dark:bg-dark-card/70 backdrop-blur-md border border-black/12 dark:border-white/10 text-light-text dark:text-dark-text outline-none font-bold text-sm pr-8 [&::-webkit-inner-spin-button]:cursor-pointer [&::-webkit-inner-spin-button]:opacity-40 hover:[&::-webkit-inner-spin-button]:opacity-80"
+                        className="w-full px-3 py-2.5 rounded-xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/10 dark:border-white/10 text-light-text dark:text-dark-text outline-none font-bold text-sm pr-8 [&::-webkit-inner-spin-button]:cursor-pointer [&::-webkit-inner-spin-button]:opacity-40 hover:[&::-webkit-inner-spin-button]:opacity-80 transition-colors focus:border-primary-500"
                         value={hours}
                         onChange={(e) => {
                             const val = Math.max(0, parseInt(e.target.value) || 0);
                             onChange(val * 60 + mins);
                         }}
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500 dark:text-gray-400">h</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary">h</span>
                 </div>
                 <div className="relative flex-1">
                     <input 
                         type="number" 
                         min="0"
                         max="59"
-                        className="w-full px-3 py-2.5 rounded-xl bg-white/80 dark:bg-dark-card/70 backdrop-blur-md border border-black/12 dark:border-white/10 text-light-text dark:text-dark-text outline-none font-bold text-sm pr-8 [&::-webkit-inner-spin-button]:cursor-pointer [&::-webkit-inner-spin-button]:opacity-40 hover:[&::-webkit-inner-spin-button]:opacity-80"
+                        className="w-full px-3 py-2.5 rounded-xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/10 dark:border-white/10 text-light-text dark:text-dark-text outline-none font-bold text-sm pr-8 [&::-webkit-inner-spin-button]:cursor-pointer [&::-webkit-inner-spin-button]:opacity-40 hover:[&::-webkit-inner-spin-button]:opacity-80 transition-colors focus:border-primary-500"
                         value={mins}
                         onChange={(e) => {
                             const val = Math.min(59, Math.max(0, parseInt(e.target.value) || 0));
                             onChange(hours * 60 + val);
                         }}
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500 dark:text-gray-400">m</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary">m</span>
                 </div>
             </div>
         </div>

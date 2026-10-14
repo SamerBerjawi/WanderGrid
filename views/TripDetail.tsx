@@ -2596,8 +2596,9 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 isOpen={isTransportModalOpen} 
                 onClose={() => setIsTransportModalOpen(false)} 
                 title="Manage Transport" 
-                subtitle="Voyage Logistics & Road Trips"
-                icon="directions_car"
+                subtitle="Voyage logistics, flights, trains & road trips"
+                icon={<AirplaneTilt className="w-6 h-6 text-blue-500" weight="duotone" />}
+                iconContainerClassName="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
                 maxWidth="max-w-4xl"
             >
                 <TransportConfigurator 
@@ -2615,8 +2616,9 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 isOpen={isAccommodationModalOpen} 
                 onClose={() => setIsAccommodationModalOpen(false)} 
                 title="Manage Accommodation" 
-                subtitle="Stays, Lodging & Overnights"
-                icon="hotel"
+                subtitle="Stays, lodging, hotels & overnight bookings"
+                icon={<Bed className="w-6 h-6 text-sky-500" weight="duotone" />}
+                iconContainerClassName="bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20"
                 maxWidth="max-w-3xl"
             >
                 <AccommodationConfigurator 
