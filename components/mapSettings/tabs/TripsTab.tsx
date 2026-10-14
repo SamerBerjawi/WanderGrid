@@ -166,10 +166,10 @@ export const TripsTab: React.FC<TripsTabProps> = ({
       {/* 3. AIRPORTS (hidden in Scratch view) */}
       {!isScratchMode && (
         <SettingsSection title={MAP_SETTINGS_LABELS.tripsTab.airportsSection} accentColor="indigo">
-          {/* Airport Size */}
+          {/* Airport Markers */}
           <div className="space-y-1.5">
             <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
-              {MAP_SETTINGS_LABELS.tripsTab.airportSize}
+              {MAP_SETTINGS_LABELS.tripsTab.airportMarkers}
             </span>
             <GlassSegmented<'off' | 'small' | 'medium' | 'large'>
               options={[
@@ -224,7 +224,7 @@ export const TripsTab: React.FC<TripsTabProps> = ({
               helper={MAP_SETTINGS_LABELS.tripsTab.airportsOnlyHelper}
               icon={
                 <div className="w-7 h-7 rounded-lg bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-                  <Buildings size={15} weight="bold" />
+                  <Airplane size={15} weight="bold" />
                 </div>
               }
               control={
@@ -240,7 +240,31 @@ export const TripsTab: React.FC<TripsTabProps> = ({
         </SettingsSection>
       )}
 
-      {/* 4. ROUTES (hidden in Scratch view) */}
+      {/* 4. CITIES (hidden in Scratch view) */}
+      {!isScratchMode && (
+        <SettingsSection title={MAP_SETTINGS_LABELS.tripsTab.citiesSection} accentColor="amber">
+          {/* City Markers */}
+          <div className="space-y-1.5">
+            <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+              {MAP_SETTINGS_LABELS.tripsTab.cityMarkers}
+            </span>
+            <GlassSegmented<'off' | 'small' | 'medium' | 'large'>
+              options={[
+                { id: 'off', label: MAP_SETTINGS_LABELS.tripsTab.sizeOff },
+                { id: 'small', label: MAP_SETTINGS_LABELS.tripsTab.sizeSmall },
+                { id: 'medium', label: MAP_SETTINGS_LABELS.tripsTab.sizeMedium },
+                { id: 'large', label: MAP_SETTINGS_LABELS.tripsTab.sizeLarge },
+              ]}
+              value={settings.citySize || 'medium'}
+              onChange={(val) => onChangeSetting('citySize', val)}
+              columns={4}
+              accentColor="amber"
+            />
+          </div>
+        </SettingsSection>
+      )}
+
+      {/* 5. ROUTES (hidden in Scratch view) */}
       {!isScratchMode && (
         <SettingsSection title={MAP_SETTINGS_LABELS.tripsTab.routesSection} accentColor="indigo">
           {/* Route Color */}

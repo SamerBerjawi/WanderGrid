@@ -99,9 +99,10 @@ export interface MapAppearanceSettings {
     airportsOnly?: boolean; // Solo aerodrome focus: only display airports on the map (hides flights, roads, visited cities, weather & territories)
     projection: 'flat' | 'globe';
 
-    // Flights Tab
+    // Flights & Hubs Tab
     airportSize: 'off' | 'small' | 'medium' | 'large';
     airportMode: 'frequency' | 'uniform';
+    citySize?: 'off' | 'small' | 'medium' | 'large';
     routeWidthMode: 'uniform' | 'frequency';
     routeScale: 'thin' | 'normal' | 'thick';
     routeColorMode: 'default' | 'frequency' | 'gradient';
@@ -151,6 +152,7 @@ export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     projection: 'flat',
     airportSize: 'medium',
     airportMode: 'frequency',
+    citySize: 'medium',
     routeWidthMode: 'frequency',
     routeScale: 'normal',
     routeColorMode: 'gradient',

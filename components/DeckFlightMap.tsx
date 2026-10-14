@@ -795,6 +795,104 @@ const simplifyRailroadLayers = (map: maplibregl.Map) => {
     }
 };
 
+/**
+ * Adjusts basemap label hierarchy across vector styles (dark, fiord, liberty, bright, positron)
+ * so that when zoomed out (world view, zoom < 2.6), country, state, and city labels do not
+ * clutter the map. As the user zooms in, labels fade in smoothly at appropriate cartographic tiers:
+ * - Major countries (USA, Brazil, Canada, China, etc.): zoom >= 2.6
+ * - Minor countries (Belgium, Portugal, Jordan, etc.): zoom >= 3.6
+ * - Country territories & small islands: zoom >= 4.4
+ * - States / provinces / regions (Amazonas, Rio de Janeiro, Western Cape, Jujuy): zoom >= 4.8
+ * - Major cities & capitals: zoom >= 4.0
+ * - Cities: zoom >= 5.2
+ * - Towns: zoom >= 6.8
+ * - Villages, suburbs, other: zoom >= 8.5
+ */
+const adjustBasemapLabelHierarchy = (map: maplibregl.Map) => {
+    if (!map.isStyleLoaded()) {
+        const retry = () => adjustBasemapLabelHierarchy(map);
+        map.once('styledata', retry);
+        map.once('load', retry);
+        return;
+    }
+    try {
+        const style = map.getStyle();
+        if (!style || !style.layers) return;
+
+        style.layers.forEach((layer) => {
+            if (layer.type !== 'symbol') return;
+            const id = layer.id;
+            const srcLayer = layer['source-layer'];
+            const isPlaceLayer = srcLayer === 'place' || id.startsWith('place_') || id.startsWith('label_');
+            if (!isPlaceLayer) return;
+
+            let targetMinZoom: number | null = null;
+            let fadeRange = 0.6;
+
+            // 1. Major Countries (rank <= 1)
+            if (id === 'place_country_major' || id === 'label_country_1' || id === 'country_label_1') {
+                targetMinZoom = 2.6;
+                fadeRange = 0.8;
+            }
+            // 2. Minor Countries (rank >= 2)
+            else if (id === 'place_country_minor' || id === 'label_country_2' || id === 'country_label_2') {
+                targetMinZoom = 3.6;
+                fadeRange = 0.6;
+            }
+            // 3. Other Countries / Island Territories
+            else if (id === 'place_country_other' || id === 'label_country_3' || id === 'country_label_3' || (id.includes('country') && id.includes('label'))) {
+                targetMinZoom = 4.4;
+                fadeRange = 0.6;
+            }
+            // 4. States / Provinces / Administrative Regions (e.g. Amazonas, Jujuy, Western Cape)
+            else if (id === 'place_state' || id === 'label_state' || id.includes('state') || id.includes('province')) {
+                targetMinZoom = 4.8;
+                fadeRange = 0.6;
+            }
+            // 5. Capitals & Large Cities
+            else if (id === 'place_city_large' || id === 'label_city_capital' || id.includes('capital')) {
+                targetMinZoom = 4.0;
+                fadeRange = 0.6;
+            }
+            // 6. Cities
+            else if (id === 'place_city' || id === 'label_city') {
+                targetMinZoom = 5.2;
+                fadeRange = 0.6;
+            }
+            // 7. Towns
+            else if (id === 'place_town' || id === 'label_town') {
+                targetMinZoom = 6.8;
+                fadeRange = 0.6;
+            }
+            // 8. Villages, Suburbs, Neighborhoods, Other
+            else if (
+                id === 'place_village' || id === 'label_village' ||
+                id === 'place_suburb' || id === 'place_other' || id === 'label_other'
+            ) {
+                targetMinZoom = 8.5;
+                fadeRange = 0.5;
+            }
+
+            if (targetMinZoom !== null) {
+                try {
+                    map.setLayerZoomRange(id, targetMinZoom, layer.maxzoom ?? 24);
+                    map.setPaintProperty(id, 'text-opacity', [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        targetMinZoom, 0,
+                        targetMinZoom + fadeRange, 0.85
+                    ]);
+                } catch {
+                    // Ignore layer manipulation error
+                }
+            }
+        });
+    } catch {
+        // Ignore style access error
+    }
+};
+
 export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     trips,
     onTripClick,
@@ -1302,6 +1400,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         flightArcs,
         overlandSegments,
         airportPoints,
+        cityPoints,
         clusterNodes
     } = useMemo(() => {
         const flightCorridorsMap = new Map<string, any>();
@@ -1328,7 +1427,28 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
         // 2. Second pass: Build flight corridors, overland routes, and airport hub points with accurate traffic weights
         const isFreqMode = activeAppearance.airportMode === 'frequency';
-        const baseOriginRadius = activeAppearance.airportSize === 'small' ? 3.0 : activeAppearance.airportSize === 'large' ? 8.0 : 5.0;
+        const baseOriginRadius = activeAppearance.airportSize === 'small' ? 2.5 : activeAppearance.airportSize === 'large' ? 6.5 : 4.5;
+        const effectiveCitySize = activeAppearance.citySize || 'medium';
+        const baseCityRadius = effectiveCitySize === 'small' ? 2.5 : effectiveCitySize === 'large' ? 6.5 : 4.5;
+        const airportColor: [number, number, number, number] = isDark ? [56, 189, 248, 205] : [14, 165, 233, 215];
+        const cityColor: [number, number, number, number] = isDark ? [251, 191, 36, 195] : [245, 158, 11, 210];
+        const markerStrokeColor: [number, number, number, number] = isDark ? [255, 255, 255, 180] : [255, 255, 255, 220];
+
+        const parseAirportCode = (raw: string): string => {
+            if (!raw) return '';
+            const trimmed = raw.trim();
+            if (/^[A-Za-z]{3,4}$/.test(trimmed)) return trimmed.toUpperCase();
+            const parenMatch = trimmed.match(/\(([A-Za-z]{3,4})\)/);
+            if (parenMatch) return parenMatch[1].toUpperCase();
+            const words = trimmed.match(/\b([A-Za-z]{3,4})\b/g);
+            if (words) {
+                for (const w of words) {
+                    const upper = w.toUpperCase();
+                    if (isKnownAirport(upper)) return upper;
+                }
+            }
+            return '';
+        };
 
         enrichedTrips.forEach(trip => {
             trip.transports?.forEach(t => {
@@ -1421,22 +1541,6 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 }
 
                 // Airport Markers: strictly limit to verified airports (flights or recognized aerodromes)
-                const parseAirportCode = (raw: string): string => {
-                    if (!raw) return '';
-                    const trimmed = raw.trim();
-                    if (/^[A-Za-z]{3,4}$/.test(trimmed)) return trimmed.toUpperCase();
-                    const parenMatch = trimmed.match(/\(([A-Za-z]{3,4})\)/);
-                    if (parenMatch) return parenMatch[1].toUpperCase();
-                    const words = trimmed.match(/\b([A-Za-z]{3,4})\b/g);
-                    if (words) {
-                        for (const w of words) {
-                            const upper = w.toUpperCase();
-                            if (isKnownAirport(upper)) return upper;
-                        }
-                    }
-                    return '';
-                };
-
                 const oAirportCode = parseAirportCode(t.origin || '');
                 const dAirportCode = parseAirportCode(t.destination || '');
 
@@ -1449,8 +1553,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     const resolvedCode = oAirportCode || (oCode.length === 3 || oCode.length === 4 ? oCode : '');
                     const metaOrigin = resolvedCode ? resolveLocationMetadata(resolvedCode, t.originLat, t.originLng) : null;
                     const origFreq = Math.max(airportFreqMap.get(p1) || 1, resolvedCode ? (airportFreqMap.get(resolvedCode) || 1) : 1);
+                    const existing = pointsMap.get(p1);
 
-                    if (!pointsMap.has(p1)) {
+                    // Airport always takes precedence over a city marker at this location
+                    if (!existing || !existing.isAirport) {
                         pointsMap.set(p1, {
                             position: [t.originLng, t.originLat, 0],
                             name: metaOrigin ? metaOrigin.name : (resolvedCode ? `${resolvedCode} Airport` : formatProperLocationName(t.origin)),
@@ -1459,8 +1565,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             isAirport: true,
                             type: 'airport',
                             tripId: trip.id,
-                            color: [250, 154, 29, 255],
-                            strokeColor: [255, 255, 255, 255],
+                            color: airportColor,
+                            strokeColor: markerStrokeColor,
                             frequency: origFreq,
                             radius: isFreqMode
                                 ? Math.min(24.0, baseOriginRadius + Math.log2(Math.max(1, origFreq)) * scaleFactor)
@@ -1477,12 +1583,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             isAirport: false,
                             type: 'city',
                             tripId: trip.id,
-                            color: [250, 154, 29, 255],
-                            strokeColor: [255, 255, 255, 255],
+                            color: cityColor,
+                            strokeColor: markerStrokeColor,
                             frequency: origFreq,
                             radius: isFreqMode
-                                ? Math.min(24.0, baseOriginRadius + Math.log2(Math.max(1, origFreq)) * scaleFactor)
-                                : baseOriginRadius
+                                ? Math.min(24.0, baseCityRadius + Math.log2(Math.max(1, origFreq)) * scaleFactor)
+                                : baseCityRadius
                         });
                     }
                 }
@@ -1491,8 +1597,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     const resolvedCode = dAirportCode || (dCode.length === 3 || dCode.length === 4 ? dCode : '');
                     const metaDest = resolvedCode ? resolveLocationMetadata(resolvedCode, t.destLat, t.destLng) : null;
                     const destFreq = Math.max(airportFreqMap.get(p2) || 1, resolvedCode ? (airportFreqMap.get(resolvedCode) || 1) : 1);
+                    const existing = pointsMap.get(p2);
 
-                    if (!pointsMap.has(p2)) {
+                    // Airport always takes precedence over a city marker at this location
+                    if (!existing || !existing.isAirport) {
                         pointsMap.set(p2, {
                             position: [t.destLng, t.destLat, 0],
                             name: metaDest ? metaDest.name : (resolvedCode ? `${resolvedCode} Airport` : formatProperLocationName(t.destination)),
@@ -1501,8 +1609,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             isAirport: true,
                             type: 'airport',
                             tripId: trip.id,
-                            color: [250, 154, 29, 255],
-                            strokeColor: [255, 255, 255, 255],
+                            color: airportColor,
+                            strokeColor: markerStrokeColor,
                             frequency: destFreq,
                             radius: isFreqMode
                                 ? Math.min(24.0, baseOriginRadius + Math.log2(Math.max(1, destFreq)) * scaleFactor)
@@ -1519,48 +1627,79 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             isAirport: false,
                             type: 'city',
                             tripId: trip.id,
-                            color: [250, 154, 29, 255],
-                            strokeColor: [255, 255, 255, 255],
+                            color: cityColor,
+                            strokeColor: markerStrokeColor,
                             frequency: destFreq,
                             radius: isFreqMode
-                                ? Math.min(24.0, baseOriginRadius + Math.log2(Math.max(1, destFreq)) * scaleFactor)
-                                : baseOriginRadius
+                                ? Math.min(24.0, baseCityRadius + Math.log2(Math.max(1, destFreq)) * scaleFactor)
+                                : baseCityRadius
                         });
                     }
                 }
             });
         });
 
-        // Add any visitedPlaces (cities/destinations) not already keyed
+        // Add any visitedPlaces (cities/destinations) not already keyed as an airport or city
         if (visitedPlaces && visitedPlaces.length > 0) {
             visitedPlaces.forEach(place => {
                 if (!place.lat || !place.lng) return;
-                const key = `${place.lng.toFixed(3)},${place.lat.toFixed(3)}`;
-                if (!pointsMap.has(key)) {
-                    pointsMap.set(key, {
-                        position: [place.lng, place.lat, 0],
-                        name: place.name,
-                        city: place.name,
-                        isAirport: false,
-                        type: 'city',
-                        color: [250, 154, 29, 255],
-                        strokeColor: [255, 255, 255, 255],
-                        frequency: 1,
-                        radius: baseOriginRadius
-                    });
-                }
+                const key = `${place.lat.toFixed(3)},${place.lng.toFixed(3)}`;
+                if (pointsMap.has(key)) return;
+
+                // Never place a city marker on top of or in close proximity (< 4km) to a known airport
+                const placeCode = parseAirportCode(place.name || '');
+                if (placeCode && isKnownAirport(placeCode)) return;
+
+                const isNearAirport = Array.from(pointsMap.values()).some(pt => {
+                    if (!pt.isAirport) return false;
+                    const dLat = Math.abs(pt.position[1] - place.lat);
+                    const dLng = Math.abs(pt.position[0] - place.lng);
+                    return dLat < 0.04 && dLng < 0.04;
+                });
+                if (isNearAirport) return;
+
+                pointsMap.set(key, {
+                    position: [place.lng, place.lat, 0],
+                    name: place.name,
+                    city: place.name,
+                    isAirport: false,
+                    type: 'city',
+                    color: cityColor,
+                    strokeColor: markerStrokeColor,
+                    frequency: 1,
+                    radius: baseCityRadius
+                });
             });
         }
 
         // 2. Clusters logic
-        const allLocationNodes = activeAppearance.airportsOnly
-            ? Array.from(pointsMap.values()).filter(p => p.isAirport)
-            : Array.from(pointsMap.values());
+        const airportNodes = Array.from(pointsMap.values()).filter(p => p.isAirport);
+        const cityNodes = activeAppearance.airportsOnly
+            ? []
+            : Array.from(pointsMap.values()).filter(p => {
+                if (p.isAirport) return false;
+                // Suppress any city markers that fall on top of or in proximity (< 4km) to an airport
+                const collidesWithAirport = airportNodes.some(apt => {
+                    const dLat = Math.abs(apt.position[1] - p.position[1]);
+                    const dLng = Math.abs(apt.position[0] - p.position[0]);
+                    return dLat < 0.04 && dLng < 0.04;
+                });
+                return !collidesWithAirport;
+            });
+
+        const activeLocationNodes: any[] = [];
+        if (activeAppearance.airportSize !== 'off') {
+            activeLocationNodes.push(...airportNodes);
+        }
+        if (!activeAppearance.airportsOnly && (activeAppearance.citySize || 'medium') !== 'off' && showCityMarkers !== false) {
+            activeLocationNodes.push(...cityNodes);
+        }
+
         const clusters: any[] = [];
         if (clusterMode) {
             const grid = new Map<string, any[]>();
             const gridSize = 2.0;
-            allLocationNodes.forEach(pt => {
+            activeLocationNodes.forEach(pt => {
                 const gKey = `${Math.floor(pt.position[1] / gridSize)},${Math.floor(pt.position[0] / gridSize)}`;
                 if (!grid.has(gKey)) grid.set(gKey, []);
                 grid.get(gKey)!.push(pt);
@@ -1588,7 +1727,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         return {
             flightArcs: Array.from(flightCorridorsMap.values()),
             overlandSegments: overlandRoutes,
-            airportPoints: allLocationNodes,
+            airportPoints: airportNodes,
+            cityPoints: cityNodes,
             clusterNodes: clusters
         };
     }, [
@@ -1600,6 +1740,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         showFrequencyWeight,
         activeAppearance,
         clusterMode,
+        isDark,
         osrmVersion
     ]);
 
@@ -2390,8 +2531,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             }
         }
 
-        // 9. VISITED AIRPORT & CITY HUBS (Toggled from Airports Section under Trips)
-        if ((showCityMarkers || activeAppearance.airportsOnly) && activeAppearance.airportSize !== 'off' && viewMode !== 'scratch') {
+        // 9. VISITED AIRPORT & CITY HUBS (Toggled from Airports & Cities in Map Settings)
+        if (viewMode !== 'scratch') {
             if (clusterMode && clusterNodes.length > 0) {
                 layers.push(
                     new ScatterplotLayer({
@@ -2437,72 +2578,124 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         extensions: [globeHorizonCullExtension]
                     })
                 );
-            } else if (airportPoints.length > 0) {
-                // Airport marker dots (prominent & visible at any zoom level)
-                layers.push(
-                    new ScatterplotLayer({
-                        id: 'airport-markers',
-                        data: airportPoints,
-                        getPosition: (d: any) => d.position,
-                        filled: true,
-                        stroked: true,
-                        getFillColor: (d: any) => {
-                            if (selectedCorridor) {
-                                const code = (d.iata || d.name || '').toUpperCase().trim();
-                                if (code === selectedCorridor.originCode || code === selectedCorridor.destCode) {
-                                    return [52, 211, 153, 255];
+            } else {
+                // City marker dots (Warm Amber - refined & subtle, rendered below airports)
+                const showCities = !activeAppearance.airportsOnly && (activeAppearance.citySize || 'medium') !== 'off' && showCityMarkers !== false;
+                if (showCities && cityPoints.length > 0) {
+                    const effectiveCitySize = activeAppearance.citySize || 'medium';
+                    layers.push(
+                        new ScatterplotLayer({
+                            id: 'city-markers',
+                            data: cityPoints,
+                            getPosition: (d: any) => d.position,
+                            filled: true,
+                            stroked: true,
+                            getFillColor: (d: any) => {
+                                if (selectedCorridor) {
+                                    return isDark ? [100, 115, 135, 60] : [160, 175, 195, 60];
                                 }
-                                return isDark ? [100, 115, 135, 90] : [160, 175, 195, 90];
-                            }
-                            return d.color || [250, 154, 29, 255];
-                        },
-                        getLineColor: (d: any) => {
-                            if (selectedCorridor) {
-                                const code = (d.iata || d.name || '').toUpperCase().trim();
-                                if (code === selectedCorridor.originCode || code === selectedCorridor.destCode) {
-                                    return [255, 255, 255, 255];
+                                return isDark ? [251, 191, 36, 195] : [245, 158, 11, 210];
+                            },
+                            getLineColor: () => isDark ? [255, 255, 255, 180] : [255, 255, 255, 210],
+                            getRadius: (d: any) => {
+                                const baseRadius = effectiveCitySize === 'small' ? 3.5 : effectiveCitySize === 'large' ? 7.0 : 5.0;
+                                let r = baseRadius;
+                                if (activeAppearance.airportMode === 'frequency') {
+                                    const freq = d.frequency || 1;
+                                    const scaleFactor = effectiveCitySize === 'small' ? 1.0 : effectiveCitySize === 'large' ? 2.5 : 1.8;
+                                    r = Math.min(18, baseRadius + Math.log2(Math.max(1, freq)) * scaleFactor);
                                 }
-                            }
-                            return [255, 255, 255, 255];
-                        },
-                        getRadius: (d: any) => {
-                            const baseRadius = activeAppearance.airportSize === 'small' ? 4.5 : activeAppearance.airportSize === 'large' ? 8.5 : 6.0;
-                            let r = baseRadius;
-                            if (activeAppearance.airportMode === 'frequency') {
-                                const freq = d.frequency || 1;
-                                const scaleFactor = activeAppearance.airportSize === 'small' ? 1.5 : activeAppearance.airportSize === 'large' ? 3.5 : 2.5;
-                                r = Math.min(24, baseRadius + Math.log2(Math.max(1, freq)) * scaleFactor);
-                            }
-                            if (selectedCorridor) {
-                                const code = (d.iata || d.name || '').toUpperCase().trim();
-                                if (code === selectedCorridor.originCode || code === selectedCorridor.destCode) {
-                                    return r * 1.5;
-                                }
-                            }
-                            return r;
-                        },
-                        radiusUnits: 'pixels',
-                        radiusMinPixels: 4.5,
-                        radiusMaxPixels: 28,
-                        lineWidthUnits: 'pixels',
-                        getLineWidth: 2,
-                        lineWidthMinPixels: 1.5,
-                        wrapLongitude: true,
-                        pickable: true,
-                        autoHighlight: true,
-                        highlightColor: [255, 255, 255, 255],
-                        onHover: (info: any) => info.object && setHoverInfo(info),
-                        onClick: (info: any) => info.object?.tripId && onTripClick && onTripClick(info.object.tripId),
-                        parameters: { depthTest: false },
-                        updateTriggers: {
-                            getFillColor: [selectedCorridor?.id, isDark, activeAppearance.routeColorMode, activeAppearance.airportMode],
-                            getRadius: [selectedCorridor?.id, activeAppearance.airportMode, activeAppearance.airportSize]
-                        },
-                        extensions: [globeHorizonCullExtension]
-                    })
-                );
+                                return r;
+                            },
+                            radiusUnits: 'pixels',
+                            radiusMinPixels: 3.5,
+                            radiusMaxPixels: 20,
+                            lineWidthUnits: 'pixels',
+                            getLineWidth: 1.2,
+                            lineWidthMinPixels: 1.0,
+                            wrapLongitude: true,
+                            pickable: true,
+                            autoHighlight: true,
+                            highlightColor: [255, 255, 255, 255],
+                            onHover: (info: any) => info.object && setHoverInfo(info),
+                            onClick: (info: any) => info.object?.tripId && onTripClick && onTripClick(info.object.tripId),
+                            parameters: { depthTest: false },
+                            updateTriggers: {
+                                getFillColor: [selectedCorridor?.id, isDark],
+                                getLineColor: [isDark],
+                                getRadius: [effectiveCitySize, activeAppearance.airportMode]
+                            },
+                            extensions: [globeHorizonCullExtension]
+                        })
+                    );
+                }
 
-
+                // Airport marker dots (Aviation Sky Blue - rendered cleanly on top of cities)
+                if (activeAppearance.airportSize !== 'off' && airportPoints.length > 0) {
+                    layers.push(
+                        new ScatterplotLayer({
+                            id: 'airport-markers',
+                            data: airportPoints,
+                            getPosition: (d: any) => d.position,
+                            filled: true,
+                            stroked: true,
+                            getFillColor: (d: any) => {
+                                if (selectedCorridor) {
+                                    const code = (d.iata || d.name || '').toUpperCase().trim();
+                                    if (code === selectedCorridor.originCode || code === selectedCorridor.destCode) {
+                                        return [52, 211, 153, 230];
+                                    }
+                                    return isDark ? [100, 115, 135, 60] : [160, 175, 195, 60];
+                                }
+                                return isDark ? [56, 189, 248, 205] : [14, 165, 233, 215];
+                            },
+                            getLineColor: (d: any) => {
+                                if (selectedCorridor) {
+                                    const code = (d.iata || d.name || '').toUpperCase().trim();
+                                    if (code === selectedCorridor.originCode || code === selectedCorridor.destCode) {
+                                        return [255, 255, 255, 255];
+                                    }
+                                }
+                                return isDark ? [255, 255, 255, 180] : [255, 255, 255, 210];
+                            },
+                            getRadius: (d: any) => {
+                                const baseRadius = activeAppearance.airportSize === 'small' ? 3.5 : activeAppearance.airportSize === 'large' ? 7.0 : 5.0;
+                                let r = baseRadius;
+                                if (activeAppearance.airportMode === 'frequency') {
+                                    const freq = d.frequency || 1;
+                                    const scaleFactor = activeAppearance.airportSize === 'small' ? 1.0 : activeAppearance.airportSize === 'large' ? 2.5 : 1.8;
+                                    r = Math.min(18, baseRadius + Math.log2(Math.max(1, freq)) * scaleFactor);
+                                }
+                                if (selectedCorridor) {
+                                    const code = (d.iata || d.name || '').toUpperCase().trim();
+                                    if (code === selectedCorridor.originCode || code === selectedCorridor.destCode) {
+                                        return r * 1.35;
+                                    }
+                                }
+                                return r;
+                            },
+                            radiusUnits: 'pixels',
+                            radiusMinPixels: 3.5,
+                            radiusMaxPixels: 20,
+                            lineWidthUnits: 'pixels',
+                            getLineWidth: 1.2,
+                            lineWidthMinPixels: 1.0,
+                            wrapLongitude: true,
+                            pickable: true,
+                            autoHighlight: true,
+                            highlightColor: [255, 255, 255, 255],
+                            onHover: (info: any) => info.object && setHoverInfo(info),
+                            onClick: (info: any) => info.object?.tripId && onTripClick && onTripClick(info.object.tripId),
+                            parameters: { depthTest: false },
+                            updateTriggers: {
+                                getFillColor: [selectedCorridor?.id, isDark],
+                                getLineColor: [selectedCorridor?.id, isDark],
+                                getRadius: [selectedCorridor?.id, activeAppearance.airportMode, activeAppearance.airportSize]
+                            },
+                            extensions: [globeHorizonCullExtension]
+                        })
+                    );
+                }
             }
         }
 
@@ -2532,6 +2725,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         clusterMode,
         clusterNodes,
         airportPoints,
+        cityPoints,
         animateRoutes,
         animatedTripPaths,
         currentTime,
@@ -2691,6 +2885,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             setupAirportIcons();
             syncAirportOverlayOnMap(map, isDetailedAirports, isDark);
             simplifyRailroadLayers(map);
+            adjustBasemapLabelHierarchy(map);
             if (isOpenAipOverlay && effectiveOpenAipKey) {
                 ensureOpenAipIcons(map, isDark ? 'dark' : 'light');
                 syncOpenAipOverlayOnMap(map, isOpenAipOverlay, isDark, effectiveOpenAipKey, activeAppearance.openAipGroups, activeAppearance.openAipOpacity ?? 0.85, activeAppearance.openAipAirportCategories);
@@ -2919,7 +3114,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             isDetailedAirports,
             isOpenAipOverlay,
             effectiveOpenAipKey,
-            activeAppearance.openAipGroups
+            activeAppearance.openAipGroups,
+            activeAppearance.openAipAirportCategories
         );
         map.setStyle(nextStyle);
 
@@ -2944,6 +3140,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             });
             syncAirportOverlayOnMap(map, isDetailedAirports, isDark);
             simplifyRailroadLayers(map);
+            adjustBasemapLabelHierarchy(map);
             if (isOpenAipOverlay && effectiveOpenAipKey) {
                 ensureOpenAipIcons(map, isDark ? 'dark' : 'light');
                 syncOpenAipOverlayOnMap(map, isOpenAipOverlay, isDark, effectiveOpenAipKey, activeAppearance.openAipGroups, activeAppearance.openAipOpacity ?? 0.85, activeAppearance.openAipAirportCategories);

@@ -965,7 +965,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         onElevatedRoutesChange={setElevatedProjection}
                         showFlightRoutes={showIndependentFlights}
                         showLandSeaRoutes={showLandSeaRoutes}
-                        showCityMarkers={appearance.airportSize !== 'off'}
+                        showCityMarkers={(appearance.citySize ?? 'medium') !== 'off'}
                         showGradientRoutes={appearance.routeColorMode === 'gradient'}
                         clusterMode={clusterMode}
                         showRoadTracing={showRoadTracing}

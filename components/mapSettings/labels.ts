@@ -79,7 +79,8 @@ export const MAP_SETTINGS_LABELS = {
 
     // Airports
     airportsSection: 'Airports',
-    airportSize: 'Airport size',
+    airportMarkers: 'Airport markers',
+    airportSize: 'Airport markers',
     sizeOff: 'Off',
     sizeSmall: 'Small',
     sizeMedium: 'Medium',
@@ -90,6 +91,11 @@ export const MAP_SETTINGS_LABELS = {
     detailDetailed: 'Detailed',
     airportsOnly: 'Airports only',
     airportsOnlyHelper: 'Hides routes, cities and overlays',
+
+    // Cities
+    citiesSection: 'Cities',
+    cityMarkers: 'City markers',
+    citySize: 'City markers',
 
     // Routes
     routesSection: 'Routes',
