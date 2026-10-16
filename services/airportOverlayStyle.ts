@@ -2,6 +2,7 @@
 // High-Contrast Aeronautical Styling for Light and Dark Modes
 
 import type { LayerSpecification, SourceSpecification } from 'maplibre-gl';
+import type { AirportDetail, AirportOverlayGroup } from '../types/mapAppearance';
 
 export const AIRPORT_SOURCE_ID = 'airport-overlay';
 export const AIRPORT_PMTILES_URL = 'pmtiles:///airport-overlay.pmtiles';
@@ -206,10 +207,84 @@ export const createAirportOverlaySource = (): SourceSpecification => ({
   attribution: '© OpenStreetMap contributors',
 });
 
-export const createAirportOverlayLayers = (isDark: boolean): LayerSpecification[] => {
+// Style layers grouped for user-facing visibility toggles (ids without the 'airport-overlay-' prefix).
+export const AIRPORT_OVERLAY_LAYER_GROUPS: Record<AirportOverlayGroup, string[]> = {
+  boundary: ['aerodrome-fill', 'aerodrome-outline'],
+  runways: [
+    'runway-polygon-outline', 'runway-polygon', 'runway-outline', 'runway-line',
+    'runway-threshold-synth', 'runway-centerline-synth', 'runway-designator-synth', 'runway-labels',
+  ],
+  taxiways: [
+    'taxiway-outline', 'taxiway-line', 'taxiway-polygon-outline', 'taxiway-polygon',
+    'taxiway-centerline', 'taxiway-labels',
+  ],
+  aprons: ['apron', 'apron-outline', 'parking-position'],
+  terminals: ['terminals-shadow', 'terminals', 'jetbridge-shadow', 'jetbridge', 'terminal-labels'],
+  gates: ['gate-label'],
+  markings: ['marking-fill', 'marking-line'],
+  navaids: ['navigationaid-circle', 'navigationaid-directed', 'papi'],
+  landmarks: ['tower', 'windsock'],
+  names: ['name-label'],
+};
+
+// Which groups each "Runway detail" level draws. 'none' draws nothing (the overlay is not added at all).
+export const AIRPORT_DETAIL_GROUPS: Record<AirportDetail, AirportOverlayGroup[]> = {
+  none: [],
+  simple: ['boundary', 'runways', 'taxiways', 'names'],
+  detailed: [
+    'boundary', 'runways', 'taxiways', 'aprons', 'terminals', 'gates', 'markings', 'navaids', 'landmarks', 'names',
+  ],
+};
+
+export const getAirportOverlayGroups = (detail: AirportDetail): AirportOverlayGroup[] => AIRPORT_DETAIL_GROUPS[detail];
+
+const LAYER_ID_TO_GROUP: Record<string, AirportOverlayGroup> = {};
+(Object.entries(AIRPORT_OVERLAY_LAYER_GROUPS) as [AirportOverlayGroup, string[]][]).forEach(([group, ids]) => {
+  ids.forEach((id) => { LAYER_ID_TO_GROUP[`airport-overlay-${id}`] = group; });
+});
+
+export const isAirportOverlayLayerVisible = (
+  layerId: string,
+  enabledGroups?: readonly AirportOverlayGroup[],
+): boolean => {
+  if (!enabledGroups) return true;
+  const group = LAYER_ID_TO_GROUP[layerId];
+  return !group || enabledGroups.includes(group);
+};
+
+export const createAirportOverlayLayers = (
+  isDark: boolean,
+  enabledGroups?: readonly AirportOverlayGroup[],
+): LayerSpecification[] => {
   const gatePillId = getAirportGatePillImageId(isDark);
 
   const rawLayers: any[] = [
+    // 0. Aerodrome boundary (area of the airport)
+    {
+      id: 'airport-overlay-aerodrome-fill',
+      type: 'fill',
+      source: AIRPORT_SOURCE_ID,
+      'source-layer': 'aerodrome',
+      minzoom: 9,
+      paint: {
+        'fill-color': isDark ? '#38bdf8' : '#6366f1',
+        'fill-opacity': ['interpolate', ['linear'], ['zoom'], 9, 0.06, 14, 0.03],
+      },
+    },
+    {
+      id: 'airport-overlay-aerodrome-outline',
+      type: 'line',
+      source: AIRPORT_SOURCE_ID,
+      'source-layer': 'aerodrome',
+      minzoom: 9,
+      layout: { 'line-join': 'round' },
+      paint: {
+        'line-color': isDark ? '#7dd3fc' : '#4f46e5',
+        'line-opacity': 0.55,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 15, 1.6],
+        'line-dasharray': [3, 2],
+      },
+    },
     // 1. Taxiway outline (lines)
     {
       id: 'airport-overlay-taxiway-outline',
@@ -823,10 +898,15 @@ export const createAirportOverlayLayers = (isDark: boolean): LayerSpecification[
     },
   ];
 
-  if (!isDark) return rawLayers;
+  const withVisibility = (layer: any) =>
+    isAirportOverlayLayerVisible(layer.id, enabledGroups)
+      ? layer
+      : { ...layer, layout: { ...layer.layout, visibility: 'none' } };
+
+  if (!isDark) return rawLayers.map(withVisibility);
 
   // Apply dark theme overrides
-  return rawLayers.map((layer) => {
+  return rawLayers.map(withVisibility).map((layer) => {
     const paintOverride = DARK_AIRPORT_PAINT_OVERRIDES[layer.id];
     if (!paintOverride) return layer;
     return {

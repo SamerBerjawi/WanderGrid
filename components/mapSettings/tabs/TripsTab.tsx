@@ -13,7 +13,7 @@ import {
   GitFork,
   EyeSlash,
 } from '@phosphor-icons/react';
-import { MapAppearanceSettings } from '../../../types/mapAppearance';
+import { MapAppearanceSettings, AirportDetail, normalizeAirportDetail } from '../../../types/mapAppearance';
 import MAP_SETTINGS_LABELS from '../labels';
 import { GlassSegmented } from '../../glass/GlassSegmented';
 import { GlassToggle } from '../../glass/GlassToggle';
@@ -205,14 +205,15 @@ export const TripsTab: React.FC<TripsTabProps> = ({
             <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
               {MAP_SETTINGS_LABELS.tripsTab.runwayDetail}
             </span>
-            <GlassSegmented<'standard' | 'detailed'>
+            <GlassSegmented<AirportDetail>
               options={[
-                { id: 'standard', label: MAP_SETTINGS_LABELS.tripsTab.detailSimple },
+                { id: 'none', label: MAP_SETTINGS_LABELS.tripsTab.detailNone },
+                { id: 'simple', label: MAP_SETTINGS_LABELS.tripsTab.detailSimple },
                 { id: 'detailed', label: MAP_SETTINGS_LABELS.tripsTab.detailDetailed },
               ]}
-              value={settings.airportDetail || 'detailed'}
+              value={normalizeAirportDetail(settings.airportDetail)}
               onChange={(val) => onChangeSetting('airportDetail', val)}
-              columns={2}
+              columns={3}
               accentColor="indigo"
             />
           </div>

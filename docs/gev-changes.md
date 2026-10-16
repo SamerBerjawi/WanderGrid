@@ -329,3 +329,11 @@ Each item is independently isolated with its own feature flag, branch/commit his
 
 
 
+
+
+## Airport overlay detail levels (replaces the earlier P08 per-group toggles)
+
+- **Behaviour**: Settings -> Trips -> Runway detail now has None / Simple / Detailed. None draws no overlay and no dataset runways; Simple draws Boundary, Runways, Taxiways and Names; Detailed draws every group. Legacy `standard` maps to None.
+- **Files Modified**: `services/airportOverlayStyle.ts` (groups, `AIRPORT_DETAIL_GROUPS`, new `aerodrome` boundary layers), `types/mapAppearance.ts` (`AirportDetail`, `normalizeAirportDetail`), `components/DeckFlightMap.tsx`, `components/mapSettings/tabs/TripsTab.tsx`, `components/mapSettings/labels.ts`
+- **Feature Flag**: none (extends the existing Runway detail setting)
+- **Exact Removal Recipe**: `git revert <sha>`

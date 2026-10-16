@@ -92,10 +92,30 @@ export const ALL_AIRPORT_CATEGORIES: AirportCategory[] = [
     'local'
 ];
 
+export const AIRPORT_OVERLAY_GROUP_IDS = [
+    'boundary',
+    'runways',
+    'taxiways',
+    'aprons',
+    'terminals',
+    'gates',
+    'markings',
+    'navaids',
+    'landmarks',
+    'names',
+] as const;
+export type AirportOverlayGroup = (typeof AIRPORT_OVERLAY_GROUP_IDS)[number];
+
+export type AirportDetail = 'none' | 'simple' | 'detailed';
+
+// Legacy 'standard' (circles only, no overlay) maps to 'none'; unknown/missing falls back to the default.
+export const normalizeAirportDetail = (value?: string): AirportDetail =>
+    value === 'none' || value === 'standard' ? 'none' : value === 'simple' ? 'simple' : 'detailed';
+
 export interface MapAppearanceSettings {
     // Atlas & Cartography
     basemap: BasemapMode;
-    airportDetail: 'standard' | 'detailed'; // standard circles vs detailed runway markings
+    airportDetail: AirportDetail; // none = markers only, simple = boundary/runways/taxiways/names, detailed = everything
     airportsOnly?: boolean; // Solo aerodrome focus: only display airports on the map (hides flights, roads, visited cities, weather & territories)
     projection: 'flat' | 'globe';
 

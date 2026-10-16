@@ -87,6 +87,7 @@ export const MAP_SETTINGS_LABELS = {
     sizeLarge: 'Large',
     sizeByTraffic: 'Size by traffic',
     runwayDetail: 'Runway detail',
+    detailNone: 'None',
     detailSimple: 'Simple',
     detailDetailed: 'Detailed',
     airportsOnly: 'Airports only',

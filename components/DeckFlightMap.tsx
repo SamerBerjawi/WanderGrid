@@ -8,8 +8,12 @@ import {
     GLYPHS_URL,
     AIRPORT_ICON_DEFINITIONS,
     createAirportOverlaySource,
-    createAirportOverlayLayers
+    createAirportOverlayLayers,
+    isAirportOverlayLayerVisible,
+    getAirportOverlayGroups
 } from '../services/airportOverlayStyle';
+import { normalizeAirportDetail } from '../types/mapAppearance';
+import type { AirportOverlayGroup } from '../types/mapAppearance';
 import {
     OPENAIP_AIRSPACE_SOURCE_ID,
     OPENAIP_PATTERN_IMAGES,
@@ -435,7 +439,8 @@ export const createMapLibreStyle = (
     openAipOverlay: boolean = false,
     openAipKey?: string,
     openAipGroups?: OpenAipOverlayGroup[],
-    openAipAirportCategories?: AirportCategory[]
+    openAipAirportCategories?: AirportCategory[],
+    airportOverlayGroups?: AirportOverlayGroup[]
 ): string | maplibregl.StyleSpecification => {
     const effectiveLayer = getEffectiveBasemap(layer, isDark);
 
@@ -514,7 +519,7 @@ export const createMapLibreStyle = (
             maxzoom: 24
         },
         ...(canEnableOpenAip ? getOpenAipOverlayLayers(openAipGroups, isDark ? 'dark' : 'light', openAipAirportCategories) : []),
-        ...(detailedAirports ? createAirportOverlayLayers(isDark) : [])
+        ...(detailedAirports ? createAirportOverlayLayers(isDark, airportOverlayGroups) : [])
     ];
 
     return {
@@ -633,9 +638,9 @@ export interface DeckFlightMapProps {
     embedded?: boolean;
 }
 
-const syncAirportOverlayOnMap = (map: maplibregl.Map, isDetailedAirports: boolean, isDark: boolean) => {
+const syncAirportOverlayOnMap = (map: maplibregl.Map, isDetailedAirports: boolean, isDark: boolean, overlayGroups?: AirportOverlayGroup[]) => {
     if (!map.isStyleLoaded()) {
-        const retry = () => syncAirportOverlayOnMap(map, isDetailedAirports, isDark);
+        const retry = () => syncAirportOverlayOnMap(map, isDetailedAirports, isDark, overlayGroups);
         map.once('styledata', retry);
         map.once('load', retry);
         return;
@@ -649,7 +654,7 @@ const syncAirportOverlayOnMap = (map: maplibregl.Map, isDetailedAirports: boolea
             }
         }
         if (map.getSource(AIRPORT_SOURCE_ID)) {
-            const airportLayers = createAirportOverlayLayers(isDark);
+            const airportLayers = createAirportOverlayLayers(isDark, overlayGroups);
             airportLayers.forEach(layer => {
                 if (!map.getLayer(layer.id)) {
                     try {
@@ -657,7 +662,12 @@ const syncAirportOverlayOnMap = (map: maplibregl.Map, isDetailedAirports: boolea
                     } catch (e) {
                         console.warn(`[DeckFlightMap] error adding airport layer ${layer.id}:`, e);
                     }
-                } else if (layer.paint) {
+                } else {
+                    try {
+                        map.setLayoutProperty(layer.id, 'visibility', isAirportOverlayLayerVisible(layer.id, overlayGroups) ? 'visible' : 'none');
+                    } catch {}
+                }
+                if (map.getLayer(layer.id) && layer.paint) {
                     Object.entries(layer.paint).forEach(([prop, val]) => {
                         try {
                             map.setPaintProperty(layer.id, prop as any, val);
@@ -1110,7 +1120,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     // Runway & global aerodromes dataset demand loading
     useEffect(() => {
         const wantsAviationAirports = Boolean(activeAppearance.openAipOverlay && (activeAppearance.openAipGroups ? activeAppearance.openAipGroups.includes('airports') : true));
-        const wantsDetailedRunways = activeAppearance.airportDetail === 'detailed';
+        const wantsDetailedRunways = normalizeAirportDetail(activeAppearance.airportDetail) !== 'none';
         if ((wantsAviationAirports || wantsDetailedRunways) && !runwayDataset) {
             getPhysicalRunways().then(dataset => {
                 setRunwayDataset(dataset);
@@ -2307,7 +2317,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
 
         // 7. Physical Runway Details (Rendered directly via Deck.gl on ALL basemaps)
-        if (activeAppearance.airportDetail === 'detailed' && runwayDataset && activeAppearance.airportSize !== 'off') {
+        // Dataset-based runway fallback follows the same detail level as the vector overlay.
+        const deckRunwaysEnabled = getAirportOverlayGroups(normalizeAirportDetail(activeAppearance.airportDetail)).includes('runways');
+        if (deckRunwaysEnabled && runwayDataset && activeAppearance.airportSize !== 'off') {
             const effectiveLayer = getEffectiveBasemap(currentLayer, isDark);
             const isLight = isLightEffectiveBasemap(effectiveLayer);
             const stripColor: [number, number, number, number] = isLight ? [30, 41, 59, 255] : [71, 85, 105, 255];
@@ -2744,7 +2756,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         if (!mapContainerRef.current) return;
 
         const isGlobe = effectiveProjection === 'globe';
-        const isDetailedAirports = activeAppearance.airportDetail === 'detailed';
+        const airportDetailLevel = normalizeAirportDetail(activeAppearance.airportDetail);
+        const isDetailedAirports = airportDetailLevel !== 'none';
+        const overlayGroups = getAirportOverlayGroups(airportDetailLevel);
         const isOpenAipOverlay = Boolean(activeAppearance.openAipOverlay && effectiveOpenAipKey);
         const style = createMapLibreStyle(
             currentLayer,
@@ -2755,7 +2769,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             isOpenAipOverlay,
             effectiveOpenAipKey,
             activeAppearance.openAipGroups,
-            activeAppearance.openAipAirportCategories
+            activeAppearance.openAipAirportCategories,
+            overlayGroups
         );
 
         lastAppliedStyleKeyRef.current = computeStyleKey(
@@ -2883,7 +2898,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         map.on('load', () => {
             isMapLoadedRef.current = true;
             setupAirportIcons();
-            syncAirportOverlayOnMap(map, isDetailedAirports, isDark);
+            syncAirportOverlayOnMap(map, isDetailedAirports, isDark, overlayGroups);
             simplifyRailroadLayers(map);
             adjustBasemapLabelHierarchy(map);
             if (isOpenAipOverlay && effectiveOpenAipKey) {
@@ -3010,7 +3025,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         const map = mapRef.current;
         if (!map) return;
         const isGlobe = effectiveProjection === 'globe';
-        const isDetailedAirports = activeAppearance.airportDetail === 'detailed';
+        const airportDetailLevel = normalizeAirportDetail(activeAppearance.airportDetail);
+        const isDetailedAirports = airportDetailLevel !== 'none';
+        const overlayGroups = getAirportOverlayGroups(airportDetailLevel);
         const isOpenAipOverlay = Boolean(activeAppearance.openAipOverlay && effectiveOpenAipKey);
         const effectiveLayer = getEffectiveBasemap(currentLayer, isDark);
 
@@ -3115,7 +3132,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             isOpenAipOverlay,
             effectiveOpenAipKey,
             activeAppearance.openAipGroups,
-            activeAppearance.openAipAirportCategories
+            activeAppearance.openAipAirportCategories,
+            overlayGroups
         );
         map.setStyle(nextStyle);
 
@@ -3138,7 +3156,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     }).catch(() => {});
                 }
             });
-            syncAirportOverlayOnMap(map, isDetailedAirports, isDark);
+            syncAirportOverlayOnMap(map, isDetailedAirports, isDark, overlayGroups);
             simplifyRailroadLayers(map);
             adjustBasemapLabelHierarchy(map);
             if (isOpenAipOverlay && effectiveOpenAipKey) {
@@ -3189,10 +3207,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     useEffect(() => {
         const map = mapRef.current;
         if (!map) return;
-        const isDetailedAirports = activeAppearance.airportDetail === 'detailed';
+        const airportDetailLevel = normalizeAirportDetail(activeAppearance.airportDetail);
+        const isDetailedAirports = airportDetailLevel !== 'none';
+        const overlayGroups = getAirportOverlayGroups(airportDetailLevel);
         const trySync = () => {
             if (!map.isStyleLoaded()) return;
-            syncAirportOverlayOnMap(map, isDetailedAirports, isDark);
+            syncAirportOverlayOnMap(map, isDetailedAirports, isDark, overlayGroups);
             map.triggerRepaint();
         };
         trySync();
