@@ -1,0 +1,18 @@
+# Portainer stack (Stacks -> Add stack -> Web editor). Build the image once on the NAS first:
+#   cd /volume1/docker/airport-overlay && docker compose build
+# Set GH_TOKEN (and optionally WORK_HOST_DIR) under "Environment variables" in Portainer.
+services:
+  builder:
+    image: wandergrid-airport-overlay-builder
+    container_name: wandergrid_airport_overlay_builder
+    restart: unless-stopped
+    environment:
+      GH_TOKEN: ${GH_TOKEN}
+      GH_REPO: SamerBerjawi/WanderGrid
+      TRIGGER_REBUILD: "1"
+      SCHEDULE_DAYS: ${SCHEDULE_DAYS:-30}
+      INPUT_URLS: ${INPUT_URLS:-https://planet.openstreetmap.org/pbf/planet-latest.osm.pbf}
+      DRY_RUN: ${DRY_RUN:-0}
+      MIN_BYTES: ${MIN_BYTES:-100000000}
+    volumes:
+      - ${WORK_HOST_DIR:-/volume1/docker/airport-overlay/work}:/work

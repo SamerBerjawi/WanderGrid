@@ -1,0 +1,16 @@
+# Run on the NAS:  docker compose run --rm builder
+# Schedule it (e.g. monthly) with cron or the NAS task scheduler. See README.md.
+services:
+  builder:
+    build: .
+    image: wandergrid-airport-overlay-builder
+    env_file: .env            # GH_TOKEN=... (see README); never commit this file
+    environment:
+      GH_REPO: SamerBerjawi/WanderGrid
+      TRIGGER_REBUILD: "1"
+      INPUT_URLS: ${INPUT_URLS:-https://planet.openstreetmap.org/pbf/planet-latest.osm.pbf}
+      DRY_RUN: ${DRY_RUN:-0}
+      MIN_BYTES: ${MIN_BYTES:-100000000}
+    volumes:
+      - ${WORK_HOST_DIR:-./work}:/work
+    restart: "no"
