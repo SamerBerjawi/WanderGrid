@@ -7,9 +7,9 @@ release of this repository:
 | --- | --- |
 | `map-roads.pmtiles` | roads (all road and path classes at overview zooms) |
 | `map-landuse.pmtiles` | landuse, landcover, water, earth |
-| `map-transport.pmtiles` | transit (rail, ferry, ...), places (names), boundaries |
+| `map-places.pmtiles` | places (names), boundaries |
 
-POIs and buildings are dropped, and so is contributor metadata (usernames, versions, timestamps).
+Rail and ferry lines are in the `roads` layer (`kind=rail` / `kind=ferry`). For dedicated transit, ports and ferries use `../transport-data`. POIs and buildings are dropped, and so is contributor metadata (usernames, versions, timestamps).
 Default zoom range is 0-10, small enough for GitHub's 2 GiB asset limit. If a file is too big the script stops
 before uploading and asks for a lower `MAXZOOM`.
 

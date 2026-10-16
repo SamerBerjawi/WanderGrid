@@ -7,6 +7,8 @@ services:
     environment:
       GH_REPO: SamerBerjawi/WanderGrid
       MAXZOOM: ${MAXZOOM:-10}
+      LANDUSE_MAXZOOM: ${LANDUSE_MAXZOOM:-9}
+      NODEMAP_TYPE: ${NODEMAP_TYPE:-sparsearray}
       JAVA_XMX: ${JAVA_XMX:-16g}
       DRY_RUN: ${DRY_RUN:-0}
       PLANET_PBF: ${PLANET_PBF:-}

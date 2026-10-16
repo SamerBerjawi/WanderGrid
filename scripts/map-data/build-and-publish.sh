@@ -3,7 +3,8 @@
 #
 #   map-roads.pmtiles      layers: roads
 #   map-landuse.pmtiles    layers: landuse, landcover, water, earth
-#   map-transport.pmtiles  layers: transit, places, boundaries
+#   map-places.pmtiles     layers: places, boundaries   (rail/ferry lines are inside the roads layer; the
+#                          Protomaps `transit` layer is empty in the pinned version, so it is not shipped)
 #
 # Dropped on purpose: pois and buildings (large, not needed at overview zooms) and contributor metadata.
 #
@@ -13,6 +14,8 @@
 #   PLANET_PBF       path to a local planet .osm.pbf (default /input/planet-latest.osm.pbf if it exists)
 #   PLANET_URL       used to download when no local file exists
 #   MAXZOOM          default 10. Lower it (9, 8) if a file would exceed GitHub's 2 GiB asset limit
+#   NODEMAP_TYPE     Planetiler node-location map: sparsearray (default, good for extracts) or array (planet only)
+#   LANDUSE_MAXZOOM  max zoom for the landuse file only, default 9 (it is by far the largest; must stay under 2 GiB)
 #   JAVA_XMX         JVM heap, default 16g (the planet also needs ~10x its size in free disk)
 #   KEEP_INPUT=1     keep a downloaded planet file afterwards (a mounted PLANET_PBF is never deleted)
 #   DRY_RUN=1        build only; do not upload
@@ -21,6 +24,7 @@ set -euo pipefail
 GH_REPO="${GH_REPO:-SamerBerjawi/WanderGrid}"
 WORK_DIR="${WORK_DIR:-/work}"
 MAXZOOM="${MAXZOOM:-10}"
+LANDUSE_MAXZOOM="${LANDUSE_MAXZOOM:-9}"
 JAVA_XMX="${JAVA_XMX:-16g}"
 PLANET_URL="${PLANET_URL:-https://planet.openstreetmap.org/pbf/planet-latest.osm.pbf}"
 MAX_ASSET_BYTES="${MAX_ASSET_BYTES:-2000000000}"
@@ -57,23 +61,23 @@ log "Running Planetiler (maxzoom=$MAXZOOM, heap=$JAVA_XMX)"
 cd "$WORK_DIR"
 java -Xmx"$JAVA_XMX" -jar /opt/protomaps-basemap.jar \
   --area=planet --osm-path="$pbf" --output="$full" --maxzoom="$MAXZOOM" \
-  --download --force --tmpdir="$WORK_DIR/tmp" --nodemap-type=array --storage=mmap
+  --download --force --tmpdir="$WORK_DIR/tmp" --nodemap-type="${NODEMAP_TYPE:-sparsearray}" --storage=mmap
 
 [ -s "$full" ] || { echo "Planetiler produced no output." >&2; exit 4; }
 log "Planetiler output: $(stat -c %s "$full") bytes"
 
-split() { # <output-name> <layer>...
-  local name="$1"; shift
+split() { # <output-name> <max-zoom> <layer>...
+  local name="$1" maxz="$2"; shift 2
   local args=()
   for l in "$@"; do args+=(-l "$l"); done
-  log "Splitting $name (layers: $*)"
-  tile-join -f --no-tile-size-limit -o "$WORK_DIR/out/$name" "${args[@]}" "$full"
+  log "Splitting $name (zoom 0-$maxz, layers: $*)"
+  tile-join -f --no-tile-size-limit -z "$maxz" -o "$WORK_DIR/out/$name" "${args[@]}" "$full"
 }
-split map-roads.pmtiles roads
-split map-landuse.pmtiles landuse landcover water earth
-split map-transport.pmtiles transit places boundaries
+split map-roads.pmtiles "$MAXZOOM" roads
+split map-landuse.pmtiles "$LANDUSE_MAXZOOM" landuse landcover water earth
+split map-places.pmtiles "$MAXZOOM" places boundaries
 
-files=(map-roads.pmtiles map-landuse.pmtiles map-transport.pmtiles)
+files=(map-roads.pmtiles map-landuse.pmtiles map-places.pmtiles)
 for f in "${files[@]}"; do
   p="$WORK_DIR/out/$f"; size=$(stat -c %s "$p")
   log "$f: $size bytes"
@@ -89,16 +93,12 @@ if [ "${DRY_RUN:-0}" = "1" ]; then log "DRY_RUN=1: skipping upload"; exit 0; fi
 
 gh release view map-data >/dev/null 2>&1 || gh release create map-data --prerelease --title "Map data" \
   --notes "Planet-wide overview vector tiles built from OpenStreetMap on a NAS. Not an app release."
-revisions=""
 for f in "${files[@]}"; do
   log "Uploading $f"
   gh release upload map-data "$WORK_DIR/out/$f" --clobber
-  revisions="$revisions
-$f: sha256:$(sha256sum "$WORK_DIR/out/$f" | awk '{print $1}')"
+  # Notes are shared with the transport-data builder: replace only this asset's line.
+  body=$(gh release view map-data --json body -q .body | grep -v "^$f:" || true)
+  gh release edit map-data --notes "$body
+$f: built $(date -u +%F), zoom 0-$MAXZOOM (landuse 0-$LANDUSE_MAXZOOM), sha256:$(sha256sum "$WORK_DIR/out/$f" | awk '{print $1}'). Protomaps basemaps ${BASEMAPS_REF:-pinned}; data © OpenStreetMap contributors (ODbL), Natural Earth, QRank."
 done
-gh release edit map-data --notes "Planet-wide overview vector tiles (zoom 0-$MAXZOOM) built from OpenStreetMap on a NAS. Not an app release.
-
-Built $(date -u +%F) with Protomaps basemaps ${BASEMAPS_REF:-pinned} (Planetiler). Layers: roads | landuse, landcover, water, earth | transit, places, boundaries.
-Data: © OpenStreetMap contributors (ODbL), Natural Earth, QRank.
-$revisions"
 log "Done"
