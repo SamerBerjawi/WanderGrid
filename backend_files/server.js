@@ -404,6 +404,10 @@ app.use(express.static(path.join(__dirname, 'client_build'), {
     maxAge: '1y',
     immutable: true,
     setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.pmtiles')) {
+            res.setHeader('Accept-Ranges', 'bytes');
+            res.setHeader('Content-Type', 'application/vnd.pmtiles');
+        }
         if (filePath.endsWith('.html') || filePath.endsWith('sw.js') || filePath.endsWith('registerSW.js') || filePath.endsWith('manifest.json') || filePath.endsWith('icon.svg')) {
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, proxy-revalidate, max-age=0');
             res.setHeader('Pragma', 'no-cache');
