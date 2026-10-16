@@ -1,0 +1,15 @@
+# Run on the NAS:  docker compose run --rm -T builder
+services:
+  builder:
+    build: .
+    image: wandergrid-transport-data-builder
+    env_file: .env
+    environment:
+      GH_REPO: SamerBerjawi/WanderGrid
+      MAXZOOM: ${MAXZOOM:-12}
+      DRY_RUN: ${DRY_RUN:-0}
+      PLANET_PBF: ${PLANET_PBF:-}
+    volumes:
+      - ${WORK_HOST_DIR:-./work}:/work
+      - ${PLANET_DIR:-/volume1/docker/airport-overlay/work/keep}:/input:ro
+    restart: "no"
