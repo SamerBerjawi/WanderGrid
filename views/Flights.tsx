@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import {
   MagnifyingGlass as Search, Funnel as Filter, Plus, CalendarBlank as Calendar, MapPin, Trash as Trash2, PencilSimple as Edit2, Check, Square, CheckSquare, PencilSimpleLine as Edit3, CaretRight as ChevronRight, CaretDown as ChevronDown, CaretUp as ChevronUp, WarningCircle as AlertCircle,
   ArrowRight, Airplane as Plane, AirplaneTakeoff, AirplaneTilt, Bank as Landmark, Trophy as Award, Clock, ClockCounterClockwise, CurrencyDollar as DollarSign, ChartBar as BarChart2, SuitcaseSimple as Briefcase, FileText, Compass, Heart, Question as HelpCircle, ArrowsClockwise as RefreshCw, UploadSimple as Upload, DownloadSimple as Download, Tag, UserCheck, Star, Sparkle as Sparkles, SquaresFour as Grid, List,
-  ArrowUpRight, ArrowDownLeft, FolderPlus, FolderMinus, X
+  ArrowUpRight, ArrowDownLeft, FolderPlus, FolderMinus, X, Seat as SeatIcon
 } from '@phosphor-icons/react';
 import { Card, Button, Input, Select, GlassSelect, Badge, TimeInput, Autocomplete, Tabs } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
@@ -2250,9 +2250,9 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               {/* Bottom strip */}
               <div className="px-5 py-3.5 bg-zinc-50/50 dark:bg-black/30 border-t border-zinc-100 dark:border-white/5 flex items-center justify-between mt-auto">
                 <div className="flex flex-col">
-                  <span className="text-2xs font-black uppercase text-zinc-400 dark:text-zinc-500 tracking-wider">Cabin & Seat Number</span>
+                  <span className="inline-flex items-center gap-1 text-2xs font-black uppercase text-zinc-400 dark:text-zinc-500 tracking-wider"><SeatIcon className="w-3.5 h-3.5" weight="duotone" />Cabin</span>
                   <span className="font-mono text-xs font-extrabold text-zinc-700 dark:text-zinc-300 bg-white/80 dark:bg-white/10 px-2 py-0.5 rounded border border-black/10 dark:border-white/10 mt-1 inline-block w-fit">
-                    {flight.travelClass || 'Economy'} &bull; Row {flight.seatNumber || 'TBD'}
+                    {flight.travelClass || 'Economy'} &bull; {flight.seatNumber || 'TBD'}
                   </span>
                 </div>
                 {!isMultiEditing && (
@@ -2498,7 +2498,9 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             {flight.seatNumber && (
               <>
                 <span className="inline-block w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700" />
-                <span className="font-mono font-bold text-amber-500 dark:text-amber-400">Seat {flight.seatNumber}</span>
+                <span className="inline-flex items-center gap-1 font-mono font-bold text-amber-500 dark:text-amber-400" title={`Seat ${flight.seatNumber}${flight.seatType ? ` · ${flight.seatType}` : ''}`} aria-label={`Seat ${flight.seatNumber}`}>
+                  <SeatIcon className="w-3.5 h-3.5" weight="duotone" />{flight.seatNumber}
+                </span>
               </>
             )}
           </div>
@@ -2738,8 +2740,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 {flight.travelClass || 'Economy'}
               </span>
               {flight.seatNumber ? (
-                <span className="font-mono text-xs font-semibold text-amber-500 bg-amber-500/5 dark:bg-amber-500/10 px-1 py-0.5 rounded border border-amber-500/20 leading-none">
-                  Seat {flight.seatNumber}
+                <span className="inline-flex items-center gap-1 font-mono text-xs font-semibold text-amber-500 bg-amber-500/5 dark:bg-amber-500/10 px-1 py-0.5 rounded border border-amber-500/20 leading-none" title={`Seat ${flight.seatNumber}${flight.seatType ? ` · ${flight.seatType}` : ''}`} aria-label={`Seat ${flight.seatNumber}`}>
+                  <SeatIcon className="w-3.5 h-3.5" weight="duotone" />{flight.seatNumber}
                 </span>
               ) : (
                 <span className="text-xs text-zinc-400 dark:text-zinc-500">Unassigned</span>
