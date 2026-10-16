@@ -1,0 +1,17 @@
+# Run on the NAS:  docker compose run --rm -T builder
+services:
+  builder:
+    build: .
+    image: wandergrid-map-data-builder
+    env_file: .env
+    environment:
+      GH_REPO: SamerBerjawi/WanderGrid
+      MAXZOOM: ${MAXZOOM:-10}
+      JAVA_XMX: ${JAVA_XMX:-16g}
+      DRY_RUN: ${DRY_RUN:-0}
+      PLANET_PBF: ${PLANET_PBF:-}
+    volumes:
+      - ${WORK_HOST_DIR:-./work}:/work
+      # Optional: reuse an already-downloaded planet file (read-only) instead of downloading again.
+      - ${PLANET_DIR:-/volume1/docker/airport-overlay/work/keep}:/input:ro
+    restart: "no"
