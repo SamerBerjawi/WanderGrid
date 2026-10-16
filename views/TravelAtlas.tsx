@@ -12,7 +12,7 @@ import {
   findCountryRecord, ukNationsFromCities, excludedCountryCodes, type MergedCountry
 } from '../services/countryRegistry';
 import { motion, AnimatePresence } from 'motion/react';
-import { Compass, MapPin, Globe, Plus, Trash as Trash2, PencilSimpleLine as Edit3, MapTrifold as MapIcon, ArrowsClockwise as RefreshCw, CheckCircle as CheckCircle2, Stack as Layers, Info, X, Sparkle as Sparkles, Funnel as Filter, Check, Star, Airplane as Plane, House as Home, Bank as Landmark, MagnifyingGlass } from '@phosphor-icons/react';
+import { Compass, MapPin, Globe, Plus, Trash as Trash2, PencilSimpleLine as Edit3, MapTrifold as MapIcon, ArrowsClockwise as RefreshCw, CheckCircle as CheckCircle2, Stack as Layers, Info, X, Sparkle as Sparkles, Funnel as Filter, Check, Star, Airplane as Plane, House as Home, Bank as Landmark, MagnifyingGlass } from '@/components/ui/hugeicons';
 import { Button, Select, Tabs } from '../components/ui';
 import { mergeCityRecords, planCityCleanup, splitCombinedPlaces } from '../services/cityRegistry';
 import type { Tab } from '../components/ui';

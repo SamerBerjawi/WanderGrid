@@ -14,7 +14,7 @@ import {
     Plus, 
     X, 
     FloppyDisk 
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 
 interface GearSettingsTabProps {
     config: WorkspaceSettings;

@@ -11,7 +11,7 @@ import {
     X,
     WarningCircle,
     Check
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { Input, Autocomplete, TimeInput, Badge, DateRangePicker } from './ui';
 import { Accommodation } from '../types';
 import { dataService } from '../services/mockDb';

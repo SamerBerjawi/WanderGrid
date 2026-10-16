@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   WarningCircle as AlertCircle, WarningCircle, Info, AirplaneTakeoff, 
   AirplaneTilt, NavigationArrow, Sparkle, Broadcast, Database 
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { Modal, Button, Input } from './ui';
 import { flightTracker } from '../services/flightTracker';
 import { FlightStatusResponse, Transport } from '../types';

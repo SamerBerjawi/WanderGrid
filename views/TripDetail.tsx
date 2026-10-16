@@ -54,7 +54,7 @@ import {
     X,
     PaperPlaneTilt,
     SquaresFour
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { Card, Button, Badge, Tabs, Modal, Input, Autocomplete, TimeInput, Select } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
 import { CARD_ELEVATED_STYLE } from '../constants';

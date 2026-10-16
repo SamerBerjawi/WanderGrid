@@ -8,7 +8,7 @@ import {
   Train,
   AirplaneTakeoff,
   Planet,
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import {
   MapAppearanceSettings,
   AirportCategory,

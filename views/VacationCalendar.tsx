@@ -20,7 +20,7 @@ import {
   List, 
   Compass, 
   ArrowRight
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { Button, Badge, Card, Modal, Select, Tabs } from '../components/ui';
 import { GlassPanel } from '../components/glass/GlassPanel';
 import { INPUT_BASE_STYLE } from '../constants';

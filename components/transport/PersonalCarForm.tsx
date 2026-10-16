@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Car, Clock, Speedometer } from '@phosphor-icons/react';
+import { Car, Clock, Speedometer } from '@/components/ui/hugeicons';
 import { Input, Autocomplete, TimeInput } from '../ui';
 import { CarForm } from './transportTypes';
 import { searchLocations, getCoordinates, calculateDistance } from '../../services/geocoding';

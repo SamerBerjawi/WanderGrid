@@ -7,7 +7,7 @@ import {
     Key, 
     Car,
     Anchor
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { TransportMode, Transport, RoadTripWaypoint } from '../../types';
 
 export type TripType = 'Round Trip' | 'One-Way' | 'Multi-City';

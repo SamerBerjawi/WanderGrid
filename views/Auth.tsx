@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { isFeatureEnabled } from '../config/featureFlags';
 import { Button, Input } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
-import { RocketLaunch } from '@phosphor-icons/react';
+import { RocketLaunch } from '@/components/ui/hugeicons';
 import { dataService } from '../services/mockDb';
 import { User, Trip, VisitedItem } from '../types';
 

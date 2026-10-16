@@ -74,7 +74,7 @@ import {
     Bus,
     SlidersHorizontal,
     Warning
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { motion, AnimatePresence } from 'motion/react';
 import { FEATURE_FLAGS } from '../config/featureFlags';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, toggleCountryResidenceStatus, WorkspaceSettings } from '../types';

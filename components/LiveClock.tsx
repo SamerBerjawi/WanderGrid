@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CalendarBlank, Compass } from '@phosphor-icons/react';
+import { CalendarBlank, Compass } from '@/components/ui/hugeicons';
 import { formatDate } from '../utils/formatters';
 import { GlassPanel } from './glass/GlassPanel';
 

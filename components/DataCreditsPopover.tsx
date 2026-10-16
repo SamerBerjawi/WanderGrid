@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Info, X, ArrowSquareOut, ShieldCheck } from '@phosphor-icons/react';
+import { Info, X, ArrowSquareOut, ShieldCheck } from '@/components/ui/hugeicons';
 import { motion, AnimatePresence } from 'motion/react';
 import GlassPanel from './glass/GlassPanel';
 import { MapAppearanceSettings } from '../types/mapAppearance';

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import GlassPanel from './glass/GlassPanel';
-import { CaretDown, Check, MagnifyingGlass, X } from '@phosphor-icons/react';
+import { CaretDown, Check, MagnifyingGlass, X } from '@/components/ui/hugeicons';
 
 export interface SelectOption {
     value: string;

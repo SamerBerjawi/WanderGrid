@@ -61,16 +61,16 @@ import {
   MagnifyingGlass,
   SlidersHorizontal,
   CornersOut,
-  IconProps as PhosphorProps,
-} from '@phosphor-icons/react';
+  IconProps as BaseIconProps,
+} from '@/components/ui/hugeicons';
 
-export interface IconProps extends Omit<PhosphorProps, 'name'> {
+export interface IconProps extends Omit<BaseIconProps, 'name'> {
   name: string;
   className?: string;
   weight?: 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone';
 }
 
-const ICON_MAP: Record<string, React.ComponentType<PhosphorProps>> = {
+const ICON_MAP: Record<string, React.ComponentType<BaseIconProps>> = {
   // Navigation & Shell
   grid_view: SquaresFour,
   dashboard: SquaresFour,

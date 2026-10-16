@@ -43,7 +43,7 @@ import {
     ArrowsClockwise,
     ShieldCheck,
     X
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 
 interface FlightImportWizardProps {
     isOpen: boolean;

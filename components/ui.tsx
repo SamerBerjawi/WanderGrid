@@ -13,7 +13,7 @@ import {
   Buildings,
   Globe,
   MapPin
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { getLocationMetadata, detectCategoryFromLabel } from '../services/geocoding';
 import {
   INPUT_BASE_STYLE,

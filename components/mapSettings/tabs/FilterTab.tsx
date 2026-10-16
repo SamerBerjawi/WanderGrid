@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowCounterClockwise } from '@phosphor-icons/react';
+import { ArrowCounterClockwise } from '@/components/ui/hugeicons';
 import MAP_SETTINGS_LABELS from '../labels';
 
 interface FilterTabProps {

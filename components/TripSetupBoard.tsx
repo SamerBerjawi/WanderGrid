@@ -34,7 +34,7 @@ import {
     Tag,
     Path,
     WarningCircle
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { Input, Autocomplete, TimeInput, Select, DateRangePicker, DatePicker, Tabs } from './ui';
 import GlassPanel from './glass/GlassPanel';
 import GlassButton from './glass/GlassButton';

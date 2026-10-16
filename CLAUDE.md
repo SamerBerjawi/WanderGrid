@@ -9,7 +9,7 @@ WanderGrid is a self-hosted travel planner, flight log and leave manager. It has
 
 - React 19.2 / react-dom 19.2, TypeScript ~5.8, Vite 6.2 with `@vitejs/plugin-react` 5, `vite-plugin-pwa` 1.3 (Workbox generateSW)
 - Tailwind CSS 3.4 + PostCSS/autoprefixer (single compiled config; no CDN); `clsx`, `tailwind-merge`; global CSS in `styles.css`. Classes built at runtime must be safelisted in `tailwind.config.js`
-- UI: `@nkzw/liquid-glass` 1.3 (glass surfaces), `@phosphor-icons/react` 2.1, `motion` 12 (`motion/react`), `@number-flow/react`, `@dnd-kit/*`
+- UI: `@nkzw/liquid-glass` 1.3 (glass surfaces), `@hugeicons/react` + `@hugeicons/core-free-icons` (stroke-rounded; app imports go through `components/ui/hugeicons.tsx`, an adapter keeping the `size`/`weight`/`className` API), `motion` 12 (`motion/react`), `@number-flow/react`, `@dnd-kit/*`
 - Maps/geo: `maplibre-gl` 6.4, `deck.gl` 9.3, `pmtiles` 4.5, `leaflet` 1.9.4, `react-simple-maps` 3, `d3` 7, `topojson-client`, `searoute-js`, `@mapbox/mapbox-gl-rtl-text`
 - Charts: `recharts` 3.8. Data I/O: `xlsx` 0.18, `html2canvas` 1.4.1. AI: `@google/genai` 1.34
 - `.npmrc` sets `legacy-peer-deps=true`. Peer conflicts are expected.
@@ -98,7 +98,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 
 - **Naming:** PascalCase `.tsx` files for components and views, with named exports (e.g. `export const Flights`). camelCase `.ts` files for services and utils. Hooks are named `useX`. Backend files use camelCase CommonJS. Feature-flag IDs follow `GEV_P0x_*`.
 - **State:** there is no global store (no Redux or Zustand). Each view keeps local `useState` and reads through `dataService` and `useWanderSync`. Settings are loaded via `dataService.getWorkspaceSettings()`.
-- **Styling:** Tailwind utility classes with design tokens from `tailwind.config.js`, such as `light-text`/`dark-text`, `primary-*`, the `z-modal`/`z-popover`/… scale and `text-2xs`. Shared class strings live in `constants.ts`. Surfaces use `GlassPanel` (`wg-glass-card`/`wg-glass-pill`). Use Phosphor icons in duotone for headers and the regular `Plus` for add buttons. Dark mode is class-based.
+- **Styling:** Tailwind utility classes with design tokens from `tailwind.config.js`, such as `light-text`/`dark-text`, `primary-*`, the `z-modal`/`z-popover`/… scale and `text-2xs`. Shared class strings live in `constants.ts`. Surfaces use `GlassPanel` (`wg-glass-card`/`wg-glass-pill`). Use the Hugeicons adapter icons (`weight="duotone"` maps to the standard stroke) for headers and the regular `Plus` for add buttons. Dark mode is class-based.
 - **Formatting:** always use `formatDate`, `formatDateRange` and `formatCurrency` from `utils/formatters.ts`. Never call `toLocaleDateString` directly.
 - **UI rules to enforce** (AGENTS.md §7–11):
   - No arbitrary `z-[…]` values.

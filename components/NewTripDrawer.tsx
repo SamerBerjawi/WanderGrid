@@ -14,7 +14,7 @@ import {
     CalendarCheck, 
     Hourglass,
     Sparkle
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import GlassButton from './glass/GlassButton';
 import GlassPanel from './glass/GlassPanel';
 import { DateRangePicker, CategoryBadge } from './ui';

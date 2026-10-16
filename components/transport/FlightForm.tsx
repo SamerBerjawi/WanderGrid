@@ -11,7 +11,7 @@ import {
     Crown,
     X,
     Path
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { Input, Select, Autocomplete, Badge, TimeInput } from '../ui';
 import { SegmentForm, AirportData, AirlineData } from './transportTypes';
 import { DurationInput } from './DurationInput';

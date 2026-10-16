@@ -8,7 +8,7 @@ import {
     Airplane, 
     AirplaneTilt, 
     Buildings 
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 
 export interface ExtremeFlight {
     distance: number;

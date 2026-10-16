@@ -7,7 +7,7 @@ import {
     Check,
     X,
     CalendarBlank
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { Button, Input, Select } from './ui';
 import { Transport, TransportMode } from '../types';
 import { dataService } from '../services/mockDb';

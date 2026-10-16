@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { CaretLeft, CaretRight, CaretDown, CalendarBlank, Check, X } from '@phosphor-icons/react';
+import { CaretLeft, CaretRight, CaretDown, CalendarBlank, Check, X } from '@/components/ui/hugeicons';
 import GlassPanel from '../glass/GlassPanel';
 import GlassButton from '../glass/GlassButton';
 import { formatDate } from '../../utils/formatters';

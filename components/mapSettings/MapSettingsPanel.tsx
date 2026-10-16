@@ -10,7 +10,7 @@ import {
   Compass,
   ArrowCounterClockwise,
   Check,
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import {
   MapAppearanceSettings,
   DEFAULT_MAP_APPEARANCE,

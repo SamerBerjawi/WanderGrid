@@ -4,7 +4,7 @@ import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { ViewState, User } from './types';
 import { dataService } from './services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';
-import { IconContext } from '@phosphor-icons/react';
+import { IconContext } from '@/components/ui/hugeicons';
 
 // Lazy load views to split the bundle and improve performance
 const Dashboard = lazy(() => import('./views/Dashboard').then(m => ({ default: m.Dashboard })));

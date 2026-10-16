@@ -25,7 +25,7 @@ import {
     Table,
     Check,
     Sparkle
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 
 interface CarriersTabProps {
     config: WorkspaceSettings;

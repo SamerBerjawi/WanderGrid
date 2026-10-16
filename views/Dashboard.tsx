@@ -42,7 +42,7 @@ import {
     NavigationArrow,
     Planet,
     TrendUp
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 
 interface DashboardProps {
     onUserClick?: (userId: string) => void;

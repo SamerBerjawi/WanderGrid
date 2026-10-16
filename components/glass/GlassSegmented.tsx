@@ -1,10 +1,10 @@
 import React from 'react';
-import { Check } from '@phosphor-icons/react';
+import { Check } from '@/components/ui/hugeicons';
 
 export interface GlassSegmentedOption<T extends string = string> {
   id: T;
   label: string;
-  icon?: React.ComponentType<{ className?: string; weight?: any; size?: number }>;
+  icon?: React.ComponentType<{ className?: string; weight?: any; size?: number | string }>;
   description?: string;
   disabled?: boolean;
   accentColor?:

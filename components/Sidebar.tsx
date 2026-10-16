@@ -14,7 +14,7 @@ import {
   SidebarSimple, 
   Compass,
   SignOut
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { APP_VERSION } from '../version';
 
 interface SidebarProps {

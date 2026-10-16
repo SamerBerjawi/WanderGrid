@@ -7,7 +7,7 @@ import {
   ArrowLeft, SignOut, AirplaneTakeoff, MapPin, CalendarBlank, Compass,
   AirplaneTilt, Bed, PencilSimple, Trash, Camera, Spinner, UserCircle,
   IdentificationCard, Suitcase, Globe, SunHorizon, Eye, EyeSlash, Plus, Envelope
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { dataService } from '../services/mockDb';
 import { User, Trip } from '../types';
 import { formatDate } from '../utils/formatters';

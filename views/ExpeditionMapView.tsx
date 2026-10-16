@@ -13,7 +13,7 @@ import {
     ArrowsOut as Maximize,
     ArrowsIn as Minimize,
     EyeSlash
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 import { MapAppearanceModal } from '../components/MapAppearanceModal';
 import { motion } from 'motion/react';

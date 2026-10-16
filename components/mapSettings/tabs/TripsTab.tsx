@@ -12,7 +12,7 @@ import {
   CirclesThree,
   GitFork,
   EyeSlash,
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { MapAppearanceSettings, AirportDetail, normalizeAirportDetail } from '../../../types/mapAppearance';
 import MAP_SETTINGS_LABELS from '../labels';
 import { GlassSegmented } from '../../glass/GlassSegmented';

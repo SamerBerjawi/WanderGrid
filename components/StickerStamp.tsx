@@ -4,7 +4,7 @@ import {
   Drop as Droplet, Waves, Binoculars, Radio, SquaresFour as Grid, Hexagon, Atom, Mountains as Mountain, 
   Snowflake, CloudRain, Broadcast as TowerControl, CircleDashed as Torus, Buildings as Hotel, Check, CalendarBlank as Calendar, 
   Trophy as Award, Trash as Trash2, PencilSimple as Edit2, MapPin, Eye, BookOpen, Sparkle as Stars
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { Sticker, StickerClaim, saveManualStickerClaim, deleteManualStickerClaim } from '../utils/stickersData';
 import { Trip } from '../types';
 import { Modal, Button, Input, Select, DatePicker } from './ui';

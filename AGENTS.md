@@ -296,7 +296,7 @@ All modal dialogs across WanderGrid must strictly adhere to the unified liquid-g
 ```tsx
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Compass, X, Check, Trash, WarningCircle } from '@phosphor-icons/react';
+import { Compass, X, Check, Trash, WarningCircle } from '@/components/ui/hugeicons';
 import GlassPanel from './glass/GlassPanel';
 import { Input } from './ui';
 import { 
@@ -497,14 +497,14 @@ All existing, new, and refactored UI components and views across the application
 - `<Card>` in `components/ui.tsx` automatically renders inside `GlassPanel` (`wg-glass-card`, `rounded-[28px] overflow-hidden`).
 - All buttons imported from `components/ui` automatically render inside `GlassPanel` (`wg-glass-pill`).
 - All inputs and select controls must adhere to `INPUT_BASE_STYLE` with `min-h-[44px]` and subtle backdrop blur.
-- All plus icons on buttons or triggers must strictly use the **standard Phosphor `Plus` icon (NOT duotone)**.
+- All plus icons on buttons or triggers must strictly use the **standard `Plus` icon (regular weight, never bold or heavier)**.
 
 ### 9.2 The "Planner Standard" Universal Page Blueprint
 Every view (Planner, Settings, Dashboard, Flights, Travel Atlas, Vacation Calendar, etc.) must follow the Planner page layout:
 1. **Container & Gutters:** `w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16`.
-2. **Hero Header:** Unboxed, horizontal layout with pure duotone Phosphor icon and scaled title (`text-xl sm:text-3xl md:text-5xl font-black`) aligned **LEFT**, and primary action button aligned **RIGHT** on both mobile and desktop.
+2. **Hero Header:** Unboxed, horizontal layout with pure Hugeicons icon (`weight="duotone"` renders as the 1.5 stroke) and scaled title (`text-xl sm:text-3xl md:text-5xl font-black`) aligned **LEFT**, and primary action button aligned **RIGHT** on both mobile and desktop.
 3. **Everything Else Center:** All intermediate controls below the header (tab navigation, filter bars, search controls) are **CENTERED** on mobile viewports.
-4. **Tab Navigation:** Floating `GlassPanel` (`wg-glass-pill`, `borderRadius: 9999`) with physics-based spring indicator (`motion.div layoutId`), duotone icons, and responsive label collapse on small screens.
+4. **Tab Navigation:** Floating `GlassPanel` (`wg-glass-pill`, `borderRadius: 9999`) with physics-based spring indicator (`motion.div layoutId`), stroke icons, and responsive label collapse on small screens.
 5. **Multi-Column Bucket Grid:** `grid grid-cols-1 lg:grid-cols-12 gap-6 items-start` encased in `rounded-[28px] overflow-hidden` with `GlassPanel` (`wg-glass-card`) and semantic gradient header banners.
 
 ### 9.3 Radical Simplicity & Zero Text Clutter

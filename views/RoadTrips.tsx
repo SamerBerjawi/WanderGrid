@@ -8,7 +8,7 @@ import {
   CaretDown as ChevronDown, CaretUp as ChevronUp, Clock, CurrencyDollar as DollarSign, Compass, Car, 
   MapTrifold as Map, ArrowRight, HardDrives as Server, Sparkle as Sparkles, NavigationArrow as Navigation, Train, 
   Bus, Boat, Info, DotsSixVertical, CheckSquare, Square, X, Check, ChartBar
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { Button, Input, GlassSelect, Badge, TimeInput, Autocomplete, Modal, BentoGrid, BentoCard } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
 import { INPUT_BASE_STYLE } from '../constants';

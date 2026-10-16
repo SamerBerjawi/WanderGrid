@@ -11,7 +11,7 @@ import {
   Buildings,
   Waves,
   Check,
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { MapAppearanceSettings, BasemapMode, getEffectiveBasemap } from '../../../types/mapAppearance';
 import { syncThemeWithBasemap } from '../../../services/themeSync';
 import MAP_SETTINGS_LABELS from '../labels';
@@ -30,7 +30,7 @@ interface BasemapDef {
   id: BasemapMode;
   label: string;
   subtitle?: string;
-  icon: React.ComponentType<{ className?: string; weight?: any; size?: number }>;
+  icon: React.ComponentType<{ className?: string; weight?: any; size?: number | string }>;
   gradientClass: string;
   textColor: string;
   badge?: string;

@@ -1,5 +1,5 @@
 import { type ComponentPropsWithoutRef, type ReactNode } from "react"
-import { ArrowRight } from "@phosphor-icons/react"
+import { ArrowRight } from '@/components/ui/hugeicons'
 import { cn } from "@/lib/utils"
 import GlassPanel from "../glass/GlassPanel"
 

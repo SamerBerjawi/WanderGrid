@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bus, Clock, X } from '@phosphor-icons/react';
+import { Bus, Clock, X } from '@/components/ui/hugeicons';
 import { Input, Autocomplete, TimeInput } from '../ui';
 import { SegmentForm } from './transportTypes';
 import { DurationInput } from './DurationInput';

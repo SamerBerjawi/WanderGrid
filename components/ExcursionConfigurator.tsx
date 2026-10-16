@@ -18,7 +18,7 @@ import {
     FilmSlate,
     ShoppingBag,
     Sparkle
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { Input, Autocomplete, TimeInput } from './ui';
 import GlassPanel from './glass/GlassPanel';
 import { Activity, ActivityType, GeoCoordinates } from '../types';

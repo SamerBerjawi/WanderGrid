@@ -16,7 +16,7 @@ import {
     ArrowRight,
     MapPin,
     CalendarBlank
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import GlassPanel from './glass/GlassPanel';
 import GlassButton from './glass/GlassButton';
 import { 

@@ -8,7 +8,7 @@ import {
   ShieldCheck as Shield, 
   IdentificationCard,
   ChartBar
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { ComposableMap, Geographies, Geography, Line, Marker } from 'react-simple-maps';
 import { useBentoStats, COUNTRY_NAMES, geoUrl } from './FlightyPassport';
 import { 

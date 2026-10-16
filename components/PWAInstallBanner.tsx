@@ -10,7 +10,7 @@ import {
   DeviceMobile, 
   CheckCircle,
   WarningCircle
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import GlassPanel from './glass/GlassPanel';
 import { usePWA } from '../hooks/usePWA';
 

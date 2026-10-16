@@ -29,7 +29,7 @@ import {
     Trash,
     CheckSquare,
     Square
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import GlassPanel from '../components/glass/GlassPanel';
 import { Button, Tabs } from '../components/ui';
 import type { TabColor } from '../components/ui';

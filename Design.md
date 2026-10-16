@@ -54,7 +54,7 @@ The hero header must be clean, horizontal, and unboxed—no heavy rectangular ba
       variant="primary" 
       className="shrink-0"
       onClick={handlePrimaryAction}
-      icon={<Plus className="w-4 h-4" />} // Standard Phosphor Plus, NEVER duotone
+      icon={<Plus className="w-4 h-4" />} // Standard Plus, regular weight, never bold
     >
       New Trip
     </Button>
@@ -62,7 +62,7 @@ The hero header must be clean, horizontal, and unboxed—no heavy rectangular ba
 </div>
 ```
 
-- **Icon**: Pure Phosphor duotone icon (`weight="duotone"`), colored with semantic accent (`text-primary-500`, `text-emerald-500`, etc.), scaling from `w-6 h-6` on mobile to `w-12 h-12` on desktop.
+- **Icon**: Pure Hugeicons icon (`weight="duotone"`, rendered as a 1.5 stroke), colored with semantic accent (`text-primary-500`, `text-emerald-500`, etc.), scaling from `w-6 h-6` on mobile to `w-12 h-12` on desktop.
 - **Title**: `text-xl sm:text-3xl md:text-5xl font-black tracking-tight`. Always aligned to the **left** on both mobile and desktop.
 - **Header Button**: Always aligned to the **right** on both mobile and desktop.
 - **Everything Else Center**: All intermediate controls below the hero header (such as the floating tab switcher, filter bars, search controls, and segmented pickers) must be **centered** on mobile viewports.
@@ -169,7 +169,7 @@ All dashboard buckets, sub-sections, and content cards must be encased in `round
 ```
 
 - **No Light Bleed**: Every container has `rounded-[28px] overflow-hidden` on both the outer wrapper and the inner content wrapper.
-- **Semantic Gradient Banners**: `bg-gradient-to-r from-{color}-500/10 via-{color}-500/5 to-transparent` with matching duotone icon gradient.
+- **Semantic Gradient Banners**: `bg-gradient-to-r from-{color}-500/10 via-{color}-500/5 to-transparent` with matching icon gradient.
 - **Collapsible Buckets**: When columns hold dynamic lists, provide expand/collapse triggers with smooth height transitions.
 
 ---
@@ -185,7 +185,7 @@ To guarantee that Liquid Glass is automatically applied to all UI elements witho
   - `variant="secondary"`: Neutral frosted glass (`bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10`).
   - `variant="danger"`: Rose warning glass (`bg-rose-500/20 border border-rose-500/30 text-rose-600 dark:text-rose-400`).
   - `variant="outline"`: Minimal hairline border with glass refraction.
-- **Plus Icon Rule**: Whenever a `+` icon is used on a button or trigger, it MUST be the **standard Phosphor `Plus` icon (NOT duotone)**:
+- **Plus Icon Rule**: Whenever a `+` icon is used on a button or trigger, it MUST be the **standard `Plus` icon (regular weight, never bold)**:
   ```tsx
   <Button icon={<Plus className="w-4 h-4" />}>Add Item</Button>
   ```
@@ -209,7 +209,7 @@ export const INPUT_BASE_STYLE =
 
 ### 3.3 Dropdown Selectors (`LiquidGlassSelect`, `Select`)
 - **Single-select / Filters**: Use `LiquidGlassSelect` from `../components/LiquidGlassSelect.tsx`.
-- Trigger uses a floating glass pill (`wg-glass-pill`) with duotone icon and chevron.
+- Trigger uses a floating glass pill (`wg-glass-pill`) with stroke icon and chevron.
 - Portal menu renders in a floating glass card with custom scrollbars and search filtering.
 - On mobile devices, uses responsive label shorthands (`mobilePlaceholder`) and center/full-width alignment.
 
@@ -229,7 +229,7 @@ export const INPUT_BASE_STYLE =
 - **Container**: Single elevated `GlassPanel` (`wg-glass-card`, `overrides={{ borderRadius: 28 }}`).
 - **Zero Nested GlassPanels**: Subsections use subtle integrated containers (`bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 rounded-2xl`). Never stack nested `<GlassPanel className="wg-glass-card shadow-2xl">` or `shadow-lg` cards inside a modal.
 - **Inline Non-Floating Footer**: Integrated inline footer (`flex items-center justify-between pt-4 border-t border-black/10 dark:border-white/10 mt-6`) directly in the natural flow of the modal form. Never render a detached floating bar with negative margins (`-mx-... -mb-...`), `sticky bottom-0`, or duplicate save buttons.
-- **Touch Target**: Tactile close button strictly `min-w-[44px] min-h-[44px]` with `CLOSE_BTN_STYLE` and Phosphor `<X className="w-5 h-5" />`.
+- **Touch Target**: Tactile close button strictly `min-w-[44px] min-h-[44px]` with `CLOSE_BTN_STYLE` and `<X className="w-5 h-5" />`.
 
 ## 4. Radical Simplicity: Zero Unnecessary Text
 

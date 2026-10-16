@@ -8,7 +8,7 @@ import { EmptyState } from './EmptyState';
 import { 
   Backpack, Sparkle, Plus, Check, X, TShirt, Drop, 
   DeviceMobile, FileText, FirstAid, SquaresFour 
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { dataService } from '../services/mockDb';
 
 interface PackingListProps {

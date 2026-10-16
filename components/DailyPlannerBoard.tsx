@@ -34,7 +34,7 @@ import {
     Wine,
     SignIn,
     SignOut
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import GlassPanel from './glass/GlassPanel';
 import { EmptyState } from './EmptyState';
 import { Trip, Transport, Accommodation, Activity, WorkspaceSettings } from '../types';

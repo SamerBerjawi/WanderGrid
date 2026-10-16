@@ -21,7 +21,7 @@ import {
     CarProfile,
     Boat,
     Warning
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import {
     DndContext,
     closestCenter,

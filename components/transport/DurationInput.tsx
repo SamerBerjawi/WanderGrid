@@ -1,5 +1,5 @@
 import React from 'react';
-import { Speedometer } from '@phosphor-icons/react';
+import { Speedometer } from '@/components/ui/hugeicons';
 
 interface DurationInputProps {
     minutes: number;

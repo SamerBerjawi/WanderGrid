@@ -12,7 +12,7 @@ import {
     Flag,
     CheckCircle,
     Compass
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { RoadTripWaypoint } from '../../types';
 import { Autocomplete, Input } from '../ui';
 import GlassSelect from '../glass/GlassSelect';

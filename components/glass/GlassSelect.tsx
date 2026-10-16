@@ -3,12 +3,12 @@ import React, {
 } from 'react';
 import { createPortal } from 'react-dom';
 import GlassPanel from './GlassPanel';
-import { CaretDown, Check } from '@phosphor-icons/react';
+import { CaretDown, Check } from '@/components/ui/hugeicons';
 
 export interface GlassSelectOption {
   value: string;
   label: string;
-  /** Optional leading icon shown in the trigger and the list (Phosphor, per Design.md). */
+  /** Optional leading icon shown in the trigger and the list (Hugeicons, per Design.md). */
   icon?: ReactNode;
 }
 

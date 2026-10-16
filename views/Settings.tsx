@@ -36,7 +36,7 @@ import {
     ArrowsMerge,
     ArrowsClockwise,
     Key
-} from '@phosphor-icons/react';
+} from '@/components/ui/hugeicons';
 import { isFeatureEnabled } from '../config/featureFlags';
 import { motion, AnimatePresence } from 'motion/react';
 import GlassPanel from '../components/glass/GlassPanel';

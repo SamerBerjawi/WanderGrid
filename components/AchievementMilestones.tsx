@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Trophy as Award, Compass, MagnifyingGlass as Search, Sparkle as Stars, CheckCircle as CheckCircle2, Lock, Airplane as Plane, Globe, MapPin } from '@phosphor-icons/react';
+import { Trophy as Award, Compass, MagnifyingGlass as Search, Sparkle as Stars, CheckCircle as CheckCircle2, Lock, Airplane as Plane, Globe, MapPin } from '@/components/ui/hugeicons';
 import { Trip } from '../types';
 import { VisitedCountry } from './PassportStamp';
 import { GlassPanel } from './glass/GlassPanel';
