@@ -12,6 +12,11 @@ on:
       - main
       - master
   workflow_dispatch:
+    inputs:
+      run_e2e:
+        description: 'Run the full e2e suite before building the image'
+        type: boolean
+        default: true
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -58,7 +63,7 @@ jobs:
   # Full browser suite (~15-20 min). Not run on every change: only for version tags (releases) and manual runs
   # (Actions tab -> "Build and Push Docker Image" -> Run workflow).
   e2e:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+    if: (github.event_name == 'workflow_dispatch' && inputs.run_e2e) || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -124,6 +129,13 @@ jobs:
             type=sha,prefix=sha-
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
 
+      # The tiles come from a release asset; its digest busts the Docker layer cache when upstream updates.
+      - name: Resolve airport tiles revision
+        id: tiles
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "rev=$(gh release view assets --json body -q .body | grep -o 'sha256:[0-9a-f]\{64\}' | head -1 || true)" >> "$GITHUB_OUTPUT"
+
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v7
         with:
@@ -132,5 +144,7 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            AIRPORT_PMTILES_REV=${{ steps.tiles.outputs.rev }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

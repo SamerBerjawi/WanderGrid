@@ -22,6 +22,7 @@ COPY --from=frontend-build /app/dist ./client_build
 # The airport overlay tiles (~200 MB) are gitignored, so CI checkouts lack them. Fetch them into the
 # served client build unless a local build already shipped the file (dist is copied from public/).
 ARG AIRPORT_PMTILES_URL=https://github.com/SamerBerjawi/WanderGrid/releases/download/assets/airport-overlay.pmtiles
+ARG AIRPORT_PMTILES_REV=
 RUN if [ ! -s client_build/airport-overlay.pmtiles ] && [ -n "$AIRPORT_PMTILES_URL" ]; then \
       wget -q -O client_build/airport-overlay.pmtiles "$AIRPORT_PMTILES_URL" \
       || { echo "WARNING: could not download airport-overlay.pmtiles from $AIRPORT_PMTILES_URL; airport overlay will be unavailable" >&2; rm -f client_build/airport-overlay.pmtiles; }; \
