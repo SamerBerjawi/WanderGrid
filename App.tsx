@@ -27,6 +27,7 @@ const Auth = lazy(() => loadAuth().then(m => ({ default: m.Auth })));
 // The navigation shell (and most of its icon set) is only needed after sign-in; keep it off the login page's
 // critical path (PERF-001/005).
 const Sidebar = lazy(() => import('./components/Sidebar').then(m => ({ default: m.Sidebar })));
+const GoldenSidebar = lazy(() => import('./components/golden/GoldenSidebar').then(m => ({ default: m.GoldenSidebar })));
 
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { Toaster } from './components/Toaster';
@@ -299,6 +300,8 @@ export default function App() {
 
   const routeKey = getStableRouteKey();
 
+  const NavSidebar = isFeatureEnabled('UI_GOLDEN_HOUR') ? GoldenSidebar : Sidebar;
+
   const renderView = () => {
     const Golden = isFeatureEnabled('UI_GOLDEN_HOUR') ? goldenViews[view] : undefined;
     if (Golden) {
@@ -385,7 +388,7 @@ export default function App() {
           darkMode={isDarkMode} 
         />
         <Suspense fallback={null}>
-        <Sidebar 
+        <NavSidebar 
           currentView={view} 
           onNavigate={(v, id) => navigate(v, id)} 
           theme={theme}
