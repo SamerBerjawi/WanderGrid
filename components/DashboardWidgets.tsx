@@ -48,7 +48,7 @@ export const StatCard: React.FC<{
   color?: string 
 }> = React.memo(({ title, value, subtitle, icon, color = 'blue' }) => {
     return (
-        <GlassPanel className="wg-glass-card rounded-2xl sm:rounded-[28px] overflow-hidden p-3.5 sm:p-5 flex flex-col justify-between relative group transition-all duration-300 hover:-translate-y-0.5 border border-black/5 dark:border-white/10">
+        <GlassPanel className={`wg-glass-card wg-stat-tile wg-stat-${color} rounded-2xl sm:rounded-[28px] overflow-hidden p-3.5 sm:p-5 flex flex-col justify-between relative group transition-all duration-300 hover:-translate-y-0.5 border border-black/5 dark:border-white/10`}>
             {/* Ambient Accent Spot */}
             <div className={`absolute -right-8 -top-8 w-24 h-24 bg-${color}-500/10 dark:bg-${color}-500/15 rounded-full blur-[30px] pointer-events-none transition-all duration-500 group-hover:scale-125`} />
             

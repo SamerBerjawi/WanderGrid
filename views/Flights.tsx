@@ -19,6 +19,8 @@ import {
   INPUT_BASE_STYLE, BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE
 } from '../constants';
 import { EmptyState } from '../components/EmptyState';
+import { DepartureBoard } from '../components/DepartureBoard';
+import { isFeatureEnabled } from '../config/featureFlags';
 import { dataService } from '../services/mockDb';
 import FlightsHeroBento from '../components/FlightsHeroBento';
 import { TooltipContent } from '../components/TooltipContent';
@@ -837,7 +839,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [timeFilter, setTimeFilter] = useState<'all' | 'upcoming' | 'past'>('all');
   const [classFilter, setClassFilter] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+  const [viewMode, setViewMode] = useState<'grid' | 'table' | 'board'>(isFeatureEnabled('UI_DEPARTURE_BOARD') ? 'board' : 'table');
   const [yearFilter, setYearFilter] = useState<string>('all');
 
   // Column specific filtering states
@@ -2779,7 +2781,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
   };
 
   return (
-    <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
+    <div className="wg-accent-primary w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
       {/* ========================================================================= */}
       {/* HERO HEADER: Title Aligned Left, Button Aligned Right on Mobile & Desktop */}
       {/* ========================================================================= */}
@@ -2953,6 +2955,16 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             >
               <List className="w-4 h-4" />
             </button>
+            {isFeatureEnabled('UI_DEPARTURE_BOARD') && (
+              <button
+                onClick={() => setViewMode('board')}
+                className={`p-2 wg-touch-target flex items-center justify-center rounded-lg transition-all cursor-pointer ${viewMode === 'board' ? 'bg-blue-500 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                title="Departure Board"
+                aria-label="Departure board view"
+              >
+                <Plane className="w-4 h-4" />
+              </button>
+            )}
             <button
               onClick={() => setViewMode('grid')}
               className={`p-2 wg-touch-target flex items-center justify-center rounded-lg transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-blue-500 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
@@ -2986,6 +2998,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             icon: "flight_takeoff"
           }}
         />
+      ) : viewMode === 'board' ? (
+        <DepartureBoard items={filteredFlights} onSelect={(item) => openFlightForm(item)} />
       ) : viewMode === 'grid' ? (
         <div className="flex flex-col gap-10">
           <AnimatePresence mode="popLayout">

@@ -11,6 +11,8 @@ import {
 } from '@/components/ui/hugeicons';
 import { Button, Input, GlassSelect, Badge, TimeInput, Autocomplete, Modal, BentoGrid, BentoCard } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
+import { DepartureBoard } from '../components/DepartureBoard';
+import { isFeatureEnabled } from '../config/featureFlags';
 import { INPUT_BASE_STYLE } from '../constants';
 import { Trip, Transport, TransportMode, RoadTripWaypoint } from '../types';
 import { dataService } from '../services/mockDb';
@@ -178,6 +180,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
   // Filtering & Sorting
   const [searchQuery, setSearchQuery] = useState('');
   const [modeFilter, setModeFilter] = useState<string>('All');
+  const [journeyView, setJourneyView] = useState<'list' | 'board'>(isFeatureEnabled('UI_DEPARTURE_BOARD') ? 'board' : 'list');
   const [statusFilter, setStatusFilter] = useState<'Upcoming' | 'Past' | 'All'>('All');
   const [sortBy, setSortBy] = useState<'date-asc' | 'date-desc' | 'cost-desc' | 'duration-desc'>('date-asc');
   
@@ -1259,6 +1262,21 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
         </div>
         
         <div className="flex flex-wrap items-center gap-2">
+          {isFeatureEnabled('UI_DEPARTURE_BOARD') && (
+            <div className="flex items-center rounded-xl p-1 border border-black/10 dark:border-white/10">
+              {(['board', 'list'] as const).map(v => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setJourneyView(v)}
+                  aria-pressed={journeyView === v}
+                  className={`min-h-[44px] px-3 rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer transition-all ${journeyView === v ? 'bg-primary-500 text-white' : 'text-light-text-secondary dark:text-dark-text-secondary'}`}
+                >
+                  {v === 'board' ? 'Board' : 'List'}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="w-full sm:w-36">
             <GlassSelect
               value={modeFilter}
@@ -1360,6 +1378,11 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                 onClick: handleOpenCreateModal,
                 icon: "add"
               }}
+            />
+          ) : journeyView === 'board' && isFeatureEnabled('UI_DEPARTURE_BOARD') ? (
+            <DepartureBoard
+              items={filteredRoadTrips.map(tr => ({ flight: tr, trip: tr.tripName ? { name: tr.tripName } : undefined }))}
+              onSelect={({ flight }) => handleOpenEditModal(flight)}
             />
           ) : (
             <div className="space-y-4">

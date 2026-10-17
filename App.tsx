@@ -1,4 +1,5 @@
 
+import { isFeatureEnabled } from './config/featureFlags';
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { ViewState, User } from './types';
@@ -199,6 +200,7 @@ export default function App() {
             isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         }
         root.classList.toggle('dark', isDark);
+        root.classList.toggle('theme-golden', isFeatureEnabled('UI_GOLDEN_HOUR'));
 
         // Update meta theme-color for iOS / Android PWA status bar
         const metaThemeColor = document.getElementById('theme-color-meta');

@@ -55,6 +55,12 @@ export const FEATURE_FLAGS = {
   // WP-1.7: "Archived" planner view (Archive no longer deletes trips)
   AUDIT_TRIP_ARCHIVE_VIEW: getEnvFlag('VITE_FF_AUDIT_TRIP_ARCHIVE_VIEW', true),
 
+  // UI: "Golden Hour" theme (sunset palette, rounded solid cards, rounded type). Replaces the glass look when ON
+  UI_GOLDEN_HOUR: getEnvFlag('VITE_FF_UI_GOLDEN_HOUR', false),
+
+  // UI: "Departure Board" view for flights and transport (boarding-pass cards, split-flap list)
+  UI_DEPARTURE_BOARD: getEnvFlag('VITE_FF_UI_DEPARTURE_BOARD', false),
+
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;
