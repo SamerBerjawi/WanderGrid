@@ -2,7 +2,7 @@ import React, {
   forwardRef, ReactNode, useCallback, useEffect, useId, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState,
 } from 'react';
 import { createPortal } from 'react-dom';
-import GlassPanel from './GlassPanel';
+import { GlassOrGolden, isGoldenHour, GH_LABEL, GH_PILL, GH_FOCUS_WITHIN, GH_RING_ERROR, GH_SHEET, GH_ROW, GH_ROW_ACTIVE, GH_ROW_SELECTED, GH_ROW_IDLE } from '../golden/ghControls';
 import { CaretDown, Check } from '@/components/ui/hugeicons';
 
 export interface GlassSelectOption {
@@ -200,25 +200,27 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(({
     }
   };
 
+  const gh = isGoldenHour();
   const { onChange, value: _value, defaultValue: _defaultValue, id: _id, ...nativeProps } = props;
 
   return (
     <div className={`flex flex-col gap-1.5 w-full ${containerClassName}`}>
       {label && (
-        <label id={labelId} htmlFor={selectId} className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+        <label id={labelId} htmlFor={selectId} className={gh ? GH_LABEL : 'block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary'}>
           {label}
         </label>
       )}
       <div className="relative group w-full">
-        <GlassPanel
+        <GlassOrGolden
+          golden={`w-full ${GH_PILL} ${GH_FOCUS_WITHIN} ${error ? GH_RING_ERROR : ''} ${disabled ? 'opacity-50' : ''}`}
           className={`wg-glass-pill w-full transition-all duration-180 ease-glass ${
             error ? 'border-rose-500/50' : 'border-black/10 dark:border-white/10 group-focus-within:border-primary-500/60'
           } ${disabled ? 'opacity-50' : ''} min-h-[44px] h-11`}
           padding="0px"
           overrides={{ borderRadius: 20 }}
         >
-          <div className="flex items-center min-h-[44px] h-11 px-3.5 w-full gap-2 relative">
-            {leftElement && <span className="shrink-0 text-light-text-secondary dark:text-dark-text-secondary">{leftElement}</span>}
+          <div className={`flex items-center min-h-[44px] h-11 ${gh ? 'px-0' : 'px-3.5'} w-full gap-2 relative`}>
+            {leftElement && <span className={`shrink-0 ${gh ? 'text-sunset-coral' : 'text-light-text-secondary dark:text-dark-text-secondary'}`}>{leftElement}</span>}
 
             {/* Real select: carries form value, ref and change events. Not focusable; the button below is the control. */}
             <select
@@ -251,19 +253,19 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(({
               disabled={disabled}
               onClick={() => (isOpen ? close() : open())}
               onKeyDown={onKeyDown}
-              className={`flex-1 min-w-0 text-left bg-transparent text-xs font-bold text-light-text dark:text-dark-text focus:outline-none cursor-pointer pr-7 py-2.5 truncate disabled:cursor-not-allowed ${className}`}
+              className={`flex-1 min-w-0 text-left bg-transparent ${gh ? 'text-sm font-bold text-sunset-ink dark:text-white' : 'text-xs font-bold text-light-text dark:text-dark-text'} focus:outline-none cursor-pointer pr-7 py-2.5 truncate disabled:cursor-not-allowed ${className}`}
             >
               <span className="flex items-center gap-2 min-w-0">
-                {selected?.icon && <span className="shrink-0 text-primary-500">{selected.icon}</span>}
+                {selected?.icon && <span className={`shrink-0 ${gh ? 'text-sunset-coral' : 'text-primary-500'}`}>{selected.icon}</span>}
                 <span className="truncate">{selected?.label ?? ''}</span>
               </span>
             </button>
 
-            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-light-text-secondary dark:text-dark-text-secondary opacity-70">
+            <div className={`absolute ${gh ? 'right-0 text-sunset-coral' : 'right-3.5 text-light-text-secondary dark:text-dark-text-secondary opacity-70'} top-1/2 -translate-y-1/2 pointer-events-none`}>
               <CaretDown className={`w-3.5 h-3.5 transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`} weight="bold" />
             </div>
           </div>
-        </GlassPanel>
+        </GlassOrGolden>
       </div>
       {error && <p className="text-2xs text-rose-500 font-bold ml-1">{error}</p>}
 
@@ -274,7 +276,7 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(({
           role="listbox"
           aria-labelledby={label ? labelId : undefined}
           style={{ position: 'fixed', top: coords.top, left: coords.left, width: coords.width, maxHeight: coords.maxHeight, zIndex: 70 /* z-popover */ }}
-          className="wg-glass-dropdown rounded-2xl overflow-y-auto p-1.5 custom-scrollbar flex flex-col gap-0.5 box-border animate-fadeIn"
+          className={gh ? `${GH_SHEET} overflow-y-auto p-2 custom-scrollbar flex flex-col gap-1 box-border animate-fadeIn` : 'wg-glass-dropdown rounded-2xl overflow-y-auto p-1.5 custom-scrollbar flex flex-col gap-0.5 box-border animate-fadeIn'}
         >
           {items.map((item, index) => {
             const isSelected = item.value === current;
@@ -283,7 +285,7 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(({
             return (
               <React.Fragment key={`${item.value}-${index}`}>
                 {showGroup && (
-                  <li role="presentation" className="px-3 pt-2 pb-1 text-2xs font-black uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                  <li role="presentation" className={`px-3 pt-2 pb-1 ${gh ? 'text-xs text-sunset-ink/60 dark:text-white/60' : 'text-2xs text-light-text-secondary dark:text-dark-text-secondary'} font-black uppercase tracking-wider`}>
                     {item.group}
                   </li>
                 )}
@@ -295,7 +297,15 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(({
                   onMouseEnter={() => !item.disabled && setActiveIndex(index)}
                   onMouseDown={(e) => e.preventDefault()} // keep focus on the trigger
                   onClick={() => !item.disabled && commit(item.value)}
-                  className={`px-3 min-h-[44px] flex items-center justify-between gap-3 rounded-xl text-xs font-bold text-left border transition-colors ${
+                  className={gh ? `px-4 min-h-[44px] flex items-center justify-between gap-3 text-left ${GH_ROW} ${
+                    item.disabled
+                      ? 'opacity-40 cursor-not-allowed'
+                      : isSelected
+                        ? `cursor-pointer ${GH_ROW_SELECTED}`
+                        : isActive
+                          ? `cursor-pointer ${GH_ROW_ACTIVE}`
+                          : `cursor-pointer ${GH_ROW_IDLE}`
+                  }` : `px-3 min-h-[44px] flex items-center justify-between gap-3 rounded-xl text-xs font-bold text-left border transition-colors ${
                     item.disabled
                       ? 'opacity-40 cursor-not-allowed border-transparent'
                       : isActive
@@ -304,10 +314,10 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(({
                   }`}
                 >
                   <span className="flex items-center gap-2.5 min-w-0">
-                    {item.icon && <span className="shrink-0 text-primary-500">{item.icon}</span>}
+                    {item.icon && <span className={`shrink-0 ${gh ? 'text-sunset-coral' : 'text-primary-500'}`}>{item.icon}</span>}
                     <span className="truncate">{item.label}</span>
                   </span>
-                  {isSelected && <Check className="w-3.5 h-3.5 shrink-0 text-primary-500" weight="bold" />}
+                  {isSelected && <Check className={`w-4 h-4 shrink-0 ${gh ? 'text-sunset-ink' : 'text-primary-500'}`} weight="bold" />}
                 </li>
               </React.Fragment>
             );

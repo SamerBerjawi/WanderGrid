@@ -1,4 +1,5 @@
 import React from 'react';
+import { isGoldenHour } from '../golden/ghControls';
 
 export interface GlassSliderProps {
   value: number;
@@ -47,6 +48,38 @@ export const GlassSlider: React.FC<GlassSliderProps> = ({
   className = '',
 }) => {
   const currentAccent = ACCENT_CLASSES[accentColor] || ACCENT_CLASSES.primary;
+
+  if (isGoldenHour()) {
+    const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
+    return (
+      <div className={`space-y-1 w-full ${disabled ? 'opacity-40 pointer-events-none' : ''} ${className}`}>
+        {label && (
+          <div className="flex items-center justify-between text-sm font-black text-sunset-ink dark:text-white">
+            <span>{label}</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-sunset-sun text-sunset-ink text-xs font-black tabular-nums">{formatValue(value)}</span>
+          </div>
+        )}
+        <div className="relative flex items-center min-h-[44px]">
+          <div className="absolute inset-x-0 h-3 rounded-full bg-sunset-sand dark:bg-sunset-dusk" />
+          <div className="absolute left-0 h-3 rounded-full bg-sunset-coral" style={{ width: `${pct}%` }} />
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            disabled={disabled}
+            aria-label={label}
+            onChange={(e) => onChange(parseFloat(e.target.value))}
+            onPointerUp={onPointerUp}
+            onMouseUp={onPointerUp}
+            onTouchEnd={onPointerUp}
+            className="relative w-full h-11 cursor-pointer appearance-none bg-transparent focus:outline-none [&::-webkit-slider-runnable-track]:bg-transparent [&::-moz-range-track]:bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-7 [&::-webkit-slider-thumb]:w-7 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_2px_8px_rgba(60,20,10,0.4)] [&::-moz-range-thumb]:h-7 [&::-moz-range-thumb]:w-7 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white focus-visible:[&::-webkit-slider-thumb]:ring-4 focus-visible:[&::-webkit-slider-thumb]:ring-sunset-coral/50"
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`space-y-1 w-full ${disabled ? 'opacity-40 pointer-events-none' : ''} ${className}`}>

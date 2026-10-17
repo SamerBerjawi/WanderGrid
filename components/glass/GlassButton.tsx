@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react';
 import GlassPanel from './GlassPanel';
+import { isGoldenHour } from '../golden/ghControls';
 
 export type ButtonAccentColor = 'primary' | 'emerald' | 'blue' | 'sky' | 'amber' | 'rose' | 'indigo' | string;
 
@@ -36,6 +37,40 @@ export const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>
   type = 'button',
   ...props
 }, ref) => {
+  if (isGoldenHour()) {
+    const GH_VARIANT: Record<string, string> = {
+      primary: 'bg-sunset-coral text-white shadow-[0_3px_10px_rgba(255,107,74,0.45)] hover:brightness-105 font-black',
+      secondary: 'bg-white dark:bg-sunset-dusk text-sunset-ink dark:text-white shadow-[0_2px_8px_rgba(120,50,20,0.14)] dark:shadow-none hover:brightness-95 font-bold',
+      pill: 'bg-white dark:bg-sunset-dusk text-sunset-ink dark:text-white shadow-[0_2px_8px_rgba(120,50,20,0.14)] dark:shadow-none font-bold',
+      ghost: 'bg-transparent text-sunset-ink dark:text-white hover:bg-sunset-sand dark:hover:bg-sunset-dusk font-bold',
+      danger: 'bg-rose-500 text-white shadow-[0_3px_10px_rgba(244,63,94,0.4)] hover:brightness-105 font-black',
+      outline: 'bg-sunset-sand dark:bg-sunset-dusk text-sunset-ink dark:text-white font-bold',
+      glass: 'bg-sunset-sand dark:bg-sunset-dusk text-sunset-ink dark:text-white font-bold',
+    };
+    // Keep layout/width helpers from callers; drop colour, border, radius and height overrides that fight the pill.
+    const ghClass = className
+      .split(/\s+/)
+      .filter(token => !/^(?:[\w-]+:)*(?:border|rounded|bg-|shadow|backdrop-blur|p-|px-|py-|pt-|pb-|pl-|pr-|text-(?:primary|emerald|blue|sky|amber|rose|indigo|white|light|dark|black)|h-(?!full)[0-9a-z\[\]-]+|min-h-(?!full)[0-9a-z\[\]-]+)/.test(token))
+      .join(' ');
+    return (
+      <button
+        ref={ref}
+        type={type}
+        disabled={disabled || isLoading}
+        onClick={disabled || isLoading ? undefined : onClick}
+        className={`inline-flex items-center justify-center gap-2 min-h-[44px] h-11 px-5 rounded-full text-sm select-none whitespace-nowrap cursor-pointer transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-sunset-coral focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${GH_VARIANT[variant] || GH_VARIANT.secondary} ${ghClass}`.trim()}
+        {...props}
+      >
+        {isLoading ? (
+          <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+        ) : icon ? (
+          <span className="inline-flex items-center justify-center shrink-0">{icon}</span>
+        ) : null}
+        {children}
+      </button>
+    );
+  }
+
   const resolvedColor = color || 'primary';
   const colorClass = `wg-glass-pill-colored wg-glass-pill-${resolvedColor}`;
 

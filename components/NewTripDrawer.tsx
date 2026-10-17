@@ -16,7 +16,7 @@ import {
     Sparkle
 } from '@/components/ui/hugeicons';
 import GlassButton from './glass/GlassButton';
-import GlassPanel from './glass/GlassPanel';
+import { AdaptivePanel as GlassPanel, isGoldenHour, GH_BACKDROP, GH_BTN_SOFT, GH_BTN_PRIMARY, GH_BTN_DANGER, GH_FIELD_CARD } from './golden/GoldenDialog';
 import { DateRangePicker, CategoryBadge } from './ui';
 import { dataService } from '../services/mockDb';
 import { Trip, User, Transport, Accommodation } from '../types';
@@ -574,21 +574,24 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
         }
     ];
 
+    const gh = isGoldenHour();
     return createPortal(
         <div className="fixed inset-0 z-modal overflow-hidden font-sans">
             {/* 1. Backdrop Blur Overlay */}
             <div 
-                className={`fixed inset-0 backdrop-blur-md bg-black/5 dark:bg-black/15 transition-all duration-300 ${
+                className={`${gh ? GH_BACKDROP : 'fixed inset-0 backdrop-blur-md bg-black/5 dark:bg-black/15'} transition-all duration-300 ${
                     isVisible ? 'opacity-100' : 'opacity-0'
                 }`}
                 onClick={handleClose}
             />
 
             {/* 2. Slide-out Shell with Full Liquid Glass (Floating 28px standard) */}
-            <div className="fixed top-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:top-4 right-[calc(0.75rem+env(safe-area-inset-right,0px))] sm:right-4 bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-4 z-modal flex max-w-full pl-0 sm:pl-10 pointer-events-none">
+            <div className={gh
+                ? "fixed inset-x-0 bottom-0 sm:inset-auto sm:top-4 sm:right-4 sm:bottom-4 z-modal flex max-w-full pointer-events-none"
+                : "fixed top-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:top-4 right-[calc(0.75rem+env(safe-area-inset-right,0px))] sm:right-4 bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-4 z-modal flex max-w-full pl-0 sm:pl-10 pointer-events-none"}>
                 <div 
-                    className={`w-screen max-w-lg h-full flex flex-col transform transition-transform duration-300 ease-out pointer-events-auto ${
-                        isVisible ? 'translate-x-0' : 'translate-x-full'
+                    className={`w-screen max-w-lg flex flex-col transform transition-transform duration-300 ease-out pointer-events-auto ${
+                        gh ? `h-[92dvh] sm:h-full rounded-t-3xl sm:rounded-3xl ${isVisible ? 'translate-y-0 sm:translate-x-0' : 'translate-y-full sm:translate-y-0 sm:translate-x-full'}` : `h-full ${isVisible ? 'translate-x-0' : 'translate-x-full'}`
                     }`}
                 >
                     <GlassPanel liquid
@@ -598,13 +601,13 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                     >
                         <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
                         {/* Header: Streamlined without tag or subtitle */}
-                        <div className="p-4 sm:p-6 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-primary-500/10 via-emerald-500/5 to-transparent shrink-0">
+                        <div className={`p-4 sm:p-6 flex items-center justify-between shrink-0 ${gh ? '' : 'border-b border-black/5 dark:border-white/10 bg-gradient-to-r from-primary-500/10 via-emerald-500/5 to-transparent'}`}>
                             <div className="flex items-center gap-3.5 min-w-0">
-                                <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-primary-500 to-amber-500 shrink-0 shadow-md transition-transform hover:scale-105 border border-white/25">
+                                <div className={gh ? "w-12 h-12 rounded-2xl flex items-center justify-center bg-sunset-sun text-sunset-ink shrink-0" : "w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-primary-500 to-amber-500 shrink-0 shadow-md transition-transform hover:scale-105 border border-white/25"}>
                                     <MapTrifold weight="duotone" className="w-5 h-5" />
                                 </div>
                                 <div className="min-w-0">
-                                    <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight truncate">
+                                    <h2 className={`font-black tracking-tight truncate ${gh ? 'text-2xl sm:text-3xl' : 'text-xl text-slate-900 dark:text-white'}`}>
                                         {initialData ? 'Edit Trip' : 'New Trip'}
                                     </h2>
                                 </div>
@@ -612,7 +615,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                             <button 
                                 type="button"
                                 onClick={handleClose}
-                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
+                                className={gh ? "w-11 h-11 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center bg-sunset-sand dark:bg-sunset-dusk text-sunset-ink dark:text-white shrink-0 cursor-pointer" : "w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0 cursor-pointer"}
                                 aria-label="Close drawer"
                             >
                                 <X weight="bold" className="w-5 h-5" />
@@ -634,6 +637,10 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                     </p>
                                 </div>
                                 <div className="flex gap-3 w-full max-w-xs pt-4">
+                                    {gh ? (<>
+                                        <button type="button" className={`${GH_BTN_SOFT} flex-1`} onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
+                                        <button type="button" className={`${GH_BTN_DANGER} flex-1`} disabled={isSubmitting} onClick={showDeleteConfirm === 'delete' ? handleDelete : handleArchive}>{showDeleteConfirm === 'delete' ? 'Delete trip' : 'Archive trip'}</button>
+                                    </>) : (<>
                                     <GlassButton 
                                         type="button" 
                                         variant="ghost" 
@@ -652,6 +659,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                     >
                                         {showDeleteConfirm === 'delete' ? 'Delete Trip' : 'Archive Trip'}
                                     </GlassButton>
+                                    </>)}
                                 </div>
                             </div>
                         ) : (
@@ -667,7 +675,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                     )}
 
                                     {/* 1. Trip Title */}
-                                    <div className="p-3.5 sm:p-4 rounded-2xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-sm focus-within:border-primary-500/40 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all">
+                                    <div className={gh ? `p-3.5 sm:p-4 ${GH_FIELD_CARD}` : "p-3.5 sm:p-4 rounded-2xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-sm focus-within:border-primary-500/40 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all"}>
                                         <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-1.5">
                                             Trip Title <span className="text-rose-500">*</span>
                                         </label>
@@ -683,7 +691,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                     </div>
 
                                     {/* 2. Badge & Emoji Selector */}
-                                    <div className="p-3.5 sm:p-4 rounded-2xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-sm flex items-center gap-3 sm:gap-4">
+                                    <div className={gh ? `p-3.5 sm:p-4 ${GH_FIELD_CARD} flex items-center gap-3 sm:gap-4` : "p-3.5 sm:p-4 rounded-2xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-sm flex items-center gap-3 sm:gap-4"}>
                                         <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-2xl bg-gradient-to-tr from-primary-500/20 to-primary-500/5 dark:from-primary-500/30 dark:to-white/5 border border-primary-500/30 flex items-center justify-center text-2xl sm:text-3xl shadow-sm relative select-none transition-transform hover:scale-105 shrink-0">
                                             <span>{icon}</span>
                                             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary-500 text-white rounded-md flex items-center justify-center text-2xs shadow-sm">
@@ -816,7 +824,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
 
                                         {/* Destination Input */}
                                         <div className="relative">
-                                            <div className="p-3 sm:p-3.5 rounded-2xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-sm focus-within:border-emerald-500/40 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all flex items-center gap-2.5">
+                                            <div className={gh ? `p-3 sm:p-3.5 ${GH_FIELD_CARD} flex items-center gap-2.5` : "p-3 sm:p-3.5 rounded-2xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-sm focus-within:border-emerald-500/40 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all flex items-center gap-2.5"}>
                                                 <MapPin weight="duotone" className="w-4 h-4 text-emerald-500 shrink-0" />
                                                 <input
                                                     type="text"
@@ -879,7 +887,23 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                 </div>
 
                                 {/* Sticky Frosted Footer with Liquid Glass Actions */}
-                                <div className="p-4 sm:p-6 border-t border-black/5 dark:border-white/10 bg-white/30 dark:bg-white/[0.03] backdrop-blur-md flex items-center justify-between gap-3 shrink-0">
+                                <div className={`p-4 sm:p-6 flex items-center justify-between gap-3 shrink-0 ${gh ? 'pb-[calc(1rem+env(safe-area-inset-bottom,0px))]' : 'border-t border-black/5 dark:border-white/10 bg-white/30 dark:bg-white/[0.03] backdrop-blur-md'}`}>
+                                    {gh ? (
+                                        <>
+                                            {initialData && (onDelete || initialData.id) ? (
+                                                <div className="flex items-center gap-2">
+                                                    <button type="button" onClick={() => setShowDeleteConfirm('archive')} disabled={isSubmitting} className={GH_BTN_SOFT}>Archive</button>
+                                                    <button type="button" onClick={() => setShowDeleteConfirm('delete')} disabled={isSubmitting} aria-label="Delete trip" className={GH_BTN_DANGER}>Delete</button>
+                                                </div>
+                                            ) : (
+                                                <button type="button" onClick={handleClose} disabled={isSubmitting} className={GH_BTN_SOFT}>Cancel</button>
+                                            )}
+                                            <div className="flex items-center gap-2.5">
+                                                {initialData && <button type="button" onClick={handleClose} disabled={isSubmitting} className={GH_BTN_SOFT}>Dismiss</button>}
+                                                <button type="submit" disabled={isSubmitting} className={GH_BTN_PRIMARY}>{isSubmitting ? 'Saving...' : initialData ? 'Save changes' : 'Create trip'}</button>
+                                            </div>
+                                        </>
+                                    ) : <>
                                     {initialData && (onDelete || initialData.id) ? (
                                         <div className="flex items-center gap-2">
                                             <GlassButton 
@@ -934,6 +958,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                             <span>{isSubmitting ? 'Saving...' : initialData ? 'Save Changes' : 'Create Trip'}</span>
                                         </GlassButton>
                                     </div>
+                                    </>}
                                 </div>
                             </form>
                         )}

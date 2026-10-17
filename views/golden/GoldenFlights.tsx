@@ -9,7 +9,7 @@ import { Transport } from '../../types';
 import { formatDate, formatCurrency } from '../../utils/formatters';
 import { getCityName, getCarrierName, getFlightStatusTags, getFlightDepartureUtcDate } from '../../utils/flightData';
 import { isFeatureEnabled } from '../../config/featureFlags';
-import { DepartureBoard } from '../../components/DepartureBoard';
+import { GhFlightBoard } from '../../components/golden/GhFlightBoard';
 import { useBentoStats, COUNTRY_NAMES } from '../../components/FlightyPassport';
 import { FlightTrackerModal } from '../../components/FlightTrackerModal';
 import {
@@ -150,7 +150,7 @@ const FlightRow: React.FC<RowProps> = ({ flight: f, prev, selecting, selected, o
       )}
       <div
         className={clsx(
-          'rounded-3xl p-3 sm:p-4 flex flex-col gap-3 sm:flex-row sm:items-center transition-colors',
+          'rounded-3xl p-3 sm:p-4 flex flex-col gap-3 transition-colors', !card && '2xl:flex-row 2xl:items-center',
           card ? 'bg-sunset-teal text-sunset-ink' : 'bg-sunset-ink text-sunset-sun',
           selected && 'ring-4 ring-sunset-coral',
           past && !card && 'opacity-80'
@@ -174,13 +174,14 @@ const FlightRow: React.FC<RowProps> = ({ flight: f, prev, selecting, selected, o
             </span>
           </span>
         </button>
-        <div className="grid grid-cols-2 sm:flex sm:items-center gap-x-6 gap-y-1 text-xs font-semibold sm:flex-1 sm:justify-around">
+        <div className={clsx('grid grid-cols-2 gap-x-4 gap-y-2 text-xs font-semibold', !card && 'sm:grid-cols-4 2xl:flex-1')}>
           <span><span className="block opacity-70 uppercase tracking-wider">Date</span><b className="text-sm">{formatDate(f.departureDate, 'short')}</b></span>
           <span><span className="block opacity-70 uppercase tracking-wider">Time</span><b className="text-sm">{f.departureTime || '--:--'} → {f.arrivalTime || '--:--'}</b></span>
           <span><span className="block opacity-70 uppercase tracking-wider">Flight</span><b className="text-sm">{f.identifier || '—'}</b></span>
-          <span><span className="block opacity-70 uppercase tracking-wider">{f.seatNumber ? 'Seat' : 'Cabin'}</span><b className="text-sm">{f.seatNumber || f.travelClass || '—'}</b></span>
+          <span><span className="block opacity-70 uppercase tracking-wider">Cabin</span><b className="text-sm">{f.travelClass || '—'}</b></span>
+          {f.seatNumber && <span><span className="block opacity-70 uppercase tracking-wider">Seat</span><b className="text-sm">{f.seatNumber}{f.seatType ? ` · ${f.seatType}` : ''}</b></span>}
         </div>
-        <div className="flex items-center gap-2 justify-between sm:justify-end">
+        <div className={clsx('flex items-center gap-2 justify-between flex-wrap', !card && '2xl:justify-end')}>
           <div className="flex flex-wrap gap-1.5">
             <GhChip tone={STATUS_TONE[status.label] || 'lilac'}>{status.label}</GhChip>
             {f.duration ? <GhChip tone="plain">{formatFlightDuration(f.duration)}</GhChip> : null}
@@ -241,7 +242,7 @@ export const GoldenFlights: React.FC<GoldenViewProps> = ({ onTripClick }) => {
     return flights.filter(i => getFlightDepartureUtcDate(i.flight) >= t0).length;
   }, [flights]);
   const maxMonth = Math.max(1, ...L.monthlyData.map(m => m.flights));
-  const effectiveView: ViewMode = isMultiEditing && viewMode === 'board' ? 'list' : viewMode;
+  const effectiveView: ViewMode = viewMode;
 
   const topCountries = useMemo(() => stats.flags.slice(0, 3), [stats.flags]);
   const airtimeDays = Math.floor(stats.hours / 24);
@@ -268,7 +269,7 @@ export const GoldenFlights: React.FC<GoldenViewProps> = ({ onTripClick }) => {
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-sunset-ink dark:text-white">{year}</h2>
             <GhChip tone="sun">{groups.reduce((n, g) => n + g.flights.length, 0)}</GhChip>
           </div>
-          <div className={clsx('grid gap-4', card && 'lg:grid-cols-2')}>
+          <div className={clsx('grid grid-cols-1 gap-4', card && 'xl:grid-cols-2')}>
             {groups.map(g => (
               <div key={g.trip.id} className={clsx('rounded-3xl p-3 sm:p-4 flex flex-col gap-3', g.isIndependent ? 'bg-transparent p-0 sm:p-0' : 'bg-sunset-sand dark:bg-sunset-dusk')}>
                 {!g.isIndependent && (
@@ -339,7 +340,7 @@ export const GoldenFlights: React.FC<GoldenViewProps> = ({ onTripClick }) => {
       controls={controls}
     >
       {/* Hero: next boarding pass, or an invitation */}
-      {effectiveView !== 'board' && (L.nextUpcomingFlight ? (
+      {(L.nextUpcomingFlight ? (
         <BoardingPass record={L.nextUpcomingFlight} onOpen={() => L.openFlightForm(L.nextUpcomingFlight!)} onTrack={() => trackFor(L.nextUpcomingFlight!.flight)} />
       ) : flights.length > 0 ? (
         <div className="rounded-3xl overflow-hidden relative h-40 sm:h-48 shadow-card">
@@ -482,7 +483,7 @@ export const GoldenFlights: React.FC<GoldenViewProps> = ({ onTripClick }) => {
       </div>
 
       {/* Board header with view switch */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-sunset-ink dark:text-white">Departures</h2>
           <GhChip tone="coral">{filteredFlights.length}</GhChip>
@@ -510,7 +511,17 @@ export const GoldenFlights: React.FC<GoldenViewProps> = ({ onTripClick }) => {
           action={flights.length === 0 ? <GhButton onClick={() => L.openFlightForm()} icon={<Plus className="w-4 h-4" />}>Add flight</GhButton> : <GhButton variant="soft" onClick={L.resetFilters}>Reset filters</GhButton>}
         />
       ) : effectiveView === 'board' ? (
-        <DepartureBoard items={filteredFlights} onSelect={item => L.openFlightForm(item)} />
+        <GhFlightBoard
+          groups={L.groupedFlights}
+          selecting={isMultiEditing}
+          selectedIds={selectedFlightIds}
+          onToggle={toggleSelected}
+          onEdit={(f, tripId) => { const r = recordOf(f, tripId); if (r) L.openFlightForm(r); }}
+          onDelete={(f, tripId) => { const r = recordOf(f, tripId); if (r) L.setDeleteConfirmTarget({ type: 'single', singleRecord: r }); }}
+          onTrack={trackFor}
+          onEditBundle={L.openBundleEditor}
+          onOpenTrip={onTripClick ? openTrip : undefined}
+        />
       ) : (
         renderGroups(effectiveView === 'cards')
       )}

@@ -1,4 +1,5 @@
 import React from 'react';
+import { isGoldenHour } from '../golden/ghControls';
 
 export interface SettingsSectionProps {
   title?: string;
@@ -36,6 +37,30 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
   children,
   className = '',
 }) => {
+  if (isGoldenHour()) {
+    const DOT: Record<string, string> = {
+      primary: 'bg-sunset-coral', emerald: 'bg-sunset-teal', amber: 'bg-sunset-sun', rose: 'bg-sunset-coral',
+      sky: 'bg-sunset-teal', indigo: 'bg-sunset-lilac', cyan: 'bg-sunset-teal', purple: 'bg-sunset-lilac',
+    };
+    return (
+      <div className={`p-4 sm:p-5 rounded-3xl bg-white dark:bg-sunset-plum shadow-card space-y-4 ${className}`}>
+        {(title || action) && (
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              {accentColor && <span className={`w-3 h-3 rounded-full ${DOT[accentColor] || 'bg-sunset-coral'} shrink-0`} />}
+              <div className="min-w-0">
+                {title && <h4 className="text-lg font-black tracking-tight text-sunset-ink dark:text-white">{title}</h4>}
+                {subtitle && <p className="text-sm text-sunset-ink/70 dark:text-white/70 mt-0.5">{subtitle}</p>}
+              </div>
+            </div>
+            {action && <div className="shrink-0">{action}</div>}
+          </div>
+        )}
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div
       className={`p-3 sm:p-3.5 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-2 ${className}`}

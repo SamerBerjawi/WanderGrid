@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Modal } from './ui';
 import { BTN_SECONDARY_STYLE } from '../constants';
+import { GoldenConfirmActions, isGoldenHour } from './golden/GoldenDialog';
 import { markConfirmHostMounted, subscribeToConfirms, PendingConfirm } from '../services/confirm';
 
 /** Renders confirmDialog() requests one at a time in the shared Modal (focus trap, Escape = cancel). */
@@ -17,6 +18,15 @@ export const ConfirmHost: React.FC = () => {
     current.resolve(ok);
     setQueue((q) => q.slice(1));
   };
+  if (isGoldenHour()) {
+    return (
+      <Modal isOpen={!!current} onClose={() => settle(false)} title={current?.title || 'Please confirm'} icon={current?.danger ? 'warning' : 'help'} maxWidth="max-w-md"
+        footerActions={<GoldenConfirmActions cancelLabel={current?.cancelLabel || 'Cancel'} confirmLabel={current?.confirmLabel || 'Confirm'} danger={current?.danger} onCancel={() => settle(false)} onConfirm={() => settle(true)} />}
+      >
+        <p className="text-base leading-relaxed text-left pb-2">{current?.message}</p>
+      </Modal>
+    );
+  }
   return (
     <Modal isOpen={!!current} onClose={() => settle(false)} title={current?.title || 'Please confirm'} icon={current?.danger ? 'warning' : 'help'} maxWidth="max-w-md">
       <div className="space-y-6 text-left font-sans">

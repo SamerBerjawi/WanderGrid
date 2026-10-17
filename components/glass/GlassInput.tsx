@@ -1,6 +1,7 @@
 import React, { forwardRef, ReactNode, useId } from 'react';
 import GlassPanel from './GlassPanel';
 import { DatePicker, AccentColor } from '../ui/DatePicker';
+import { isGoldenHour, GH_LABEL, GH_PILL, GH_FOCUS_WITHIN, GH_RING_ERROR, GH_INPUT_TEXT } from '../golden/ghControls';
 
 export interface GlassInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -57,6 +58,28 @@ export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(({
         name={props.name}
         id={props.id}
       />
+    );
+  }
+
+  if (isGoldenHour()) {
+    return (
+      <div className={`flex flex-col gap-1.5 w-full ${containerClassName}`}>
+        {label && <label htmlFor={inputId} className={GH_LABEL}>{label}</label>}
+        <div className={`flex items-center gap-2 w-full ${GH_PILL} ${GH_FOCUS_WITHIN} ${error ? GH_RING_ERROR : ''} ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
+          {leftElement && <span className="shrink-0 text-sunset-coral">{leftElement}</span>}
+          <input
+            ref={ref}
+            disabled={disabled}
+            className={`w-full min-w-0 ${GH_INPUT_TEXT} [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-70 dark:[&::-webkit-calendar-picker-indicator]:invert [&::-webkit-inner-spin-button]:cursor-pointer ${className}`}
+            {...props}
+            id={inputId}
+            aria-invalid={error ? true : props['aria-invalid']}
+            aria-describedby={error ? errorId : props['aria-describedby']}
+          />
+          {rightElement && <span className="shrink-0 flex items-center">{rightElement}</span>}
+        </div>
+        {error && <p id={errorId} className="text-xs text-rose-500 font-bold ml-3">{error}</p>}
+      </div>
     );
   }
 

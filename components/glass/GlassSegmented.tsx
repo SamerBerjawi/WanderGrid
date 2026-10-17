@@ -1,5 +1,6 @@
 import React from 'react';
 import { Check } from '@/components/ui/hugeicons';
+import { isGoldenHour } from '../golden/ghControls';
 
 export interface GlassSegmentedOption<T extends string = string> {
   id: T;
@@ -86,6 +87,7 @@ export function GlassSegmented<T extends string = string>({
   ariaLabel,
   disabled = false,
 }: GlassSegmentedProps<T>) {
+  const gh = isGoldenHour();
   const isSelected = (id: T): boolean => {
     if (isMulti && Array.isArray(value)) {
       return value.includes(id);
@@ -122,7 +124,7 @@ export function GlassSegmented<T extends string = string>({
     <div
       role={isMulti ? 'group' : 'radiogroup'}
       aria-label={ariaLabel}
-      className={`${gridClass} gap-1.5 w-full ${disabled ? 'opacity-50 pointer-events-none' : ''} ${className}`}
+      className={`${gridClass} ${gh ? 'gap-1 p-1 rounded-3xl bg-sunset-sand dark:bg-sunset-dusk' : 'gap-1.5'} w-full ${disabled ? 'opacity-50 pointer-events-none' : ''} ${className}`}
     >
       {options.map((option) => {
         const selected = isSelected(option.id);
@@ -139,7 +141,13 @@ export function GlassSegmented<T extends string = string>({
             aria-pressed={isMulti ? selected : undefined}
             disabled={optDisabled}
             onClick={() => handleSelect(option.id)}
-            className={`min-h-[38px] px-2.5 py-1.5 rounded-xl border text-center transition-all duration-150 cursor-pointer select-none active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 flex items-center justify-center gap-1.5 ${
+            className={gh ? `min-h-[44px] px-4 py-2 rounded-full text-center transition-colors duration-150 cursor-pointer select-none active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-sunset-coral flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${
+              gridClass.includes('flex') ? 'flex-1 min-w-[64px]' : 'w-full'
+            } ${
+              selected
+                ? 'bg-sunset-coral text-white shadow-[0_2px_8px_rgba(255,107,74,0.45)] font-black'
+                : 'text-sunset-ink dark:text-white/80 hover:bg-white/70 dark:hover:bg-sunset-plum font-bold'
+            }` : `min-h-[38px] px-2.5 py-1.5 rounded-xl border text-center transition-all duration-150 cursor-pointer select-none active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 flex items-center justify-center gap-1.5 ${
               gridClass.includes('flex') ? 'flex-1 min-w-[64px]' : 'w-full'
             } ${
               selected
@@ -150,7 +158,7 @@ export function GlassSegmented<T extends string = string>({
             {IconComponent && (
               <IconComponent
                 className={`w-3.5 h-3.5 shrink-0 transition-colors duration-150 ${
-                  selected ? optAccent.icon : 'text-light-text-secondary dark:text-dark-text-secondary'
+                  gh ? (selected ? 'text-white' : 'text-sunset-coral') : selected ? optAccent.icon : 'text-light-text-secondary dark:text-dark-text-secondary'
                 }`}
                 weight={selected ? 'bold' : 'regular'}
               />
@@ -162,7 +170,7 @@ export function GlassSegmented<T extends string = string>({
               )}
             </div>
             {showCheckOnSelected && selected && (
-              <Check className={`w-3.5 h-3.5 shrink-0 ${optAccent.icon}`} weight="bold" />
+              <Check className={`w-3.5 h-3.5 shrink-0 ${gh ? 'text-white' : optAccent.icon}`} weight="bold" />
             )}
           </button>
         );

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { CaretLeft, CaretRight, CaretDown, CalendarBlank, Check, X } from '@/components/ui/hugeicons';
-import GlassPanel from '../glass/GlassPanel';
+import { GlassOrGolden, isGoldenHour, GH_LABEL, GH_FIELD_SURFACE, GH_SHEET, GH_ICON_BTN } from '../golden/ghControls';
 import GlassButton from '../glass/GlassButton';
 import { formatDate } from '../../utils/formatters';
 import { SECTION_LABEL_STYLE } from '../../constants';
@@ -101,6 +101,18 @@ const ACCENT_THEMES: Record<string, AccentTheme> = {
     durationBadge: 'text-primary-600 dark:text-primary-400',
   }
 };
+ACCENT_THEMES.golden = {
+  triggerRing: 'ring-2 ring-sunset-coral',
+  triggerBorderFocus: '',
+  activeSegment: 'bg-sunset-sand dark:bg-sunset-plum text-sunset-ink dark:text-white',
+  iconBox: 'bg-sunset-sun text-sunset-ink',
+  calendarActiveTab: 'bg-sunset-coral text-white shadow-[0_2px_8px_rgba(255,107,74,0.45)] font-black',
+  startDay: 'bg-sunset-coral text-white shadow-[0_2px_8px_rgba(255,107,74,0.5)] font-black',
+  endDay: 'bg-sunset-coral text-white shadow-[0_2px_8px_rgba(255,107,74,0.5)] font-black',
+  rangeBand: 'bg-sunset-teal/40 dark:bg-sunset-teal/30',
+  doneBtn: 'bg-sunset-coral text-white',
+  durationBadge: 'text-sunset-ink dark:text-white font-black',
+};
 ACCENT_THEMES.green = ACCENT_THEMES.emerald;
 ACCENT_THEMES.sky = ACCENT_THEMES.blue;
 ACCENT_THEMES.orange = ACCENT_THEMES.amber;
@@ -143,7 +155,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   align = 'left',
   accentColor = 'primary',
 }) => {
-  const theme = ACCENT_THEMES[accentColor] || ACCENT_THEMES.primary;
+  const gh = isGoldenHour();
+  const theme = gh ? ACCENT_THEMES.golden : (ACCENT_THEMES[accentColor] || ACCENT_THEMES.primary);
+  const hoverCell = gh ? 'hover:bg-sunset-sand dark:hover:bg-sunset-plum text-sunset-ink dark:text-white' : 'hover:bg-black/5 dark:hover:bg-white/10 text-light-text dark:text-dark-text';
+  const divider = gh ? '' : 'border-black/5 dark:border-white/5';
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'start' | 'end'>('start');
   const [hoverDate, setHoverDate] = useState<string | null>(null);
@@ -328,10 +343,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
   return (
     <div className={`flex flex-col gap-1.5 w-full relative ${className}`} ref={containerRef}>
-      {label && <label className={SECTION_LABEL_STYLE}>{label}</label>}
+      {label && <label className={gh ? GH_LABEL : SECTION_LABEL_STYLE}>{label}</label>}
 
       {/* Trigger: Unified Liquid-Glass Capsule (Google Flights Style) */}
-      <GlassPanel
+      <GlassOrGolden
+        golden={`w-full rounded-full ${GH_FIELD_SURFACE} transition-shadow ${isOpen ? theme.triggerRing : ''} ${disabled ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}`}
         className={`wg-glass-pill w-full transition-all duration-180 ease-glass border-black/10 dark:border-white/10 ${
           isOpen ? theme.triggerRing : ''
         } ${disabled ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}`}
@@ -339,9 +355,9 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         overrides={{ borderRadius: 20 }}
         onClick={() => !disabled && setIsOpen(!isOpen)}
       >
-        <div className="flex items-center min-h-[44px] h-11 px-2.5 sm:px-3 w-full gap-1.5 sm:gap-2 select-none">
+        <div className={`flex items-center min-h-[44px] h-11 ${gh ? 'px-2' : 'px-2.5 sm:px-3'} w-full gap-1.5 sm:gap-2 select-none`}>
           {/* Calendar Icon */}
-          <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${theme.iconBox}`}>
+          <div className={`${gh ? 'w-8 h-8 rounded-full' : 'w-7 h-7 rounded-xl'} flex items-center justify-center shrink-0 ${theme.iconBox}`}>
             <CalendarBlank className="w-4 h-4" weight="duotone" />
           </div>
 
@@ -352,17 +368,17 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               setActiveTab('start');
               setIsOpen(true);
             }}
-            className={`flex-1 flex items-center min-w-0 px-2 py-1 rounded-xl transition-all ${
+            className={`flex-1 flex items-center min-w-0 px-2 py-1 ${gh ? 'rounded-full min-h-[40px]' : 'rounded-xl'} transition-all ${
               isOpen && activeTab === 'start'
                 ? theme.activeSegment
-                : 'hover:bg-black/5 dark:hover:bg-white/5'
+                : (gh ? 'hover:bg-sunset-sand dark:hover:bg-sunset-plum' : 'hover:bg-black/5 dark:hover:bg-white/5')
             }`}
           >
             <div className="min-w-0 flex-1">
-              <span className="text-2xs uppercase font-extrabold tracking-wider text-light-text-secondary/60 dark:text-dark-text-secondary/60 block leading-tight">
+              <span className={gh ? 'text-2xs uppercase font-black tracking-wider text-sunset-ink/50 dark:text-white/50 block leading-tight' : 'text-2xs uppercase font-extrabold tracking-wider text-light-text-secondary/60 dark:text-dark-text-secondary/60 block leading-tight'}>
                 {startLabel}
               </span>
-              <span className="text-xs font-bold text-light-text dark:text-dark-text truncate block leading-tight">
+              <span className={gh ? 'text-xs font-black text-sunset-ink dark:text-white truncate block leading-tight' : 'text-xs font-bold text-light-text dark:text-dark-text truncate block leading-tight'}>
                 {startDate ? formatDate(startDate, 'weekday-short') : 'Select date'}
               </span>
             </div>
@@ -371,24 +387,24 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           {/* Hairline Divider & End Date Section (Only for Range mode) */}
           {!singleDate && (
             <>
-              <div className="h-5 w-[1px] bg-black/10 dark:bg-white/10 shrink-0" />
+              <div className={gh ? 'w-1.5 h-1.5 rounded-full bg-sunset-coral shrink-0' : 'h-5 w-[1px] bg-black/10 dark:bg-white/10 shrink-0'} />
               <div
                 onClick={(e) => {
                   e.stopPropagation();
                   setActiveTab('end');
                   setIsOpen(true);
                 }}
-                className={`flex-1 flex items-center min-w-0 px-2 py-1 rounded-xl transition-all ${
+                className={`flex-1 flex items-center min-w-0 px-2 py-1 ${gh ? 'rounded-full min-h-[40px]' : 'rounded-xl'} transition-all ${
                   isOpen && activeTab === 'end'
                     ? theme.activeSegment
-                    : 'hover:bg-black/5 dark:hover:bg-white/5'
+                    : (gh ? 'hover:bg-sunset-sand dark:hover:bg-sunset-plum' : 'hover:bg-black/5 dark:hover:bg-white/5')
                 }`}
               >
                 <div className="min-w-0 flex-1">
-                  <span className="text-2xs uppercase font-extrabold tracking-wider text-light-text-secondary/60 dark:text-dark-text-secondary/60 block leading-tight">
+                  <span className={gh ? 'text-2xs uppercase font-black tracking-wider text-sunset-ink/50 dark:text-white/50 block leading-tight' : 'text-2xs uppercase font-extrabold tracking-wider text-light-text-secondary/60 dark:text-dark-text-secondary/60 block leading-tight'}>
                     {endLabel}
                   </span>
-                  <span className="text-xs font-bold text-light-text dark:text-dark-text truncate block leading-tight">
+                  <span className={gh ? 'text-xs font-black text-sunset-ink dark:text-white truncate block leading-tight' : 'text-xs font-bold text-light-text dark:text-dark-text truncate block leading-tight'}>
                     {endDate ? formatDate(endDate, 'weekday-short') : 'Select return'}
                   </span>
                 </div>
@@ -396,7 +412,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             </>
           )}
         </div>
-      </GlassPanel>
+      </GlassOrGolden>
 
       {/* Dropdown Calendar Popover: Rendered via Portal with true Liquid Glass */}
       {isOpen && coords && createPortal(
@@ -411,14 +427,15 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           }}
           className="z-popover animate-fadeIn select-none"
         >
-          <GlassPanel
+          <GlassOrGolden
+            golden={`${GH_SHEET} p-4 overflow-hidden`}
             className="wg-glass-card shadow-2xl overflow-hidden border border-black/10 dark:border-white/15"
             padding="16px"
             overrides={{ borderRadius: 24 }}
           >
             <div className="flex flex-col w-full">
               {/* Popover Header: Month / Year Controls & Navigation Arrows */}
-              <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
+              <div className={`flex items-center justify-between pb-3 ${gh ? '' : 'border-b'} ${divider}`}>
                 <button
                   type="button"
                   onClick={(e) => {
@@ -431,7 +448,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                       prevMonth(e);
                     }
                   }}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                  className={gh ? GH_ICON_BTN : 'w-8 h-8 rounded-xl flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer'}
                   title={calendarView === 'year' ? 'Previous 10 years' : 'Previous month'}
                 >
                   <CaretLeft className="w-4 h-4" weight="bold" />
@@ -444,10 +461,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                       e.stopPropagation();
                       setCalendarView(v => v === 'month' ? 'days' : 'month');
                     }}
-                    className={`px-2 py-1 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                    className={`${gh ? 'px-3 min-h-[40px] rounded-full text-sm' : 'px-2 py-1 rounded-lg text-xs'} font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
                       calendarView === 'month'
-                        ? 'bg-black/10 dark:bg-white/15 text-light-text dark:text-dark-text font-black'
-                        : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10'
+                        ? (gh ? 'bg-sunset-sun text-sunset-ink font-black' : 'bg-black/10 dark:bg-white/15 text-light-text dark:text-dark-text font-black')
+                        : (gh ? 'text-sunset-ink dark:text-white hover:bg-sunset-sand dark:hover:bg-sunset-plum' : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10')
                     }`}
                     title="Click to select month"
                   >
@@ -461,10 +478,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                       e.stopPropagation();
                       setCalendarView(v => v === 'year' ? 'days' : 'year');
                     }}
-                    className={`px-2 py-1 rounded-lg text-xs font-bold font-mono tracking-wider transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                    className={`${gh ? 'px-3 min-h-[40px] rounded-full text-sm' : 'px-2 py-1 rounded-lg text-xs'} font-bold font-mono tracking-wider transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
                       calendarView === 'year'
-                        ? 'bg-black/10 dark:bg-white/15 text-light-text dark:text-dark-text font-black'
-                        : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10'
+                        ? (gh ? 'bg-sunset-sun text-sunset-ink font-black' : 'bg-black/10 dark:bg-white/15 text-light-text dark:text-dark-text font-black')
+                        : (gh ? 'text-sunset-ink dark:text-white hover:bg-sunset-sand dark:hover:bg-sunset-plum' : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10')
                     }`}
                     title="Click to select year"
                   >
@@ -485,7 +502,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                       nextMonth(e);
                     }
                   }}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                  className={gh ? GH_ICON_BTN : 'w-8 h-8 rounded-xl flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer'}
                   title={calendarView === 'year' ? 'Next 10 years' : 'Next month'}
                 >
                   <CaretRight className="w-4 h-4" weight="bold" />
@@ -507,10 +524,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                           setViewYear(y);
                           setCalendarView('days');
                         }}
-                        className={`h-9 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
+                        className={`${gh ? 'h-10 rounded-full text-sm' : 'h-9 rounded-xl text-xs'} font-bold font-mono transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
                           isCurrent
-                            ? `${theme.startDay} shadow-sm font-extrabold`
-                            : 'hover:bg-black/5 dark:hover:bg-white/10 text-light-text dark:text-dark-text'
+                            ? `${theme.startDay} ${gh ? '' : 'shadow-sm'} font-extrabold`
+                            : hoverCell
                         }`}
                       >
                         {y}
@@ -534,10 +551,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                           setViewMonth(idx);
                           setCalendarView('days');
                         }}
-                        className={`h-11 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
+                        className={`${gh ? 'h-11 rounded-full text-sm' : 'h-11 rounded-xl text-xs'} font-bold uppercase tracking-wider transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
                           isCurrent
-                            ? `${theme.startDay} shadow-sm font-extrabold`
-                            : 'hover:bg-black/5 dark:hover:bg-white/10 text-light-text dark:text-dark-text'
+                            ? `${theme.startDay} ${gh ? '' : 'shadow-sm'} font-extrabold`
+                            : hoverCell
                         }`}
                       >
                         {m}
@@ -552,11 +569,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 <>
                   {/* Selection Status Tab Switcher in Popover (Only for Range mode) */}
                   {!singleDate && (
-                    <div className="grid grid-cols-2 gap-1.5 p-1 my-3 bg-black/5 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5">
+                    <div className={gh ? 'grid grid-cols-2 gap-1 p-1 my-3 bg-sunset-sand dark:bg-sunset-plum rounded-full' : 'grid grid-cols-2 gap-1.5 p-1 my-3 bg-black/5 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5'}>
                       <button
                         type="button"
                         onClick={() => setActiveTab('start')}
-                        className={`py-1.5 px-2 rounded-lg text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                        className={`${gh ? 'min-h-[40px] py-1 px-2 rounded-full text-xs' : 'py-1.5 px-2 rounded-lg text-2xs'} font-bold uppercase tracking-wider transition-all cursor-pointer ${
                           activeTab === 'start'
                             ? theme.calendarActiveTab
                             : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
@@ -567,7 +584,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                       <button
                         type="button"
                         onClick={() => setActiveTab('end')}
-                        className={`py-1.5 px-2 rounded-lg text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                        className={`${gh ? 'min-h-[40px] py-1 px-2 rounded-full text-xs' : 'py-1.5 px-2 rounded-lg text-2xs'} font-bold uppercase tracking-wider transition-all cursor-pointer ${
                           activeTab === 'end'
                             ? theme.calendarActiveTab
                             : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
@@ -581,7 +598,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   {/* Weekday Header Row */}
                   <div className="grid grid-cols-7 gap-1 text-center py-1">
                     {WEEKDAYS.map((w, idx) => (
-                      <div key={idx} className="text-2xs font-extrabold text-light-text-secondary/60 dark:text-dark-text-secondary/60">
+                      <div key={idx} className={gh ? 'text-xs font-black text-sunset-ink/50 dark:text-white/50' : 'text-2xs font-extrabold text-light-text-secondary/60 dark:text-dark-text-secondary/60'}>
                         {w}
                       </div>
                     ))}
@@ -591,7 +608,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   <div className="grid grid-cols-7 gap-y-1.5 gap-x-0 pt-1" onMouseLeave={() => setHoverDate(null)}>
                     {/* Empty leading day slots */}
                     {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-                      <div key={`empty-${i}`} className="h-8" />
+                      <div key={`empty-${i}`} className={gh ? 'h-10' : 'h-8'} />
                     ))}
 
                     {/* Month Days */}
@@ -621,7 +638,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                         <div
                           key={dateStr}
                           onMouseEnter={() => !isDisabled && setHoverDate(dateStr)}
-                          className={`relative h-8 flex items-center justify-center ${
+                          className={`relative ${gh ? 'h-10' : 'h-8'} flex items-center justify-center ${
                             isInRange ? theme.rangeBand : ''
                           } ${isStart && !singleDate && effectiveEnd && effectiveEnd > startDate ? `rounded-l-full ${theme.rangeBand}` : ''} ${
                             isEnd && startDate && dateStr > startDate ? `rounded-r-full ${theme.rangeBand}` : ''
@@ -631,14 +648,14 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                             type="button"
                             disabled={isDisabled}
                             onClick={() => handleSelectDate(dateStr)}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all relative z-raised cursor-pointer ${
+                            className={`${gh ? 'w-10 h-10 text-sm' : 'w-8 h-8 text-xs'} rounded-full flex items-center justify-center font-bold transition-all relative z-raised cursor-pointer ${
                               isStart
                                 ? theme.startDay
                                 : isEnd
                                 ? theme.endDay
                                 : isDisabled
                                 ? 'opacity-20 cursor-not-allowed text-light-text-secondary dark:text-dark-text-secondary'
-                                : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10'
+                                : hoverCell
                             }`}
                           >
                             {day}
@@ -651,11 +668,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               )}
 
             {/* Popover Footer: Duration Badge and Action */}
-            <div className="flex items-center justify-between pt-3 mt-3 border-t border-black/5 dark:border-white/5">
-              <span className={`text-2xs font-bold ${theme.durationBadge}`}>
+            <div className={`flex items-center justify-between pt-3 mt-3 ${gh ? '' : 'border-t'} ${divider}`}>
+              <span className={`${gh ? 'text-sm' : 'text-2xs'} font-bold ${theme.durationBadge}`}>
                 {singleDate
                   ? (startDate ? formatDate(startDate, 'weekday-short') : 'Select date')
-                  : (nights > 0 ? `${nights} ${nights === 1 ? 'day' : 'days'}` : 'Select dates')}
+                  : (nights > 0 ? `${nights} ${nights === 1 ? 'day' : 'days'}` : (gh ? 'Pick your dates' : 'Select dates'))}
               </span>
               <GlassButton
                 variant="primary"
@@ -668,7 +685,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               </GlassButton>
             </div>
           </div>
-        </GlassPanel>
+        </GlassOrGolden>
       </div>,
       document.body
     )}
