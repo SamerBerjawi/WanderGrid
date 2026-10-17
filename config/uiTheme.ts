@@ -26,6 +26,10 @@ export function getUiTheme(): UiTheme {
 }
 
 export function setUiTheme(theme: UiTheme): void {
-  try { localStorage.setItem(UI_THEME_KEY, theme); } catch { /* storage unavailable */ }
+  try {
+    localStorage.setItem(UI_THEME_KEY, theme);
+    // The Board theme is dark first (an airport board). The user can still switch to light from the sidebar.
+    if (theme === 'board') localStorage.setItem('wandergrid_theme_preference', 'dark');
+  } catch { /* storage unavailable */ }
   window.location.reload();
 }

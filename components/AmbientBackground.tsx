@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PageThemeConfig } from '../config/pageThemes';
+import { getUiTheme } from '../config/uiTheme';
 
 interface AmbientBackgroundProps {
   theme: PageThemeConfig;
@@ -60,6 +61,9 @@ export const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ theme, dar
 
     return () => clearTimeout(timer);
   }, [theme.id, darkMode, currentGradient]);
+
+  // The Departure Board theme is a flat canvas: no per-page colour glows.
+  if (getUiTheme() === 'board') return null;
 
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">

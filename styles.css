@@ -1075,4 +1075,7 @@
 :root.theme-board h1, :root.theme-board h2 { text-transform: uppercase; letter-spacing: 0.04em; }
 :root.theme-board .rounded-3xl, :root.theme-board .rounded-\[28px\] { border-radius: 14px !important; }
 :root.theme-board .wg-glass-wrapper.wg-glass-card:not([class*="wg-glass-card-"]):not([class*="border-dashed"]) { border-radius: 14px !important; }
-:root.theme-board .bg-white { background-color: #F4F1EA; }
+:root.theme-board:not(.dark) .bg-white { background-color: #F4F1EA; }
+/* Departure Board: flat solid hero blocks instead of the sunset scenes, with a runway-style dashed rule */
+:root.theme-board svg[preserveAspectRatio][aria-hidden="true"] { display: none; }
+:root.theme-board .wg-board-rule { border-top: 2px dashed currentColor; opacity: 0.4; }
