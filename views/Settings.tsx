@@ -1,4 +1,5 @@
 import { mergeCountryRecords } from '../services/countryRegistry';
+import { ThemePicker } from '../components/ThemePicker';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { toast, errorMessage } from '../services/toast';
 import { 
@@ -869,6 +870,11 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                         <option value="DD/MM/YYYY">DD/MM/YYYY (e.g. 25/05/2026)</option>
                         <option value="YYYY-MM-DD">YYYY-MM-DD (e.g. 2026-05-25)</option>
                       </Select>
+
+                      <div className="sm:col-span-2 space-y-2">
+                        <span className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Interface Style</span>
+                        <ThemePicker />
+                      </div>
 
                       <Select
                         label="Interface Theme"

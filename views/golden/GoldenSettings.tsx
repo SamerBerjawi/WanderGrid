@@ -1,3 +1,4 @@
+import { ThemePicker } from '../../components/ThemePicker';
 import React, { useState } from 'react';
 import { clsx } from 'clsx';
 import {
@@ -155,6 +156,9 @@ export const GoldenSettings: React.FC<GoldenViewProps> = ({ onThemeChange }) => 
       </GhSection>
 
       <GhSection title="Look and access" icon={<Sun className="w-5 h-5" />} tone="sun">
+        <GhSettingRow title="Interface style" stack>
+          <ThemePicker />
+        </GhSettingRow>
         <GhSettingRow title="Theme" stack>
           <GhSegmented fill label="Theme" value={config.theme} onChange={v => setConfig({ ...config, theme: v })}
             options={[{ value: 'auto', label: 'Auto' }, { value: 'light', label: 'Light', icon: <Sun className="w-4 h-4" /> }, { value: 'dark', label: 'Dark', icon: <Moon className="w-4 h-4" /> }]} />

@@ -992,7 +992,7 @@
   --light-bg: 255 244 230;
   --dark-bg: 30 18 48;
   --wg-golden-card-light: #FFFFFF;
-  --wg-golden-card-dark: #2A1A42;
+  --wg-golden-card-dark: rgb(var(--sunset-plum));
 }
 
 :root.theme-golden body {
@@ -1031,14 +1031,14 @@
 
 /* Golden Hour stat tiles: saturated flat fills with dark ink text */
 :root.theme-golden .wg-glass-wrapper.wg-glass-card.wg-stat-tile.wg-stat-tile:not([class*="wg-glass-card-"]) {
-  color: #2B1B3D !important;
+  color: rgb(var(--sunset-ink)) !important;
 }
-:root.theme-golden .wg-stat-tile * { color: #2B1B3D !important; border-color: transparent !important; }
+:root.theme-golden .wg-stat-tile * { color: rgb(var(--sunset-ink)) !important; border-color: transparent !important; }
 :root.theme-golden .wg-stat-tile [class*="blur-"] { display: none; }
-:root.theme-golden .wg-glass-wrapper.wg-glass-card.wg-stat-blue.wg-stat-tile.wg-stat-tile.wg-stat-tile:not([class*="wg-glass-card-"]) { background: #C7B8F5 !important; }
-:root.theme-golden .wg-glass-wrapper.wg-glass-card.wg-stat-emerald.wg-stat-tile.wg-stat-tile.wg-stat-tile:not([class*="wg-glass-card-"]) { background: #2EC4B6 !important; }
-:root.theme-golden .wg-glass-wrapper.wg-glass-card.wg-stat-amber.wg-stat-tile.wg-stat-tile.wg-stat-tile:not([class*="wg-glass-card-"]) { background: #FFC857 !important; }
-:root.theme-golden .wg-glass-wrapper.wg-glass-card.wg-stat-purple.wg-stat-tile.wg-stat-tile.wg-stat-tile:not([class*="wg-glass-card-"]) { background: #FF8A5B !important; }
+:root.theme-golden .wg-glass-wrapper.wg-glass-card.wg-stat-blue.wg-stat-tile.wg-stat-tile.wg-stat-tile:not([class*="wg-glass-card-"]) { background: rgb(var(--sunset-lilac)) !important; }
+:root.theme-golden .wg-glass-wrapper.wg-glass-card.wg-stat-emerald.wg-stat-tile.wg-stat-tile.wg-stat-tile:not([class*="wg-glass-card-"]) { background: rgb(var(--sunset-teal)) !important; }
+:root.theme-golden .wg-glass-wrapper.wg-glass-card.wg-stat-amber.wg-stat-tile.wg-stat-tile.wg-stat-tile:not([class*="wg-glass-card-"]) { background: rgb(var(--sunset-sun)) !important; }
+:root.theme-golden .wg-glass-wrapper.wg-glass-card.wg-stat-purple.wg-stat-tile.wg-stat-tile.wg-stat-tile:not([class*="wg-glass-card-"]) { background: rgb(var(--sunset-orange)) !important; }
 
 /* Golden Hour: strip the liquid-glass refraction layers so the solid wrapper fill shows through */
 :root.theme-golden .wg-glass-wrapper .wg-glass-panel > svg,
@@ -1052,3 +1052,27 @@
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
+
+/* Theme palettes. Golden Hour is the default skin of the redesigned layouts; Departure Board swaps palette, type and corners. */
+:root {
+  --sunset-coral: 255 107 74; --sunset-orange: 255 138 91; --sunset-sun: 255 200 87; --sunset-teal: 46 196 182;
+  --sunset-lilac: 199 184 245; --sunset-ink: 43 27 61; --sunset-cream: 255 244 230; --sunset-sand: 255 232 204;
+  --sunset-plum: 42 26 66; --sunset-night: 30 18 48; --sunset-dusk: 58 38 88;
+}
+:root.theme-board {
+  --sunset-coral: 217 72 15; --sunset-orange: 194 65 12; --sunset-sun: 245 197 24; --sunset-teal: 74 222 128;
+  --sunset-lilac: 143 163 200; --sunset-ink: 20 22 26; --sunset-cream: 233 229 218; --sunset-sand: 221 216 202;
+  --sunset-plum: 26 29 34; --sunset-night: 13 15 18; --sunset-dusk: 38 42 49;
+  --primary-50: 255 244 232; --primary-100: 255 228 204; --primary-200: 253 200 153; --primary-300: 250 166 100;
+  --primary-400: 240 120 50; --primary-500: 217 72 15; --primary-600: 190 60 10; --primary-700: 154 48 10;
+  --primary-800: 120 40 12; --primary-900: 90 32 12;
+  --light-bg: 233 229 218; --dark-bg: 13 15 18;
+  --wg-golden-card-light: #F4F1EA;
+}
+:root.theme-board body, :root.theme-board button, :root.theme-board input, :root.theme-board textarea {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+:root.theme-board h1, :root.theme-board h2 { text-transform: uppercase; letter-spacing: 0.04em; }
+:root.theme-board .rounded-3xl, :root.theme-board .rounded-\[28px\] { border-radius: 14px !important; }
+:root.theme-board .wg-glass-wrapper.wg-glass-card:not([class*="wg-glass-card-"]):not([class*="border-dashed"]) { border-radius: 14px !important; }
+:root.theme-board .bg-white { background-color: #F4F1EA; }

@@ -70,17 +70,17 @@ export default {
         },
         // Golden Hour theme (flag UI_GOLDEN_HOUR)
         sunset: {
-          coral: '#FF6B4A',
-          orange: '#FF8A5B',
-          sun: '#FFC857',
-          teal: '#2EC4B6',
-          lilac: '#C7B8F5',
-          ink: '#2B1B3D',
-          cream: '#FFF4E6',
-          sand: '#FFE8CC',
-          plum: '#2A1A42',
-          night: '#1E1230',
-          dusk: '#3A2658',
+          coral: 'rgb(var(--sunset-coral) / <alpha-value>)',
+          orange: 'rgb(var(--sunset-orange) / <alpha-value>)',
+          sun: 'rgb(var(--sunset-sun) / <alpha-value>)',
+          teal: 'rgb(var(--sunset-teal) / <alpha-value>)',
+          lilac: 'rgb(var(--sunset-lilac) / <alpha-value>)',
+          ink: 'rgb(var(--sunset-ink) / <alpha-value>)',
+          cream: 'rgb(var(--sunset-cream) / <alpha-value>)',
+          sand: 'rgb(var(--sunset-sand) / <alpha-value>)',
+          plum: 'rgb(var(--sunset-plum) / <alpha-value>)',
+          night: 'rgb(var(--sunset-night) / <alpha-value>)',
+          dusk: 'rgb(var(--sunset-dusk) / <alpha-value>)',
         },
         // Blue shades used on Flights are variable-driven so Golden Hour can remap them to the primary palette
         blue: {
