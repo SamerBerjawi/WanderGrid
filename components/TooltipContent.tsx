@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import GlassPanel from './glass/GlassPanel';
+import { AdaptivePanel as GlassPanel } from './golden/GoldenDialog';
 
 export const intFmt = new Intl.NumberFormat('en-US').format;
 

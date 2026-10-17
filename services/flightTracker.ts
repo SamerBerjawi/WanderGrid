@@ -1,10 +1,21 @@
 import { FlightStatusResponse } from '../types';
 
-const authenticatedHeaders = (aviationStackKey?: string): Record<string, string> => {
-    const headers: Record<string, string> = {};
+// The server returns paid keys as this mask (SEC-010). It is a "key is configured" signal, never a
+// usable key: sending it would be rejected upstream (and is not a valid header value), so the proxies
+// fall back to the stored key when no header is sent.
+const SECRET_MASK = '••••••••';
+const usableKey = (key?: string): string => (key && key !== SECRET_MASK ? key : '');
+
+/** Session bearer token; every /api route (including the open-radar proxies) requires it. */
+const sessionHeaders = (): Record<string, string> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('wandergrid_session_token') : null;
-    if (token) headers.Authorization = `Bearer ${token}`;
-    if (aviationStackKey) headers['X-AviationStack-Key'] = aviationStackKey;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+const authenticatedHeaders = (aviationStackKey?: string): Record<string, string> => {
+    const headers = sessionHeaders();
+    const key = usableKey(aviationStackKey);
+    if (key) headers['X-AviationStack-Key'] = key;
     return headers;
 };
 
@@ -36,7 +47,7 @@ export async function lookupKeylessFlight(
 
     // 1. Query ADSBdb for flight route (origin, destination, airline) via backend proxy (P-00 / P-01)
     try {
-        const res = await fetch(`/api/proxy/adsbdb/callsign/${encodeURIComponent(clean)}`);
+        const res = await fetch(`/api/proxy/adsbdb/callsign/${encodeURIComponent(clean)}`, { headers: sessionHeaders() });
         if (res.ok) {
             const json = await res.json();
             routeData = json?.response?.flightroute || null;
@@ -47,7 +58,7 @@ export async function lookupKeylessFlight(
 
     // 2. Query adsb.lol for live transponder status, tail number & aircraft type
     try {
-        const res = await fetch(`/api/proxy/adsb-lol/callsign/${encodeURIComponent(clean)}`);
+        const res = await fetch(`/api/proxy/adsb-lol/callsign/${encodeURIComponent(clean)}`, { headers: sessionHeaders() });
         if (res.ok) {
             const json = await res.json();
             if (Array.isArray(json?.ac) && json.ac.length > 0) {
@@ -59,7 +70,7 @@ export async function lookupKeylessFlight(
     // 2.b OpenSky Network fallback if adsb.lol has no live transponder
     if (!liveData) {
         try {
-            const res = await fetch(`/api/proxy/opensky/states?callsign=${encodeURIComponent(clean)}`);
+            const res = await fetch(`/api/proxy/opensky/states?callsign=${encodeURIComponent(clean)}`, { headers: sessionHeaders() });
             if (res.ok) {
                 const json = await res.json();
                 if (Array.isArray(json?.states) && json.states.length > 0) {
@@ -84,7 +95,7 @@ export async function lookupKeylessFlight(
     const hexOrReg = liveData?.hex || liveData?.r;
     if (hexOrReg) {
         try {
-            const res = await fetch(`/api/proxy/adsbdb/aircraft/${encodeURIComponent(hexOrReg)}`);
+            const res = await fetch(`/api/proxy/adsbdb/aircraft/${encodeURIComponent(hexOrReg)}`, { headers: sessionHeaders() });
             if (res.ok) {
                 const json = await res.json();
                 aircraftData = json?.response?.aircraft || null;
@@ -186,8 +197,7 @@ export const flightTracker = {
         apiKey: string, 
         flightIata: string, 
         date?: string, 
-        provider: string = 'aviationstack',
-        geminiKey?: string
+        provider: string = 'aviationstack'
     ): Promise<FlightStatusResponse> => {
         const cleanIata = flightIata.trim().toUpperCase().replace(/\s/g, '');
 
@@ -209,9 +219,9 @@ export const flightTracker = {
                 const query = new URLSearchParams();
                 if (date) query.set('date', date);
 
-                const headers: Record<string, string> = {
-                    'X-AeroDataBox-Key': apiKey
-                };
+                const headers: Record<string, string> = { ...sessionHeaders() };
+                const key = usableKey(apiKey);
+                if (key) headers['X-AeroDataBox-Key'] = key;
                 try {
                     const wsSettingsStr = typeof window !== 'undefined' ? localStorage.getItem('wandergrid_workspace_settings') : null;
                     if (wsSettingsStr) {

@@ -8,6 +8,8 @@
  * Any flag can be overridden at build/runtime using VITE_FF_<ID> environment variables.
  */
 
+import { getUiTheme } from './uiTheme';
+
 function getEnvFlag(key: string, defaultValue: boolean): boolean {
   if (typeof import.meta !== 'undefined' && import.meta.env) {
     const val = import.meta.env[key];
@@ -54,6 +56,13 @@ export const FEATURE_FLAGS = {
 
   // WP-1.7: "Archived" planner view (Archive no longer deletes trips)
   AUDIT_TRIP_ARCHIVE_VIEW: getEnvFlag('VITE_FF_AUDIT_TRIP_ARCHIVE_VIEW', true),
+
+  // UI: "Golden Hour" theme (sunset palette, rounded solid cards, rounded type). Replaces the glass look when ON
+  // ON for the Golden Hour and Departure Board themes, which the user picks in Settings (config/uiTheme.ts)
+  UI_GOLDEN_HOUR: getUiTheme() !== 'classic',
+
+  // UI: "Departure Board" view for flights and transport (boarding-pass cards, split-flap list)
+  UI_DEPARTURE_BOARD: getUiTheme() !== 'classic' || getEnvFlag('VITE_FF_UI_DEPARTURE_BOARD', false),
 
 } as const;
 

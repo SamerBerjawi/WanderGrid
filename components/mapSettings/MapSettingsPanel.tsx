@@ -18,6 +18,7 @@ import {
 } from '../../types/mapAppearance';
 import { syncThemeWithBasemap } from '../../services/themeSync';
 import GlassPanel from '../glass/GlassPanel';
+import { isGoldenHour } from '../golden/ghControls';
 import MAP_SETTINGS_LABELS from './labels';
 import MapTab from './tabs/MapTab';
 import LayersTab from './tabs/LayersTab';
@@ -391,7 +392,7 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white/50 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all duration-150 flex items-center justify-center cursor-pointer border border-black/5 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] active:scale-95 wg-glass-surface"
+                    className="w-11 h-11 rounded-xl bg-white/50 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all duration-150 flex items-center justify-center cursor-pointer border border-black/5 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] active:scale-95 wg-glass-surface"
                     aria-label={MAP_SETTINGS_LABELS.actions.close}
                   >
                     <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" weight="bold" />
@@ -413,14 +414,16 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
                       key={tab.id}
                       type="button"
                       onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center justify-center gap-1.5 py-2 px-1.5 rounded-t-xl text-xs font-bold transition-all duration-200 cursor-pointer relative min-w-0 ${
+                      role="tab"
+                      aria-selected={isActive}
+                      className={`flex items-center justify-center gap-1.5 min-h-[44px] py-2 px-1.5 rounded-t-xl text-xs font-bold transition-all duration-200 cursor-pointer relative min-w-0 ${
                         isActive
-                          ? `${tab.activeStyle} border-b-2 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)] wg-glass-surface`
+                          ? `${isGoldenHour() ? 'bg-sunset-coral text-white border-sunset-coral' : tab.activeStyle} border-b-2 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)] wg-glass-surface`
                           : 'text-light-text-secondary dark:text-dark-text-secondary opacity-75 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5'
                       }`}
                       title={tab.label}
                     >
-                      <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? tab.iconActive : ''}`} weight={isActive ? 'bold' : 'regular'} />
+                      <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive && !isGoldenHour() ? tab.iconActive : ''}`} weight={isActive ? 'bold' : 'regular'} />
                       <span className="truncate">{tab.label}</span>
                     </button>
                   );
@@ -498,7 +501,7 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsResetConfirming(true)}
-                      className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer flex items-center gap-1.5 active:scale-95"
+                      className="min-h-[44px] px-2.5 py-1.5 rounded-xl text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer flex items-center gap-1.5 active:scale-95"
                     >
                       <ArrowCounterClockwise className="w-3.5 h-3.5" weight="bold" />
                       <span className="hidden xs:inline">{MAP_SETTINGS_LABELS.actions.resetSettings}</span>
@@ -510,7 +513,7 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
                       <button
                         type="button"
                         onClick={onResetCamera}
-                        className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer flex items-center gap-1.5 active:scale-95"
+                        className="min-h-[44px] px-2.5 py-1.5 rounded-xl text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer flex items-center gap-1.5 active:scale-95"
                       >
                         <Compass className="w-3.5 h-3.5" weight="bold" />
                         <span className="hidden xs:inline">{MAP_SETTINGS_LABELS.actions.recenterMap}</span>
@@ -524,7 +527,7 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="px-4 py-1.5 rounded-xl text-xs font-bold bg-primary-500 hover:bg-primary-600 text-slate-950 shadow-md shadow-primary-500/20 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                  className="min-h-[44px] px-4 py-1.5 rounded-xl text-xs font-bold bg-primary-500 hover:bg-primary-600 text-slate-950 shadow-md shadow-primary-500/20 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
                 >
                   <span>{MAP_SETTINGS_LABELS.actions.done}</span>
                   <Check className="w-3.5 h-3.5" weight="bold" />

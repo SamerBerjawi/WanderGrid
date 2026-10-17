@@ -7,7 +7,7 @@ import {
   CaretDown,
   Check 
 } from '@/components/ui/hugeicons';
-import GlassPanel from '../glass/GlassPanel';
+import { GlassOrGolden, isGoldenHour, GH_LABEL, GH_FIELD_SURFACE, GH_RING_ERROR, GH_SHEET, GH_ICON_BTN } from '../golden/ghControls';
 import GlassButton from '../glass/GlassButton';
 import { formatDate } from '../../utils/formatters';
 
@@ -62,6 +62,14 @@ const ACCENT_THEMES: Record<string, AccentTheme> = {
     doneBtn: 'bg-primary-500 hover:bg-primary-600 text-slate-950 shadow-sm shadow-primary-500/20',
     durationBadge: 'text-primary-600 dark:text-primary-400',
   }
+};
+ACCENT_THEMES.golden = {
+  triggerRing: 'ring-2 ring-sunset-coral',
+  triggerBorderFocus: '',
+  iconBox: 'bg-sunset-sun text-sunset-ink',
+  selectedDay: 'bg-sunset-coral text-white shadow-[0_2px_8px_rgba(255,107,74,0.5)] font-black',
+  doneBtn: 'bg-sunset-coral text-white',
+  durationBadge: 'text-sunset-ink dark:text-white font-black',
 };
 ACCENT_THEMES.green = ACCENT_THEMES.emerald;
 ACCENT_THEMES.sky = ACCENT_THEMES.blue;
@@ -156,7 +164,10 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     }
   }, [isOpen]);
 
-  const theme = ACCENT_THEMES[accentColor] || ACCENT_THEMES.primary;
+  const gh = isGoldenHour();
+  const theme = gh ? ACCENT_THEMES.golden : (ACCENT_THEMES[accentColor] || ACCENT_THEMES.primary);
+  const hoverCell = gh ? 'hover:bg-sunset-sand dark:hover:bg-sunset-plum text-sunset-ink dark:text-white' : 'hover:bg-black/5 dark:hover:bg-white/10 text-light-text dark:text-dark-text';
+  const divider = gh ? '' : 'border-black/5 dark:border-white/5';
 
   const updatePosition = useCallback(() => {
     if (!containerRef.current) return;
@@ -300,7 +311,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   return (
     <div ref={containerRef} className={`relative flex flex-col gap-1.5 w-full ${containerClassName}`}>
       {label && (
-        <label className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+        <label className={gh ? GH_LABEL : 'block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary'}>
           {label}
         </label>
       )}
@@ -309,7 +320,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       {name && <input type="hidden" name={name} id={id} value={value || ''} />}
 
       {/* Trigger Capsule (Liquid Glass Pill) */}
-      <GlassPanel
+      <GlassOrGolden
+        golden={`w-full rounded-full ${GH_FIELD_SURFACE} transition-shadow ${error ? GH_RING_ERROR : isOpen ? theme.triggerRing : ''} ${disabled ? 'opacity-50 pointer-events-none' : 'cursor-pointer'} ${className}`}
         className={`wg-glass-pill w-full transition-all duration-180 ease-glass ${
           error
             ? '!border-rose-500 ring-2 ring-rose-500/20'
@@ -321,24 +333,24 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         overrides={{ borderRadius: 20 }}
         onClick={() => !disabled && setIsOpen(!isOpen)}
       >
-        <div className="flex items-center min-h-[44px] h-11 px-3 w-full gap-2.5 select-none">
+        <div className={`flex items-center min-h-[44px] h-11 ${gh ? 'px-2' : 'px-3'} w-full gap-2.5 select-none`}>
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             {/* Calendar Icon */}
-            <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${theme.iconBox}`}>
+            <div className={`${gh ? 'w-8 h-8 rounded-full' : 'w-7 h-7 rounded-xl'} flex items-center justify-center shrink-0 ${theme.iconBox}`}>
               <CalendarBlank className="w-4 h-4" weight="duotone" />
             </div>
 
             {/* Date Display */}
             <div className="min-w-0 flex-1">
-              <span className={`text-xs font-bold truncate block leading-tight ${
-                value ? 'text-light-text dark:text-dark-text' : 'text-light-text-secondary/60 dark:text-dark-text-secondary/60 font-medium'
+              <span className={`${gh ? 'text-sm' : 'text-xs'} font-bold truncate block leading-tight ${
+                value ? (gh ? 'text-sunset-ink dark:text-white' : 'text-light-text dark:text-dark-text') : (gh ? 'text-sunset-ink/40 dark:text-white/40 font-semibold' : 'text-light-text-secondary/60 dark:text-dark-text-secondary/60 font-medium')
               }`}>
                 {value ? formatDate(value, 'weekday-short') : placeholder}
               </span>
             </div>
           </div>
         </div>
-      </GlassPanel>
+      </GlassOrGolden>
 
       {error && <p className="text-2xs text-rose-500 font-bold ml-1">{error}</p>}
 
@@ -355,14 +367,15 @@ export const DatePicker: React.FC<DatePickerProps> = ({
           }}
           className="z-popover animate-fadeIn select-none"
         >
-          <GlassPanel
+          <GlassOrGolden
+            golden={`${GH_SHEET} p-4 overflow-hidden`}
             className="wg-glass-card shadow-2xl overflow-hidden border border-black/10 dark:border-white/15"
             padding="16px"
             overrides={{ borderRadius: 24 }}
           >
             <div className="flex flex-col w-full">
               {/* Popover Header: Month / Year Controls & Navigation Arrows */}
-              <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
+              <div className={`flex items-center justify-between pb-3 ${gh ? '' : 'border-b'} ${divider}`}>
                 <button
                   type="button"
                   onClick={(e) => {
@@ -375,7 +388,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                       prevMonth(e);
                     }
                   }}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                  className={gh ? GH_ICON_BTN : 'w-8 h-8 rounded-xl flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer'}
                   title={calendarView === 'year' ? 'Previous 10 years' : 'Previous month'}
                 >
                   <CaretLeft className="w-4 h-4" weight="bold" />
@@ -388,10 +401,10 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                       e.stopPropagation();
                       setCalendarView(v => v === 'month' ? 'days' : 'month');
                     }}
-                    className={`px-2 py-1 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                    className={`${gh ? 'px-3 min-h-[40px] rounded-full text-sm' : 'px-2 py-1 rounded-lg text-xs'} font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
                       calendarView === 'month'
-                        ? 'bg-black/10 dark:bg-white/15 text-light-text dark:text-dark-text font-black'
-                        : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10'
+                        ? (gh ? 'bg-sunset-sun text-sunset-ink font-black' : 'bg-black/10 dark:bg-white/15 text-light-text dark:text-dark-text font-black')
+                        : (gh ? 'text-sunset-ink dark:text-white hover:bg-sunset-sand dark:hover:bg-sunset-plum' : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10')
                     }`}
                     title="Click to select month"
                   >
@@ -405,10 +418,10 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                       e.stopPropagation();
                       setCalendarView(v => v === 'year' ? 'days' : 'year');
                     }}
-                    className={`px-2 py-1 rounded-lg text-xs font-bold font-mono tracking-wider transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                    className={`${gh ? 'px-3 min-h-[40px] rounded-full text-sm' : 'px-2 py-1 rounded-lg text-xs'} font-bold font-mono tracking-wider transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
                       calendarView === 'year'
-                        ? 'bg-black/10 dark:bg-white/15 text-light-text dark:text-dark-text font-black'
-                        : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10'
+                        ? (gh ? 'bg-sunset-sun text-sunset-ink font-black' : 'bg-black/10 dark:bg-white/15 text-light-text dark:text-dark-text font-black')
+                        : (gh ? 'text-sunset-ink dark:text-white hover:bg-sunset-sand dark:hover:bg-sunset-plum' : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10')
                     }`}
                     title="Click to select year"
                   >
@@ -429,7 +442,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                       nextMonth(e);
                     }
                   }}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                  className={gh ? GH_ICON_BTN : 'w-8 h-8 rounded-xl flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer'}
                   title={calendarView === 'year' ? 'Next 10 years' : 'Next month'}
                 >
                   <CaretRight className="w-4 h-4" weight="bold" />
@@ -451,10 +464,10 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                           setViewYear(y);
                           setCalendarView('days');
                         }}
-                        className={`h-9 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
+                        className={`${gh ? 'h-10 rounded-full text-sm' : 'h-9 rounded-xl text-xs'} font-bold font-mono transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
                           isCurrent
-                            ? `${theme.selectedDay} shadow-sm font-extrabold`
-                            : 'hover:bg-black/5 dark:hover:bg-white/10 text-light-text dark:text-dark-text'
+                            ? `${theme.selectedDay} ${gh ? '' : 'shadow-sm'} font-extrabold`
+                            : hoverCell
                         }`}
                       >
                         {y}
@@ -478,10 +491,10 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                           setViewMonth(idx);
                           setCalendarView('days');
                         }}
-                        className={`h-11 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
+                        className={`${gh ? 'h-11 rounded-full text-sm' : 'h-11 rounded-xl text-xs'} font-bold uppercase tracking-wider transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
                           isCurrent
-                            ? `${theme.selectedDay} shadow-sm font-extrabold`
-                            : 'hover:bg-black/5 dark:hover:bg-white/10 text-light-text dark:text-dark-text'
+                            ? `${theme.selectedDay} ${gh ? '' : 'shadow-sm'} font-extrabold`
+                            : hoverCell
                         }`}
                       >
                         {m}
@@ -497,7 +510,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                   {/* Weekday Header Row */}
                   <div className="grid grid-cols-7 gap-1 text-center py-2">
                     {WEEKDAYS.map((w, idx) => (
-                      <div key={idx} className="text-2xs font-extrabold text-light-text-secondary dark:text-dark-text-secondary">
+                      <div key={idx} className={gh ? 'text-xs font-black text-sunset-ink/50 dark:text-white/50' : 'text-2xs font-extrabold text-light-text-secondary dark:text-dark-text-secondary'}>
                         {w}
                       </div>
                     ))}
@@ -507,7 +520,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                   <div className="grid grid-cols-7 gap-y-1 gap-x-0 pt-1">
                     {/* Empty leading slots */}
                     {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-                      <div key={`empty-${i}`} className="h-8" />
+                      <div key={`empty-${i}`} className={gh ? 'h-10' : 'h-8'} />
                     ))}
 
                     {/* Days in Month */}
@@ -523,17 +536,17 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                       );
 
                       return (
-                        <div key={dateStr} className="h-8 flex items-center justify-center">
+                        <div key={dateStr} className={`${gh ? 'h-10' : 'h-8'} flex items-center justify-center`}>
                           <button
                             type="button"
                             disabled={isDisabled}
                             onClick={() => handleSelectDate(dateStr)}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all relative z-raised cursor-pointer ${
+                            className={`${gh ? 'w-10 h-10 text-sm' : 'w-8 h-8 text-xs'} rounded-full flex items-center justify-center font-bold transition-all relative z-raised cursor-pointer ${
                               isSelected
                                 ? theme.selectedDay
                                 : isDisabled
                                 ? 'opacity-20 cursor-not-allowed text-light-text-secondary dark:text-dark-text-secondary'
-                                : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10'
+                                : hoverCell
                             }`}
                           >
                             {day}
@@ -546,11 +559,11 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               )}
 
               {/* Popover Footer: Quick Today shortcut & Done button */}
-              <div className="flex items-center justify-between pt-3 mt-3 border-t border-black/5 dark:border-white/5">
+              <div className={`flex items-center justify-between pt-3 mt-3 ${gh ? '' : 'border-t'} ${divider}`}>
                 <button
                   type="button"
                   onClick={handleSelectToday}
-                  className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text underline underline-offset-2 cursor-pointer"
+                  className={gh ? 'min-h-[44px] px-4 rounded-full bg-sunset-sand dark:bg-sunset-plum text-sm font-black text-sunset-ink dark:text-white cursor-pointer active:scale-95' : 'text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text underline underline-offset-2 cursor-pointer'}
                 >
                   Today
                 </button>
@@ -565,7 +578,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                 </GlassButton>
               </div>
             </div>
-          </GlassPanel>
+          </GlassOrGolden>
         </div>,
         document.body
       )}

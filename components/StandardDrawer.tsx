@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { INPUT_BASE_STYLE, BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, CLOSE_BTN_STYLE } from '../constants';
 import Icon from './ui/Icon';
 import GlassPanel from './glass/GlassPanel';
+import { GoldenDrawerShell, GhSheetHeader, GH_BODY, GH_FOOTER, isGoldenHour } from './golden/GoldenDialog';
+import { GhButton } from './golden/Gh';
 
 export interface DrawerProps {
   isOpen: boolean;
@@ -104,6 +106,36 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
   };
 
   if (!isOpen && !isVisible) return null;
+
+  if (isGoldenHour()) {
+    return createPortal(
+      <GoldenDrawerShell isVisible={isVisible} onClose={handleClose} containerRef={modalRef} label={typeof title === 'string' ? title : undefined}>
+        <GhSheetHeader title={title} subtitle={subtitle} tag={tag} icon={<Icon className="text-2xl" name={icon} />} onClose={handleClose} closeLabel="Close drawer" />
+        <form
+          onSubmit={(e) => { e.preventDefault(); if (onSave) onSave({}); handleClose(); }}
+          className="flex-1 flex flex-col overflow-hidden min-h-0"
+        >
+          <div className={`${GH_BODY} space-y-6`}>
+            {children ? children : (
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold">Title <span className="text-sunset-coral">*</span></label>
+                <input type="text" className="w-full h-14 px-5 rounded-full bg-sunset-cream dark:bg-sunset-dusk text-xl font-bold outline-none focus-visible:ring-2 focus-visible:ring-sunset-coral" placeholder="Give it a name" required autoFocus />
+              </div>
+            )}
+          </div>
+          <div className={GH_FOOTER}>
+            {footerActions ? footerActions : (
+              <>
+                <GhButton variant="soft" onClick={handleClose} className="!bg-sunset-sand dark:!bg-sunset-dusk !shadow-none">Cancel</GhButton>
+                <GhButton type="submit" icon={<Icon className="text-base" name="check" />}>{saveLabel}</GhButton>
+              </>
+            )}
+          </div>
+        </form>
+      </GoldenDrawerShell>,
+      document.body
+    );
+  }
 
   return createPortal(
     <div className="fixed inset-0 z-modal overflow-hidden font-sans" role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>

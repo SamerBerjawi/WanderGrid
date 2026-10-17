@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Info, X, ArrowSquareOut, ShieldCheck } from '@/components/ui/hugeicons';
 import { motion, AnimatePresence } from 'motion/react';
-import GlassPanel from './glass/GlassPanel';
+import { AdaptivePanel as GlassPanel, isGoldenHour } from './golden/GoldenDialog';
 import { MapAppearanceSettings } from '../types/mapAppearance';
 import { FEATURE_FLAGS } from '../config/featureFlags';
 
@@ -124,6 +124,7 @@ export const DataCreditsPopover: React.FC<DataCreditsPopoverProps> = ({
   ];
 
   const activeCredits = credits.filter(c => c.isActive);
+  const gh = isGoldenHour();
 
   return (
     <div ref={popoverRef} className={`relative ${className}`}>
@@ -162,7 +163,7 @@ export const DataCreditsPopover: React.FC<DataCreditsPopoverProps> = ({
             >
               <div className="flex flex-col max-h-[440px] overflow-hidden rounded-[24px]">
                 {/* Header */}
-                <div className="p-4 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/10 via-primary-500/5 to-transparent shrink-0">
+                <div className={`${gh ? "p-4" : "p-4 border-b border-black/5 dark:border-white/5 bg-gradient-to-r from-primary-500/10 via-primary-500/5 to-transparent"} flex items-center justify-between shrink-0`}>
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-primary-500" weight="bold" />
                     <div>
@@ -189,7 +190,7 @@ export const DataCreditsPopover: React.FC<DataCreditsPopoverProps> = ({
                   {activeCredits.map((c, i) => (
                     <div
                       key={i}
-                      className="p-3 rounded-xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 flex items-center justify-between gap-3"
+                      className={`${gh ? "p-3 rounded-2xl bg-sunset-cream dark:bg-sunset-dusk" : "p-3 rounded-xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5"} flex items-center justify-between gap-3`}
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
@@ -220,7 +221,7 @@ export const DataCreditsPopover: React.FC<DataCreditsPopoverProps> = ({
                 </div>
 
                 {/* Footer Note */}
-                <div className="p-3 border-t border-black/5 dark:border-white/5 bg-black/5 dark:bg-white/5 text-center shrink-0">
+                <div className={`${gh ? "p-3" : "p-3 border-t border-black/5 dark:border-white/5 bg-black/5 dark:bg-white/5"} text-center shrink-0`}>
                   <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
                     All map & telemetry data rendered under respective open licenses
                   </p>

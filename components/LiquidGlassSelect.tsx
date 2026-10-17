@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import GlassPanel from './glass/GlassPanel';
+import { GlassOrGolden, isGoldenHour, GH_SHEET, GH_FIELD_SURFACE, GH_EMPTY, GH_ROW, GH_ROW_ACTIVE, GH_ROW_SELECTED, GH_ROW_IDLE } from './golden/ghControls';
 import { CaretDown, Check, MagnifyingGlass, X } from '@/components/ui/hugeicons';
 
 export interface SelectOption {
@@ -36,6 +36,7 @@ export const LiquidGlassSelect: React.FC<LiquidGlassSelectProps> = ({
     className = '',
     fullWidth = false,
 }) => {
+    const gh = isGoldenHour();
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
     const buttonRef = useRef<HTMLButtonElement>(null);
@@ -124,7 +125,8 @@ export const LiquidGlassSelect: React.FC<LiquidGlassSelectProps> = ({
     return (
         <div className={`relative ${isFull ? 'w-full' : 'w-auto shrink-0'} ${className}`}>
             {/* Trigger Button - Liquid-Glass Pill wrapped */}
-            <GlassPanel
+            <GlassOrGolden
+                golden={`${isFull ? 'w-full' : 'w-auto'} shrink-0 rounded-full`}
                 className={`wg-glass-pill ${isFull ? 'w-full' : 'w-auto'} shrink-0`}
                 padding="0px"
                 overrides={{ borderRadius: 9999 }}
@@ -133,7 +135,9 @@ export const LiquidGlassSelect: React.FC<LiquidGlassSelectProps> = ({
                     ref={buttonRef}
                     type="button"
                     onClick={handleToggle}
-                    className={`${isFull ? 'w-full' : 'w-auto'} h-11 px-2.5 sm:px-3.5 rounded-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-xs font-bold text-light-text dark:text-dark-text flex items-center justify-between gap-1.5 sm:gap-2 transition-all cursor-pointer select-none active:scale-95 whitespace-nowrap shrink-0 ${
+                    className={gh ? `${isFull ? 'w-full' : 'w-auto'} min-h-[44px] h-11 px-4 rounded-full ${GH_FIELD_SURFACE} text-sm font-bold flex items-center justify-between gap-2 transition-all cursor-pointer select-none active:scale-95 whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-sunset-coral ${
+                        isOpen ? 'ring-2 ring-sunset-coral' : ''
+                    } ${value !== 'all' && value !== '' ? '!bg-sunset-sun !text-sunset-ink' : ''}` : `${isFull ? 'w-full' : 'w-auto'} h-11 px-2.5 sm:px-3.5 rounded-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-xs font-bold text-light-text dark:text-dark-text flex items-center justify-between gap-1.5 sm:gap-2 transition-all cursor-pointer select-none active:scale-95 whitespace-nowrap shrink-0 ${
                         isOpen ? 'ring-2 ring-emerald-500/30' : ''
                     } ${value !== 'all' && value !== '' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''}`}
                 >
@@ -145,7 +149,7 @@ export const LiquidGlassSelect: React.FC<LiquidGlassSelectProps> = ({
                     </div>
                     <CaretDown className={`w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0 text-light-text-secondary dark:text-dark-text-secondary transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} weight="duotone" />
                 </button>
-            </GlassPanel>
+            </GlassOrGolden>
 
             {/* Portal-Rendered Dropdown Menu: True Liquid Glass design */}
             {isOpen && coords && createPortal(
@@ -164,7 +168,8 @@ export const LiquidGlassSelect: React.FC<LiquidGlassSelectProps> = ({
                             zIndex: 9999
                         }}
                     >
-                        <GlassPanel
+                        <GlassOrGolden
+                            golden={`${GH_SHEET} p-2 overflow-hidden`}
                             className="wg-glass-card shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_16px_40px_rgba(0,0,0,0.35)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_16px_40px_rgba(0,0,0,0.7)] overflow-hidden"
                             padding="8px"
                             overrides={{ borderRadius: 20 }}
@@ -172,7 +177,7 @@ export const LiquidGlassSelect: React.FC<LiquidGlassSelectProps> = ({
                             <div className="flex flex-col gap-1.5 w-full">
                                 {/* Optional Inline Search for Large Lists */}
                                 {searchable && (
-                                    <div className="relative flex items-center px-2.5 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10">
+                                    <div className={gh ? 'relative flex items-center px-3 min-h-[44px] rounded-full bg-sunset-sand dark:bg-sunset-plum' : 'relative flex items-center px-2.5 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10'}>
                                         <MagnifyingGlass className="w-3.5 h-3.5 text-light-text-secondary dark:text-dark-text-secondary mr-2 shrink-0" weight="duotone" />
                                         <input
                                             type="text"
@@ -197,8 +202,8 @@ export const LiquidGlassSelect: React.FC<LiquidGlassSelectProps> = ({
                                 {/* Options List */}
                                 <div className="max-h-60 overflow-y-auto custom-scrollbar flex flex-col gap-0.5">
                                     {filteredOptions.length === 0 ? (
-                                        <div className="px-3 py-3 text-center text-xs text-light-text-secondary dark:text-dark-text-secondary italic">
-                                            No matches found
+                                        <div className={gh ? GH_EMPTY : 'px-3 py-3 text-center text-xs text-light-text-secondary dark:text-dark-text-secondary italic'}>
+                                            {gh ? 'Nothing here yet. Try another word.' : 'No matches found'}
                                         </div>
                                     ) : (
                                         filteredOptions.map((opt) => {
@@ -212,7 +217,7 @@ export const LiquidGlassSelect: React.FC<LiquidGlassSelectProps> = ({
                                                         setIsOpen(false);
                                                         setSearch('');
                                                     }}
-                                                    className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-left transition-colors cursor-pointer select-none ${
+                                                    className={gh ? `flex items-center justify-between px-4 min-h-[44px] text-left cursor-pointer select-none ${GH_ROW} ${isSelected ? GH_ROW_SELECTED : `${GH_ROW_IDLE} hover:bg-sunset-sand dark:hover:bg-sunset-plum`}` : `flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-left transition-colors cursor-pointer select-none ${
                                                         isSelected
                                                             ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold shadow-xs'
                                                             : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/5'
@@ -220,7 +225,7 @@ export const LiquidGlassSelect: React.FC<LiquidGlassSelectProps> = ({
                                                 >
                                                     <span className="truncate pr-2">{opt.label}</span>
                                                     {isSelected && (
-                                                        <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" weight="bold" />
+                                                        <Check className={`w-4 h-4 shrink-0 ${gh ? 'text-sunset-ink' : 'text-emerald-600 dark:text-emerald-400'}`} weight="bold" />
                                                     )}
                                                 </button>
                                             );
@@ -228,7 +233,7 @@ export const LiquidGlassSelect: React.FC<LiquidGlassSelectProps> = ({
                                     )}
                                 </div>
                             </div>
-                        </GlassPanel>
+                        </GlassOrGolden>
                     </motion.div>
                 </AnimatePresence>,
                 document.body
@@ -260,6 +265,7 @@ export const LiquidGlassMultiSelect: React.FC<LiquidGlassMultiSelectProps> = ({
     className = '',
     fullWidth = true,
 }) => {
+    const gh = isGoldenHour();
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
     const buttonRef = useRef<HTMLButtonElement>(null);
@@ -347,7 +353,8 @@ export const LiquidGlassMultiSelect: React.FC<LiquidGlassMultiSelectProps> = ({
 
     return (
         <div className={`relative ${fullWidth ? 'w-full' : 'w-auto shrink-0'} ${className}`}>
-            <GlassPanel
+            <GlassOrGolden
+                golden={`${fullWidth ? 'w-full' : 'w-auto'} shrink-0 rounded-full`}
                 className={`wg-glass-pill ${fullWidth ? 'w-full' : 'w-auto'} shrink-0`}
                 padding="0px"
                 overrides={{ borderRadius: 9999 }}
@@ -356,7 +363,9 @@ export const LiquidGlassMultiSelect: React.FC<LiquidGlassMultiSelectProps> = ({
                     ref={buttonRef}
                     type="button"
                     onClick={handleToggle}
-                    className={`w-full h-11 px-3.5 rounded-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-xs font-bold text-light-text dark:text-dark-text flex items-center justify-between gap-2 transition-all cursor-pointer select-none active:scale-[0.99] whitespace-nowrap shrink-0 ${
+                    className={gh ? `w-full min-h-[44px] h-11 px-4 rounded-full ${GH_FIELD_SURFACE} text-sm font-bold flex items-center justify-between gap-2 transition-all cursor-pointer select-none active:scale-[0.99] whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-sunset-coral ${
+                        isOpen ? 'ring-2 ring-sunset-coral' : ''
+                    } ${value.length > 0 ? '!bg-sunset-sun !text-sunset-ink' : ''}` : `w-full h-11 px-3.5 rounded-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-xs font-bold text-light-text dark:text-dark-text flex items-center justify-between gap-2 transition-all cursor-pointer select-none active:scale-[0.99] whitespace-nowrap shrink-0 ${
                         isOpen ? 'ring-2 ring-emerald-500/30' : ''
                     } ${value.length > 0 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''}`}
                 >
@@ -388,7 +397,7 @@ export const LiquidGlassMultiSelect: React.FC<LiquidGlassMultiSelectProps> = ({
                         <CaretDown className={`w-3 h-3 text-light-text-secondary dark:text-dark-text-secondary transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} weight="duotone" />
                     </div>
                 </button>
-            </GlassPanel>
+            </GlassOrGolden>
 
             {isOpen && coords && createPortal(
                 <AnimatePresence>
@@ -406,14 +415,15 @@ export const LiquidGlassMultiSelect: React.FC<LiquidGlassMultiSelectProps> = ({
                             zIndex: 9999
                         }}
                     >
-                        <GlassPanel
+                        <GlassOrGolden
+                            golden={`${GH_SHEET} p-2 overflow-hidden`}
                             className="wg-glass-card shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_16px_40px_rgba(0,0,0,0.35)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_16px_40px_rgba(0,0,0,0.7)] overflow-hidden"
                             padding="8px"
                             overrides={{ borderRadius: 20 }}
                         >
                             <div className="flex flex-col gap-1.5 w-full">
                                 {searchable && (
-                                    <div className="relative flex items-center px-2.5 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10">
+                                    <div className={gh ? 'relative flex items-center px-3 min-h-[44px] rounded-full bg-sunset-sand dark:bg-sunset-plum' : 'relative flex items-center px-2.5 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10'}>
                                         <MagnifyingGlass className="w-3.5 h-3.5 text-light-text-secondary dark:text-dark-text-secondary mr-2 shrink-0" weight="duotone" />
                                         <input
                                             type="text"
@@ -437,8 +447,8 @@ export const LiquidGlassMultiSelect: React.FC<LiquidGlassMultiSelectProps> = ({
 
                                 <div className="max-h-60 overflow-y-auto custom-scrollbar flex flex-col gap-0.5">
                                     {filteredOptions.length === 0 ? (
-                                        <div className="px-3 py-3 text-center text-xs text-light-text-secondary dark:text-dark-text-secondary italic">
-                                            No matches found
+                                        <div className={gh ? GH_EMPTY : 'px-3 py-3 text-center text-xs text-light-text-secondary dark:text-dark-text-secondary italic'}>
+                                            {gh ? 'Nothing here yet. Try another word.' : 'No matches found'}
                                         </div>
                                     ) : (
                                         filteredOptions.map((opt) => {
@@ -448,17 +458,17 @@ export const LiquidGlassMultiSelect: React.FC<LiquidGlassMultiSelectProps> = ({
                                                     key={opt.value}
                                                     type="button"
                                                     onClick={() => toggleOption(opt.value)}
-                                                    className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-left transition-colors cursor-pointer select-none ${
+                                                    className={gh ? `flex items-center justify-between px-4 min-h-[44px] text-left cursor-pointer select-none ${GH_ROW} ${isSelected ? GH_ROW_SELECTED : `${GH_ROW_IDLE} hover:bg-sunset-sand dark:hover:bg-sunset-plum`}` : `flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-left transition-colors cursor-pointer select-none ${
                                                         isSelected
                                                             ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold shadow-xs'
                                                             : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/5'
                                                     }`}
                                                 >
                                                     <span className="truncate pr-2">{opt.label}</span>
-                                                    <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
+                                                    <div className={`${gh ? 'w-6 h-6 rounded-full' : 'w-4 h-4 rounded-md border'} flex items-center justify-center shrink-0 transition-colors ${
                                                         isSelected 
-                                                            ? 'bg-emerald-500 border-emerald-500 text-white' 
-                                                            : 'border-black/20 dark:border-white/20'
+                                                            ? (gh ? 'bg-sunset-coral text-white' : 'bg-emerald-500 border-emerald-500 text-white')
+                                                            : (gh ? 'bg-sunset-sand dark:bg-sunset-plum' : 'border-black/20 dark:border-white/20')
                                                     }`}>
                                                         {isSelected && <Check className="w-3 h-3 text-white" weight="bold" />}
                                                     </div>
@@ -468,7 +478,7 @@ export const LiquidGlassMultiSelect: React.FC<LiquidGlassMultiSelectProps> = ({
                                     )}
                                 </div>
                             </div>
-                        </GlassPanel>
+                        </GlassOrGolden>
                     </motion.div>
                 </AnimatePresence>,
                 document.body

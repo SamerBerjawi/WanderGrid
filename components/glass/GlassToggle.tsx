@@ -1,4 +1,5 @@
 import React from 'react';
+import { isGoldenHour } from '../golden/ghControls';
 
 export interface GlassToggleProps {
   checked: boolean;
@@ -41,6 +42,7 @@ export const GlassToggle: React.FC<GlassToggleProps> = ({
   id,
 }) => {
   const activeAccent = ACCENT_STYLES[accentColor] || ACCENT_STYLES.primary;
+  const gh = isGoldenHour();
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -68,10 +70,17 @@ export const GlassToggle: React.FC<GlassToggleProps> = ({
       disabled={disabled}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      className={`min-w-[40px] min-h-[38px] sm:min-w-[44px] sm:min-h-[40px] inline-flex items-center justify-center p-0.5 rounded-full cursor-pointer select-none group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 active:scale-[0.98] transition-transform duration-150 ${
+      className={gh ? `min-w-[64px] min-h-[44px] inline-flex items-center justify-center cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-sunset-coral rounded-full active:scale-95 transition-transform ${
+        disabled ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''
+      } ${className}` : `min-w-[40px] min-h-[38px] sm:min-w-[44px] sm:min-h-[40px] inline-flex items-center justify-center p-0.5 rounded-full cursor-pointer select-none group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 active:scale-[0.98] transition-transform duration-150 ${
         disabled ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''
       } ${className}`}
     >
+      {gh ? (
+        <span className={`relative inline-flex h-9 w-16 shrink-0 rounded-full transition-colors duration-200 ${checked ? 'bg-sunset-coral' : 'bg-sunset-sand dark:bg-sunset-dusk'}`}>
+          <span className={`pointer-events-none absolute top-1 h-7 w-7 rounded-full bg-white shadow-[0_2px_6px_rgba(60,20,10,0.35)] transition-all duration-200 ${checked ? 'left-8' : 'left-1'}`} />
+        </span>
+      ) : (
       <div
         className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border transition-all duration-200 ease-in-out wg-glass-surface ${
           checked
@@ -85,6 +94,7 @@ export const GlassToggle: React.FC<GlassToggleProps> = ({
           }`}
         />
       </div>
+      )}
     </button>
   );
 };

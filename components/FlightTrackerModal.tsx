@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   WarningCircle as AlertCircle, WarningCircle, Info, AirplaneTakeoff, 
-  AirplaneTilt, NavigationArrow, Sparkle, Broadcast, Database 
+  AirplaneTilt, NavigationArrow, Broadcast, Database 
 } from '@/components/ui/hugeicons';
 import { Modal, Button, Input } from './ui';
 import { flightTracker } from '../services/flightTracker';
@@ -29,20 +29,28 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
     const [flightData, setFlightData] = useState<FlightStatusResponse | null>(null);
     const [aviationKey, setAviationKey] = useState('');
     const [aeroDataBoxKey, setAeroDataBoxKey] = useState('');
-    const [geminiKey, setGeminiKey] = useState('');
-    const [provider, setProvider] = useState<'aviationstack' | 'adsbdb' | 'aerodatabox' | 'ai_guessing'>('ai_guessing');
+    // Keyless open radar is the only engine that always works; keyed engines are preferred once configured.
+    const [provider, setProvider] = useState<'aviationstack' | 'adsbdb' | 'aerodatabox'>('adsbdb');
 
     useEffect(() => {
+        let cancelled = false;
         dataService.getWorkspaceSettings().then(s => {
-            setAviationKey(s.aviationStackApiKey || '');
-            setAeroDataBoxKey(s.aeroDataBoxApiKey || '');
-            setGeminiKey(s.googleGeminiApiKey || '');
-            if (s.aeroDataBoxApiKey) {
+            if (cancelled) return;
+            // The server masks paid keys, so a non-empty value (or configuredKeys flag) means "configured".
+            const configured = (k: 'aviationStackApiKey' | 'aeroDataBoxApiKey') =>
+                s[k] || (s.configuredKeys?.[k] ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' : '');
+            setAviationKey(configured('aviationStackApiKey'));
+            setAeroDataBoxKey(configured('aeroDataBoxApiKey'));
+            if (configured('aeroDataBoxApiKey')) {
                 setProvider('aerodatabox');
-            } else if (s.aviationStackApiKey) {
+            } else if (configured('aviationStackApiKey')) {
                 setProvider('aviationstack');
             }
-        });
+        }).catch(() => {});
+        return () => { cancelled = true; };
+    }, []);
+
+    useEffect(() => {
         if (isOpen) {
             if (suggestedFlight) {
                 setFlightNum(suggestedFlight.iata);
@@ -69,15 +77,15 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
             if (provider === 'aerodatabox') {
                 activeKey = aeroDataBoxKey;
                 if (!activeKey) {
-                    throw new Error("AeroDataBox API key is not configured. Please add your key in Settings.");
+                    throw new Error("AeroDataBox API key is not configured. Add it in Settings, or switch to ADSBdb (Free).");
                 }
             } else if (provider === 'aviationstack') {
                 activeKey = aviationKey;
                 if (!activeKey) {
-                    throw new Error("AviationStack API key is not configured. Please add your key in Settings.");
+                    throw new Error("AviationStack API key is not configured. Add it in Settings, or switch to ADSBdb (Free).");
                 }
             }
-            const data = await flightTracker.getFlightStatus(activeKey, iata, flightDate, provider, geminiKey);
+            const data = await flightTracker.getFlightStatus(activeKey, iata, flightDate, provider);
             setFlightData(data);
         } catch (e) {
             setError(e instanceof Error ? e.message : "Unknown error occurred");
@@ -109,9 +117,8 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                 {/* Provider SelectorTabs */}
                 <div className="space-y-2">
                     <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Flight Data Engine</label>
-                    <div className="grid grid-cols-4 gap-1 p-1 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
+                    <div className="grid grid-cols-3 gap-1 p-1 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
                         {[
-                            { id: 'ai_guessing', label: 'Gemini AI', Icon: Sparkle },
                             { id: 'adsbdb', label: 'ADSBdb (Free)', Icon: Broadcast },
                             { id: 'aviationstack', label: 'AvStack', Icon: AirplaneTakeoff },
                             { id: 'aerodatabox', label: 'AeroData', Icon: Database }
@@ -140,14 +147,14 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                 {provider === 'aviationstack' && !aviationKey && (
                     <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-semibold flex items-center gap-3">
                         <WarningCircle className="w-5 h-5 shrink-0" />
-                        <span>AviationStack API Key is missing. Standard lookup will automatically fallback to AI Flight Guessing.</span>
+                        <span>AviationStack API Key is missing. Add it in Settings, or switch to ADSBdb (Free).</span>
                     </div>
                 )}
                 
-                {provider === 'ai_guessing' && !geminiKey && (
-                    <div className="p-4 rounded-2xl bg-primary-500/10 border border-primary-500/20 text-primary-700 dark:text-primary-300 text-xs font-semibold flex items-center gap-2">
-                        <Info className="w-5 h-5 shrink-0" />
-                        <span>Gemini AI works in sandbox mode. Add a Gemini API Key in Settings for live pinpoint accuracy.</span>
+                {provider === 'aerodatabox' && !aeroDataBoxKey && (
+                    <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-semibold flex items-center gap-3">
+                        <WarningCircle className="w-5 h-5 shrink-0" />
+                        <span>AeroDataBox API Key is missing. Add it in Settings, or switch to ADSBdb (Free).</span>
                     </div>
                 )}
 

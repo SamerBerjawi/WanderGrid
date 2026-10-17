@@ -36,7 +36,7 @@ import {
     WarningCircle
 } from '@/components/ui/hugeicons';
 import { Input, Autocomplete, TimeInput, Select, DateRangePicker, DatePicker, Tabs } from './ui';
-import GlassPanel from './glass/GlassPanel';
+import { AdaptivePanel as GlassPanel, isGoldenHour, GH_BTN_SOFT, GH_BTN_PRIMARY } from './golden/GoldenDialog';
 import GlassButton from './glass/GlassButton';
 import { Trip, Transport, Accommodation, TransportMode, User, GeoCoordinates, WorkspaceSettings } from '../types';
 import { dataService } from '../services/mockDb';
@@ -2169,7 +2169,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                 {/* Left: Pure Icon + Responsive Page Name (Aligned Left) */}
                 <div className="flex items-center justify-start gap-2 sm:gap-3 md:gap-4 min-w-0">
                     <MapTrifold 
-                        className="w-7 h-7 sm:w-9 sm:h-9 md:w-12 md:h-12 text-emerald-500 dark:text-emerald-400 shrink-0" 
+                        className={`w-7 h-7 sm:w-9 sm:h-9 md:w-12 md:h-12 shrink-0 ${isGoldenHour() ? 'text-sunset-coral' : 'text-emerald-500 dark:text-emerald-400'}`} 
                         weight="duotone" 
                     />
                     <div className="min-w-0">
@@ -2209,6 +2209,13 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         </div>
                     </GlassPanel>
 
+                    {isGoldenHour() ? (<>
+                    <button type="button" onClick={onClose} className={GH_BTN_SOFT}>Cancel</button>
+                    <button type="button" onClick={handleFinalizeTrip} disabled={isSaving || !title || !startDate || !endDate} className={GH_BTN_PRIMARY}>
+                        <span>{isSaving ? 'Creating...' : 'Create trip'}</span>
+                        <Check className="w-4 h-4 shrink-0" weight="bold" />
+                    </button>
+                    </>) : (<>
                     {/* Cancel Button */}
                     <GlassButton
                         type="button"
@@ -2230,6 +2237,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         <span>{isSaving ? 'Creating...' : 'Create Trip'}</span>
                         <Check className="w-4 h-4 shrink-0" weight="bold" />
                     </GlassButton>
+                    </>)}
                 </div>
             </div>
 
@@ -2277,9 +2285,9 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                     overrides={{ borderRadius: 28 }}
                     padding="0px"
                 >
-                    <div className="p-5 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0">
+                    <div className={isGoldenHour() ? "p-5 flex items-center justify-between shrink-0" : "p-5 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0"}>
                         <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md transition-transform hover:scale-105 shrink-0">
+                            <div className={isGoldenHour() ? "w-11 h-11 rounded-2xl flex items-center justify-center text-sunset-ink bg-sunset-teal shrink-0" : "w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md transition-transform hover:scale-105 shrink-0"}>
                                 <Compass className="w-6 h-6" weight="duotone" />
                             </div>
                             <div className="min-w-0">
@@ -2482,9 +2490,9 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                     overrides={{ borderRadius: 28 }}
                     padding="0px"
                 >
-                    <div className="p-5 bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0">
+                    <div className={isGoldenHour() ? "p-5 flex items-center justify-between shrink-0" : "p-5 bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0"}>
                         <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-sky-500 to-blue-600 shadow-md transition-transform hover:scale-105 shrink-0">
+                            <div className={isGoldenHour() ? "w-11 h-11 rounded-2xl flex items-center justify-center text-sunset-ink bg-sunset-lilac shrink-0" : "w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-sky-500 to-blue-600 shadow-md transition-transform hover:scale-105 shrink-0"}>
                                 <AirplaneTilt className="w-6 h-6" weight="duotone" />
                             </div>
                             <div className="min-w-0">
@@ -2645,9 +2653,9 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                     overrides={{ borderRadius: 28 }}
                     padding="0px"
                 >
-                    <div className="p-5 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0">
+                    <div className={isGoldenHour() ? "p-5 flex items-center justify-between shrink-0" : "p-5 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0"}>
                         <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-amber-500 to-orange-600 shadow-md transition-transform hover:scale-105 shrink-0">
+                            <div className={isGoldenHour() ? "w-11 h-11 rounded-2xl flex items-center justify-center text-sunset-ink bg-sunset-sun shrink-0" : "w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-amber-500 to-orange-600 shadow-md transition-transform hover:scale-105 shrink-0"}>
                                 <Bed className="w-6 h-6" weight="duotone" />
                             </div>
                             <div className="min-w-0">
@@ -2843,7 +2851,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         overrides={{ borderRadius: 28 }}
                         padding="0px"
                     >
-                        <div className="p-5 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center gap-3 shrink-0">
+                        <div className={isGoldenHour() ? "p-5 flex items-center gap-3 shrink-0" : "p-5 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center gap-3 shrink-0"}>
                             <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md shrink-0">
                                 <Compass className="w-6 h-6" weight="duotone" />
                             </div>
@@ -3005,7 +3013,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         overrides={{ borderRadius: 28 }}
                         padding="0px"
                     >
-                        <div className="p-5 bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0">
+                        <div className={isGoldenHour() ? "p-5 flex items-center justify-between shrink-0" : "p-5 bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0"}>
                             <div className="flex items-center gap-3 min-w-0">
                                 <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-sky-500 to-blue-600 shadow-md shrink-0">
                                     <AirplaneTilt className="w-6 h-6" weight="duotone" />
@@ -3159,7 +3167,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         overrides={{ borderRadius: 28 }}
                         padding="0px"
                     >
-                        <div className="p-5 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0">
+                        <div className={isGoldenHour() ? "p-5 flex items-center justify-between shrink-0" : "p-5 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0"}>
                             <div className="flex items-center gap-3 min-w-0">
                                 <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-amber-500 to-orange-600 shadow-md shrink-0">
                                     <Bed className="w-6 h-6" weight="duotone" />

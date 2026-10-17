@@ -32,7 +32,9 @@ import {
   SEGMENTED_TAB_INACTIVE,
 } from '../constants';
 import Icon from './ui/Icon';
+import { GoldenModalShell } from './golden/GoldenDialog';
 import GlassPanel from './glass/GlassPanel';
+import { GlassOrGolden, isGoldenHour, GH_LABEL, GH_PILL, GH_FOCUS_WITHIN, GH_SHEET, GH_ROW, GH_ROW_ACTIVE, GH_ROW_IDLE } from './golden/ghControls';
 import GlassButton from './glass/GlassButton';
 import GlassInput from './glass/GlassInput';
 import GlassSelect from './glass/GlassSelect';
@@ -137,6 +139,7 @@ interface TimeInputProps {
 }
 
 export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, className }) => {
+  const gh = isGoldenHour();
   const [hourStr, minuteStr] = (value || '12:00').split(':');
   let hour = parseInt(hourStr);
   if (isNaN(hour)) hour = 12;
@@ -176,8 +179,9 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
 
   return (
     <div className={cn("flex flex-col gap-1.5 w-fit shrink-0", className)}>
-      {label && <label className={SECTION_LABEL_STYLE}>{label}</label>}
-      <GlassPanel
+      {label && <label className={gh ? GH_LABEL : SECTION_LABEL_STYLE}>{label}</label>}
+      <GlassOrGolden
+        golden={`${GH_PILL} ${GH_FOCUS_WITHIN} w-[132px] !px-3`}
         className="wg-glass-pill transition-all duration-180 ease-glass border-black/10 dark:border-white/10 min-h-[44px] h-11 w-[116px]"
         padding="0px"
         overrides={{ borderRadius: 20 }}
@@ -190,7 +194,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
               min="1"
               max="12"
               data-no-spinner="true"
-              className="w-6 bg-transparent text-center text-xs font-bold text-light-text dark:text-dark-text focus:outline-none no-spinners cursor-pointer p-0"
+              className={gh ? 'w-7 bg-transparent text-center text-sm font-black text-sunset-ink dark:text-white focus:outline-none no-spinners cursor-pointer p-0' : 'w-6 bg-transparent text-center text-xs font-bold text-light-text dark:text-dark-text focus:outline-none no-spinners cursor-pointer p-0'}
               value={String(displayHour).padStart(2, '0')}
               onChange={handleHourChange}
             />
@@ -200,7 +204,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
               min="0"
               max="59"
               data-no-spinner="true"
-              className="w-6 bg-transparent text-center text-xs font-bold text-light-text dark:text-dark-text focus:outline-none no-spinners cursor-pointer p-0"
+              className={gh ? 'w-7 bg-transparent text-center text-sm font-black text-sunset-ink dark:text-white focus:outline-none no-spinners cursor-pointer p-0' : 'w-6 bg-transparent text-center text-xs font-bold text-light-text dark:text-dark-text focus:outline-none no-spinners cursor-pointer p-0'}
               value={minuteStr || '00'}
               onChange={handleMinuteChange}
             />
@@ -210,14 +214,14 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
           <button
             type="button"
             onClick={togglePeriod}
-            className="px-2 py-1 rounded-xl text-2xs font-black uppercase tracking-wider transition-all cursor-pointer bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-primary-600 dark:text-primary-400 border border-primary-500/20 shadow-2xs hover:scale-105 active:scale-95 select-none"
+            className={gh ? 'px-3 min-h-[32px] rounded-full text-xs font-black uppercase tracking-wider transition-all cursor-pointer bg-sunset-coral text-white active:scale-95 select-none' : 'px-2 py-1 rounded-xl text-2xs font-black uppercase tracking-wider transition-all cursor-pointer bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-primary-600 dark:text-primary-400 border border-primary-500/20 shadow-2xs hover:scale-105 active:scale-95 select-none'}
             title={`Click to switch to ${isPm ? 'AM' : 'PM'}`}
             aria-label={`Toggle period, currently ${isPm ? 'PM' : 'AM'}`}
           >
             {isPm ? 'PM' : 'AM'}
           </button>
         </div>
-      </GlassPanel>
+      </GlassOrGolden>
     </div>
   );
 };
@@ -345,6 +349,19 @@ export const Modal: React.FC<ModalProps> = ({
   }, [isOpen, onClose]);
 
   if (!visible && !isOpen) return null;
+
+  if (isGoldenHour()) {
+    return createPortal(
+      <GoldenModalShell
+        isOpen={isOpen} onClose={onClose} containerRef={modalRef} titleId={titleId} title={title} subtitle={subtitle} tag={tag}
+        maxWidth={maxWidth} footerActions={footerActions}
+        icon={icon ? (typeof icon === 'string' ? <Icon className="text-2xl" name={icon} /> : icon) : undefined}
+      >
+        {children}
+      </GoldenModalShell>,
+      document.body
+    );
+  }
 
   return createPortal(
     <div
@@ -549,13 +566,15 @@ interface TabsProps {
 const TabsComponent: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className }) => {
   const indicatorId = `tab-indicator-${useId()}`;
   const reduceMotion = useReducedMotion();
+  const gh = isGoldenHour();
 
   return (
     // justify-start + mx-auto (not justify-center): centred when the tabs fit, but when they overflow
     // on narrow screens the first tab stays reachable by scrolling instead of being clipped off the left.
     // min-w-0/max-w-full let the row scroll inside its parent instead of widening the page (UI-007).
     <div className={cn("flex items-center justify-start overflow-x-auto no-scrollbar py-3 px-2 -my-3 -mx-2 min-w-0 max-w-full", className)}>
-      <GlassPanel
+      <GlassOrGolden
+        golden="shrink-0 mx-auto sm:mx-0 p-1 rounded-full bg-sunset-sand dark:bg-sunset-dusk"
         className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0 mx-auto sm:mx-0"
         padding="4px 6px"
         overrides={{ borderRadius: 9999 }}
@@ -574,7 +593,9 @@ const TabsComponent: React.FC<TabsProps> = ({ tabs, activeTab, onChange, classNa
                 onClick={() => onChange(tab.id)}
                 className={cn(
                   "group relative isolate rounded-full text-xs font-bold border border-transparent transition-[color,background-color,border-color,transform] duration-150 flex items-center justify-center cursor-pointer select-none active:scale-95 px-3.5 sm:px-5 py-2.5 min-h-[44px] min-w-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50",
-                  isActive
+                  gh
+                    ? (isActive ? "text-white font-black" : "text-sunset-ink dark:text-white/80 hover:bg-white/70 dark:hover:bg-sunset-plum")
+                    : isActive
                     ? style.activeText
                     // Inactive: tint in the tab's own colour, so hovering previews what selecting it will look like.
                     : cn("text-light-text-secondary dark:text-dark-text-secondary", style.hover)
@@ -583,7 +604,7 @@ const TabsComponent: React.FC<TabsProps> = ({ tabs, activeTab, onChange, classNa
                 {isActive && (
                   <motion.div
                     layoutId={indicatorId}
-                    className={cn("absolute inset-0 rounded-full border z-0 pointer-events-none", style.activeBg, style.activeBorder, style.activeShadow)}
+                    className={gh ? "absolute inset-0 rounded-full bg-sunset-coral shadow-[0_2px_8px_rgba(255,107,74,0.45)] z-0 pointer-events-none" : cn("absolute inset-0 rounded-full border z-0 pointer-events-none", style.activeBg, style.activeBorder, style.activeShadow)}
                     transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 450, damping: 34 }}
                   />
                 )}
@@ -594,7 +615,8 @@ const TabsComponent: React.FC<TabsProps> = ({ tabs, activeTab, onChange, classNa
                   {tab.count !== undefined && (
                     <span className={cn(
                       "text-2xs font-mono px-2 py-0.5 rounded-full font-bold border tabular-nums",
-                      isActive ? style.badge : "bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border-black/5 dark:border-white/10 hidden sm:inline"
+                      gh ? (isActive ? "bg-white/25 text-white border-transparent" : "bg-white dark:bg-sunset-plum text-sunset-ink dark:text-white border-transparent hidden sm:inline")
+                      : isActive ? style.badge : "bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border-black/5 dark:border-white/10 hidden sm:inline"
                     )}>
                       {tab.count}
                     </span>
@@ -604,7 +626,7 @@ const TabsComponent: React.FC<TabsProps> = ({ tabs, activeTab, onChange, classNa
             );
           })}
         </div>
-      </GlassPanel>
+      </GlassOrGolden>
     </div>
   );
 };
@@ -633,6 +655,19 @@ export const Badge: React.FC<BadgeProps> = ({ children, color = 'primary', class
     teal: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20',
     cyan: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20',
   };
+  if (isGoldenHour()) {
+    const ghColors: Record<string, string> = {
+      primary: 'bg-sunset-coral text-white', blue: 'bg-sunset-lilac text-sunset-ink', green: 'bg-sunset-teal text-sunset-ink',
+      amber: 'bg-sunset-sun text-sunset-ink', red: 'bg-rose-500 text-white', purple: 'bg-sunset-lilac text-sunset-ink',
+      gray: 'bg-sunset-sand dark:bg-sunset-dusk text-sunset-ink dark:text-white', indigo: 'bg-sunset-lilac text-sunset-ink',
+      pink: 'bg-sunset-orange text-white', teal: 'bg-sunset-teal text-sunset-ink', cyan: 'bg-sunset-teal text-sunset-ink',
+    };
+    return (
+      <span className={cn("inline-flex items-center px-3 py-1 rounded-full text-xs font-black select-none", ghColors[color] || ghColors.primary, className)}>
+        {children}
+      </span>
+    );
+  }
   return (
     <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-bold border uppercase tracking-wider select-none", colors[color] || colors.primary, className)}>
       {children}
@@ -644,7 +679,27 @@ export const Badge: React.FC<BadgeProps> = ({ children, color = 'primary', class
 export const CategoryBadge: React.FC<{ category?: string; className?: string }> = ({ category, className = '' }) => {
   if (!category) return null;
   const cat = category.toLowerCase();
-  
+
+  if (isGoldenHour()) {
+    const GH_CAT: Record<string, { tone: string; Ico: React.ComponentType<{ className?: string; weight?: any }>; text: string }> = {
+      business: { tone: 'bg-sunset-lilac', Ico: Storefront, text: 'Business' },
+      building: { tone: 'bg-sunset-lilac', Ico: House, text: 'Building' },
+      street: { tone: 'bg-sunset-teal', Ico: RoadHorizon, text: 'Street' },
+      station: { tone: 'bg-sunset-sun', Ico: Train, text: 'Station' },
+      port: { tone: 'bg-sunset-teal', Ico: Anchor, text: 'Port' },
+      airport: { tone: 'bg-sunset-orange text-white', Ico: AirplaneTilt, text: 'Airport' },
+      city: { tone: 'bg-sunset-sun', Ico: Buildings, text: 'City' },
+      country: { tone: 'bg-sunset-teal', Ico: Globe, text: 'Country' },
+    };
+    const g = GH_CAT[cat] || { tone: 'bg-sunset-sand dark:bg-sunset-dusk text-sunset-ink dark:text-white', Ico: MapPin, text: cat === 'region' ? 'Region' : cat === 'poi' ? 'Point' : 'Area' };
+    return (
+      <span className={cn("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black shrink-0", g.tone, g.tone.includes('text-') ? '' : 'text-sunset-ink', className)}>
+        <g.Ico className="w-3.5 h-3.5 shrink-0" weight="bold" />
+        <span>{g.text}</span>
+      </span>
+    );
+  }
+
   switch (cat) {
     case 'business':
       return (
@@ -752,6 +807,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
   const timeoutRef = useRef<any>(null);
   const latestQueryRef = useRef<string>('');
   const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
+  const gh = isGoldenHour();
 
   const normalizedItems = useMemo<AutocompleteItem[]>(() => {
     return suggestions.map(item => {
@@ -908,17 +964,20 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
 
   return (
     <div className="flex flex-col gap-1.5 w-full relative" ref={wrapperRef}>
-      {label && <label className={SECTION_LABEL_STYLE}>{label}</label>}
+      {label && <label className={gh ? GH_LABEL : SECTION_LABEL_STYLE}>{label}</label>}
       <div className="relative group w-full">
-        <GlassPanel
+        <GlassOrGolden
+          golden={`w-full ${GH_PILL} ${GH_FOCUS_WITHIN}`}
           className="wg-glass-pill w-full transition-all duration-180 ease-glass border-black/10 dark:border-white/10 group-focus-within:border-primary-500/60 min-h-[44px] h-11"
           padding="0px"
           overrides={{ borderRadius: 20 }}
         >
-          <div className="flex items-center min-h-[44px] h-11 px-3.5 w-full relative">
+          <div className={`flex items-center min-h-[44px] h-11 ${gh ? '' : 'px-3.5'} w-full relative`}>
             <input
               className={cn(
-                "w-full bg-transparent text-xs font-bold text-light-text dark:text-dark-text placeholder-light-text-secondary/50 dark:placeholder-dark-text-secondary/50 focus:outline-none pr-6",
+                gh
+                  ? "w-full bg-transparent text-sm font-bold text-sunset-ink dark:text-white placeholder:text-sunset-ink/40 dark:placeholder:text-white/40 placeholder:font-semibold focus:outline-none pr-6"
+                  : "w-full bg-transparent text-xs font-bold text-light-text dark:text-dark-text placeholder-light-text-secondary/50 dark:placeholder-dark-text-secondary/50 focus:outline-none pr-6",
                 className
               )}
               value={value}
@@ -929,11 +988,11 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
             />
             {isLoading && (
               <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
-                <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                <div className={`w-4 h-4 border-2 ${gh ? 'border-sunset-coral' : 'border-primary-500'} border-t-transparent rounded-full animate-spin`}></div>
               </div>
             )}
           </div>
-        </GlassPanel>
+        </GlassOrGolden>
       </div>
 
       {isOpen && normalizedItems.length > 0 && coords && createPortal(
@@ -947,7 +1006,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
             maxWidth: coords.width,
             zIndex: 70, // z-popover
           }}
-          className="z-popover wg-glass-dropdown shadow-2xl rounded-2xl overflow-hidden max-h-72 sm:max-h-80 overflow-y-auto animate-fade-in p-2 custom-scrollbar flex flex-col gap-1.5 box-border"
+          className={gh ? `z-popover ${GH_SHEET} max-h-72 sm:max-h-80 overflow-y-auto animate-fade-in p-2 custom-scrollbar flex flex-col gap-1 box-border` : "z-popover wg-glass-dropdown shadow-2xl rounded-2xl overflow-hidden max-h-72 sm:max-h-80 overflow-y-auto animate-fade-in p-2 custom-scrollbar flex flex-col gap-1.5 box-border"}
         >
           {normalizedItems.map((item, index) => {
             const isSelected = index === activeIndex;
@@ -956,7 +1015,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
                 key={index}
                 onClick={() => handleSelect(item)}
                 onMouseEnter={() => setActiveIndex(index)}
-                className={cn(
+                className={gh ? `px-4 py-3 min-h-[52px] cursor-pointer ${GH_ROW} flex items-center justify-between gap-3 text-left w-full overflow-hidden ${isSelected ? GH_ROW_ACTIVE : GH_ROW_IDLE}` : cn(
                   "px-3.5 py-3 sm:py-3.5 min-h-[52px] cursor-pointer rounded-xl transition-all flex items-center justify-between gap-3 text-left w-full overflow-hidden border",
                   isSelected
                     ? "bg-primary-500/10 dark:bg-primary-500/20 text-primary-600 dark:text-primary-300 border-primary-500/20 shadow-xs"

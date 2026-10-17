@@ -17,6 +17,8 @@ import { AchievementMilestones } from '../components/AchievementMilestones';
 import { ICONIC_STICKERS, loadStickersProgress, STICKER_CATEGORIES } from '../utils/stickersData';
 import { formatDate } from '../utils/formatters';
 import { GlassPanel } from '../components/glass/GlassPanel';
+import { GoldenTripHero } from '../components/GoldenTripHero';
+import { isFeatureEnabled } from '../config/featureFlags';
 import { LiveClock } from '../components/LiveClock';
 import { EmptyState } from '../components/EmptyState';
 import { 
@@ -956,6 +958,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                 </Button>
             </div>
         </div>
+
+        {isFeatureEnabled('UI_GOLDEN_HOUR') && nextDepartureTrip && (
+            <GoldenTripHero
+                trip={nextDepartureTrip}
+                daysUntil={daysUntilNextTrip}
+                onClick={() => onTripClick && onTripClick(nextDepartureTrip.id)}
+            />
+        )}
 
         {/* ========================================================= */}
         {/* 2. DYNAMIC ISLAND & CONTEXTUAL STATUS STRIP (Mobile First)*/}

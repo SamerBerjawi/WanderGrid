@@ -1,4 +1,7 @@
 
+import { isFeatureEnabled } from './config/featureFlags';
+import { getUiTheme } from './config/uiTheme';
+import { goldenViews } from './views/golden/registry';
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { ViewState, User } from './types';
@@ -25,6 +28,7 @@ const Auth = lazy(() => loadAuth().then(m => ({ default: m.Auth })));
 // The navigation shell (and most of its icon set) is only needed after sign-in; keep it off the login page's
 // critical path (PERF-001/005).
 const Sidebar = lazy(() => import('./components/Sidebar').then(m => ({ default: m.Sidebar })));
+const GoldenSidebar = lazy(() => import('./components/golden/GoldenSidebar').then(m => ({ default: m.GoldenSidebar })));
 
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { Toaster } from './components/Toaster';
@@ -199,6 +203,8 @@ export default function App() {
             isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         }
         root.classList.toggle('dark', isDark);
+        root.classList.toggle('theme-golden', isFeatureEnabled('UI_GOLDEN_HOUR'));
+        root.classList.toggle('theme-board', getUiTheme() === 'board');
 
         // Update meta theme-color for iOS / Android PWA status bar
         const metaThemeColor = document.getElementById('theme-color-meta');
@@ -221,12 +227,16 @@ export default function App() {
   }, [theme]);
 
   // The workspace theme is an admin setting; other users keep their choice in this browser only.
-  const handleThemeChange = (newTheme: 'light' | 'dark' | 'auto') => {
+  // A personal preference wins over the workspace theme on load, so every explicit choice must update it too;
+  // otherwise a stale preference (for example the dark one the Board theme sets) overrides later toggles.
+  const applyPersonalTheme = (newTheme: 'light' | 'dark' | 'auto') => {
       setTheme(newTheme);
-      if (currentUser?.role !== 'Admin') {
-          try { localStorage.setItem('wandergrid_theme_preference', newTheme); } catch (e) {}
-          return;
-      }
+      try { localStorage.setItem('wandergrid_theme_preference', newTheme); } catch (e) {}
+  };
+
+  const handleThemeChange = (newTheme: 'light' | 'dark' | 'auto') => {
+      applyPersonalTheme(newTheme);
+      if (currentUser?.role !== 'Admin') return;
       dataService.updateWorkspaceSettings({ theme: newTheme }).catch(err => {
           toast.error(`Couldn't save the theme: ${errorMessage(err)}`);
       });
@@ -296,12 +306,29 @@ export default function App() {
 
   const routeKey = getStableRouteKey();
 
+  const NavSidebar = isFeatureEnabled('UI_GOLDEN_HOUR') ? GoldenSidebar : Sidebar;
+
   const renderView = () => {
+    const Golden = isFeatureEnabled('UI_GOLDEN_HOUR') ? goldenViews[view] : undefined;
+    if (Golden) {
+      return (
+        <Golden
+          onUserClick={handleUserClick}
+          onTripClick={handleTripClick}
+          onBack={() => navigate(view === ViewState.TRIP_DETAIL ? ViewState.PLANNER : ViewState.DASHBOARD)}
+          onLogout={() => handleLogout()}
+          onThemeChange={applyPersonalTheme}
+          userId={selectedUserId ?? undefined}
+          tripId={selectedTripId ?? undefined}
+          isSidebarCollapsed={isSidebarCollapsed}
+        />
+      );
+    }
     switch (view) {
       case ViewState.DASHBOARD:
         return <Dashboard onUserClick={handleUserClick} onTripClick={handleTripClick} />;
       case ViewState.SETTINGS:
-        return <Settings onThemeChange={setTheme} />;
+        return <Settings onThemeChange={applyPersonalTheme} />;
       case ViewState.USER_DETAIL:
         return <UserDetail userId={selectedUserId!} onBack={() => navigate(ViewState.DASHBOARD)} onLogout={() => handleLogout()} />;
       case ViewState.PLANNER:
@@ -367,7 +394,7 @@ export default function App() {
           darkMode={isDarkMode} 
         />
         <Suspense fallback={null}>
-        <Sidebar 
+        <NavSidebar 
           currentView={view} 
           onNavigate={(v, id) => navigate(v, id)} 
           theme={theme}

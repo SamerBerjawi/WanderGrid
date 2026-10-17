@@ -20,7 +20,7 @@ import {
     Sparkle
 } from '@/components/ui/hugeicons';
 import { Input, Autocomplete, TimeInput } from './ui';
-import GlassPanel from './glass/GlassPanel';
+import { AdaptivePanel as GlassPanel, isGoldenHour, GH_BACKDROP, GH_BTN_SOFT, GH_BTN_PRIMARY } from './golden/GoldenDialog';
 import { Activity, ActivityType, GeoCoordinates } from '../types';
 import { searchLocations, getCoordinates } from '../services/geocoding';
 import { getCurrencySymbol } from '../utils/formatters';
@@ -182,7 +182,7 @@ export const ExcursionConfigurator: React.FC<ExcursionConfiguratorProps> = ({
         <div role="dialog" aria-modal="true" aria-label="Excursion" className="fixed inset-0 z-modal overflow-y-auto flex items-center justify-center p-4 sm:p-6 safe-top safe-bottom safe-x font-sans">
             {/* Backdrop */}
             <div
-                className="fixed inset-0 backdrop-blur-md bg-black/5 dark:bg-black/15 transition-all duration-300"
+                className={isGoldenHour() ? `${GH_BACKDROP} transition-opacity duration-300` : "fixed inset-0 backdrop-blur-md bg-black/5 dark:bg-black/15 transition-all duration-300"}
                 onClick={onClose}
             />
 
@@ -191,13 +191,13 @@ export const ExcursionConfigurator: React.FC<ExcursionConfiguratorProps> = ({
                 <div className="p-6 sm:p-8 space-y-6">
 
                     {/* Header */}
-                    <div className="flex items-center justify-between pb-4 border-b border-black/10 dark:border-white/10">
+                    <div className={`flex items-center justify-between pb-4 ${isGoldenHour() ? '' : 'border-b border-black/10 dark:border-white/10'}`}>
                         <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-sm">
+                            <div className={`${isGoldenHour() ? "w-12 h-12" : "w-11 h-11"} rounded-2xl flex items-center justify-center ${isGoldenHour() ? 'bg-sunset-sun text-sunset-ink' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-sm'}`}>
                                 <Compass className="w-6 h-6" weight="duotone" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-light-text dark:text-dark-text tracking-tight">
+                                <h3 className={isGoldenHour() ? 'text-2xl sm:text-3xl font-black tracking-tight' : "text-lg font-bold text-light-text dark:text-dark-text tracking-tight"}>
                                     {initialData ? 'Edit Excursion & Activity' : 'Add Excursion or Activity'}
                                 </h3>
                                 <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
@@ -242,18 +242,23 @@ export const ExcursionConfigurator: React.FC<ExcursionConfiguratorProps> = ({
                                         type="button"
                                         key={cat.type}
                                         onClick={() => setType(cat.type)}
-                                        className={`p-3.5 rounded-2xl text-left transition-all border min-h-[72px] flex flex-col justify-between cursor-pointer ${isSelected
+                                        aria-pressed={isSelected}
+                                        className={`p-3.5 rounded-2xl text-left transition-all border min-h-[72px] flex flex-col justify-between cursor-pointer ${isGoldenHour()
+                                            ? (isSelected
+                                                ? 'bg-sunset-coral border-transparent text-white shadow-card ring-2 ring-sunset-coral ring-offset-2 ring-offset-white dark:ring-offset-sunset-plum'
+                                                : 'bg-sunset-sand dark:bg-sunset-dusk border-transparent text-sunset-ink dark:text-white hover:brightness-95')
+                                            : isSelected
                                                 ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 shadow-sm ring-1 ring-amber-500/30'
                                                 : 'bg-black/5 dark:bg-white/5 border-transparent text-light-text dark:text-dark-text hover:bg-black/10 dark:hover:bg-white/10'
                                             }`}
                                     >
                                         <div className="flex items-center justify-between w-full">
                                             <IconComponent className="w-5 h-5" weight={isSelected ? "duotone" : "regular"} />
-                                            {isSelected && <Check className="w-4 h-4 text-amber-600 dark:text-amber-400" weight="bold" />}
+                                            {isSelected && <Check className={isGoldenHour() ? 'w-4 h-4 text-white' : 'w-4 h-4 text-amber-600 dark:text-amber-400'} weight="bold" />}
                                         </div>
                                         <div className="mt-2">
                                             <span className="text-xs font-bold block">{cat.label}</span>
-                                            <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary line-clamp-1 mt-0.5">
+                                            <span className={`text-2xs line-clamp-1 mt-0.5 ${isGoldenHour() ? 'opacity-80' : 'text-light-text-secondary dark:text-dark-text-secondary'}`}>
                                                 {cat.description}
                                             </span>
                                         </div>
@@ -340,7 +345,7 @@ export const ExcursionConfigurator: React.FC<ExcursionConfiguratorProps> = ({
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="flex items-center justify-between pt-4 border-t border-black/10 dark:border-white/10">
+                    <div className={`flex items-center justify-between pt-4 ${isGoldenHour() ? '' : 'border-t border-black/10 dark:border-white/10'}`}>
                         {initialData && onDelete ? (
                             showDeleteConfirm ? (
                                 <div className="flex items-center gap-2">
@@ -376,14 +381,14 @@ export const ExcursionConfigurator: React.FC<ExcursionConfiguratorProps> = ({
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className={`${BTN_SECONDARY_STYLE} px-5 h-11 text-xs font-bold uppercase tracking-wider cursor-pointer`}
+                                className={isGoldenHour() ? GH_BTN_SOFT : `${BTN_SECONDARY_STYLE} px-5 h-11 text-xs font-bold uppercase tracking-wider cursor-pointer`}
                             >
                                 Cancel
                             </button>
                             <button
                                 type="button"
                                 onClick={handleSave}
-                                className={`${BTN_PRIMARY_STYLE} px-6 h-11 text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md`}
+                                className={isGoldenHour() ? GH_BTN_PRIMARY : `${BTN_PRIMARY_STYLE} px-6 h-11 text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md`}
                             >
                                 <span>Save Excursion</span>
                                 <Check className="w-4 h-4" weight="bold" />
