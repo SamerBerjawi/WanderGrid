@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
-import { Airplane, Check, Compass, PencilSimple, Trash } from '../ui/hugeicons';
+import { Airplane, Check, Compass, PencilSimple, Seat, Trash } from '../ui/hugeicons';
 import { Transport, Trip } from '../../types';
 import { LogoChip } from './LogoChip';
+import { FactItem, flightFacts } from './FlightFacts';
 import { formatDate, formatCurrency } from '../../utils/formatters';
 import { getCarrierName, getCityName, getFlightArrivalUtcDate, getFlightDepartureUtcDate, getFlightStatusTags } from '../../utils/flightData';
 
@@ -93,6 +94,7 @@ const Row: React.FC<{ f: Transport; tripId: string; isNext: boolean } & Pick<Pro
   const airline = getCarrierName(f.provider) || f.provider;
   const open = () => (selecting ? onToggle(f.id) : onEdit(f, tripId));
   const flightNo = (f.identifier || '').replace(/\s+/g, '');
+  const facts = flightFacts(f, { include: ['terminal', 'gate', 'belt', 'aircraft', 'pnr', 'distance'] });
   return (
     <li className={clsx('rounded-2xl bg-board-bg/60 border-l-4', isNext ? 'border-board-amber' : 'border-transparent', selected && 'ring-2 ring-sunset-coral')}>
       <div className="flex items-stretch">
@@ -114,11 +116,13 @@ const Row: React.FC<{ f: Transport; tripId: string; isNext: boolean } & Pick<Pro
             </span>
           </span>
           <span className="text-right xl:text-left "><Flap text={f.departureTime || '--:--'} className="text-lg sm:text-xl" /></span>
-          {/* Flight */}
-          <span className="col-span-2 xl:col-span-1 flex xl:block items-center gap-2 min-w-0">
-            <LogoChip provider={f.provider} size="sm" fallback={<Airplane className="w-4 h-4 rotate-45" />} />
-            <span className="text-board-amber text-sm font-bold">{flightNo || '—'}</span>
-            <span className="text-2xs text-board-muted uppercase truncate xl:block">{airline}</span>
+          {/* Flight: logo beside the number and airline name */}
+          <span className="col-span-2 xl:col-span-1 flex items-center gap-2.5 min-w-0">
+            <LogoChip provider={f.provider} size="md" fallback={<Airplane className="w-4 h-4 rotate-45" />} />
+            <span className="min-w-0">
+              <span className="block text-board-amber text-sm font-bold leading-tight">{flightNo || '—'}</span>
+              <span className="block text-2xs text-board-muted uppercase truncate leading-tight">{airline}</span>
+            </span>
           </span>
           {/* Route */}
           <span className="col-span-2 xl:col-span-1 min-w-0">
@@ -133,7 +137,7 @@ const Row: React.FC<{ f: Transport; tripId: string; isNext: boolean } & Pick<Pro
           </span>
           {/* Seat, cabin, status */}
           <span className="text-2xs text-board-muted uppercase">
-            <span>Seat<br /><b className="text-board-amber text-sm">{f.seatNumber || '—'}</b></span>
+            <span className="inline-flex items-center gap-1.5"><Seat className="w-4 h-4" /><span>Seat<br /><b className="text-board-amber text-sm">{f.seatNumber || '—'}</b></span></span>
           </span>
           <span className="text-2xs text-board-muted uppercase">
             {f.travelClass || 'Economy'}
@@ -141,6 +145,11 @@ const Row: React.FC<{ f: Transport; tripId: string; isNext: boolean } & Pick<Pro
             {f.cost ? <><br /><b className="text-board-paper text-xs">{formatCurrency(f.cost)}</b></> : null}
           </span>
           <span className={clsx('text-xs sm:text-sm font-bold tracking-wider col-span-2 xl:col-span-1', st.cls)}>{st.text}</span>
+          {facts.length > 0 && (
+            <span className="col-span-full flex flex-wrap gap-x-5 gap-y-2 pt-2 border-t border-board-line text-board-paper">
+              {facts.map(x => <FactItem key={x.key} fact={x} />)}
+            </span>
+          )}
         </button>
         {!selecting && (
           <div className="flex flex-col sm:flex-row items-center justify-center pr-1">

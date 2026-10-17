@@ -1,15 +1,13 @@
 import React, { Suspense, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
-import {
-  Airplane, AirplaneTakeoff, ArrowDown, ArrowUp, Check, CaretDown, CaretUp, Compass, FolderMinus, FolderPlus, List, MagnifyingGlass,
-  PencilSimple, PencilSimpleLine, Plus, SquaresFour, Trash, UploadSimple, X,
-} from '@/components/ui/hugeicons';
+import {Airplane, AirplaneTakeoff, ArrowDown, ArrowUp, Buildings, CalendarBlank, CaretDown, CaretUp, Check, Compass, Crown, CurrencyDollar, Flag, FolderMinus, FolderPlus, Hourglass, List, MagnifyingGlass, PencilSimple, PencilSimpleLine, Plus, Seat, SquaresFour, Ticket, Trash, UploadSimple, X} from '@/components/ui/hugeicons';
 import { Modal, GlassSelect, Autocomplete } from '../../components/ui';
 import { Transport } from '../../types';
 import { formatDate, formatCurrency } from '../../utils/formatters';
 import { getCityName, getCarrierName, getFlightStatusTags, getFlightDepartureUtcDate } from '../../utils/flightData';
 import { isFeatureEnabled } from '../../config/featureFlags';
 import { LogoChip } from '../../components/golden/LogoChip';
+import { FactItem, dateTimeIcons, flightFacts } from '../../components/golden/FlightFacts';
 import { GhFlightBoard } from '../../components/golden/GhFlightBoard';
 import { useBentoStats, COUNTRY_NAMES } from '../../components/FlightyPassport';
 import { FlightTrackerModal } from '../../components/FlightTrackerModal';
@@ -112,10 +110,12 @@ const BoardingPass: React.FC<{ record: FlightRecord; onOpen: () => void; onTrack
             {getCityName(f.origin) || f.origin} to {getCityName(f.destination) || f.destination}
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <GhChip tone="ink">{formatDate(f.departureDate, 'short')} · {f.departureTime || '--:--'}</GhChip>
-            {f.seatNumber && <GhChip tone="ink">Seat {f.seatNumber}</GhChip>}
-            {f.travelClass && <GhChip tone="ink">{f.travelClass}</GhChip>}
-            {f.confirmationCode && <GhChip tone="ink">{f.confirmationCode}</GhChip>}
+            <GhChip tone="ink"><CalendarBlank className="w-3.5 h-3.5" />{formatDate(f.departureDate, 'short')} · {f.departureTime || '--:--'}</GhChip>
+            {f.seatNumber && <GhChip tone="ink"><Seat className="w-3.5 h-3.5" />{f.seatNumber}</GhChip>}
+            {f.travelClass && <GhChip tone="ink"><Crown className="w-3.5 h-3.5" />{f.travelClass}</GhChip>}
+            {f.departureTerminal && <GhChip tone="ink"><Buildings className="w-3.5 h-3.5" />T{f.departureTerminal}</GhChip>}
+            {f.departureGate && <GhChip tone="ink"><Flag className="w-3.5 h-3.5" />{f.departureGate}</GhChip>}
+            {f.confirmationCode && <GhChip tone="ink"><Ticket className="w-3.5 h-3.5" />{f.confirmationCode}</GhChip>}
           </div>
         </div>
       </button>
@@ -148,6 +148,7 @@ const FlightRow: React.FC<RowProps> = ({ flight: f, prev, selecting, selected, o
   const past = getFlightDepartureUtcDate(f).getTime() < Date.now();
   const layover = prev ? getLayoverMinutes(prev, f) : 0;
   const open = selecting ? onToggle : onEdit;
+  const facts = flightFacts(f, { include: ['cabin', 'seat', 'terminal', 'gate', 'belt', 'aircraft', 'pnr'] });
   return (
     <>
       {layover > 0 && (
@@ -179,18 +180,17 @@ const FlightRow: React.FC<RowProps> = ({ flight: f, prev, selecting, selected, o
             </span>
           </span>
         </button>
-        <div className={clsx('grid grid-cols-2 gap-x-4 gap-y-2 text-xs font-semibold', !card && 'sm:grid-cols-4 2xl:flex-1')}>
-          <span><span className="block opacity-70 uppercase tracking-wider">Date</span><b className="text-sm">{formatDate(f.departureDate, 'short')}</b></span>
-          <span><span className="block opacity-70 uppercase tracking-wider">Time</span><b className="text-sm">{f.departureTime || '--:--'} → {f.arrivalTime || '--:--'}</b></span>
-          <span><span className="block opacity-70 uppercase tracking-wider">Flight</span><b className="text-sm">{f.identifier || '—'}</b></span>
-          <span><span className="block opacity-70 uppercase tracking-wider">Cabin</span><b className="text-sm">{f.travelClass || '—'}</b></span>
-          {f.seatNumber && <span><span className="block opacity-70 uppercase tracking-wider">Seat</span><b className="text-sm">{f.seatNumber}{f.seatType ? ` · ${f.seatType}` : ''}</b></span>}
+        <div className={clsx('grid grid-cols-2 gap-x-4 gap-y-3 font-semibold', !card && 'sm:grid-cols-4 2xl:flex-1')}>
+          <FactItem fact={{ icon: dateTimeIcons.date, label: 'Date', value: formatDate(f.departureDate, 'short') }} />
+          <FactItem fact={{ icon: dateTimeIcons.time, label: 'Time', value: `${f.departureTime || '--:--'} → ${f.arrivalTime || '--:--'}` }} />
+          <FactItem fact={{ icon: dateTimeIcons.flight, label: 'Flight', value: f.identifier || '—' }} />
+          {facts.map(x => <FactItem key={x.key} fact={x} />)}
         </div>
         <div className={clsx('flex items-center gap-2 justify-between flex-wrap', !card && '2xl:justify-end')}>
           <div className="flex flex-wrap gap-1.5">
             <GhChip tone={STATUS_TONE[status.label] || 'lilac'}>{status.label}</GhChip>
-            {f.duration ? <GhChip tone="plain">{formatFlightDuration(f.duration)}</GhChip> : null}
-            {f.cost ? <GhChip tone="plain">{formatCurrency(f.cost)}</GhChip> : null}
+            {f.duration ? <GhChip tone="plain"><Hourglass className="w-3.5 h-3.5" />{formatFlightDuration(f.duration)}</GhChip> : null}
+            {f.cost ? <GhChip tone="plain"><CurrencyDollar className="w-3.5 h-3.5" />{formatCurrency(f.cost)}</GhChip> : null}
           </div>
           {!selecting && (
             <div className="flex gap-1.5">
