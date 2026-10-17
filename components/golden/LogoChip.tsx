@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 import { dataService } from '../../services/mockDb';
 import { CarrierLogo } from './tripUtils';
 
@@ -28,7 +29,7 @@ export const LogoChip: React.FC<{ provider?: string; fallback: React.ReactNode; 
   const [settings, setSettings] = useState<CarrierSettings>({});
   useEffect(() => { let on = true; loadCarrierSettings().then(s => on && setSettings(s)); return () => { on = false; }; }, []);
   return (
-    <span className={clsx('inline-flex items-center justify-center shrink-0 overflow-hidden bg-white text-sunset-ink', SIZE[size], className)}>
+    <span className={twMerge(clsx('inline-flex items-center justify-center shrink-0 overflow-hidden bg-white text-sunset-ink', SIZE[size]), className)}>
       <CarrierLogo provider={provider} brandfetchApiKey={settings.brandfetchApiKey} carriers={settings.carriers} fallback={fallback} />
     </span>
   );

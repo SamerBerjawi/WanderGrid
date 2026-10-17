@@ -9,6 +9,7 @@ import { Transport } from '../../types';
 import { formatDate, formatCurrency } from '../../utils/formatters';
 import { getCityName, getCarrierName, getFlightStatusTags, getFlightDepartureUtcDate } from '../../utils/flightData';
 import { isFeatureEnabled } from '../../config/featureFlags';
+import { LogoChip } from '../../components/golden/LogoChip';
 import { GhFlightBoard } from '../../components/golden/GhFlightBoard';
 import { useBentoStats, COUNTRY_NAMES } from '../../components/FlightyPassport';
 import { FlightTrackerModal } from '../../components/FlightTrackerModal';
@@ -60,10 +61,14 @@ const AirlineBadge: React.FC<{ name?: string }> = ({ name }) => {
   const label = (getCarrierName(name || '') || name || '?').trim();
   const tones = ['bg-sunset-teal', 'bg-sunset-sun', 'bg-sunset-lilac', 'bg-sunset-orange'];
   const tone = tones[label.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % tones.length];
+  // Real airline logo; the coloured initials stand in until one resolves.
   return (
-    <span className={clsx('w-10 h-10 rounded-full shrink-0 flex items-center justify-center text-sm font-black text-sunset-ink', tone)} aria-hidden="true">
-      {label.slice(0, 2).toUpperCase()}
-    </span>
+    <LogoChip
+      provider={name}
+      size="lg"
+      className="rounded-full"
+      fallback={<span className={clsx('w-full h-full rounded-full flex items-center justify-center text-sm font-black text-sunset-ink', tone)}>{label.slice(0, 2).toUpperCase()}</span>}
+    />
   );
 };
 

@@ -4,6 +4,7 @@ import {
   AirplaneTakeoff, ArrowRight, Backpack, Buildings, CaretLeft, CaretRight, Compass, Globe, Moon, MapPin, PencilSimple, Plus, Trash, UploadSimple,
 } from '@/components/ui/hugeicons';
 import { DepartureBoard, BoardItem } from '../DepartureBoard';
+import { LogoChip } from './LogoChip';
 import { VirtualListItem } from '../ui/VirtualListItem';
 import { Accommodation, Activity, Transport, Trip, WorkspaceSettings } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/formatters';
@@ -66,7 +67,11 @@ const DayCard: React.FC<{ trip: Trip; dateStr: string; index: number; settings: 
         ) : items.map(item => (
           <div key={item.id} className="flex items-center rounded-2xl bg-sunset-sand dark:bg-sunset-dusk">
             <button type="button" onClick={() => openItem(item, dateStr, h)} className="flex-1 min-w-0 min-h-[56px] flex items-center gap-3 p-2 text-left cursor-pointer">
-              <span className={clsx('w-11 h-11 rounded-2xl flex items-center justify-center shrink-0', KIND_STYLE[item.type])}><TripIcon name={item.icon} className="w-5 h-5" /></span>
+              {item.type === 'Transport' && (item.ref as Transport).provider ? (
+                <LogoChip provider={(item.ref as Transport).provider} size="lg" fallback={<span className={clsx('w-full h-full rounded-xl flex items-center justify-center', KIND_STYLE[item.type])}><TripIcon name={item.icon} className="w-5 h-5" /></span>} />
+              ) : (
+                <span className={clsx('w-11 h-11 rounded-2xl flex items-center justify-center shrink-0', KIND_STYLE[item.type])}><TripIcon name={item.icon} className="w-5 h-5" /></span>
+              )}
               <span className="flex-1 min-w-0">
                 <span className="flex items-baseline gap-2">
                   {!item.isOvernight && <span className="text-xs font-black whitespace-nowrap">{formatTime(item.time)}</span>}
