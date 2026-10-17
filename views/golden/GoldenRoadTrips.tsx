@@ -1,3 +1,4 @@
+import { LogoChip } from '../../components/golden/LogoChip';
 import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { toast } from '../../services/toast';
 import { confirmDialog } from '../../services/confirm';
@@ -113,8 +114,9 @@ const NextPass: React.FC<{ tr: any; onOpen: () => void }> = ({ tr, onOpen }) => 
       className="w-full min-h-[44px] flex text-left rounded-3xl overflow-hidden bg-board-paper text-board-ink shadow-card cursor-pointer hover:-translate-y-0.5 transition-transform"
     >
       <div className="flex-1 min-w-0 p-4 sm:p-6">
-        <div className="text-2xs tracking-[0.15em] text-board-muted uppercase font-mono truncate">
-          Next up · {tr.provider || meta.label} {tr.identifier}
+        <div className="flex items-center gap-2 text-2xs tracking-[0.15em] text-board-muted uppercase font-mono">
+          <LogoChip provider={tr.provider} size="sm" className="border border-board-muted/30" fallback={<Icon className="w-4 h-4" />} />
+          <span className="truncate">Next up · {tr.provider || meta.label} {tr.identifier}</span>
         </div>
         <div className="flex items-center gap-3 my-3 font-mono">
           <span className="text-3xl sm:text-5xl font-medium">{toCode(tr.origin)}</span>
@@ -718,7 +720,7 @@ export const GoldenRoadTrips: React.FC<GoldenViewProps> = ({ onTripClick }) => {
             aria-label={`${isMultiEditing ? 'Select' : 'Edit'} ${tr.origin} to ${tr.destination}`}
           >
             <span className="w-16 sm:w-24 shrink-0 text-board-muted text-xs sm:text-sm">{formatDate(tr.departureDate, 'short')}</span>
-            <span className="w-8 h-8 rounded-full bg-board-amber text-board-ink flex items-center justify-center shrink-0"><Icon className="w-4 h-4" /></span>
+            <LogoChip provider={tr.provider} fallback={<span className="w-full h-full rounded-lg bg-board-amber text-board-ink flex items-center justify-center"><Icon className="w-4 h-4" /></span>} />
             <span className="flex-1 min-w-0">
               <span className="block truncate uppercase">{toCode(tr.origin)} → {toCode(tr.destination)}</span>
               <span className="block truncate text-2xs text-board-muted normal-case">

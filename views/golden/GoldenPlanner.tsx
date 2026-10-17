@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { confirmDialog } from '../../services/confirm';
-import { Archive, Check, MagnifyingGlass, MapTrifold, Plus, X } from '@/components/ui/hugeicons';
+import { Archive, CalendarBlank, Check, MagnifyingGlass, MapPin, MapTrifold, Plus, X } from '@/components/ui/hugeicons';
 import { useWanderSync } from '../../hooks/useWanderSync';
 import { dataService } from '../../services/mockDb';
 import { Trip, User } from '../../types';
@@ -65,9 +65,13 @@ const Postcard: React.FC<{
       </div>
       <div className="relative">
         <h3 className="text-xl sm:text-2xl font-black tracking-tight leading-tight line-clamp-2">{trip.name}</h3>
-        <p className="text-sm font-medium opacity-90 truncate">{destinationsOf(trip).slice(0, 3).join(' · ') || 'Somewhere nice'}</p>
-        <p className="text-xs font-semibold opacity-80 mt-1">
-          {formatDateRange(trip.startDate, trip.endDate)}{nights > 0 ? ` · ${nights} days` : ''}
+        <p className="text-sm font-medium opacity-90 truncate flex items-center gap-1.5">
+          <MapPin className="w-4 h-4 shrink-0" weight="duotone" />
+          <span className="truncate">{destinationsOf(trip).slice(0, 3).join(' · ') || 'Somewhere nice'}</span>
+        </p>
+        <p className="text-xs font-semibold opacity-80 mt-1 flex items-center gap-1.5">
+          <CalendarBlank className="w-4 h-4 shrink-0" weight="duotone" />
+          <span>{formatDateRange(trip.startDate, trip.endDate)}{nights > 0 ? ` · ${nights} days` : ''}</span>
         </p>
       </div>
     </GhCard>

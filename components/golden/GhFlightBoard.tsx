@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 import { Airplane, Check, Compass, PencilSimple, Trash } from '../ui/hugeicons';
 import { Transport, Trip } from '../../types';
+import { LogoChip } from './LogoChip';
 import { formatDate, formatCurrency } from '../../utils/formatters';
 import { getCarrierName, getCityName, getFlightArrivalUtcDate, getFlightDepartureUtcDate, getFlightStatusTags } from '../../utils/flightData';
 
@@ -115,6 +116,7 @@ const Row: React.FC<{ f: Transport; tripId: string; isNext: boolean } & Pick<Pro
           <span className="text-right xl:text-left "><Flap text={f.departureTime || '--:--'} className="text-lg sm:text-xl" /></span>
           {/* Flight */}
           <span className="col-span-2 xl:col-span-1 flex xl:block items-center gap-2 min-w-0">
+            <LogoChip provider={f.provider} size="sm" fallback={<Airplane className="w-4 h-4 rotate-45" />} />
             <span className="text-board-amber text-sm font-bold">{flightNo || '—'}</span>
             <span className="text-2xs text-board-muted uppercase truncate xl:block">{airline}</span>
           </span>

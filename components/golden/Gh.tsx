@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react';
 import { clsx } from 'clsx';
+import { Airplane, Boat, CalendarBlank, Clock, Compass, CurrencyDollar, Globe, MapPin, Path, Suitcase, Tree, Users } from '../ui/hugeicons';
 
 /**
  * Golden Hour primitives. Flat, solid, rounded and colourful: no glass, no blur, no hairline borders.
@@ -76,13 +77,27 @@ export const GhTabs: React.FC<{ tabs: { id: string; label: string; count?: numbe
   </div>
 );
 
-export const GhStat: React.FC<{ label: string; value: ReactNode; hint?: string; tone?: GhTone }> = ({ label, value, hint, tone = 'sun' }) => (
-  <div className={clsx('rounded-3xl p-4 text-sunset-ink', TONE[tone])}>
-    <div className="text-xs font-semibold uppercase tracking-wider opacity-80">{label}</div>
-    <div className="text-3xl font-black tracking-tight mt-1">{value}</div>
-    {hint && <div className="text-xs font-medium opacity-80 mt-0.5">{hint}</div>}
-  </div>
-);
+const STAT_ICONS: [RegExp, React.ElementType][] = [
+  [/countr|nation|world/i, Globe], [/distance|km/i, Path], [/flight|airline|airtime/i, Airplane], [/trip|journey|expedition/i, Suitcase],
+  [/day|night|time|taken|left|planned/i, CalendarBlank], [/place|city|cities|destination|stamp/i, MapPin], [/cost|spent|budget|expense/i, CurrencyDollar],
+  [/co2|green|tree/i, Tree], [/coming|upcoming|ahead|next/i, Compass], [/member|people|user/i, Users], [/hour|air/i, Clock], [/sea|ferry|boat/i, Boat],
+];
+
+export const GhStat: React.FC<{ label: string; value: ReactNode; hint?: string; tone?: GhTone; icon?: ReactNode }> = ({ label, value, hint, tone = 'sun', icon }) => {
+  const Auto = STAT_ICONS.find(([re]) => re.test(label))?.[1];
+  return (
+    <div className={clsx('rounded-3xl p-4 text-sunset-ink relative', TONE[tone])}>
+      {(icon || Auto) && (
+        <span className="absolute top-3 right-3 opacity-60" aria-hidden="true">
+          {icon || (Auto && <Auto className="w-5 h-5" weight="duotone" />)}
+        </span>
+      )}
+      <div className="text-xs font-semibold uppercase tracking-wider opacity-80 pr-7">{label}</div>
+      <div className="text-3xl font-black tracking-tight mt-1">{value}</div>
+      {hint && <div className="text-xs font-medium opacity-80 mt-0.5">{hint}</div>}
+    </div>
+  );
+};
 
 /** Page shell: cream/night canvas padding, hero title left, action right, optional controls row centred on mobile. */
 export const GhPage: React.FC<{ title: string; icon?: ReactNode; action?: ReactNode; controls?: ReactNode; children: ReactNode }> = ({

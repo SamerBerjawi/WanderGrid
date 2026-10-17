@@ -3,6 +3,7 @@ import { Airplane, Boat, Bus, Car, Train } from './ui/hugeicons';
 import { Transport, Trip, TransportMode } from '../types';
 import { formatDate } from '../utils/formatters';
 import { getFlightDepartureUtcDate } from '../utils/flightData';
+import { LogoChip } from './golden/LogoChip';
 
 export interface BoardItem {
   flight: Transport;
@@ -51,8 +52,9 @@ const BoardingPass = <T extends BoardItem>({ item, onSelect }: { item: T; onSele
       className="w-full min-h-[44px] flex text-left rounded-2xl overflow-hidden bg-board-paper text-board-ink shadow-lg cursor-pointer hover:-translate-y-0.5 transition-transform"
     >
       <div className="flex-1 min-w-0 p-4 sm:p-5">
-        <div className="text-2xs tracking-[0.15em] text-board-muted uppercase font-mono truncate">
-          {flight.provider || flight.mode} {flight.identifier}
+        <div className="flex items-center gap-2 text-2xs tracking-[0.15em] text-board-muted uppercase font-mono">
+          <LogoChip provider={flight.provider} size="sm" className="border border-board-muted/30" fallback={<Icon className="w-4 h-4" />} />
+          <span className="truncate">{flight.provider || flight.mode} {flight.identifier}</span>
         </div>
         <div className="flex items-center gap-3 my-2 font-mono">
           <span className="text-2xl sm:text-4xl font-medium">{toCode(flight.origin)}</span>
@@ -123,7 +125,7 @@ export const DepartureBoard = <T extends BoardItem>({ items, onSelect }: Departu
                 className="w-full min-h-[44px] flex items-center gap-3 py-2 text-left text-sm cursor-pointer hover:bg-white/5 rounded-lg px-2 -mx-2"
               >
                 <span className="w-24 shrink-0 text-board-muted">{formatDate(item.flight.departureDate, 'short')}</span>
-                <Icon className="w-4 h-4 shrink-0 text-board-muted" />
+                <LogoChip provider={item.flight.provider} size="sm" fallback={<Icon className="w-4 h-4" />} />
                 <span className="flex-1 min-w-0 truncate uppercase">
                   {toCode(item.flight.origin)} → {toCode(item.flight.destination)}
                   {item.trip?.name && <span className="hidden sm:inline text-board-muted"> · {item.trip.name}</span>}
