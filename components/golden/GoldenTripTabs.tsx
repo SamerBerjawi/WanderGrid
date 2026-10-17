@@ -286,7 +286,7 @@ export const BookingsTab: React.FC<{
                   <VirtualListItem key={id} minHeight={180}>
                     <GhCard className="flex flex-col gap-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-sunset-teal text-sunset-ink flex items-center justify-center overflow-hidden shrink-0 p-1.5">
+                        <div className="w-12 h-12 rounded-2xl bg-sunset-teal text-sunset-ink flex items-center justify-center overflow-hidden shrink-0">
                           {first.mode === 'Flight' ? (
                             <CarrierLogo provider={first.provider} brandfetchApiKey={settings?.brandfetchApiKey} carriers={settings?.carriers} fallback={<AirplaneTakeoff className="w-6 h-6" weight="duotone" />} />
                           ) : first.logoUrl ? (

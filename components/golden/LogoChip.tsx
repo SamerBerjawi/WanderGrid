@@ -17,7 +17,7 @@ const loadCarrierSettings = (): Promise<CarrierSettings> => {
   return settingsPromise;
 };
 
-const SIZE = { sm: 'w-6 h-6 rounded-lg p-0.5', md: 'w-8 h-8 rounded-xl p-1', lg: 'w-11 h-11 rounded-2xl p-1.5' } as const;
+const SIZE = { sm: 'w-6 h-6 rounded-lg', md: 'w-8 h-8 rounded-xl', lg: 'w-11 h-11 rounded-2xl' } as const;
 
 /**
  * Operator logo (airline, rail, ferry, car rental) on a white chip. Falls back to `fallback`
