@@ -62,8 +62,8 @@ export const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ theme, dar
     return () => clearTimeout(timer);
   }, [theme.id, darkMode, currentGradient]);
 
-  // The Departure Board theme is a flat canvas: no per-page colour glows.
-  if (getUiTheme() === 'board') return null;
+  // Golden Hour and Departure Board use a flat canvas: no per-page colour glows.
+  if (getUiTheme() !== 'classic') return null;
 
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">

@@ -92,7 +92,7 @@ export const GhPage: React.FC<{ title: string; icon?: ReactNode; action?: ReactN
     <header className="flex items-center justify-between gap-3">
       <div className="flex items-center gap-3 min-w-0">
         {icon && <span className="text-sunset-coral shrink-0">{icon}</span>}
-        <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-sunset-ink dark:text-white truncate">{title}</h1>
+        <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-sunset-ink dark:text-white leading-tight break-words">{title}</h1>
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </header>

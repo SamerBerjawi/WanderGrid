@@ -1077,5 +1077,5 @@
 :root.theme-board .wg-glass-wrapper.wg-glass-card:not([class*="wg-glass-card-"]):not([class*="border-dashed"]) { border-radius: 14px !important; }
 :root.theme-board:not(.dark) .bg-white { background-color: #F4F1EA; }
 /* Departure Board: flat solid hero blocks instead of the sunset scenes, with a runway-style dashed rule */
-:root.theme-board svg[preserveAspectRatio][aria-hidden="true"] { display: none; }
+:root.theme-board svg[preserveAspectRatio][aria-hidden="true"]:not([data-keep]) { display: none; }
 :root.theme-board .wg-board-rule { border-top: 2px dashed currentColor; opacity: 0.4; }

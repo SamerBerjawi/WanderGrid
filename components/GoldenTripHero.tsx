@@ -33,7 +33,7 @@ export const GoldenTripHero: React.FC<GoldenTripHeroProps> = ({ trip, daysUntil,
           )}
         </div>
         <div>
-          <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight drop-shadow-sm truncate">{trip.name}</h2>
+          <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight drop-shadow-sm line-clamp-2 break-words">{trip.name}</h2>
           {trip.location && <p className="text-sm sm:text-base text-white/90 font-medium truncate">{trip.location}</p>}
         </div>
       </div>
