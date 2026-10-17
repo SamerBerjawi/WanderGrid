@@ -33,15 +33,19 @@ export const GhCard: React.FC<{ tone?: GhTone; className?: string; children: Rea
 
 export const GhButton: React.FC<{
   children: ReactNode; onClick?: () => void; icon?: ReactNode; variant?: 'primary' | 'soft' | 'ghost'; className?: string; label?: string; type?: 'button' | 'submit';
-}> = ({ children, onClick, icon, variant = 'primary', className, label, type = 'button' }) => (
+  /** Makes this a toggle button: shows a filled ON state and sets aria-pressed. */
+  pressed?: boolean;
+}> = ({ children, onClick, icon, variant = 'primary', className, label, type = 'button', pressed }) => (
   <button
     type={type}
     onClick={onClick}
     aria-label={label}
+    aria-pressed={pressed}
     className={clsx(
       'min-h-[44px] px-5 rounded-full inline-flex items-center justify-center gap-2 text-sm font-semibold cursor-pointer transition-transform active:scale-95',
       variant === 'primary' && 'bg-sunset-coral text-white shadow-card hover:brightness-105',
-      variant === 'soft' && 'bg-white dark:bg-sunset-dusk text-sunset-ink dark:text-white shadow-card',
+      variant === 'soft' && !pressed && 'bg-white dark:bg-sunset-dusk text-sunset-ink dark:text-white shadow-card',
+      pressed && 'bg-sunset-coral text-white shadow-card ring-2 ring-sunset-coral ring-offset-2 ring-offset-sunset-cream dark:ring-offset-sunset-night',
       variant === 'ghost' && 'text-sunset-ink dark:text-white hover:bg-sunset-sand dark:hover:bg-sunset-dusk',
       className
     )}

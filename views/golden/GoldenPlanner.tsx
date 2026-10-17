@@ -260,10 +260,10 @@ export const GoldenPlanner: React.FC<GoldenViewProps> = ({ onTripClick }) => {
               {y === 'all' ? 'Any year' : y}
             </button>
           ))}
-          <GhButton variant="soft" onClick={() => { setShowArchived(v => !v); setSelectedIds(new Set()); }} icon={<Archive className="w-4 h-4" />} label="Toggle archived trips">
+          <GhButton variant="soft" pressed={showArchived} onClick={() => { setShowArchived(v => !v); setSelectedIds(new Set()); }} icon={<Archive className="w-4 h-4" />} label="Show archived trips">
             {showArchived ? 'Back to trips' : 'Archived'}
           </GhButton>
-          <GhButton variant={selecting ? 'primary' : 'soft'} onClick={() => { setSelecting(v => !v); setSelectedIds(new Set()); }}>
+          <GhButton variant="soft" pressed={selecting} onClick={() => { setSelecting(v => !v); setSelectedIds(new Set()); }}>
             {selecting ? 'Done' : 'Select'}
           </GhButton>
         </div>
