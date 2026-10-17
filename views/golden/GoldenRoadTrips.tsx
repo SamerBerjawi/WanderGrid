@@ -789,7 +789,7 @@ export const GoldenRoadTrips: React.FC<GoldenViewProps> = ({ onTripClick }) => {
       icon={<Car className="w-8 h-8 sm:w-10 sm:h-10" />}
       action={<GhButton onClick={handleOpenCreateModal} icon={<Plus className="w-4 h-4" />} label="Add journey">Add<span className="hidden sm:inline"> journey</span></GhButton>}
       controls={
-        <GhButton variant={isMultiEditing ? 'primary' : 'soft'} onClick={() => { setIsMultiEditing(!isMultiEditing); if (isMultiEditing) setSelectedTripIds(new Set()); }} icon={<CheckSquare className="w-4 h-4" />} label="Toggle bulk selection">
+        <GhButton variant="soft" pressed={isMultiEditing} onClick={() => { setIsMultiEditing(!isMultiEditing); if (isMultiEditing) setSelectedTripIds(new Set()); }} icon={<CheckSquare className="w-4 h-4" />} label="Toggle bulk selection">
           {isMultiEditing ? 'Done selecting' : 'Select'}
         </GhButton>
       }
@@ -812,7 +812,7 @@ export const GoldenRoadTrips: React.FC<GoldenViewProps> = ({ onTripClick }) => {
           {MODE_CHIPS.map(c => {
             const active = modeFilter === c.id;
             const Icon = c.icon;
-            const tone = c.id === 'All' ? 'bg-sunset-ink text-white' : { Train: 'bg-sunset-sun', Bus: 'bg-sunset-teal', 'Car Rental': 'bg-sunset-lilac', 'Personal Car': 'bg-sunset-lilac', Cruise: 'bg-sunset-orange text-white' }[c.id] + (c.id === 'Cruise' ? '' : ' text-sunset-ink');
+            const tone = c.id === 'All' ? 'bg-sunset-ink text-white dark:bg-white dark:text-sunset-ink' : { Train: 'bg-sunset-sun', Bus: 'bg-sunset-teal', 'Car Rental': 'bg-sunset-lilac', 'Personal Car': 'bg-sunset-lilac', Cruise: 'bg-sunset-orange text-white' }[c.id] + (c.id === 'Cruise' ? '' : ' text-sunset-ink');
             return (
               <button
                 key={c.id}

@@ -242,18 +242,23 @@ export const ExcursionConfigurator: React.FC<ExcursionConfiguratorProps> = ({
                                         type="button"
                                         key={cat.type}
                                         onClick={() => setType(cat.type)}
-                                        className={`p-3.5 rounded-2xl text-left transition-all border min-h-[72px] flex flex-col justify-between cursor-pointer ${isSelected
+                                        aria-pressed={isSelected}
+                                        className={`p-3.5 rounded-2xl text-left transition-all border min-h-[72px] flex flex-col justify-between cursor-pointer ${isGoldenHour()
+                                            ? (isSelected
+                                                ? 'bg-sunset-coral border-transparent text-white shadow-card ring-2 ring-sunset-coral ring-offset-2 ring-offset-white dark:ring-offset-sunset-plum'
+                                                : 'bg-sunset-sand dark:bg-sunset-dusk border-transparent text-sunset-ink dark:text-white hover:brightness-95')
+                                            : isSelected
                                                 ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 shadow-sm ring-1 ring-amber-500/30'
                                                 : 'bg-black/5 dark:bg-white/5 border-transparent text-light-text dark:text-dark-text hover:bg-black/10 dark:hover:bg-white/10'
                                             }`}
                                     >
                                         <div className="flex items-center justify-between w-full">
                                             <IconComponent className="w-5 h-5" weight={isSelected ? "duotone" : "regular"} />
-                                            {isSelected && <Check className="w-4 h-4 text-amber-600 dark:text-amber-400" weight="bold" />}
+                                            {isSelected && <Check className={isGoldenHour() ? 'w-4 h-4 text-white' : 'w-4 h-4 text-amber-600 dark:text-amber-400'} weight="bold" />}
                                         </div>
                                         <div className="mt-2">
                                             <span className="text-xs font-bold block">{cat.label}</span>
-                                            <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary line-clamp-1 mt-0.5">
+                                            <span className={`text-2xs line-clamp-1 mt-0.5 ${isGoldenHour() ? 'opacity-80' : 'text-light-text-secondary dark:text-dark-text-secondary'}`}>
                                                 {cat.description}
                                             </span>
                                         </div>

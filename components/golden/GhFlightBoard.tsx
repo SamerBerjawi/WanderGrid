@@ -101,6 +101,7 @@ const Row: React.FC<{ f: Transport; tripId: string; isNext: boolean } & Pick<Pro
         <button
           type="button"
           onClick={open}
+          aria-pressed={selecting ? selected : undefined}
           aria-label={`${selecting ? 'Select' : 'Edit'} ${f.origin} to ${f.destination} on ${f.departureDate}`}
           className="flex-1 min-w-0 text-left p-3 sm:p-4 cursor-pointer grid gap-x-4 gap-y-2 grid-cols-[1fr_auto] xl:grid-cols-[7.5rem_5.5rem_7rem_1fr_5rem_6rem_7rem] xl:items-center font-mono"
         >

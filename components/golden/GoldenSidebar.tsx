@@ -167,6 +167,7 @@ export const GoldenSidebar: React.FC<GoldenSidebarProps> = ({
                 type="button"
                 onClick={() => (item ? go(item.value) : setMoreOpen(o => !o))}
                 aria-label={item ? item.label : 'More'}
+                aria-expanded={item ? undefined : moreOpen}
                 aria-current={active ? 'page' : undefined}
                 className={`flex-1 min-w-0 min-h-[44px] h-14 rounded-full flex flex-col items-center justify-center text-2xs font-bold cursor-pointer transition-all ${active ? TONE_BG[tone] : ''}`}
               >
@@ -187,13 +188,13 @@ export const GoldenSidebar: React.FC<GoldenSidebarProps> = ({
               className="md:hidden fixed bottom-safe-menu left-4 right-4 z-modal rounded-[28px] bg-white dark:bg-sunset-plum shadow-modal p-3 flex flex-col gap-1.5 text-sunset-ink dark:text-white"
             >
               {moreItems.map(item => (
-                <button key={item.value} type="button" onClick={() => go(item.value)} className={`min-h-[44px] rounded-full px-4 flex items-center gap-3 text-sm font-semibold cursor-pointer ${currentView === item.value ? TONE_BG[item.tone] : ''}`}>
+                <button key={item.value} type="button" onClick={() => go(item.value)} aria-current={currentView === item.value ? 'page' : undefined} className={`min-h-[44px] rounded-full px-4 flex items-center gap-3 text-sm font-semibold cursor-pointer ${currentView === item.value ? TONE_BG[item.tone] : ''}`}>
                   <Icon name={item.icon} className="text-xl leading-none" />
                   {item.label}
                 </button>
               ))}
               {currentUser && (
-                <button type="button" onClick={() => go(ViewState.USER_DETAIL, currentUser.id)} className={`min-h-[44px] rounded-full px-4 flex items-center gap-3 text-sm font-semibold cursor-pointer ${currentView === ViewState.USER_DETAIL ? TONE_BG.lilac : ''}`}>
+                <button type="button" onClick={() => go(ViewState.USER_DETAIL, currentUser.id)} aria-current={currentView === ViewState.USER_DETAIL ? 'page' : undefined} className={`min-h-[44px] rounded-full px-4 flex items-center gap-3 text-sm font-semibold cursor-pointer ${currentView === ViewState.USER_DETAIL ? TONE_BG.lilac : ''}`}>
                   <span className="w-7 h-7 rounded-full bg-sunset-lilac text-sunset-ink font-black text-xs flex items-center justify-center">{initial}</span>
                   Your profile
                 </button>

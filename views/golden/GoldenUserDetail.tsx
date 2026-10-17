@@ -396,9 +396,9 @@ export const GoldenUserDetail: React.FC<GoldenViewProps> = ({ userId = '', onBac
                 </GhButton>
                 <div className="flex items-center gap-2">
                     {isOwnProfile && onLogout && (
-                        <GhButton variant="ghost" onClick={onLogout} icon={<SignOut className="w-4 h-4" />}>Sign out</GhButton>
+                        <GhButton variant="ghost" onClick={onLogout} icon={<SignOut className="w-4 h-4" />} label="Sign out" className="!px-3 sm:!px-5"><span className="hidden sm:inline">Sign out</span></GhButton>
                     )}
-                    <GhButton onClick={openEditProfile} icon={<PencilSimple className="w-4 h-4" />}>Edit profile</GhButton>
+                    <GhButton onClick={openEditProfile} icon={<PencilSimple className="w-4 h-4" />} label="Edit profile"><span>Edit<span className="hidden sm:inline"> profile</span></span></GhButton>
                 </div>
             </div>
 
@@ -619,8 +619,8 @@ export const GoldenUserDetail: React.FC<GoldenViewProps> = ({ userId = '', onBac
                         autoFocus
                     />
 
-                    <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
-                        <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">Passport</span>
+                    <div className="p-5 rounded-3xl bg-sunset-sand/60 dark:bg-sunset-dusk/50 space-y-4">
+                        <span className="text-xs font-bold uppercase tracking-wider text-sunset-ink/70 dark:text-white/70 block">Passport</span>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <Input label="Nationality" placeholder="e.g. Lebanese, Italian" value={editNationality} onChange={e => setEditNationality(e.target.value)} />
                             <DatePicker label="Date of birth" value={editDateOfBirth} onChange={setEditDateOfBirth} maxDate={new Date().toISOString().slice(0, 10)} />
@@ -631,8 +631,8 @@ export const GoldenUserDetail: React.FC<GoldenViewProps> = ({ userId = '', onBac
                         </div>
                     </div>
 
-                    <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
-                        <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">Account</span>
+                    <div className="p-5 rounded-3xl bg-sunset-sand/60 dark:bg-sunset-dusk/50 space-y-4">
+                        <span className="text-xs font-bold uppercase tracking-wider text-sunset-ink/70 dark:text-white/70 block">Account</span>
                         <Input
                             label="New password"
                             type="password"
@@ -654,8 +654,8 @@ export const GoldenUserDetail: React.FC<GoldenViewProps> = ({ userId = '', onBac
                     </div>
 
                     {user.role === 'Admin' && (
-                        <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
-                            <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">Leave allowance</span>
+                        <div className="p-5 rounded-3xl bg-sunset-sand/60 dark:bg-sunset-dusk/50 space-y-4">
+                            <span className="text-xs font-bold uppercase tracking-wider text-sunset-ink/70 dark:text-white/70 block">Leave allowance</span>
                             <div className="grid grid-cols-2 gap-4">
                                 <Input label="Annual days" type="number" min={0} value={editLeaveBalance} onChange={e => setEditLeaveBalance(parseInt(e.target.value) || 0)} />
                                 <Input label="Days taken" type="number" min={0} value={editTakenLeave} onChange={e => setEditTakenLeave(parseInt(e.target.value) || 0)} />

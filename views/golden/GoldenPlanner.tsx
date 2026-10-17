@@ -50,7 +50,7 @@ const Postcard: React.FC<{
   const badge = isPast ? 'Been there' : until !== null && until >= 0 ? (until === 0 ? 'Today' : `${until} days to go`) : trip.status === 'Upcoming' ? 'Booked' : 'Dreaming';
   const nights = dayCount(trip);
   return (
-    <GhCard tone={tone} onClick={selecting ? onSelect : onOpen} label={selecting ? `Select ${trip.name}` : `Open ${trip.name}`} className="relative overflow-hidden min-h-[11rem] flex flex-col justify-between">
+    <GhCard tone={tone} onClick={selecting ? onSelect : onOpen} pressed={selecting ? selected : undefined} label={selecting ? `Select ${trip.name}` : `Open ${trip.name}`} className={`relative overflow-hidden min-h-[11rem] flex flex-col justify-between ${selecting && selected ? 'ring-4 ring-sunset-ink dark:ring-white' : ''}`}>
       <svg viewBox="0 0 300 120" preserveAspectRatio="xMidYMax slice" className="absolute inset-0 w-full h-full opacity-30 pointer-events-none" aria-hidden="true">
         <circle cx="240" cy="40" r="32" className="fill-white" />
         <path d="M0 120 Q80 70 160 100 T300 80 L300 120Z" className="fill-white" />
@@ -58,7 +58,7 @@ const Postcard: React.FC<{
       <div className="relative flex items-start justify-between gap-2">
         <GhChip>{badge}</GhChip>
         {selecting && (
-          <span className={`w-7 h-7 rounded-full flex items-center justify-center ${selected ? 'bg-sunset-ink text-white' : 'bg-white text-sunset-ink'}`}>
+          <span aria-hidden="true" className={`w-7 h-7 rounded-full flex items-center justify-center ${selected ? 'bg-sunset-ink text-white dark:bg-white dark:text-sunset-ink' : 'bg-white text-sunset-ink'}`}>
             {selected && <Check className="w-4 h-4" />}
           </span>
         )}
@@ -236,8 +236,8 @@ export const GoldenPlanner: React.FC<GoldenViewProps> = ({ onTripClick }) => {
         <GhStat label="Coming up" value={stats.ahead} tone="coral" />
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-        <label className="relative flex-1 min-w-0">
+      <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
+        <label className="relative lg:flex-1 lg:min-w-[14rem] min-w-0">
           <span className="sr-only">Search trips</span>
           <MagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-sunset-ink/60 dark:text-white/60 pointer-events-none" />
           <input
@@ -248,14 +248,14 @@ export const GoldenPlanner: React.FC<GoldenViewProps> = ({ onTripClick }) => {
             className="w-full min-h-[44px] pl-11 pr-4 rounded-full bg-white dark:bg-sunset-plum text-sunset-ink dark:text-white placeholder:text-sunset-ink/50 dark:placeholder:text-white/50 text-sm font-medium shadow-card focus:outline-none focus:ring-2 focus:ring-sunset-coral"
           />
         </label>
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 px-1 -mx-1 min-w-0">
           {['all', ...years].map(y => (
             <button
               key={y}
               type="button"
               onClick={() => setSelectedYear(y)}
               aria-pressed={selectedYear === y}
-              className={`min-h-[44px] px-4 rounded-full text-sm font-semibold whitespace-nowrap cursor-pointer ${selectedYear === y ? 'bg-sunset-ink text-white' : 'bg-white dark:bg-sunset-dusk text-sunset-ink dark:text-white shadow-card'}`}
+              className={`min-h-[44px] px-4 rounded-full text-sm font-semibold whitespace-nowrap cursor-pointer ${selectedYear === y ? 'bg-sunset-coral text-white shadow-card ring-2 ring-sunset-coral ring-offset-2 ring-offset-sunset-cream dark:ring-offset-sunset-night' : 'bg-white dark:bg-sunset-dusk text-sunset-ink dark:text-white shadow-card'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sunset-coral`}
             >
               {y === 'all' ? 'Any year' : y}
             </button>

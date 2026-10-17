@@ -23,7 +23,7 @@ const STAMP_TONES: GhTone[] = ['coral', 'sun', 'teal', 'lilac'];
 const TILT = ['-rotate-1', 'rotate-1', 'rotate-0', '-rotate-2', 'rotate-2'];
 const hash = (s: string) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 11);
 
-const FIELD = 'w-full min-h-[44px] rounded-2xl bg-sunset-sand dark:bg-sunset-dusk text-sunset-ink dark:text-white placeholder:text-sunset-ink/50 dark:placeholder:text-white/50 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-sunset-coral';
+const FIELD = 'w-full min-h-[44px] rounded-2xl bg-sunset-sand dark:bg-sunset-dusk text-sunset-ink dark:text-white placeholder:text-sunset-ink/50 dark:placeholder:text-white/50 px-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-sunset-coral dark:[color-scheme:dark]';
 
 const Counter: React.FC<{ tone: GhTone; label: string; value: React.ReactNode; hint: string }> = ({ tone, label, value, hint }) => {
   const bg = { coral: 'bg-sunset-orange text-white', sun: 'bg-sunset-sun text-sunset-ink', teal: 'bg-sunset-teal text-sunset-ink', lilac: 'bg-sunset-lilac text-sunset-ink', surface: '', ink: '' }[tone];

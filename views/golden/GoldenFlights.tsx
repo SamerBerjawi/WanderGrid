@@ -162,7 +162,7 @@ const FlightRow: React.FC<RowProps> = ({ flight: f, prev, selecting, selected, o
           past && !card && 'opacity-80'
         )}
       >
-        <button type="button" onClick={open} aria-label={`${selecting ? 'Select' : 'Edit'} ${f.origin} to ${f.destination} on ${f.departureDate}`} className="flex flex-1 min-w-0 items-center gap-3 text-left cursor-pointer min-h-[44px]">
+        <button type="button" onClick={open} aria-pressed={selecting ? selected : undefined} aria-label={`${selecting ? 'Select' : 'Edit'} ${f.origin} to ${f.destination} on ${f.departureDate}`} className="flex flex-1 min-w-0 items-center gap-3 text-left cursor-pointer min-h-[44px]">
           {selecting && (
             <span className={clsx('w-7 h-7 rounded-full shrink-0 flex items-center justify-center', selected ? 'bg-sunset-coral text-white' : 'bg-white/90 text-sunset-ink')} aria-hidden="true">
               {selected && <Check className="w-4 h-4" />}
@@ -326,7 +326,8 @@ export const GoldenFlights: React.FC<GoldenViewProps> = ({ onTripClick }) => {
         <GhButton variant="soft" onClick={() => setImportOpen(true)} icon={<UploadSimple className="w-4 h-4" />} label="Import flights">Import</GhButton>
         <GhButton variant="soft" onClick={() => setTracker({ open: true })} icon={<Airplane className="w-4 h-4" />} label="Track a flight">Track</GhButton>
         <GhButton
-          variant={isMultiEditing ? 'primary' : 'soft'}
+          variant="soft"
+          pressed={isMultiEditing}
           onClick={() => { L.setIsMultiEditing(!isMultiEditing); L.setSelectedFlightIds(new Set()); }}
           icon={isMultiEditing ? <Check className="w-4 h-4" /> : <PencilSimpleLine className="w-4 h-4" />}
           label={isMultiEditing ? 'Done selecting' : 'Select flights'}
@@ -440,7 +441,7 @@ export const GoldenFlights: React.FC<GoldenViewProps> = ({ onTripClick }) => {
             </div>
           </div>
           <div className="flex gap-2 justify-center">
-            <GhButton variant="ghost" onClick={() => setShowMore(s => !s)} icon={showMore ? <CaretUp className="w-4 h-4" /> : <CaretDown className="w-4 h-4" />} label="Toggle more filters">More</GhButton>
+            <GhButton variant="soft" pressed={showMore} onClick={() => setShowMore(s => !s)} icon={showMore ? <CaretUp className="w-4 h-4" /> : <CaretDown className="w-4 h-4" />} label="Toggle more filters">More</GhButton>
             {L.hasActiveFilters && <GhButton variant="soft" onClick={L.resetFilters} icon={<X className="w-4 h-4" />} label="Reset all filters">Reset</GhButton>}
           </div>
         </div>

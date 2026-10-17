@@ -21,13 +21,16 @@ export const ThemePicker: React.FC = () => {
             role="radio"
             aria-checked={active}
             onClick={() => !active && setUiTheme(o.id)}
-            className={`min-h-[44px] rounded-2xl p-3 text-left cursor-pointer transition-all border-2 ${active ? 'border-primary-500' : 'border-black/10 dark:border-white/15 hover:border-primary-500/50'}`}
+            className={`relative min-h-[44px] rounded-2xl p-3 text-left cursor-pointer transition-all border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 ${active ? 'border-primary-500 bg-primary-500/15 ring-2 ring-primary-500' : 'border-black/10 dark:border-white/15 hover:border-primary-500/50'}`}
           >
+            {active && (
+              <span aria-hidden="true" className="absolute top-1.5 right-1.5 z-raised w-6 h-6 rounded-full bg-primary-500 text-white flex items-center justify-center text-sm font-black">✓</span>
+            )}
             <div className="h-14 rounded-xl flex items-end gap-1.5 p-2" style={{ background: o.canvas }}>
               {o.swatches.map(c => <span key={c} className="w-6 h-6 rounded-md" style={{ background: c }} />)}
             </div>
             <div className="mt-2 text-sm font-bold text-light-text dark:text-dark-text">{o.name}</div>
-            <div className="text-xs text-light-text-secondary dark:text-dark-text-secondary">{active ? 'In use' : o.hint}</div>
+            <div className={`text-xs ${active ? 'font-bold text-primary-700 dark:text-primary-300' : 'text-light-text-secondary dark:text-dark-text-secondary'}`}>{active ? 'In use' : o.hint}</div>
           </button>
         );
       })}

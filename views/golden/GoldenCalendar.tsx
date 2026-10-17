@@ -213,7 +213,7 @@ export const GoldenCalendar: React.FC<GoldenViewProps> = ({ onTripClick }) => {
           <button type="button" aria-pressed={entFilter === 'all'} onClick={() => setEntFilter('all')} className={chip(entFilter === 'all')}>Everything</button>
           {(entitlements || []).map(e => (
             <button key={e.id} type="button" aria-pressed={entFilter === e.id} onClick={() => setEntFilter(e.id)} className={chip(entFilter === e.id)}>
-              <span className={clsx('inline-block w-2.5 h-2.5 rounded-full mr-2 align-middle', RIBBON[ENT_TONE[e.color] || 'sun'].split(' ')[0])} />
+              <span className={clsx('inline-block w-2.5 h-2.5 rounded-full mr-2 align-middle ring-2 ring-white/80', RIBBON[ENT_TONE[e.color] || 'sun'].split(' ')[0])} />
               {e.name}
             </button>
           ))}
@@ -243,10 +243,12 @@ export const GoldenCalendar: React.FC<GoldenViewProps> = ({ onTripClick }) => {
                           key={i}
                           type="button"
                           aria-label={formatDate(d, 'weekday-long', settings)}
+                          aria-pressed={!!isSel}
+                          aria-current={isToday ? 'date' : undefined}
                           onClick={() => setSelectedDay(d)}
                           className={clsx(
                             'min-h-[44px] rounded-xl flex flex-col items-center justify-start pt-1 cursor-pointer transition-colors',
-                            isSel ? 'bg-sunset-sand dark:bg-sunset-dusk' : 'hover:bg-sunset-sand/60 dark:hover:bg-sunset-dusk/60'
+                            isSel ? 'bg-sunset-sand dark:bg-sunset-dusk ring-2 ring-sunset-coral' : 'hover:bg-sunset-sand/60 dark:hover:bg-sunset-dusk/60'
                           )}
                         >
                           <span className={clsx(

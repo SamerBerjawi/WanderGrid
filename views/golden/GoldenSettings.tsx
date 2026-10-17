@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/hugeicons';
 import { Modal } from '../../components/ui';
 import { GlassSelect } from '../../components/glass/GlassSelect';
-import { GearSettingsTab } from '../../components/GearSettingsTab';
+import { GhGearTab } from '../../components/golden/GhGearTab';
 import { CarriersTab } from '../../components/CarriersTab';
 import { GhPage, GhCard, GhButton, GhChip, GhEmpty, GhTone } from '../../components/golden/Gh';
 import { SunsetScene } from '../../components/golden/SunsetScene';
@@ -184,13 +184,13 @@ export const GoldenSettings: React.FC<GoldenViewProps> = ({ onThemeChange }) => 
       </GhSection>
 
       <GhSection title="Work week" icon={<CalendarBlank className="w-5 h-5" />} tone="lilac" action={<GhChip tone="sun">{config.workingDays.length} of 7</GhChip>}>
-        <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
           {DAYS.map((d, i) => {
             const on = config.workingDays.includes(i);
             return (
               <button key={d} type="button" onClick={() => s.toggleWorkingDay(i)} aria-label={d} aria-pressed={on}
                 className={clsx('min-h-[48px] rounded-2xl text-sm font-black cursor-pointer transition-colors', on ? 'bg-sunset-coral text-white' : 'bg-sunset-sand dark:bg-sunset-dusk text-sunset-ink dark:text-white')}>
-                {d[0]}
+                <span className="sm:hidden">{d.slice(0, 3)}</span><span className="hidden sm:inline">{d[0]}</span>
               </button>
             );
           })}
@@ -557,7 +557,7 @@ export const GoldenSettings: React.FC<GoldenViewProps> = ({ onThemeChange }) => 
       {section === 'workspace' && renderWorkspace()}
       {section === 'personnel' && renderPersonnel()}
       {section === 'integrations' && renderIntegrations()}
-      {section === 'gear' && <GearSettingsTab config={config} setConfig={setConfig} handleSaveOrgSettings={s.handleSaveOrgSettings} isSavingOrg={s.isSavingOrg} />}
+      {section === 'gear' && <GhGearTab config={config} setConfig={setConfig} handleSaveOrgSettings={s.handleSaveOrgSettings} isSavingOrg={s.isSavingOrg} />}
       {section === 'carriers' && <CarriersTab config={config} setConfig={setConfig} handleSaveOrgSettings={s.handleSaveOrgSettings} isSavingOrg={s.isSavingOrg} />}
       {section === 'data' && renderData()}
       {modals}

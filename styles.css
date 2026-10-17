@@ -1078,4 +1078,6 @@
 :root.theme-board:not(.dark) .bg-white { background-color: #F4F1EA; }
 /* Departure Board: flat solid hero blocks instead of the sunset scenes, with a runway-style dashed rule */
 :root.theme-board svg[preserveAspectRatio][aria-hidden="true"]:not([data-keep]) { display: none; }
+/* Board orange/coral are dark: white text keeps contrast where Golden Hour uses ink */
+:root.theme-board .bg-sunset-orange.text-sunset-ink, :root.theme-board .bg-sunset-coral.text-sunset-ink { color: #fff; }
 :root.theme-board .wg-board-rule { border-top: 2px dashed currentColor; opacity: 0.4; }

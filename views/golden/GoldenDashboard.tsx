@@ -138,7 +138,7 @@ export const GoldenDashboard: React.FC<GoldenViewProps> = ({ onTripClick, onUser
       <GhCard className="p-0 overflow-hidden">
         <div className="flex items-center justify-between p-4 sm:p-5">
           <h2 className="text-xl sm:text-2xl font-black tracking-tight">Your world</h2>
-          <GhButton variant="soft" onClick={() => setShowMap(v => !v)}>{showMap ? 'Hide map' : 'Show map'}</GhButton>
+          <GhButton variant="soft" pressed={showMap} onClick={() => setShowMap(v => !v)}>{showMap ? 'Hide map' : 'Show map'}</GhButton>
         </div>
         {showMap && (
           <div className="h-[24rem] sm:h-[32rem] relative">

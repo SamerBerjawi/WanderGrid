@@ -18,12 +18,12 @@ const TONE: Record<GhTone, string> = {
   ink: 'bg-sunset-ink text-white',
 };
 
-export const GhCard: React.FC<{ tone?: GhTone; className?: string; children: ReactNode; onClick?: () => void; label?: string }> = ({
-  tone = 'surface', className, children, onClick, label,
+export const GhCard: React.FC<{ tone?: GhTone; className?: string; children: ReactNode; onClick?: () => void; label?: string; pressed?: boolean }> = ({
+  tone = 'surface', className, children, onClick, label, pressed,
 }) => {
   const base = clsx('rounded-3xl p-4 sm:p-5 shadow-card text-left', TONE[tone], className);
   return onClick ? (
-    <button type="button" onClick={onClick} aria-label={label} className={clsx(base, 'w-full cursor-pointer hover:-translate-y-0.5 transition-transform min-h-[44px]')}>
+    <button type="button" onClick={onClick} aria-label={label} aria-pressed={pressed} className={clsx(base, 'w-full cursor-pointer hover:-translate-y-0.5 transition-transform min-h-[44px]')}>
       {children}
     </button>
   ) : (
@@ -42,7 +42,7 @@ export const GhButton: React.FC<{
     aria-label={label}
     aria-pressed={pressed}
     className={clsx(
-      'min-h-[44px] px-5 rounded-full inline-flex items-center justify-center gap-2 text-sm font-semibold cursor-pointer transition-transform active:scale-95',
+      'min-h-[44px] px-5 rounded-full inline-flex items-center justify-center gap-2 text-sm font-semibold whitespace-nowrap cursor-pointer transition-transform active:scale-95',
       variant === 'primary' && 'bg-sunset-coral text-white shadow-card hover:brightness-105',
       variant === 'soft' && !pressed && 'bg-white dark:bg-sunset-dusk text-sunset-ink dark:text-white shadow-card',
       pressed && 'bg-sunset-coral text-white shadow-card ring-2 ring-sunset-coral ring-offset-2 ring-offset-sunset-cream dark:ring-offset-sunset-night',
@@ -97,7 +97,7 @@ export const GhStat: React.FC<{ label: string; value: ReactNode; hint?: string; 
         </span>
       )}
       <div className="text-xs font-semibold uppercase tracking-wider opacity-80 pr-7">{label}</div>
-      <div className="text-3xl font-black tracking-tight mt-1">{value}</div>
+      <div className="text-2xl sm:text-3xl font-black tracking-tight mt-1 min-w-0">{value}</div>
       {hint && <div className="text-xs font-medium opacity-80 mt-0.5">{hint}</div>}
     </div>
   );

@@ -36,7 +36,7 @@ const TABS = [
 
 const dayMs = 86_400_000;
 
-const HeroButton: React.FC<{ label: string; onClick: () => void; icon: React.ReactNode }> = ({ label, onClick, icon }) => (
+const HeroButton: React.FC<{ label: string; short?: string; onClick: () => void; icon: React.ReactNode }> = ({ label, short, onClick, icon }) => (
   <button
     type="button"
     onClick={onClick}
@@ -44,7 +44,7 @@ const HeroButton: React.FC<{ label: string; onClick: () => void; icon: React.Rea
     className="min-w-[44px] min-h-[44px] px-3 sm:px-4 rounded-full bg-white text-sunset-ink shadow-card inline-flex items-center justify-center gap-2 text-sm font-semibold cursor-pointer active:scale-95 transition-transform"
   >
     {icon}
-    <span className="hidden sm:inline">{label}</span>
+    <span className="hidden sm:inline whitespace-nowrap">{short || label}</span>
   </button>
 );
 
@@ -318,7 +318,7 @@ export const GoldenTripDetail: React.FC<GoldenViewProps> = ({ tripId = '', onBac
         </svg>
         <div className="relative p-4 sm:p-8 flex flex-col gap-6 sm:gap-10 min-h-[18rem] sm:min-h-[22rem]">
           <div className="flex items-center justify-between gap-2">
-            <HeroButton label="Back to planner" onClick={onBack} icon={<ArrowLeft className="w-5 h-5" />} />
+            <HeroButton label="Back to planner" short="Back" onClick={onBack} icon={<ArrowLeft className="w-5 h-5" />} />
             <div className="flex gap-2">
               <HeroButton label="Cinematic" onClick={() => setIsCinematicOpen(true)} icon={<FilmStrip className="w-5 h-5" weight="duotone" />} />
               <HeroButton label="Calendar" onClick={handleAddToCalendar} icon={<CalendarBlank className="w-5 h-5" weight="duotone" />} />
@@ -359,12 +359,12 @@ export const GoldenTripDetail: React.FC<GoldenViewProps> = ({ tripId = '', onBac
 
       {/* Stats + map */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-stretch">
-        <div className="lg:col-span-7 xl:col-span-8 grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 content-start">
-          <GhStat label="Total cost" value={<span className="truncate block">{formatCurrency(totalCost)}</span>} tone="sun" />
+        <div className="lg:col-span-7 xl:col-span-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 content-start">
+          <GhStat label="Total cost" value={<span className="break-words">{formatCurrency(totalCost)}</span>} tone="sun" />
           <GhStat label="Journeys" value={trip.transports?.length || 0} tone="teal" />
           <GhStat label="Nights booked" value={totalNightsBooked} tone="lilac" />
           <GhStat label="Excursions" value={trip.activities?.length || 0} tone="surface" />
-          <GhStat label="Distance" value={<span className="truncate block">{totalDistance > 0 ? `${Math.round(totalDistance).toLocaleString()} km` : '0 km'}</span>} tone="teal" />
+          <GhStat label="Distance" value={<span className="break-words">{totalDistance > 0 ? `${Math.round(totalDistance).toLocaleString()} km` : '0 km'}</span>} tone="teal" />
           <GhStat label="Days" value={duration} tone="sun" />
         </div>
         <div className="lg:col-span-5 xl:col-span-4 relative rounded-3xl overflow-hidden min-h-[14rem] bg-sunset-sand dark:bg-sunset-dusk shadow-card">
