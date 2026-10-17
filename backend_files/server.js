@@ -1190,11 +1190,15 @@ app.use('/api/proxy', async (req, res, next) => {
 
 
 // AviationStack proxies keep API calls server-side to avoid browser CORS and mixed-content failures.
-const getAviationStackKey = (req) => {
-    const headerKey = req.get('X-AviationStack-Key');
-    const queryKey = req.query.access_key;
-    return String(headerKey || queryKey || '').trim();
+// Keys are masked for clients (SEC-010), so a header that is empty or the mask means "use the stored key".
+const clientKeyOrStored = async (supplied, settingKey) => {
+    const key = String(supplied || '').trim();
+    if (key && key !== SECRET_MASK) return key;
+    return workspaceSecret(settingKey);
 };
+
+const getAviationStackKey = (req) =>
+    clientKeyOrStored(req.get('X-AviationStack-Key') || req.query.access_key, 'aviationStackApiKey');
 
 const sendAviationStackError = (res, error) => {
     const status = error instanceof AviationStackError ? error.status : 502;
@@ -1206,7 +1210,7 @@ const sendAviationStackError = (res, error) => {
 };
 
 app.get('/api/proxy/flight-status', async (req, res) => {
-    const accessKey = getAviationStackKey(req);
+    const accessKey = await getAviationStackKey(req);
     const flightIata = String(req.query.flight_iata || '').trim().toUpperCase().replace(/\s/g, '');
     const flightDate = String(req.query.flight_date || '').trim();
     if (!accessKey || !flightIata) {
@@ -1237,7 +1241,7 @@ app.get('/api/proxy/flight-status', async (req, res) => {
 });
 
 app.get('/api/proxy/route-flights', async (req, res) => {
-    const accessKey = getAviationStackKey(req);
+    const accessKey = await getAviationStackKey(req);
     const cleanDep = String(req.query.dep_iata || '').trim().toUpperCase();
     const cleanArr = String(req.query.arr_iata || '').trim().toUpperCase();
     const cleanDate = String(req.query.flight_date || '').trim();
@@ -1382,12 +1386,12 @@ app.get('/api/proxy/aerodatabox/flights/number/:flightNumber', async (req, res) 
         return res.status(400).json({ error: 'Flight number is required.' });
     }
 
-    const apiKey = (req.get('X-AeroDataBox-Key') || req.query.api_key || process.env.INTEGRATIONS_AERO_DATA_BOX_KEY || '').trim();
+    const apiKey = await clientKeyOrStored(req.get('X-AeroDataBox-Key') || req.query.api_key, 'aeroDataBoxApiKey');
     if (!apiKey) {
         return res.status(400).json({ error: 'AeroDataBox API key is missing. Please configure it in Settings.' });
     }
 
-    const endpointMode = (req.get('X-AeroDataBox-Endpoint') || req.query.endpoint || process.env.INTEGRATIONS_AERO_DATA_BOX_ENDPOINT || 'rapidapi').toLowerCase();
+    const endpointMode = String(req.get('X-AeroDataBox-Endpoint') || req.query.endpoint || await workspaceSecret('aeroDataBoxEndpoint') || process.env.INTEGRATIONS_AERO_DATA_BOX_ENDPOINT || 'rapidapi').toLowerCase();
     const config = AERODATABOX_ENDPOINTS[endpointMode] || AERODATABOX_ENDPOINTS.rapidapi;
 
     const date = String(req.query.date || '').trim();
@@ -1458,10 +1462,10 @@ app.get('/api/proxy/aerodatabox/aircrafts/reg/:reg', async (req, res) => {
     const reg = String(req.params.reg || '').trim();
     if (!reg) return res.status(400).json({ error: 'Aircraft registration required.' });
 
-    const apiKey = (req.get('X-AeroDataBox-Key') || req.query.api_key || process.env.INTEGRATIONS_AERO_DATA_BOX_KEY || '').trim();
+    const apiKey = await clientKeyOrStored(req.get('X-AeroDataBox-Key') || req.query.api_key, 'aeroDataBoxApiKey');
     if (!apiKey) return res.status(400).json({ error: 'AeroDataBox API key is missing.' });
 
-    const endpointMode = (req.get('X-AeroDataBox-Endpoint') || req.query.endpoint || process.env.INTEGRATIONS_AERO_DATA_BOX_ENDPOINT || 'rapidapi').toLowerCase();
+    const endpointMode = String(req.get('X-AeroDataBox-Endpoint') || req.query.endpoint || await workspaceSecret('aeroDataBoxEndpoint') || process.env.INTEGRATIONS_AERO_DATA_BOX_ENDPOINT || 'rapidapi').toLowerCase();
     const config = AERODATABOX_ENDPOINTS[endpointMode] || AERODATABOX_ENDPOINTS.rapidapi;
 
     const cacheKey = `reg:${endpointMode}:${reg}`;
@@ -1547,8 +1551,10 @@ app.get('/api/proxy/adsbdb/callsign/:callsign', handleAdsbDbCallsign);
 app.get('/api/proxy/adsbdb/flights/:flightNumber', handleAdsbDbCallsign);
 
 app.get('/api/proxy/adsb-lol/callsign/:callsign', async (req, res) => {
-    const rawCallsign = String(req.params.callsign || '').trim().replace(/\s|-/g, '').toUpperCase();
-    if (!rawCallsign) return res.status(400).json({ error: 'Callsign is required.' });
+    const requested = String(req.params.callsign || '').trim().replace(/\s|-/g, '').toUpperCase();
+    if (!requested) return res.status(400).json({ error: 'Callsign is required.' });
+    // Transponders broadcast ICAO callsigns (AAL100), not the IATA flight number (AA100).
+    const rawCallsign = resolveIcaoCallsign(requested) || requested;
 
     const cacheKey = `callsign:${rawCallsign}`;
     const cached = adsbLolCache.get(cacheKey);
@@ -1648,7 +1654,8 @@ app.get('/api/proxy/test/:provider', async (req, res) => {
 
 // ==========================================
 app.get('/api/proxy/opensky/states', async (req, res) => {
-    const { icao24, callsign } = req.query;
+    const { icao24 } = req.query;
+    const callsign = req.query.callsign ? (resolveIcaoCallsign(req.query.callsign) || String(req.query.callsign)) : undefined;
     const cacheKey = `opensky_${icao24 || 'all'}_${callsign || 'all'}`;
     const cached = openSkyCache.get(cacheKey);
     if (cached && Date.now() < cached.expiresAt) {
