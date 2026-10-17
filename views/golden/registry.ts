@@ -25,4 +25,7 @@ export const goldenViews: Partial<Record<ViewState, LazyExoticComponent<Componen
   [ViewState.TRAVEL_ATLAS]: lazy(() => import('./GoldenAtlas').then(m => ({ default: m.GoldenAtlas }))),
   [ViewState.SETTINGS]: lazy(() => import('./GoldenSettings').then(m => ({ default: m.GoldenSettings }))),
   [ViewState.USER_DETAIL]: lazy(() => import('./GoldenUserDetail').then(m => ({ default: m.GoldenUserDetail }))),
+  [ViewState.DASHBOARD]: lazy(() => import('./GoldenDashboard').then(m => ({ default: m.GoldenDashboard }))),
+  [ViewState.FLIGHTS]: lazy(() => import('./GoldenFlights').then(m => ({ default: m.GoldenFlights }))),
+  [ViewState.ROADTRIPS]: lazy(() => import('./GoldenRoadTrips').then(m => ({ default: m.GoldenRoadTrips }))),
 };
