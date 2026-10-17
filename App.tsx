@@ -227,12 +227,16 @@ export default function App() {
   }, [theme]);
 
   // The workspace theme is an admin setting; other users keep their choice in this browser only.
-  const handleThemeChange = (newTheme: 'light' | 'dark' | 'auto') => {
+  // A personal preference wins over the workspace theme on load, so every explicit choice must update it too;
+  // otherwise a stale preference (for example the dark one the Board theme sets) overrides later toggles.
+  const applyPersonalTheme = (newTheme: 'light' | 'dark' | 'auto') => {
       setTheme(newTheme);
-      if (currentUser?.role !== 'Admin') {
-          try { localStorage.setItem('wandergrid_theme_preference', newTheme); } catch (e) {}
-          return;
-      }
+      try { localStorage.setItem('wandergrid_theme_preference', newTheme); } catch (e) {}
+  };
+
+  const handleThemeChange = (newTheme: 'light' | 'dark' | 'auto') => {
+      applyPersonalTheme(newTheme);
+      if (currentUser?.role !== 'Admin') return;
       dataService.updateWorkspaceSettings({ theme: newTheme }).catch(err => {
           toast.error(`Couldn't save the theme: ${errorMessage(err)}`);
       });
@@ -313,7 +317,7 @@ export default function App() {
           onTripClick={handleTripClick}
           onBack={() => navigate(view === ViewState.TRIP_DETAIL ? ViewState.PLANNER : ViewState.DASHBOARD)}
           onLogout={() => handleLogout()}
-          onThemeChange={setTheme}
+          onThemeChange={applyPersonalTheme}
           userId={selectedUserId ?? undefined}
           tripId={selectedTripId ?? undefined}
           isSidebarCollapsed={isSidebarCollapsed}
@@ -324,7 +328,7 @@ export default function App() {
       case ViewState.DASHBOARD:
         return <Dashboard onUserClick={handleUserClick} onTripClick={handleTripClick} />;
       case ViewState.SETTINGS:
-        return <Settings onThemeChange={setTheme} />;
+        return <Settings onThemeChange={applyPersonalTheme} />;
       case ViewState.USER_DETAIL:
         return <UserDetail userId={selectedUserId!} onBack={() => navigate(ViewState.DASHBOARD)} onLogout={() => handleLogout()} />;
       case ViewState.PLANNER:
