@@ -76,6 +76,11 @@ export default {
           teal: '#2EC4B6',
           lilac: '#C7B8F5',
           ink: '#2B1B3D',
+          cream: '#FFF4E6',
+          sand: '#FFE8CC',
+          plum: '#2A1A42',
+          night: '#1E1230',
+          dusk: '#3A2658',
         },
         // Blue shades used on Flights are variable-driven so Golden Hour can remap them to the primary palette
         blue: {

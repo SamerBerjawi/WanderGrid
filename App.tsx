@@ -1,5 +1,6 @@
 
 import { isFeatureEnabled } from './config/featureFlags';
+import { goldenViews } from './views/golden/registry';
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { ViewState, User } from './types';
@@ -299,6 +300,21 @@ export default function App() {
   const routeKey = getStableRouteKey();
 
   const renderView = () => {
+    const Golden = isFeatureEnabled('UI_GOLDEN_HOUR') ? goldenViews[view] : undefined;
+    if (Golden) {
+      return (
+        <Golden
+          onUserClick={handleUserClick}
+          onTripClick={handleTripClick}
+          onBack={() => navigate(view === ViewState.TRIP_DETAIL ? ViewState.PLANNER : ViewState.DASHBOARD)}
+          onLogout={() => handleLogout()}
+          onThemeChange={setTheme}
+          userId={selectedUserId ?? undefined}
+          tripId={selectedTripId ?? undefined}
+          isSidebarCollapsed={isSidebarCollapsed}
+        />
+      );
+    }
     switch (view) {
       case ViewState.DASHBOARD:
         return <Dashboard onUserClick={handleUserClick} onTripClick={handleTripClick} />;

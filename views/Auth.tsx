@@ -5,12 +5,14 @@ import GlassPanel from '../components/glass/GlassPanel';
 import { RocketLaunch } from '@/components/ui/hugeicons';
 import { dataService } from '../services/mockDb';
 import { User, Trip, VisitedItem } from '../types';
+import { GoldenAuth } from './golden/GoldenAuth';
 
 interface AuthProps {
     onLogin: (user: User) => void;
 }
 
 export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
+    if (isFeatureEnabled('UI_GOLDEN_HOUR')) return <GoldenAuth onLogin={onLogin} />;
     const [mode, setMode] = useState<'signin' | 'signup' | 'setup_admin' | 'reset'>('signin');
     const [info, setInfo] = useState('');
     const [allowSignUp, setAllowSignUp] = useState(true);
