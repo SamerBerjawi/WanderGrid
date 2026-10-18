@@ -18,6 +18,7 @@ import {
 } from '../../../services/mapStyle';
 import { getCachedMultiModalRoute, fetchMultiModalRoute, getGeodesicArcPoints } from '../../../services/multiModalRouting';
 import { getTwilightGradientGeoJSON } from '../../../services/solarTerminator';
+import { calculateDistance } from '../../../services/geocoding';
 import { getLatestRainRadarTileUrl } from '../../../services/rainViewer';
 import { attachMissingImageLoader, initMapLibre } from './mapEngineInit';
 import { cn } from '../../../utils/cn';
@@ -70,7 +71,10 @@ const FONT = '"Outfit Variable", Outfit, -apple-system, sans-serif';
 const WORLD = { center: [12, 28] as LngLat, zoom: 1.4 };
 const ROUTE_WIDTH = { thin: 1.25, normal: 2, thick: 3.25 } as const;
 const MARKER_SIZE = { off: 0, small: 3, medium: 4.5, large: 6.5 } as const;
-const ANIM_LOOP = 1000;
+/** Animated routes move at one speed everywhere, so a long route takes longer than a short one. */
+const PULSE_KM_PER_S = 2200;
+/** Length of the moving pulse's tail, in km of route. */
+const PULSE_TRAIL_KM = 900;
 
 const countryCodeOf = (p: any): string => {
     const a2 = p?.ISO_A2 && p.ISO_A2 !== '-99' ? p.ISO_A2 : p?.ISO_A2_EH;
@@ -122,6 +126,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
     const [routeVersion, setRouteVersion] = useState(0);
     const [now, setNow] = useState(() => new Date());
     const [animTime, setAnimTime] = useState(0);
+    const pulseLoopKmRef = useRef(1);
     const [countries, setCountries] = useState<any>(null);
     const [radarUrl, setRadarUrl] = useState<string | null>(null);
     const [palette, setPalette] = useState<RpPalette>(() => readRpPalette(null));
@@ -386,7 +391,8 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         let frame = 0;
         const start = performance.now();
         const tick = (t: number) => {
-            setAnimTime(((t - start) / 4) % ANIM_LOOP);
+            // The clock is in km travelled; every route restarts together once the longest has finished.
+            setAnimTime((((t - start) / 1000) * PULSE_KM_PER_S) % pulseLoopKmRef.current);
             frame = requestAnimationFrame(tick);
         };
         frame = requestAnimationFrame(tick);
@@ -569,6 +575,25 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
 
     /* ------------------------------------------------------------------ animated pulse (flat map only) */
 
+    // Each vertex is timed by the distance travelled to reach it, in km.
+    const pulseTimeline = useMemo(() => {
+        let longest = 0;
+        const routes = routePaths.map(({ route, path }) => {
+            let km = 0;
+            const timestamps = path.map((pt, i) => {
+                if (i > 0) {
+                    const prev = path[i - 1];
+                    km += calculateDistance(prev[1], prev[0], pt[1], pt[0]);
+                }
+                return km;
+            });
+            longest = Math.max(longest, km);
+            return { route, path, timestamps };
+        });
+        return { routes, loopKm: longest + PULSE_TRAIL_KM };
+    }, [routePaths]);
+    pulseLoopKmRef.current = Math.max(1, pulseTimeline.loopKm);
+
     const flightArcs = useMemo(() => (
         isGlobe && showRoutes ? routesGeo.features.filter(f => f.properties.mode === 'flight').map(f => {
             const route = routePaths.find(r => r.route.id === f.properties.id)!.route;
@@ -603,12 +628,12 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         if (appearance.animateRoutes && !reducedMotion && !isGlobe && showRoutes && routePaths.length) {
             layers.push(new TripsLayer({
                 id: 'rp-route-pulse',
-                data: routePaths,
+                data: pulseTimeline.routes,
                 getPath: (d: any) => d.path,
-                getTimestamps: (d: any) => d.path.map((_: any, i: number) => (i / Math.max(1, d.path.length - 1)) * ANIM_LOOP),
+                getTimestamps: (d: any) => d.timestamps,
                 getColor: rgba(palette.mustard),
                 widthMinPixels: ROUTE_WIDTH[appearance.routeScale || 'normal'] + 1,
-                trailLength: 180,
+                trailLength: PULSE_TRAIL_KM,
                 currentTime: animTime,
                 capRounded: true,
                 jointRounded: true,
@@ -616,7 +641,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
             }));
         }
         overlayRef.current?.setProps({ layers, pickingRadius: 8 } as any);
-    }, [flightArcs, colorMode, appearance.animateRoutes, appearance.routeScale, reducedMotion, isGlobe, showRoutes, routePaths, animTime, palette]);
+    }, [flightArcs, colorMode, appearance.animateRoutes, appearance.routeScale, reducedMotion, isGlobe, showRoutes, routePaths, pulseTimeline, animTime, palette]);
 
     /* ------------------------------------------------------------------ interaction */
 

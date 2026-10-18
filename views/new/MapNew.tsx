@@ -4,8 +4,8 @@ import { Toolbar, type DockTool } from '../../components/kokonutui/tool-dock';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import ActionSearchBar, { type CommandItem } from '../../components/kokonutui/command-palette';
 import {
-    Airplane, ArrowExpand, ArrowShrink, CornersOut, Funnel, Globe, GlobeHemisphereWest, MapPin, MapTrifold, Maping, MagnifyingGlass, MountainSnow, Path,
-    Minus, NavigationArrow, Plus, Stack, Suitcase,
+    Airplane, ArrowExpand, ArrowShrink, CornersOut, Funnel, Globe, GlobeHemisphereWest, MapPin, MapTrifold, Maping, MagnifyingGlass, MountainSnow, Path, Settings04,
+    Minus, NavigationArrow, Plus, Suitcase,
 } from '../../components/ui/hugeicons';
 import { useExpeditionMapData } from '../../hooks/useExpeditionMapData';
 import { dataService } from '../../services/mockDb';
@@ -123,7 +123,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
         const panels: DockTool[] = [
             { id: 'explore', label: 'Explore', icon: NavigationArrow as any, shortcut: 'E' },
             { id: 'search', label: 'Search', icon: MagnifyingGlass as any, shortcut: 'S' },
-            { id: 'layers', label: 'Map settings', icon: Stack as any, shortcut: 'L' },
+            { id: 'layers', label: 'Map settings', icon: Settings04 as any, shortcut: 'L' },
             { id: 'filter', label: data.activeFilterCount ? `Filter (${data.activeFilterCount})` : 'Filter', icon: Funnel as any, shortcut: 'F' },
         ];
         const fit: DockTool = { id: 'fit', label: 'Fit all', icon: CornersOut as any, action: () => mapRef.current?.fitAll(), dividerBefore: true };

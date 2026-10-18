@@ -112,6 +112,7 @@ import {
   Logout01Icon,
   Mail01Icon,
   MapsIcon,
+  MapsGlobal01Icon,
   Maximize01Icon,
   MinusSignIcon,
   Moon02Icon,
@@ -140,6 +141,10 @@ import {
   SecurityCheckIcon,
   SentIcon,
   Settings01Icon,
+  Settings04Icon,
+  Airport02Icon,
+  EditRoadIcon,
+  SquaresUniteIcon,
   Share08Icon,
   Shirt01Icon,
   ShoppingBag01Icon,
@@ -300,6 +305,11 @@ export const ForkKnife = make(Restaurant01Icon, 'ForkKnife');
 export const Funnel = make(FilterIcon, 'Funnel');
 export const GasPump = make(FuelStationIcon, 'GasPump');
 export const Gear = make(Settings01Icon, 'Gear');
+export const Settings04 = make(Settings04Icon, 'Settings04');
+export const MapsGlobal = make(MapsGlobal01Icon, 'MapsGlobal');
+export const Airport = make(Airport02Icon, 'Airport');
+export const EditRoad = make(EditRoadIcon, 'EditRoad');
+export const SquaresUnite = make(SquaresUniteIcon, 'SquaresUnite');
 export const GitFork = make(GitForkIcon, 'GitFork');
 export const Globe = make(GlobalIcon, 'Globe');
 export const GlobeHemisphereWest = make(Globe02Icon, 'GlobeHemisphereWest');
