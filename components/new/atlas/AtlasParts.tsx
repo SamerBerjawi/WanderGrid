@@ -9,16 +9,39 @@ import { cn } from '../../../utils/cn';
 
 /** Small pieces of the New Atlas page (UI_UX_DESIGN_REFERENCE.md §1.2, §2.2–§2.3). */
 
+export type KpiAccent = 'green' | 'ink' | 'mustard' | 'rust';
+
+/** Filled accent circles for KPI icons (UI_UX_DESIGN_REFERENCE.md §1.1: colour carries meaning). */
+const KPI_ACCENT: Record<KpiAccent, string> = {
+    green: 'bg-rp-green text-rp-paper',
+    ink: 'bg-rp-ink text-rp-on-ink',
+    mustard: 'bg-rp-mustard text-rp-on-mustard',
+    rust: 'bg-rp-rust text-rp-paper',
+};
+
 /**
  * KPI: an icon in a 40px circle, the value (rolling), an optional chip, a muted label. `stacked` puts
- * the icon above a larger value at every width (for stat tiles).
+ * the icon above a larger value from the `lg` breakpoint (stat tiles beside the map); below it the
+ * tile stays a compact row so stats above the map don't waste height.
  */
-export const RpKpi: React.FC<{ icon: Icon; value: number; label: string; chip?: ReactNode; format?: Format; stacked?: boolean }> = ({
-    icon: IconC, value, label, chip, format, stacked,
+export const RpKpi: React.FC<{ icon: Icon; value: number; label: string; chip?: ReactNode; format?: Format; stacked?: boolean; accent?: KpiAccent }> = ({
+    icon: IconC, value, label, chip, format, stacked, accent,
 }) => (
-    // Phones: icon above the value, so KPIs fit side by side.
-    <div className={cn('flex min-w-0 flex-col items-start gap-2', !stacked && 'sm:flex-row sm:items-center sm:gap-3', stacked && 'h-full justify-between gap-4')}>
-        <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full text-rp-ink', stacked ? 'bg-rp-inset' : 'bg-rp-surface rp-shadow-rest')}>
+    <div
+        className={cn(
+            'flex min-w-0',
+            stacked
+                ? 'items-center gap-3 lg:h-full lg:flex-col lg:items-start lg:justify-between lg:gap-4'
+                // Phones: icon above the value, so KPIs fit side by side.
+                : 'flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3'
+        )}
+    >
+        <span
+            className={cn(
+                'flex size-10 shrink-0 items-center justify-center rounded-full',
+                accent ? KPI_ACCENT[accent] : stacked ? 'bg-rp-inset text-rp-ink' : 'bg-rp-surface text-rp-ink rp-shadow-rest'
+            )}
+        >
             <IconC size={18} aria-hidden />
         </span>
         <span className="flex min-w-0 flex-col gap-0.5">
@@ -26,7 +49,7 @@ export const RpKpi: React.FC<{ icon: Icon; value: number; label: string; chip?: 
                 <NumberFlow
                     value={value}
                     format={format}
-                    className={cn('rp-tabular font-semibold leading-tight text-rp-ink', stacked ? 'text-2xl sm:text-[1.75rem]' : 'text-xl')}
+                    className={cn('rp-tabular font-semibold leading-tight text-rp-ink', stacked ? 'text-xl lg:text-[1.75rem]' : 'text-xl')}
                 />
                 {chip}
             </span>

@@ -117,7 +117,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
 
     const sheetOpen = tool === 'layers' || tool === 'filter' || selection !== null;
     const padding = useMemo(() => mobile
-        ? { top: HEADER + 24, right: 24, bottom: 240, left: 24 }
+        ? { top: HEADER + 24, right: 24, bottom: 170, left: 24 }
         : { top: HEADER + 72, right: sheetOpen ? 460 : 40, bottom: 104, left: 104 },
     [mobile, sheetOpen]);
 
@@ -258,7 +258,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
             <div
                 className={cn(
                     'pointer-events-none absolute inset-x-0 z-float flex justify-center px-3',
-                    mobile ? 'bottom-[calc(160px+env(safe-area-inset-bottom,0px))]' : 'bottom-4'
+                    mobile ? 'bottom-[calc(88px+env(safe-area-inset-bottom,0px))]' : 'bottom-4'
                 )}
             >
                     <div className="pointer-events-auto max-w-full">
@@ -276,18 +276,22 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                     </div>
             </div>
 
-            {/* The ink dock: left edge on tablet and desktop, above the tab bar on mobile */}
+            {/* The tool dock: left edge on tablet and desktop; on phones, in the header row beside the theme toggle and avatar */}
             <Toolbar
                 tools={tools}
                 value={tool}
                 onValueChange={id => openTool(id as Tool)}
                 toggleTo="explore"
                 tone="surface"
-                defaultEdge={mobile ? 'bottom' : 'left'}
+                defaultEdge={mobile ? 'top' : 'left'}
                 fixed={mobile}
                 shortcuts="global"
                 ariaLabel="Map tools"
-                className={cn('pointer-events-none absolute inset-x-0 top-[128px] z-float', mobile ? 'bottom-[88px]' : 'bottom-0')}
+                className={cn(
+                    'pointer-events-none absolute z-float',
+                    // Phones: the box spans the header row up to the theme toggle and avatar (2 × 44px + gaps).
+                    mobile ? 'top-[calc(env(safe-area-inset-top,0px)-6px)] left-0 right-[108px] h-[68px] w-auto overflow-visible' : 'inset-x-0 top-[128px] bottom-0'
+                )}
                 dockClassName="pointer-events-auto"
                 key={mobile ? 'mobile' : 'desktop'}
             >

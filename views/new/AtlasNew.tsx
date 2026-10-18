@@ -50,6 +50,14 @@ const readTab = (): Tab => {
     } catch { return 'countries'; }
 };
 
+/** The selected tab's pill takes the list's accent, like the Map page's view tabs. */
+const TAB_PILL: Record<Tab, { bg: string; text: string }> = {
+    countries: { bg: 'bg-rp-green', text: 'text-rp-paper' },
+    cities: { bg: 'bg-rp-ink', text: 'text-rp-on-ink' },
+    layovers: { bg: 'bg-rp-rust', text: 'text-rp-paper' },
+    wishlist: { bg: 'bg-rp-mustard', text: 'text-rp-on-mustard' },
+};
+
 const PILL = 'inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-rp-muted focus-visible:ring-offset-2 focus-visible:ring-offset-rp-canvas active:scale-[0.97]';
 
 const matches = (q: string, ...parts: (string | undefined)[]) => {
@@ -123,11 +131,12 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
         [data.cities, query]
     );
 
+    // Each list has its accent (the same as its stat tile); inactive tabs show it on the icon.
     const tabItems = [
-        { id: 'countries', title: 'Countries', icon: Globe, badge: <TabCount n={data.visitedCountries.length} /> },
+        { id: 'countries', title: 'Countries', icon: Globe, iconClassName: 'text-rp-green', badge: <TabCount n={data.visitedCountries.length} /> },
         { id: 'cities', title: 'Cities', icon: Buildings, badge: <TabCount n={data.cities.length} /> },
-        { id: 'layovers', title: 'Layovers', icon: Airplane, badge: <TabCount n={data.layovers.length} /> },
-        { id: 'wishlist', title: 'Wishlist', icon: Heart, badge: <TabCount n={data.wishlist.length} /> },
+        { id: 'layovers', title: 'Layovers', icon: Airplane, iconClassName: 'text-rp-rust', badge: <TabCount n={data.layovers.length} /> },
+        { id: 'wishlist', title: 'Wishlist', icon: Heart, iconClassName: 'text-rp-ochre', badge: <TabCount n={data.wishlist.length} /> },
     ];
 
     const addCity = async (text: string) => {
@@ -187,10 +196,11 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                             </div>
                             <AtlasMap tones={tones} counts={toneCounts} onCountryClick={(code, name) => openCountry(code, name)} />
                         </section>
-                        <div className="order-first grid grid-cols-2 gap-3 sm:gap-4 lg:order-none lg:gap-6">
+                        <div className="order-first grid grid-cols-2 gap-3 md:grid-cols-4 lg:order-none lg:grid-cols-2 lg:gap-6">
                             <StatTile>
                                 <RpKpi
                                     stacked
+                                    accent="green"
                                     icon={Globe}
                                     value={data.visitedCountries.length}
                                     label="Countries visited"
@@ -198,13 +208,13 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                                 />
                             </StatTile>
                             <StatTile>
-                                <RpKpi stacked icon={Buildings} value={data.cities.length} label={data.cityCountryCount > 0 ? `Cities in ${data.cityCountryCount} ${data.cityCountryCount === 1 ? 'country' : 'countries'}` : 'Cities'} />
+                                <RpKpi stacked accent="ink" icon={Buildings} value={data.cities.length} label={data.cityCountryCount > 0 ? `Cities in ${data.cityCountryCount} ${data.cityCountryCount === 1 ? 'country' : 'countries'}` : 'Cities'} />
                             </StatTile>
                             <StatTile>
-                                <RpKpi stacked icon={Heart} value={data.wishlist.length} label="On the wishlist" />
+                                <RpKpi stacked accent="mustard" icon={Heart} value={data.wishlist.length} label="On the wishlist" />
                             </StatTile>
                             <StatTile>
-                                <RpKpi stacked icon={Airplane} value={data.layovers.length} label="Layover countries" />
+                                <RpKpi stacked accent="rust" icon={Airplane} value={data.layovers.length} label="Layover countries" />
                             </StatTile>
                         </div>
                     </div>
@@ -238,6 +248,8 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                                     label="Lists"
                                     className="w-auto"
                                     listClassName="bg-rp-surface rp-shadow-soft"
+                                    activeColor={TAB_PILL[tab].bg}
+                                    activeTextColor={TAB_PILL[tab].text}
                                 />
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
@@ -362,7 +374,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
 };
 
 const StatTile: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <div className="flex min-w-0 flex-col justify-between rounded-rp-tile bg-rp-surface p-4 rp-shadow-rest sm:p-5">{children}</div>
+    <div className="flex min-w-0 flex-col justify-center rounded-rp-tile bg-rp-surface p-3 rp-shadow-rest sm:p-4 lg:justify-between lg:p-5">{children}</div>
 );
 
 const TabCount: React.FC<{ n: number }> = ({ n }) => <span className="rp-tabular text-xs opacity-70">{n}</span>;

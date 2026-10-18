@@ -21,6 +21,7 @@ import { getTwilightGradientGeoJSON } from '../../../services/solarTerminator';
 import { calculateDistance } from '../../../services/geocoding';
 import { getLatestRainRadarTileUrl } from '../../../services/rainViewer';
 import { attachMissingImageLoader, initMapLibre } from './mapEngineInit';
+import { normalizePlaceLabels } from './basemapLabels';
 import { cn } from '../../../utils/cn';
 import { readRpPalette, rpTokensReady, rgba, css, mix, type RGB, type RpPalette } from './mapPalette';
 import type { LegStatus, MapModel, MapPlace, MapRoute, LngLat } from './mapModel';
@@ -268,6 +269,9 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         if (!map || !styleVersion) return;
         if (!styleParsed(map)) { map.once('idle', () => setStyleVersion(v => v + 1)); return; }
         const theme = isDark ? 'dark' : 'light';
+
+        // Same place-label density on every vector basemap as on Streets.
+        normalizePlaceLabels(map);
 
         // Airport detail (runways, taxiways, terminals...) from the local PMTiles archive.
         airportLayerIds.current.forEach(id => removeLayer(map, id));

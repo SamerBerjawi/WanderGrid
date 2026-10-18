@@ -43,6 +43,8 @@ export interface ShellNewProps {
     localMode?: boolean;
     /** Page content fills the shell and the header floats above it (the map). */
     fullBleed?: boolean;
+    /** Hide the brand pill on phones (the page puts its own toolbar in that spot). */
+    hideBrandOnMobile?: boolean;
     children: ReactNode;
 }
 
@@ -99,7 +101,7 @@ const AccountButton: React.FC<{ user: User | null; onNavigate: (p: string) => vo
     );
 };
 
-export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, user, isDark, onThemeChange, onLogout, localMode, fullBleed, children }) => {
+export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, user, isDark, onThemeChange, onLogout, localMode, fullBleed, hideBrandOnMobile, children }) => {
     const [sheet, setSheet] = useState<'more' | 'add' | null>(null);
     const navItems = Object.fromEntries(SHELL_NAV.map(i => [i.path, { name: i.label, icon: i.icon }]));
     const go = (path: string) => { setSheet(null); onNavigate(path); };
@@ -117,7 +119,10 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
                     type="button"
                     onClick={() => go('/')}
                     aria-label="WanderGrid home"
-                    className="pointer-events-auto flex min-h-11 items-center gap-2.5 rounded-full bg-rp-surface py-1.5 pr-4 pl-1.5 rp-shadow-soft outline-none focus-visible:ring-2 focus-visible:ring-rp-muted"
+                    className={cn(
+                        'pointer-events-auto min-h-11 items-center gap-2.5 rounded-full bg-rp-surface py-1.5 pr-4 pl-1.5 rp-shadow-soft outline-none focus-visible:ring-2 focus-visible:ring-rp-muted',
+                        hideBrandOnMobile ? 'hidden md:flex' : 'flex'
+                    )}
                 >
                     <span className="flex size-8 items-center justify-center rounded-[10px] bg-rp-ink text-sm font-semibold text-rp-on-ink">W</span>
                     <span className="hidden text-base font-medium text-rp-ink sm:inline">WanderGrid</span>
@@ -127,7 +132,7 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
                     <MorphicNavbar items={navItems} currentPath={currentPath} onNavigate={go} className="px-0 py-0" />
                 </div>
 
-                <div className="pointer-events-auto flex items-center gap-2">
+                <div className="pointer-events-auto ml-auto flex items-center gap-2">
                     {localMode ? (
                         <span className="hidden min-h-8 items-center rounded-full bg-rp-mustard px-3 text-xs font-medium text-rp-on-mustard lg:inline-flex" role="status">
                             Local mode

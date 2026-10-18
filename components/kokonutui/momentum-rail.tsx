@@ -596,7 +596,7 @@ const RailCard = ({
 }) => (
   <li className="kokonutui-rail-card w-[var(--rail-card)] flex-none snap-center">
     <div className="kokonutui-rail-tilt group/rail-card relative">
-      <div className="relative aspect-[4/5] overflow-hidden rounded-rp-tile bg-rp-inset ring-rp-muted ring-offset-2 ring-offset-rp-surface group-has-[[data-rail-link]:focus-visible]/rail-card:ring-2">
+      <div className="relative aspect-[4/5] overflow-hidden rounded-rp-tile bg-rp-inset shadow-[0_1px_2px_rgb(0_0_0/0.05),0_4px_12px_-4px_rgb(0_0_0/0.12)] dark:shadow-[0_1px_2px_rgb(0_0_0/0.4),0_6px_16px_-6px_rgb(0_0_0/0.7)] ring-rp-muted ring-offset-2 ring-offset-rp-surface group-has-[[data-rail-link]:focus-visible]/rail-card:ring-2">
         {item.art ? (
           <div className={cn(LAYER_CLASS, "[--rail-depth:6%]")}>{item.art}</div>
         ) : item.image ? (

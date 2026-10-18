@@ -422,6 +422,7 @@ export default function App() {
             onLogout={() => handleLogout()}
             localMode={!dataService.isDatabaseMode()}
             fullBleed={newPage === 'map'}
+            hideBrandOnMobile={newPage === 'map'}
           >
             <AppErrorBoundary routeKey={`new-${newPage}`} onResetToDashboard={() => navigate(ViewState.DASHBOARD)}>
               <Suspense fallback={null}>
