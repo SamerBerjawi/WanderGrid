@@ -1,4 +1,5 @@
 
+import { NEW_PAGE_LINKS, SHOW_NEW_PAGE_LINKS, openNewPage } from './new/devLinks';
 import React, { useEffect, useState } from 'react';
 import { affectsCollections } from '../hooks/useWanderSync';
 import { ViewState, Trip, User } from '../types';
@@ -203,6 +204,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </button>
                     );
                   })}
+                  {SHOW_NEW_PAGE_LINKS && NEW_PAGE_LINKS.map(link => (
+                    <button
+                      key={link.path}
+                      onClick={() => openNewPage(link.path)}
+                      className={`flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold select-none cursor-pointer relative transition-all duration-200 group text-zinc-600 hover:text-zinc-900 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-white/[0.08]
+                        ${isCollapsed ? 'justify-center px-0 w-12 h-12 border border-transparent' : 'w-full'}
+                      `}
+                      title={isCollapsed ? `${link.label} (dev)` : 'Redesigned page, dev builds only'}
+                    >
+                      <Icon name={link.icon} className="text-xl relative z-float shrink-0 opacity-75 group-hover:opacity-100" />
+                      {!isCollapsed && (
+                        <>
+                          <span className="relative z-float font-bold tracking-tight">{link.label}</span>
+                          <span className="ml-auto relative z-float px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 text-2xs font-bold uppercase tracking-wider">Dev</span>
+                        </>
+                      )}
+                    </button>
+                  ))}
                 </nav>
               </div>
 
@@ -508,6 +527,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </button>
                     );
                   })}
+                  {SHOW_NEW_PAGE_LINKS && NEW_PAGE_LINKS.map(link => (
+                    <button
+                      key={link.path}
+                      onClick={() => { setIsMoreOpen(false); openNewPage(link.path); }}
+                      className="flex items-center justify-between w-full h-11 px-3.5 rounded-2xl text-left text-xs font-bold font-sans transition-all duration-150 cursor-pointer text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/5"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon name={link.icon} className="text-lg" />
+                        <span className="font-bold">{link.label}</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 text-2xs font-bold uppercase tracking-wider">Dev</span>
+                    </button>
+                  ))}
 
                   {/* Appearance Switcher */}
                   <div className="my-1 border-t border-black/5 dark:border-white/10" />

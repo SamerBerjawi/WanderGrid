@@ -1,3 +1,4 @@
+import { NEW_PAGE_LINKS, SHOW_NEW_PAGE_LINKS, openNewPage } from '../new/devLinks';
 import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { affectsCollections } from '../../hooks/useWanderSync';
@@ -118,6 +119,20 @@ export const GoldenSidebar: React.FC<GoldenSidebarProps> = ({
                 </button>
               );
             })}
+            {SHOW_NEW_PAGE_LINKS && NEW_PAGE_LINKS.map(link => (
+              <button
+                key={link.path}
+                type="button"
+                onClick={() => openNewPage(link.path)}
+                aria-label={`${link.label}, dev builds only`}
+                title={isCollapsed ? `${link.label} (dev)` : undefined}
+                className={`min-h-[44px] flex items-center gap-3 rounded-full px-3 text-sm font-semibold cursor-pointer transition-all hover:bg-sunset-sand dark:hover:bg-sunset-dusk ${isCollapsed ? 'justify-center' : ''}`}
+              >
+                <Icon name={link.icon} className="text-xl leading-none shrink-0" />
+                {!isCollapsed && <span className="truncate">{link.label}</span>}
+                {!isCollapsed && <span className="ml-auto px-2 py-0.5 rounded-full bg-sunset-sun text-sunset-ink text-2xs font-bold uppercase tracking-wider">Dev</span>}
+              </button>
+            ))}
           </nav>
 
           {!isCollapsed && (
@@ -196,6 +211,13 @@ export const GoldenSidebar: React.FC<GoldenSidebarProps> = ({
                 <button key={item.value} type="button" onClick={() => go(item.value)} aria-current={currentView === item.value ? 'page' : undefined} className={`min-h-[44px] rounded-full px-4 flex items-center gap-3 text-sm font-semibold cursor-pointer ${currentView === item.value ? TONE_BG[item.tone] : ''}`}>
                   <Icon name={item.icon} className={`text-xl leading-none ${iconTint(item.value, currentView === item.value)}`} />
                   {item.label}
+                </button>
+              ))}
+              {SHOW_NEW_PAGE_LINKS && NEW_PAGE_LINKS.map(link => (
+                <button key={link.path} type="button" onClick={() => { setMoreOpen(false); openNewPage(link.path); }} className="min-h-[44px] rounded-full px-4 flex items-center gap-3 text-sm font-semibold cursor-pointer">
+                  <Icon name={link.icon} className="text-xl leading-none" />
+                  {link.label}
+                  <span className="ml-auto px-2 py-0.5 rounded-full bg-sunset-sun text-sunset-ink text-2xs font-bold uppercase tracking-wider">Dev</span>
                 </button>
               ))}
               {currentUser && (
