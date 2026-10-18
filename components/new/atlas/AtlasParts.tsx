@@ -4,26 +4,33 @@ import type { VisitedItem } from '../../../types';
 import type { Icon } from '../../ui/hugeicons';
 import { getFlagEmoji } from '../../../services/geoData';
 import { formatDate } from '../../../utils/formatters';
-import { TONE_CHIP, TONE_LABEL, toneOf, type AtlasTone } from './atlasStatus';
+import { TONE_CHIP, TONE_ICON, TONE_LABEL, toneOf, type AtlasTone } from './atlasStatus';
 import { cn } from '../../../utils/cn';
 
 /** Small pieces of the New Atlas page (UI_UX_DESIGN_REFERENCE.md §1.2, §2.2–§2.3). */
 
-/** KPI: an icon in a 40px circle, the value (rolling), an optional chip, a muted label. */
-export const RpKpi: React.FC<{ icon: Icon; value: number; label: string; chip?: ReactNode; format?: Format }> = ({
-    icon: IconC, value, label, chip, format,
+/**
+ * KPI: an icon in a 40px circle, the value (rolling), an optional chip, a muted label. `stacked` puts
+ * the icon above a larger value at every width (for stat tiles).
+ */
+export const RpKpi: React.FC<{ icon: Icon; value: number; label: string; chip?: ReactNode; format?: Format; stacked?: boolean }> = ({
+    icon: IconC, value, label, chip, format, stacked,
 }) => (
-    // Phones: icon above the value, so three KPIs fit side by side.
-    <div className="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rp-surface text-rp-ink rp-shadow-rest">
+    // Phones: icon above the value, so KPIs fit side by side.
+    <div className={cn('flex min-w-0 flex-col items-start gap-2', !stacked && 'sm:flex-row sm:items-center sm:gap-3', stacked && 'h-full justify-between gap-4')}>
+        <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full text-rp-ink', stacked ? 'bg-rp-inset' : 'bg-rp-surface rp-shadow-rest')}>
             <IconC size={18} aria-hidden />
         </span>
-        <span className="flex min-w-0 flex-col">
+        <span className="flex min-w-0 flex-col gap-0.5">
             <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <NumberFlow value={value} format={format} className="rp-tabular text-xl font-semibold leading-tight text-rp-ink" />
+                <NumberFlow
+                    value={value}
+                    format={format}
+                    className={cn('rp-tabular font-semibold leading-tight text-rp-ink', stacked ? 'text-2xl sm:text-[1.75rem]' : 'text-xl')}
+                />
                 {chip}
             </span>
-            <span className="text-xs leading-snug text-rp-muted sm:truncate">{label}</span>
+            <span className={cn('text-xs leading-snug text-rp-muted', !stacked && 'sm:truncate')}>{label}</span>
         </span>
     </div>
 );
@@ -42,11 +49,15 @@ export const RpChipLabel: React.FC<{ children: ReactNode; tone?: 'mustard' | 'gr
     </span>
 );
 
-export const ToneChip: React.FC<{ tone: AtlasTone; className?: string }> = ({ tone, className }) => (
-    <span className={cn('inline-flex min-h-6 items-center rounded-full px-2.5 text-2xs font-semibold', TONE_CHIP[tone], className)}>
-        {TONE_LABEL[tone]}
-    </span>
-);
+export const ToneChip: React.FC<{ tone: AtlasTone; className?: string }> = ({ tone, className }) => {
+    const IconC = TONE_ICON[tone];
+    return (
+        <span className={cn('inline-flex min-h-6 items-center gap-1 rounded-full pr-2.5 pl-2 text-2xs font-semibold', TONE_CHIP[tone], className)}>
+            <IconC size={12} aria-hidden />
+            {TONE_LABEL[tone]}
+        </span>
+    );
+};
 
 /** A flag on a soft circle. Emoji flags need no network and work offline. */
 export const FlagBadge: React.FC<{ code?: string; size?: 'md' | 'lg'; className?: string }> = ({ code, size = 'md', className }) => (

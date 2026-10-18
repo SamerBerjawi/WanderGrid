@@ -200,8 +200,8 @@ const KEY_MOVES: Record<string, (i: number, n: number) => number> = {
   End: (_, n) => n - 1,
 };
 
-/** Light in light mode, dark in dark mode: the nav sits on the surface colour. */
-const SURFACE = "bg-rp-surface";
+/** Ink: dark in light mode, light in dark mode (desktop menu bar). The mobile tab bar stays on the surface. */
+const SURFACE = "bg-rp-ink";
 const FOCUS_RING =
   "outline-none focus-visible:ring-2 focus-visible:ring-rp-mustard focus-visible:ring-inset";
 
@@ -319,8 +319,8 @@ function Segment({
           SURFACE,
           FOCUS_RING,
           highlighted
-            ? "text-rp-ink"
-            : "text-rp-muted hover:text-rp-ink"
+            ? "text-rp-on-ink"
+            : "text-rp-on-ink/60 hover:text-rp-on-ink"
         )}
         draggable={false}
         href={href}
@@ -715,7 +715,7 @@ export function MorphicNavbar({
       {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: the row only adds scrubbing and arrow keys on top of real links */}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: same as above */}
       <div
-        className="relative flex touch-pan-y select-none items-center rounded-full rp-shadow-soft"
+        className="relative flex touch-pan-y select-none items-center rounded-full"
         onBlur={onRowBlur}
         onClickCapture={onClickCapture}
         onKeyDown={onKeyDown}
@@ -754,7 +754,7 @@ export function MorphicNavbar({
             aria-hidden={!folded}
             aria-label="Show all links"
             className={cn(
-              "absolute top-0 left-0 flex size-11 items-center justify-center rounded-full text-rp-muted transition-colors duration-150 hover:text-rp-ink",
+              "absolute top-0 left-0 flex size-11 items-center justify-center rounded-full text-rp-on-ink/60 transition-colors duration-150 hover:text-rp-on-ink",
               SURFACE,
               FOCUS_RING,
               folded ? "z-dropdown" : "pointer-events-none z-0"

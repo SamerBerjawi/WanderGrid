@@ -51,6 +51,7 @@ import {
   Car05Icon,
   ChartBarLineIcon,
   ChartIncreaseIcon,
+  CarouselHorizontalIcon,
   CheckmarkCircle02Icon,
   CheckmarkSquare02Icon,
   CircleIcon,
@@ -261,6 +262,7 @@ export const CaretRight = make(ArrowRight01Icon, 'CaretRight');
 export const CaretUp = make(ArrowUp01Icon, 'CaretUp');
 export const ChartBar = make(ChartBarLineIcon, 'ChartBar');
 export const Check = make(Tick02Icon, 'Check');
+export const Carousel = make(CarouselHorizontalIcon, 'Carousel');
 export const CheckCircle = make(CheckmarkCircle02Icon, 'CheckCircle');
 export const CheckSquare = make(CheckmarkSquare02Icon, 'CheckSquare');
 export const CircleDashed = make(CircleIcon, 'CircleDashed');

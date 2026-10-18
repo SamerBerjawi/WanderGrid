@@ -117,8 +117,8 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
 
     const sheetOpen = tool === 'layers' || tool === 'filter' || selection !== null;
     const padding = useMemo(() => mobile
-        ? { top: HEADER + 72, right: 24, bottom: 180, left: 24 }
-        : { top: HEADER + 80, right: sheetOpen ? 460 : 40, bottom: 48, left: 104 },
+        ? { top: HEADER + 24, right: 24, bottom: 240, left: 24 }
+        : { top: HEADER + 72, right: sheetOpen ? 460 : 40, bottom: 104, left: 104 },
     [mobile, sheetOpen]);
 
     const toggleFullscreen = () => {
@@ -237,9 +237,9 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                 onHover={mobile ? undefined : setHover}
             />
 
-            {/* Mode tabs, or the search palette while searching */}
-            <div className="pointer-events-none absolute inset-x-0 z-float flex justify-center px-3" style={{ top: HEADER + 4 }}>
-                {tool === 'search' ? (
+            {/* The search palette, at the top while searching */}
+            {tool === 'search' ? (
+                <div className="pointer-events-none absolute inset-x-0 z-float flex justify-center px-3" style={{ top: HEADER + 4 }}>
                     <div className="pointer-events-auto w-full max-w-xl">
                         <ActionSearchBar
                             autoFocus
@@ -251,7 +251,16 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                             placeholder="Search trips, airports and places"
                         />
                     </div>
-                ) : (
+                </div>
+            ) : null}
+
+            {/* Mode tabs at the bottom: above the tool dock on phones, bottom centre otherwise */}
+            <div
+                className={cn(
+                    'pointer-events-none absolute inset-x-0 z-float flex justify-center px-3',
+                    mobile ? 'bottom-[calc(160px+env(safe-area-inset-bottom,0px))]' : 'bottom-4'
+                )}
+            >
                     <div className="pointer-events-auto max-w-full">
                         <SwipeTabs
                             items={modeItems}
@@ -265,7 +274,6 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                             activeTextColor={MODE_PILL[mode].text}
                         />
                     </div>
-                )}
             </div>
 
             {/* The ink dock: left edge on tablet and desktop, above the tab bar on mobile */}
@@ -286,9 +294,9 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                 <span />
             </Toolbar>
 
-            {/* Totals for what is on screen */}
+            {/* Totals for what is on screen: top-left, under the header */}
             {!mobile ? (
-                <div className="pointer-events-none absolute bottom-4 left-1/2 z-float -translate-x-1/2">
+                <div className="pointer-events-none absolute left-4 z-float" style={{ top: HEADER + 8 }}>
                     <div className="rp-tabular flex items-center gap-4 rounded-full bg-rp-surface px-5 py-2.5 text-sm text-rp-ink rp-shadow-soft">
                         {mode === 'scratch' ? (
                             <span className="flex items-center gap-1.5"><Maping size={16} className="text-rp-ochre" aria-hidden /><NumberFlow value={metrics.scratch.count} /> <span className="text-rp-muted">countries</span></span>

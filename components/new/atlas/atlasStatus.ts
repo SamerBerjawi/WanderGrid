@@ -1,5 +1,6 @@
 import { CountryResidenceStatus, VisitedItem, getResidenceStatuses } from '../../../types';
 import { mix, type RGB, type RpPalette } from '../map/mapPalette';
+import { AirplaneLanding, CheckCircle, ClockCounterClockwise, Heart, House, type Icon } from '../../ui/hugeicons';
 
 /**
  * Country status colours on the Atlas (decided 2026-10-18): visited = green, lived (past or current)
@@ -50,10 +51,18 @@ export const toneFill = (tone: AtlasTone | null, p: RpPalette): RGB => {
 };
 
 /** Status names for the status picker, in display order, with the two groups that can't mix. */
-export const STATUS_OPTIONS: { value: CountryResidenceStatus; label: string; group: 'stay' | 'plan' }[] = [
-    { value: 'visited', label: 'Visited', group: 'stay' },
-    { value: 'lived_past', label: 'Lived here', group: 'stay' },
-    { value: 'lived_current', label: 'Live here now', group: 'stay' },
-    { value: 'layover', label: 'Layover', group: 'plan' },
-    { value: 'wishlist', label: 'Wishlist', group: 'plan' },
+export const STATUS_OPTIONS: { value: CountryResidenceStatus; label: string; group: 'stay' | 'plan'; icon: Icon }[] = [
+    { value: 'visited', label: 'Visited', group: 'stay', icon: CheckCircle },
+    { value: 'lived_past', label: 'Lived here', group: 'stay', icon: ClockCounterClockwise },
+    { value: 'lived_current', label: 'Live here now', group: 'stay', icon: House },
+    { value: 'layover', label: 'Layover', group: 'plan', icon: AirplaneLanding },
+    { value: 'wishlist', label: 'Wishlist', group: 'plan', icon: Heart },
 ];
+
+/** Status icons, the same as the New map's country status chips. */
+export const TONE_ICON: Record<AtlasTone, Icon> = {
+    lived: House,
+    visited: CheckCircle,
+    wishlist: Heart,
+    layover: AirplaneLanding,
+};

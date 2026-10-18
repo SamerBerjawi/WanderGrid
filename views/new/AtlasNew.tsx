@@ -7,18 +7,18 @@ import { toast } from '../../services/toast';
 import { formatDate } from '../../utils/formatters';
 import ScrollIndex from '../../components/kokonutui/scroll-index';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
-import MomentumRail from '../../components/kokonutui/momentum-rail';
+import MomentumRail, { type RailItem } from '../../components/kokonutui/momentum-rail';
 import MorphPopover from '../../components/kokonutui/morph-popover';
-import ParticleButton from '../../components/kokonutui/particle-button';
 import { RpEmpty } from '../../components/new/ui';
 import { AtlasMap } from '../../components/new/atlas/AtlasMap';
 import { CityTile, CountryTile, FlagArt, RegionHeading, RpChipLabel, RpKpi } from '../../components/new/atlas/AtlasParts';
 import { AddCountrySheet, CitySheet, CountrySheet, ScanSheet, type CountryTarget } from '../../components/new/atlas/AtlasSheets';
 import { WishlistPanel } from '../../components/new/atlas/WishlistPanel';
-import { toneOf, type AtlasTone } from '../../components/new/atlas/atlasStatus';
+import { MergeDrawer } from '../../components/new/atlas/MergeDrawer';
+import { TONE_LABEL, toneOf, type AtlasTone } from '../../components/new/atlas/atlasStatus';
 import { openNewPage } from '../../components/new/devLinks';
 import {
-    Airplane, ArrowUpRight, Buildings, Globe, Heart, MagnifyingGlass, Plus, Sparkle, Stack, X,
+    Airplane, ArrowUpRight, Buildings, Carousel, Globe, Heart, MagnifyingGlass, Plus, Sparkle, SquaresFour, Stack, X,
 } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
@@ -36,6 +36,11 @@ interface AtlasNewProps {
 
 type Tab = 'countries' | 'cities' | 'layovers' | 'wishlist';
 const TAB_KEY = 'wandergrid_atlas_new_tab';
+const VIEW_KEY = 'wandergrid_atlas_new_view';
+type ListView = 'grid' | 'rail';
+const readView = (): ListView => {
+    try { return localStorage.getItem(VIEW_KEY) === 'rail' ? 'rail' : 'grid'; } catch { return 'grid'; }
+};
 const SCANNED_KEY = 'wandergrid_atlas_new_autoscan';
 
 const readTab = (): Tab => {
@@ -56,11 +61,17 @@ const matches = (q: string, ...parts: (string | undefined)[]) => {
 export const AtlasNew: React.FC<AtlasNewProps> = () => {
     const data = useAtlasData();
     const [tab, setTab] = useState<Tab>(readTab);
+    const [view, setView] = useState<ListView>(readView);
+    const changeView = (next: ListView) => {
+        setView(next);
+        try { localStorage.setItem(VIEW_KEY, next); } catch { /* storage unavailable */ }
+    };
     const [query, setQuery] = useState('');
     const [countryTarget, setCountryTarget] = useState<CountryTarget | null>(null);
     const [city, setCity] = useState<VisitedItem | null>(null);
     const [adding, setAdding] = useState<'visited' | 'wishlist' | null>(null);
     const [scanOpen, setScanOpen] = useState(false);
+    const [mergeOpen, setMergeOpen] = useState(false);
 
     const changeTab = (next: Tab) => {
         setTab(next);
@@ -138,22 +149,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                 railClassName="hidden lg:flex"
             >
                 <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6">
-                    {/* Header: title and KPIs */}
-                    <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-                        <h1 className="text-[2.25rem] font-medium leading-[1.05] tracking-tight text-rp-ink sm:text-[2.5rem]">
-                            Travel<br />atlas
-                        </h1>
-                        <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:flex lg:gap-8">
-                            <RpKpi
-                                icon={Globe}
-                                value={data.visitedCountries.length}
-                                label="Countries visited"
-                                chip={data.visitedCountries.length > 0 ? <RpChipLabel>{data.worldShare}% of the world</RpChipLabel> : undefined}
-                            />
-                            <RpKpi icon={Buildings} value={data.cities.length} label={data.cityCountryCount > 0 ? `Cities in ${data.cityCountryCount} ${data.cityCountryCount === 1 ? 'country' : 'countries'}` : 'Cities'} />
-                            <RpKpi icon={Heart} value={data.wishlist.length} label="On the wishlist" />
-                        </div>
-                    </header>
+                    <h1 className="text-[2.25rem] font-medium leading-[1.05] tracking-tight text-rp-ink sm:text-[2.5rem]">Travel Atlas</h1>
 
                     {data.error ? (
                         <div className="rounded-rp-card bg-rp-surface rp-shadow-rest">
@@ -171,25 +167,47 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                                     {data.cleanup.count} duplicate {data.cleanup.count === 1 ? 'record' : 'records'} found. Merge them so every page shows each place once.
                                 </p>
                             </div>
-                            <ParticleButton onClick={() => data.mergeDuplicates()} pendingLabel="Merging" successLabel="Merged" errorLabel="Try again" className="self-start sm:self-auto">
-                                Merge
-                            </ParticleButton>
+                            <button type="button" onClick={() => setMergeOpen(true)} className={cn(PILL, 'self-start bg-rp-ink text-rp-on-ink hover:bg-rp-ink/90 sm:self-auto')}>
+                                Review and merge
+                            </button>
                         </div>
                     ) : null}
 
-                    {/* World map */}
-                    <section aria-labelledby="atlas-world" className="rounded-rp-card bg-rp-surface p-4 rp-shadow-rest sm:p-6">
-                        <div className="mb-4 flex items-center justify-between gap-3">
-                            <div className="min-w-0">
-                                <h2 id="atlas-world" className="text-base font-medium text-rp-ink">World</h2>
-                                <p className="text-xs text-rp-muted">Tap a country to open it or add it.</p>
+                    {/* World map (half width) with the statistics beside it */}
+                    <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
+                        <section aria-labelledby="atlas-world" className="rounded-rp-card bg-rp-surface p-4 rp-shadow-rest sm:p-5">
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                    <h2 id="atlas-world" className="text-base font-medium text-rp-ink">World</h2>
+                                    <p className="text-xs text-rp-muted">Tap a country to open it or add it.</p>
+                                </div>
+                                <button type="button" onClick={() => openNewPage('/map-new')} className={cn(PILL, 'bg-rp-inset text-rp-ink hover:bg-rp-line')}>
+                                    <span className="hidden sm:inline">Open in map</span><span className="sm:hidden">Map</span> <ArrowUpRight size={16} aria-hidden />
+                                </button>
                             </div>
-                            <button type="button" onClick={() => openNewPage('/map-new')} className={cn(PILL, 'bg-rp-inset text-rp-ink hover:bg-rp-line')}>
-                                <span className="hidden sm:inline">Open in map</span><span className="sm:hidden">Map</span> <ArrowUpRight size={16} aria-hidden />
-                            </button>
+                            <AtlasMap tones={tones} counts={toneCounts} onCountryClick={(code, name) => openCountry(code, name)} />
+                        </section>
+                        <div className="order-first grid grid-cols-2 gap-3 sm:gap-4 lg:order-none lg:gap-6">
+                            <StatTile>
+                                <RpKpi
+                                    stacked
+                                    icon={Globe}
+                                    value={data.visitedCountries.length}
+                                    label="Countries visited"
+                                    chip={data.visitedCountries.length > 0 ? <RpChipLabel>{data.worldShare}% of the world</RpChipLabel> : undefined}
+                                />
+                            </StatTile>
+                            <StatTile>
+                                <RpKpi stacked icon={Buildings} value={data.cities.length} label={data.cityCountryCount > 0 ? `Cities in ${data.cityCountryCount} ${data.cityCountryCount === 1 ? 'country' : 'countries'}` : 'Cities'} />
+                            </StatTile>
+                            <StatTile>
+                                <RpKpi stacked icon={Heart} value={data.wishlist.length} label="On the wishlist" />
+                            </StatTile>
+                            <StatTile>
+                                <RpKpi stacked icon={Airplane} value={data.layovers.length} label="Layover countries" />
+                            </StatTile>
                         </div>
-                        <AtlasMap tones={tones} counts={toneCounts} onCountryClick={(code, name) => openCountry(code, name)} />
-                    </section>
+                    </div>
 
                     {/* Recently visited */}
                     {recent.length >= 3 ? (
@@ -223,7 +241,22 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                                 />
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
-                                <label className="relative flex w-full min-w-0 items-center sm:w-auto sm:flex-1 lg:w-64 lg:flex-none">
+                                {tab === 'countries' || tab === 'cities' ? (
+                                    <SwipeTabs
+                                        items={[
+                                            { id: 'grid', title: 'Grid', icon: SquaresFour, hideTitle: true },
+                                            { id: 'rail', title: 'Rail', icon: Carousel, hideTitle: true },
+                                        ]}
+                                        value={view}
+                                        onChange={id => changeView(id as ListView)}
+                                        panels={false}
+                                        compact
+                                        label="View"
+                                        className="w-auto shrink-0"
+                                        listClassName="bg-rp-surface rp-shadow-soft"
+                                    />
+                                ) : null}
+                                <label className="relative flex min-w-0 flex-1 basis-40 items-center sm:basis-auto lg:w-64 lg:flex-none">
                                     <span className="sr-only">Search places</span>
                                     <MagnifyingGlass size={16} className="pointer-events-none absolute left-4 text-rp-muted" aria-hidden />
                                     <input
@@ -270,6 +303,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                             </div>
                         ) : tab === 'countries' ? (
                             <CountryGroups
+                                view={view}
                                 items={filteredCountries(data.visitedCountries)}
                                 onOpen={openItem}
                                 empty={query
@@ -278,6 +312,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                             />
                         ) : tab === 'layovers' ? (
                             <CountryGroups
+                                view="grid"
                                 items={filteredCountries(data.layovers)}
                                 onOpen={openItem}
                                 empty={<RpEmpty title={query ? 'No layovers match' : 'No layovers'}>{query ? 'Try another name.' : 'Countries you only passed through appear here.'}</RpEmpty>}
@@ -297,6 +332,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                             )
                         ) : (
                             <CityGroups
+                                view={view}
                                 items={visibleCities}
                                 storedIds={data.storedIds}
                                 onOpen={setCity}
@@ -320,9 +356,14 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                 }}
             />
             <ScanSheet open={scanOpen} onClose={() => setScanOpen(false)} data={data} />
+            <MergeDrawer open={mergeOpen} onOpenChange={setMergeOpen} review={data.cleanup.review} onConfirm={() => data.mergeDuplicates()} />
         </div>
     );
 };
+
+const StatTile: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <div className="flex min-w-0 flex-col justify-between rounded-rp-tile bg-rp-surface p-4 rp-shadow-rest sm:p-5">{children}</div>
+);
 
 const TabCount: React.FC<{ n: number }> = ({ n }) => <span className="rp-tabular text-xs opacity-70">{n}</span>;
 
@@ -337,9 +378,41 @@ const EmptyActions: React.FC<{ hasHistory: boolean; onScan: () => void; onAdd: (
     </div>
 );
 
-const CountryGroups: React.FC<{ items: VisitedItem[]; onOpen: (item: VisitedItem) => void; empty: React.ReactNode }> = ({ items, onOpen, empty }) => {
+/** The Rail view of countries and cities: one Momentum Rail, ordered by region then name. */
+const PlacesRail: React.FC<{ title: string; groups: { region: string; items: VisitedItem[] }[]; toItem: (item: VisitedItem, region: string) => RailItem; onSelect: (id: string) => void }> = ({ title, groups, toItem, onSelect }) => {
+    const items = groups.flatMap(g => g.items.map(item => toItem(item, g.region)));
+    return (
+        <section className="rounded-rp-card bg-rp-surface py-3 rp-shadow-rest">
+            <MomentumRail
+                title={title}
+                eyebrow={`${items.length} ${items.length === 1 ? 'place' : 'places'} · ${groups.length} ${groups.length === 1 ? 'region' : 'regions'}`}
+                items={items}
+                onSelect={railItem => onSelect(railItem.id)}
+            />
+        </section>
+    );
+};
+
+const CountryGroups: React.FC<{ view: ListView; items: VisitedItem[]; onOpen: (item: VisitedItem) => void; empty: React.ReactNode }> = ({ view, items, onOpen, empty }) => {
     const groups = useMemo(() => groupByRegion(items, i => i.code), [items]);
     if (items.length === 0) return <EmptyCard>{empty}</EmptyCard>;
+    if (view === 'rail') {
+        const byId = new Map(items.map(i => [i.id, i]));
+        return (
+            <PlacesRail
+                title="Countries"
+                groups={groups}
+                onSelect={id => { const item = byId.get(id); if (item) onOpen(item); }}
+                toItem={(c, region) => ({
+                    id: c.id,
+                    title: c.name,
+                    location: `${region} · ${TONE_LABEL[toneOf(c)]}`,
+                    meta: c.visitDate ? formatDate(c.visitDate, 'month-year') : undefined,
+                    art: <FlagArt code={c.code} tone={toneOf(c)} />,
+                })}
+            />
+        );
+    }
     return (
         <div>
             {groups.map(group => (
@@ -355,13 +428,32 @@ const CountryGroups: React.FC<{ items: VisitedItem[]; onOpen: (item: VisitedItem
 };
 
 const CityGroups: React.FC<{
+    view: ListView;
     items: VisitedItem[];
     storedIds: Set<string>;
     onOpen: (item: VisitedItem) => void;
     empty: React.ReactNode;
-}> = ({ items, storedIds, onOpen, empty }) => {
+}> = ({ view, items, storedIds, onOpen, empty }) => {
     const groups = useMemo(() => groupByRegion(items, i => i.countryCode), [items]);
     if (items.length === 0) return <EmptyCard>{empty}</EmptyCard>;
+    if (view === 'rail') {
+        const byId = new Map(items.map(i => [i.id, i]));
+        return (
+            <PlacesRail
+                title="Cities"
+                groups={groups}
+                // Places that come from trips can't be edited here, so only stored cities open.
+                onSelect={id => { const item = byId.get(id); if (item && storedIds.has(id)) onOpen(item); }}
+                toItem={(c, region) => ({
+                    id: c.id,
+                    title: c.name,
+                    location: c.countryName || region,
+                    meta: [c.visitDate ? formatDate(c.visitDate, 'month-year') : null, storedIds.has(c.id) ? null : 'From trips'].filter(Boolean).join(' · ') || undefined,
+                    art: <FlagArt code={c.countryCode} tone="visited" />,
+                })}
+            />
+        );
+    }
     return (
         <div>
             {groups.map(group => (

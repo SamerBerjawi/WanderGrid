@@ -568,3 +568,5 @@ The view inventory below lists which **features** each New page inherits, and su
 | 13 | Charts | **BklitUI** |
 | 14 | Using the old pages | **Clean slate.** Map only features (data, actions, backend). Never port design, layout, hero cards, statistics or charts just because they existed (§5.0) |
 | 15 | Chrome colour (MapNew review) | Nav, mobile tab bar and tool dock sit on `rp-surface`: light in light mode, dark in dark mode. Ink is kept for the selected state. The selected view pill takes its view's accent (All ink, Flights rust, Land & sea green, Scratch mustard) |
+| 16 | Desktop menu bar (Atlas review) | The desktop/tablet menu bar (Split Nav) goes back to **ink pills**: dark in light mode, light in dark mode, with no shared backdrop or shadow behind the row. Supersedes decision 15 for that bar only; the mobile tab bar and the map tool dock stay on `rp-surface` |
+| 17 | Map page layout (Atlas review) | The view selector (All, Flights, Land & sea, Scratch) sits at the bottom: bottom centre on tablet and desktop, above the tool dock on phones. The totals sit top-left, under the header. Search stays at the top |

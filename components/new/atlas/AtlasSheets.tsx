@@ -115,6 +115,7 @@ export const CountrySheet: React.FC<{ target: CountryTarget | null; onClose: () 
                                 selected={statuses.includes(opt.value)}
                                 onClick={() => setStatuses(s => toggleCountryResidenceStatus(s, opt.value))}
                             >
+                                <opt.icon size={16} aria-hidden />
                                 {opt.label}
                             </RpChip>
                         ))}

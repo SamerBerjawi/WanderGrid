@@ -9,7 +9,7 @@ import { ArrowsIn, Minus, Plus } from '../../ui/hugeicons';
 import { RpIconButton } from '../ui';
 import { getFlagEmoji } from '../../../services/geoData';
 import { normalizeCountryCode } from '../../../services/countryRegistry';
-import { TONE_DOT, TONE_LABEL, toneFill, type AtlasTone } from './atlasStatus';
+import { TONE_DOT, TONE_ICON, TONE_LABEL, toneFill, type AtlasTone } from './atlasStatus';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -172,13 +172,17 @@ export const AtlasMap: React.FC<AtlasMapProps> = ({ tones, counts, onCountryClic
                 )}
             </div>
             <ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 px-1" aria-label="Map legend">
-                {legend.map(tone => (
-                    <li key={tone} className="flex items-center gap-2 text-xs text-rp-muted">
+                {legend.map(tone => {
+                    const IconC = TONE_ICON[tone];
+                    return (
+                    <li key={tone} className="flex items-center gap-1.5 text-xs text-rp-muted">
                         <span aria-hidden className={cn('size-2.5 rounded-full', TONE_DOT[tone])} />
+                        <IconC size={14} aria-hidden className="ml-0.5" />
                         <span className="text-rp-ink">{TONE_LABEL[tone]}</span>
                         <span className="rp-tabular">{counts[tone]}</span>
                     </li>
-                ))}
+                    );
+                })}
             </ul>
         </div>
     );

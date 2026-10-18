@@ -3,8 +3,16 @@ import { Trip, VisitedItem } from '../types';
 import { dataService } from '../services/mockDb';
 import { affectsCollections } from './useWanderSync';
 import { refineUKCountry } from '../services/geocoding';
-import { mergeCountryRecords, planCountryCleanup, ukNationsFromCities } from '../services/countryRegistry';
-import { planCityCleanup } from '../services/cityRegistry';
+import { mergeCountryRecords, normalizeCountryCode, planCountryCleanup, resolveCountryCode, ukNationsFromCities } from '../services/countryRegistry';
+import { cityKey, planCityCleanup } from '../services/cityRegistry';
+
+/** One line of the merge review: a record to write (merging its sources) or a stored record to remove. */
+export interface CleanupReviewItem {
+    id: string;
+    kind: 'merge' | 'update' | 'remove';
+    record: VisitedItem;
+    sources: VisitedItem[];
+}
 import {
     CityDraft, CountryDraft, ScanResult, buildTrackedCities, cityRecordFor, countryRecordFor, duplicateIdsOf, isLayoverCountry,
     isVisitedCountry, isWishlistCountry, promoteToVisited, resolveAirportCity, scanHistory, scanImportRecords, WORLD_COUNTRY_COUNT,
@@ -60,11 +68,24 @@ export const useAtlasData = () => {
     const cleanup = useMemo(() => {
         const c = planCountryCleanup(visited, { ukConstituentsFor: ukNations });
         const ci = planCityCleanup(visited, { resolveAirport: resolveAirportCity });
-        return {
-            upserts: [...c.upserts, ...ci.upserts],
-            deleteIds: [...c.deleteIds, ...ci.deleteIds],
-            count: c.upserts.length + c.deleteIds.length + ci.upserts.length + ci.deleteIds.length,
-        };
+        const upserts = [...c.upserts, ...ci.upserts];
+        const deleteIds = [...c.deleteIds, ...ci.deleteIds];
+
+        // For review: each surviving record with the stored entries folded into it; leftovers are removals.
+        const deleteSet = new Set(deleteIds);
+        const covered = new Set<string>();
+        const sameRecord = (s: VisitedItem, rec: VisitedItem) => s.type === rec.type && (
+            rec.type === 'country' ? resolveCountryCode(s) === normalizeCountryCode(rec.code) : cityKey(s.name) === cityKey(rec.name)
+        );
+        const review: CleanupReviewItem[] = upserts.map(rec => {
+            const sources = visited.filter(s => s.id === rec.id || (deleteSet.has(s.id) && sameRecord(s, rec)));
+            sources.forEach(s => covered.add(s.id));
+            return { id: rec.id, kind: sources.length > 1 ? 'merge' : 'update', record: rec, sources };
+        });
+        visited.filter(s => deleteSet.has(s.id) && !covered.has(s.id)).forEach(s => {
+            review.push({ id: `remove_${s.id}`, kind: 'remove', record: s, sources: [s] });
+        });
+        return { upserts, deleteIds, review, count: upserts.length + deleteIds.length };
     }, [visited, ukNations]);
 
     const worldShare = Math.round((visitedCountries.length / WORLD_COUNTRY_COUNT) * 1000) / 10;
