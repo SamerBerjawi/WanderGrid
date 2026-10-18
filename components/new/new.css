@@ -100,6 +100,23 @@
   box-shadow: 0 12px 32px rgb(0 0 0 / 0.18), 0 2px 6px rgb(0 0 0 / 0.08);
 }
 
+/* Native date fields on New pages: themed picker icon and the right calendar colours per theme. */
+.rp-date {
+  color-scheme: light;
+}
+:root.dark .rp-date {
+  color-scheme: dark;
+}
+.rp-date::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
+  border-radius: 9999px;
+  padding: 4px;
+}
+.rp-date::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.9;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rp-root *,
   .rp-root *::before,

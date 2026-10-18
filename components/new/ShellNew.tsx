@@ -27,7 +27,7 @@ export const SHELL_NAV: ShellNavItem[] = [
     { path: '/planner', label: 'Trips', icon: Suitcase },
     { path: '/flights', label: 'Flights', icon: Airplane },
     { path: '/calendar', label: 'Calendar', icon: CalendarBlank },
-    { path: '/atlas', label: 'Atlas', icon: Globe },
+    { path: '/atlas-new', label: 'Atlas', icon: Globe },
     { path: '/map-new', label: 'Map', icon: MapTrifold },
 ];
 

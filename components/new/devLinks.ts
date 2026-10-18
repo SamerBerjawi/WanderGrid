@@ -6,6 +6,7 @@ export const SHOW_NEW_PAGE_LINKS = import.meta.env.DEV;
 
 export const NEW_PAGE_LINKS = [
     { path: '/map-new', label: 'Map (new)', short: 'Map new', icon: 'public' },
+    { path: '/atlas-new', label: 'Atlas (new)', short: 'Atlas new', icon: 'explore' },
 ] as const;
 
 /** Opens a New page in place: App.tsx listens for popstate and renders it inside ShellNew. */
