@@ -567,3 +567,4 @@ The view inventory below lists which **features** each New page inherits, and su
 | 12 | Flight list | **Table / Board toggle.** Board is the Departure Board, restyled in the video's colours and type |
 | 13 | Charts | **BklitUI** |
 | 14 | Using the old pages | **Clean slate.** Map only features (data, actions, backend). Never port design, layout, hero cards, statistics or charts just because they existed (§5.0) |
+| 15 | Chrome colour (MapNew review) | Nav, mobile tab bar and tool dock sit on `rp-surface`: light in light mode, dark in dark mode. Ink is kept for the selected state. The selected view pill takes its view's accent (All ink, Flights rust, Land & sea green, Scratch mustard) |

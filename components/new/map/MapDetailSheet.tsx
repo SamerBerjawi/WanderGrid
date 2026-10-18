@@ -1,4 +1,6 @@
 import React, { useMemo } from 'react';
+import NumberFlow from '@number-flow/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import type { Carrier, CountryResidenceStatus, Trip } from '../../../types';
 import { toggleCountryResidenceStatus } from '../../../types';
 import { buildRouteCorridors, getFlagEmoji, getRouteTransportSummary } from '../../../services/routeCorridor';
@@ -29,7 +31,26 @@ const COUNTRY_STATUSES: { value: CountryResidenceStatus; label: string }[] = [
     { value: 'wishlist', label: 'Wishlist' },
 ];
 
-const km = (n: number) => `${Math.round(n).toLocaleString()} km`;
+
+/** Text that slides and fades when it changes (dates, labels), to match NumberFlow's rolling numbers. */
+const SwapText: React.FC<{ text: string }> = ({ text }) => {
+    const reduce = useReducedMotion();
+    return (
+        <span className="relative inline-flex overflow-hidden">
+            <AnimatePresence mode="popLayout" initial={false}>
+                <motion.span
+                    key={text}
+                    initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8 }}
+                    transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+                >
+                    {text}
+                </motion.span>
+            </AnimatePresence>
+        </span>
+    );
+};
 
 const Stat: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
     <div className="flex min-w-0 flex-col">
@@ -76,7 +97,7 @@ export const MapDetailSheet: React.FC<MapDetailSheetProps> = ({
                 onClose={onClose}
                 topOffset={topOffset}
                 title={title}
-                subtitle={<span className="inline-flex items-center gap-1.5"><Icon size={14} /> {MODE_LABEL[r.mode]} · {km(r.distanceKm)}</span>}
+                subtitle={<span className="inline-flex items-center gap-1.5"><Icon size={14} /> <SwapText text={MODE_LABEL[r.mode]} /> · <NumberFlow value={Math.round(r.distanceKm)} /> km</span>}
             >
                 <div className="flex flex-col gap-5">
                     {corridor ? (
@@ -93,9 +114,9 @@ export const MapDetailSheet: React.FC<MapDetailSheetProps> = ({
                         </div>
                     ) : null}
                     <div className="grid grid-cols-3 gap-3 px-1">
-                        <Stat label={summary?.activityLabel || 'Trips'} value={r.count} />
-                        <Stat label="First" value={dates.length ? formatDate(dates[dates.length - 1], 'month-year') : '—'} />
-                        <Stat label="Last" value={dates.length ? formatDate(dates[0], 'month-year') : '—'} />
+                        <Stat label={summary?.activityLabel || 'Trips'} value={<NumberFlow value={r.count} />} />
+                        <Stat label="First" value={<SwapText text={dates.length ? formatDate(dates[dates.length - 1], 'month-year') : '—'} />} />
+                        <Stat label="Last" value={<SwapText text={dates.length ? formatDate(dates[0], 'month-year') : '—'} />} />
                     </div>
                     {operators.length ? (
                         <RpSection icon={Icon} title={summary?.providerLabel || 'Operators'}>
@@ -143,7 +164,7 @@ export const MapDetailSheet: React.FC<MapDetailSheetProps> = ({
         const p = selection.place;
         const routes = model.routes.filter(r => r.origin === p.id || r.destination === p.id).sort((a, b) => b.count - a.count);
         return (
-            <RpSheet open onClose={onClose} topOffset={topOffset} title={p.label} subtitle={`${p.kind === 'airport' ? 'Airport' : 'Place'} · ${p.count} ${p.count === 1 ? 'visit' : 'visits'}`}>
+            <RpSheet open onClose={onClose} topOffset={topOffset} title={p.label} subtitle={<span>{p.kind === 'airport' ? 'Airport' : 'Place'} · <NumberFlow value={p.count} /> {p.count === 1 ? 'visit' : 'visits'}</span>}>
                 <RpSection icon={Path} title="Routes">
                     <ul className="flex flex-col divide-y divide-rp-line">
                         {routes.map(r => {

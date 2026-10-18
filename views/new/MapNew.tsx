@@ -40,6 +40,13 @@ type Tool = 'explore' | 'search' | 'layers' | 'filter';
 type Mode = Exclude<PredefinedMapMode, 'none'>;
 
 const MODE_KEY = 'wandergrid_map_new_mode';
+/** The selected view's pill takes that view's accent; All stays the neutral ink. */
+const MODE_PILL: Record<Mode, { bg: string; text: string }> = {
+    all: { bg: 'bg-rp-ink', text: 'text-rp-on-ink' },
+    flights: { bg: 'bg-rp-rust', text: 'text-rp-paper' },
+    land_sea: { bg: 'bg-rp-green', text: 'text-rp-paper' },
+    scratch: { bg: 'bg-rp-mustard', text: 'text-rp-on-mustard' },
+};
 const GROUP_KEY = 'wandergrid_map_new_group_airports';
 const HEADER = 68;
 
@@ -254,6 +261,8 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                             label="What to show"
                             className="w-auto"
                             listClassName="bg-rp-surface rp-shadow-soft"
+                            activeColor={MODE_PILL[mode].bg}
+                            activeTextColor={MODE_PILL[mode].text}
                         />
                     </div>
                 )}
@@ -265,7 +274,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                 value={tool}
                 onValueChange={id => openTool(id as Tool)}
                 toggleTo="explore"
-                tone="ink"
+                tone="surface"
                 defaultEdge={mobile ? 'bottom' : 'left'}
                 fixed={mobile}
                 shortcuts="global"
