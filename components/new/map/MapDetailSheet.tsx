@@ -6,7 +6,7 @@ import { toggleCountryResidenceStatus } from '../../../types';
 import { buildRouteCorridors, getFlagEmoji, getRouteTransportSummary } from '../../../services/routeCorridor';
 import { formatDate } from '../../../utils/formatters';
 import { formatProperLocationName } from '../../../services/geocoding';
-import { Airplane, ArrowRight, Boat, Car, CheckCircle, type Icon, Path, Ticket, Train } from '../../ui/hugeicons';
+import { Airplane, AirplaneLanding, ArrowRight, Boat, Car, CheckCircle, ClockCounterClockwise, Heart, House, type Icon, Path, Ticket, Train, XCircle } from '../../ui/hugeicons';
 import { RpChip, RpLogo, RpSection, RpSheet } from '../ui';
 import { cn } from '../../../utils/cn';
 import type { LegMode, LegStatus, MapModel, MapPlace, MapRoute } from './mapModel';
@@ -23,12 +23,12 @@ const MODE_LABEL: Record<LegMode, string> = { flight: 'Flight', rail: 'Train', r
 const STATUS_DOT: Record<LegStatus, string> = { past: 'bg-rp-ink', upcoming: 'bg-rp-green', planning: 'bg-rp-mustard' };
 const STATUS_LABEL: Record<LegStatus, string> = { past: 'Past', upcoming: 'Upcoming', planning: 'Planning' };
 
-const COUNTRY_STATUSES: { value: CountryResidenceStatus; label: string }[] = [
-    { value: 'visited', label: 'Visited' },
-    { value: 'lived_current', label: 'Live here' },
-    { value: 'lived_past', label: 'Lived here' },
-    { value: 'layover', label: 'Layover' },
-    { value: 'wishlist', label: 'Wishlist' },
+const COUNTRY_STATUSES: { value: CountryResidenceStatus; label: string; icon: Icon }[] = [
+    { value: 'visited', label: 'Visited', icon: CheckCircle },
+    { value: 'lived_current', label: 'Live here', icon: House },
+    { value: 'lived_past', label: 'Lived here', icon: ClockCounterClockwise },
+    { value: 'layover', label: 'Layover', icon: AirplaneLanding },
+    { value: 'wishlist', label: 'Wishlist', icon: Heart },
 ];
 
 
@@ -204,10 +204,14 @@ export const MapDetailSheet: React.FC<MapDetailSheetProps> = ({
                                 onUpdateCountryStatus(code, name, next.length ? next : 'none');
                             }}
                         >
+                            <s.icon size={16} aria-hidden />
                             {s.label}
                         </RpChip>
                     ))}
-                    <RpChip selected={false} onClick={() => onUpdateCountryStatus(code, name, 'none')}>Clear</RpChip>
+                    <RpChip selected={false} onClick={() => onUpdateCountryStatus(code, name, 'none')}>
+                        <XCircle size={16} aria-hidden />
+                        Clear
+                    </RpChip>
                 </div>
             </RpSection>
         </RpSheet>
