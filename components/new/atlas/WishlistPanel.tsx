@@ -45,7 +45,7 @@ export const WishlistPanel: React.FC<{
             </section>
             <div>
                 {groups.map(group => (
-                    <section key={group.region}>
+                    <section key={group.region} className="mt-7 first:mt-0">
                         <RegionHeading region={group.region} count={group.items.length} />
                         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                             {group.items.map(item => <CountryTile key={item.id} item={item} onClick={() => onOpen(item)} />)}

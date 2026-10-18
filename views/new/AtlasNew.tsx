@@ -143,7 +143,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                         <h1 className="text-[2.25rem] font-medium leading-[1.05] tracking-tight text-rp-ink sm:text-[2.5rem]">
                             Travel<br />atlas
                         </h1>
-                        <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-3 lg:flex lg:gap-8">
+                        <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:flex lg:gap-8">
                             <RpKpi
                                 icon={Globe}
                                 value={data.visitedCountries.length}
@@ -185,7 +185,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                                 <p className="text-xs text-rp-muted">Tap a country to open it or add it.</p>
                             </div>
                             <button type="button" onClick={() => openNewPage('/map-new')} className={cn(PILL, 'bg-rp-inset text-rp-ink hover:bg-rp-line')}>
-                                Open in map <ArrowUpRight size={16} aria-hidden />
+                                <span className="hidden sm:inline">Open in map</span><span className="sm:hidden">Map</span> <ArrowUpRight size={16} aria-hidden />
                             </button>
                         </div>
                         <AtlasMap tones={tones} counts={toneCounts} onCountryClick={(code, name) => openCountry(code, name)} />
@@ -223,7 +223,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                                 />
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
-                                <label className="relative flex min-w-0 flex-1 items-center lg:w-64 lg:flex-none">
+                                <label className="relative flex w-full min-w-0 items-center sm:w-auto sm:flex-1 lg:w-64 lg:flex-none">
                                     <span className="sr-only">Search places</span>
                                     <MagnifyingGlass size={16} className="pointer-events-none absolute left-4 text-rp-muted" aria-hidden />
                                     <input
@@ -343,7 +343,7 @@ const CountryGroups: React.FC<{ items: VisitedItem[]; onOpen: (item: VisitedItem
     return (
         <div>
             {groups.map(group => (
-                <section key={group.region}>
+                <section key={group.region} className="mt-7 first:mt-0">
                     <RegionHeading region={group.region} count={group.items.length} />
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         {group.items.map(item => <CountryTile key={item.id} item={item} onClick={() => onOpen(item)} />)}
@@ -365,7 +365,7 @@ const CityGroups: React.FC<{
     return (
         <div>
             {groups.map(group => (
-                <section key={group.region}>
+                <section key={group.region} className="mt-7 first:mt-0">
                     <RegionHeading region={group.region} count={group.items.length} />
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         {group.items.map(item => {

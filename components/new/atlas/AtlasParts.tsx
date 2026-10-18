@@ -13,16 +13,17 @@ import { cn } from '../../../utils/cn';
 export const RpKpi: React.FC<{ icon: Icon; value: number; label: string; chip?: ReactNode; format?: Format }> = ({
     icon: IconC, value, label, chip, format,
 }) => (
-    <div className="flex min-w-0 items-center gap-3">
+    // Phones: icon above the value, so three KPIs fit side by side.
+    <div className="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rp-surface text-rp-ink rp-shadow-rest">
             <IconC size={18} aria-hidden />
         </span>
         <span className="flex min-w-0 flex-col">
-            <span className="flex items-center gap-2">
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <NumberFlow value={value} format={format} className="rp-tabular text-xl font-semibold leading-tight text-rp-ink" />
                 {chip}
             </span>
-            <span className="truncate text-xs text-rp-muted">{label}</span>
+            <span className="text-xs leading-snug text-rp-muted sm:truncate">{label}</span>
         </span>
     </div>
 );
@@ -63,7 +64,7 @@ export const FlagBadge: React.FC<{ code?: string; size?: 'md' | 'lg'; className?
 
 /** Region heading inside a list; Scroll Index ticks on these. */
 export const RegionHeading: React.FC<{ region: string; count: number }> = ({ region, count }) => (
-    <h3 data-atlas-index data-index-label={region} className="flex scroll-mt-4 items-baseline gap-2 px-1 pt-6 pb-3 text-sm font-medium text-rp-ink first:pt-0">
+    <h3 data-atlas-index data-index-label={region} className="flex scroll-mt-4 items-baseline gap-2 px-1 pb-3 text-sm font-medium text-rp-ink">
         {region}
         <span className="rp-tabular text-xs font-normal text-rp-muted">{count}</span>
     </h3>

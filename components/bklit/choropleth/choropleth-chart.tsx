@@ -492,6 +492,8 @@ export function ChoroplethChart({
         {({ width, height }) =>
           width > 0 && height > 0 ? (
             <ChoroplethChartInner
+              // Remount on resize: memoised feature layers otherwise keep the old projection's paths.
+              key={`${Math.round(width)}x${Math.round(height)}`}
               animationDuration={animationDuration}
               center={center}
               data={data}
