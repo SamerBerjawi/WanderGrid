@@ -3,6 +3,8 @@ import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import { TripsLayer } from '@deck.gl/geo-layers';
+import { ArcLayer } from '@deck.gl/layers';
+import { GlobeHorizonCullExtension } from '../../GlobeHorizonCullExtension';
 import { FEATURE_FLAGS } from '../../../config/featureFlags';
 import type { CountryResidenceStatus, PredefinedMapMode } from '../../../types';
 import { getEffectiveBasemap, normalizeAirportDetail, type MapAppearanceSettings, getYesterdayDateString } from '../../../types/mapAppearance';
@@ -12,12 +14,13 @@ import {
 import { OPENAIP_AIRSPACE_SOURCE_ID, ensureOpenAipIcons, getOpenAipOverlayLayers } from '../../../services/openAipStyle';
 import {
     OPENAIP_PROXY_TILES, OPENFREEMAP_STYLES, RAILROADS_GEOJSON_URL, COUNTRIES_GEOJSON_URL, TERRARIUM_DEM_TILES,
-    getBasemapTileConfig, gibsDailyTiles, withApiAuth,
+    getBasemapTileConfig, gibsDailyTiles, withApiAuth, isLightEffectiveBasemap,
 } from '../../../services/mapStyle';
 import { getCachedMultiModalRoute, fetchMultiModalRoute, getGeodesicArcPoints } from '../../../services/multiModalRouting';
-import { getNightTerminatorGeoJSON } from '../../../services/solarTerminator';
+import { getTwilightGradientGeoJSON } from '../../../services/solarTerminator';
 import { getLatestRainRadarTileUrl } from '../../../services/rainViewer';
 import { attachMissingImageLoader, initMapLibre } from './mapEngineInit';
+import { cn } from '../../../utils/cn';
 import { readRpPalette, rpTokensReady, rgba, css, mix, type RGB, type RpPalette } from './mapPalette';
 import type { LegStatus, MapModel, MapPlace, MapRoute, LngLat } from './mapModel';
 
@@ -147,6 +150,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
     /* ------------------------------------------------------------------ basemap style */
 
     const effectiveBasemap = getEffectiveBasemap(appearance.basemap, isDark, defaultBasemapLight, defaultBasemapDark);
+    const lightBasemap = isLightEffectiveBasemap(effectiveBasemap);
     const baseStyle = useMemo<string | maplibregl.StyleSpecification>(() => {
         const vector = FEATURE_FLAGS.GEV_P04B_OPENFREEMAP ? OPENFREEMAP_STYLES[effectiveBasemap] : undefined;
         if (vector) return vector;
@@ -221,11 +225,16 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         try {
             map.setProjection({ type: isGlobe ? 'globe' : 'mercator' });
             if (isGlobe && appearance.atmosphere !== false) {
+                // A thin, soft glow that matches the basemap: warm haze on light maps, deep blue on dark ones.
+                const glow: RGB = lightBasemap ? mix(palette.surface, palette.mustard, 0.25) : [70, 110, 170];
                 map.setSky({
-                    'sky-color': css(palette.canvas),
-                    'horizon-color': css(mix(palette.canvas, palette.surface, 0.5)),
-                    'fog-color': css(palette.canvas),
-                    'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0],
+                    'sky-color': css(glow, lightBasemap ? 0.9 : 0.85),
+                    'horizon-color': css(glow, 0.6),
+                    'fog-color': css(lightBasemap ? palette.surface : [10, 14, 26], 0.9),
+                    'sky-horizon-blend': 0.6,
+                    'horizon-fog-blend': 0.4,
+                    'fog-ground-blend': 0.6,
+                    'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 0.55, 4, 0.35, 7, 0],
                 } as any);
             } else {
                 map.setSky(undefined as any);
@@ -234,7 +243,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
             // Older styles without projection support.
         }
         isGlobe ? map.dragRotate.enable() : map.dragRotate.disable();
-    }, [styleVersion, isGlobe, appearance.atmosphere, palette]);
+    }, [styleVersion, isGlobe, appearance.atmosphere, palette, lightBasemap]);
 
     /* ------------------------------------------------------------------ native overlays */
 
@@ -311,9 +320,9 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
                 id: 'rp-hillshade', type: 'hillshade', source: 'rp-dem',
                 paint: {
                     'hillshade-exaggeration': strength,
-                    'hillshade-shadow-color': css(palette.ink, isDark ? 0.9 : 0.55),
-                    'hillshade-highlight-color': css(palette.paper, isDark ? 0.15 : 0.6),
-                    'hillshade-accent-color': css(palette.muted, 0.4),
+                    'hillshade-shadow-color': lightBasemap ? css(palette.ink, 0.55) : css([255, 255, 255], 0.28),
+                    'hillshade-highlight-color': lightBasemap ? css([255, 255, 255], 0.45) : css([255, 255, 255], 0.08),
+                    'hillshade-accent-color': lightBasemap ? css(palette.ink, 0.25) : css([255, 255, 255], 0.18),
                 },
             }, below);
         } else if (!appearance.terrain3d) {
@@ -347,7 +356,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
             map.addLayer({ id: 'rp-radar', type: 'raster', source: 'rp-radar', paint: { 'raster-opacity': appearance.rainRadarOpacity ?? 0.85 } }, below);
         }
     }, [
-        styleVersion, isDark, palette, airportsOnly, radarUrl, openAipAvailable,
+        styleVersion, isDark, palette, airportsOnly, radarUrl, openAipAvailable, lightBasemap,
         appearance.airportDetail, appearance.openAipOverlay, appearance.openAipGroups, appearance.openAipOpacity, appearance.openAipAirportCategories,
         appearance.gibsDaily, appearance.gibsDailyDate, appearance.gibsDailyOpacity,
         appearance.terrainHillshade, appearance.terrainHillshadeOpacity, appearance.terrain3d, appearance.terrain3dExaggeration,
@@ -481,8 +490,10 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         return { type: 'FeatureCollection' as const, features };
     }, [mode, countries, airportsOnly, visitedCountryCodes, countryStatusMap, palette, appearance.showLivedCountries, appearance.showLayoverCountries, appearance.showWishlistCountries]);
 
+    // Eight stacked caps (civil, nautical, astronomical twilight, then night): each adds a little shade,
+    // so the edge fades from dusk into deep night instead of a hard line.
     const nightGeo = useMemo(() => (
-        appearance.timeOfDay && !airportsOnly ? getNightTerminatorGeoJSON(now) : { type: 'FeatureCollection', features: [] }
+        appearance.timeOfDay && !airportsOnly ? getTwilightGradientGeoJSON(now) : { type: 'FeatureCollection', features: [] }
     ), [appearance.timeOfDay, airportsOnly, now]);
 
     const DATA_LAYERS = ['rp-night', 'rp-country-fill', 'rp-country-line', 'rp-routes', 'rp-routes-sea', 'rp-places', 'rp-pins', 'rp-airports', 'rp-airport-labels'];
@@ -524,8 +535,8 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         // Paint follows the palette, the theme and the settings.
         const hover = (on: any, off: any): any => ['case', ['boolean', ['feature-state', 'hover'], false], on, off];
         map.setPaintProperty('rp-country-line', 'line-color', css(p.ink, 0.25));
-        map.setPaintProperty('rp-night', 'fill-color', isDark ? '#000000' : hex(p.ink));
-        map.setPaintProperty('rp-night', 'fill-opacity', isDark ? 0.35 : 0.16);
+        map.setPaintProperty('rp-night', 'fill-color', lightBasemap ? hex(p.ink) : '#02050f');
+        map.setPaintProperty('rp-night', 'fill-opacity', lightBasemap ? 0.055 : 0.085);
         ['rp-routes', 'rp-routes-sea'].forEach(id => {
             map.setPaintProperty(id, 'line-width', hover(['+', ['get', 'width'], 2], ['get', 'width']));
             map.setPaintProperty(id, 'line-opacity', ['get', 'opacity']);
@@ -552,13 +563,45 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         map.setPaintProperty('rp-airport-labels', 'text-halo-width', 2);
         // Keep the travel data above any overlay added later (radar, charts...).
         DATA_LAYERS.slice(2).forEach(id => { if (map.getLayer(id)) map.moveLayer(id); });
-    }, [styleVersion, palette, isDark, colorMode, routesGeo, airportsGeo, placesGeo, pinsGeo, countriesGeo, nightGeo]);
+        // On the globe, flights are raised deck.gl arcs (below); the flat lines would double them.
+        map.setFilter('rp-routes', isGlobe ? ['all', ['!=', ['get', 'mode'], 'sea'], ['!=', ['get', 'mode'], 'flight']] : ['!=', ['get', 'mode'], 'sea']);
+    }, [styleVersion, palette, isDark, lightBasemap, isGlobe, colorMode, routesGeo, airportsGeo, placesGeo, pinsGeo, countriesGeo, nightGeo]);
 
     /* ------------------------------------------------------------------ animated pulse (flat map only) */
 
+    const flightArcs = useMemo(() => (
+        isGlobe && showRoutes ? routesGeo.features.filter(f => f.properties.mode === 'flight').map(f => {
+            const route = routePaths.find(r => r.route.id === f.properties.id)!.route;
+            return { route, color: f.properties.color, width: f.properties.width };
+        }) : []
+    ), [isGlobe, showRoutes, routesGeo, routePaths]);
+
     useEffect(() => {
-        const pulse = appearance.animateRoutes && !reducedMotion && !isGlobe && showRoutes && routePaths.length
-            ? [new TripsLayer({
+        const layers: any[] = [];
+        if (flightArcs.length) {
+            const toRgb = (h: string): RGB => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+            layers.push(new ArcLayer({
+                id: 'rp-flight-arcs',
+                data: flightArcs,
+                getSourcePosition: (d: any) => d.route.from,
+                getTargetPosition: (d: any) => d.route.to,
+                getSourceColor: (d: any) => rgba(colorMode === 'gradient' ? palette.green : toRgb(d.color), 0.95),
+                getTargetColor: (d: any) => rgba(colorMode === 'gradient' ? palette.rust : toRgb(d.color), 0.95),
+                getWidth: (d: any) => d.width + 0.5,
+                widthUnits: 'pixels',
+                greatCircle: true,
+                // Raised above the curvature like the original globe; the extension hides the far side.
+                getHeight: 0.32,
+                parameters: { cullMode: 'none', depthWriteEnabled: false, depthCompare: 'always' } as any,
+                extensions: [new GlobeHorizonCullExtension()],
+                pickable: true,
+                autoHighlight: true,
+                highlightColor: rgba(palette.mustard),
+                updateTriggers: { getSourceColor: [colorMode, palette], getTargetColor: [colorMode, palette] },
+            }));
+        }
+        if (appearance.animateRoutes && !reducedMotion && !isGlobe && showRoutes && routePaths.length) {
+            layers.push(new TripsLayer({
                 id: 'rp-route-pulse',
                 data: routePaths,
                 getPath: (d: any) => d.path,
@@ -570,10 +613,10 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
                 capRounded: true,
                 jointRounded: true,
                 fadeTrail: true,
-            })]
-            : [];
-        overlayRef.current?.setProps({ layers: pulse } as any);
-    }, [appearance.animateRoutes, appearance.routeScale, reducedMotion, isGlobe, showRoutes, routePaths, animTime, palette]);
+            }));
+        }
+        overlayRef.current?.setProps({ layers, pickingRadius: 8 } as any);
+    }, [flightArcs, colorMode, appearance.animateRoutes, appearance.routeScale, reducedMotion, isGlobe, showRoutes, routePaths, animTime, palette]);
 
     /* ------------------------------------------------------------------ interaction */
 
@@ -590,6 +633,8 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         let hovered: { source: string; id: string | number } | null = null;
         const TOL = 8;
         const pick = (point: maplibregl.Point): RpMapHover | null => {
+            const arc = (overlayRef.current as any)?.pickObject?.({ x: point.x, y: point.y, radius: TOL, layerIds: ['rp-flight-arcs'] });
+            if (arc?.object?.route) return { kind: 'route', x: point.x, y: point.y, route: arc.object.route };
             const box: [maplibregl.PointLike, maplibregl.PointLike] = [[point.x - TOL, point.y - TOL], [point.x + TOL, point.y + TOL]];
             const layers = ['rp-airports', 'rp-places', 'rp-pins', 'rp-routes', 'rp-routes-sea', 'rp-country-fill'].filter(id => map.getLayer(id));
             if (!layers.length) return null;
@@ -677,7 +722,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
 
     // MapLibre sets `position: relative` on its container, so positioning lives on a wrapper.
     return (
-        <div className={className} aria-label="Travel map" role="region">
+        <div className={cn(className, isGlobe && appearance.atmosphere !== false && !lightBasemap && 'rp-stars')} aria-label="Travel map" role="region">
             <div ref={containerRef} className="h-full w-full" />
         </div>
     );

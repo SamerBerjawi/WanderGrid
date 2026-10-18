@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react';
-import type { CountryResidenceStatus, Trip } from '../../../types';
+import type { Carrier, CountryResidenceStatus, Trip } from '../../../types';
 import { toggleCountryResidenceStatus } from '../../../types';
 import { buildRouteCorridors, getFlagEmoji, getRouteTransportSummary } from '../../../services/routeCorridor';
 import { formatDate } from '../../../utils/formatters';
 import { formatProperLocationName } from '../../../services/geocoding';
-import { Airplane, ArrowRight, Boat, Car, Train, type Icon } from '../../ui/hugeicons';
-import { RpChip, RpSection, RpSheet } from '../ui';
+import { Airplane, ArrowRight, Boat, Car, CheckCircle, type Icon, Path, Ticket, Train } from '../../ui/hugeicons';
+import { RpChip, RpLogo, RpSection, RpSheet } from '../ui';
 import { cn } from '../../../utils/cn';
 import type { LegMode, LegStatus, MapModel, MapPlace, MapRoute } from './mapModel';
 
@@ -49,10 +49,13 @@ export interface MapDetailSheetProps {
     visitedCountryCodes: string[];
     onUpdateCountryStatus: (code: string, name: string, status: CountryResidenceStatus[] | 'none') => void;
     topOffset: number;
+    brandfetchApiKey?: string;
+    carriers?: Carrier[];
 }
 
 export const MapDetailSheet: React.FC<MapDetailSheetProps> = ({
     selection, onClose, onSelect, onTripClick, trips, model, countryStatusMap, visitedCountryCodes, onUpdateCountryStatus, topOffset,
+    brandfetchApiKey, carriers,
 }) => {
     const corridors = useMemo(() => (selection?.kind === 'route' ? buildRouteCorridors(trips) : null), [selection, trips]);
 
@@ -95,13 +98,18 @@ export const MapDetailSheet: React.FC<MapDetailSheetProps> = ({
                         <Stat label="Last" value={dates.length ? formatDate(dates[0], 'month-year') : '—'} />
                     </div>
                     {operators.length ? (
-                        <RpSection title={summary?.providerLabel || 'Operators'}>
+                        <RpSection icon={Icon} title={summary?.providerLabel || 'Operators'}>
                             <div className="flex flex-wrap gap-2 py-2">
-                                {operators.map(o => <span key={o} className="inline-flex min-h-8 items-center rounded-full bg-rp-surface px-3 text-sm text-rp-ink">{o}</span>)}
+                                {operators.map(o => (
+                                    <span key={o} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-surface py-1 pr-4 pl-1 text-sm text-rp-ink">
+                                        <RpLogo name={o} brandfetchApiKey={brandfetchApiKey} carriers={carriers} fallback={Icon} size="sm" className="rounded-full" />
+                                        {o}
+                                    </span>
+                                ))}
                             </div>
                         </RpSection>
                     ) : null}
-                    <RpSection title="Journeys">
+                    <RpSection icon={Ticket} title="Journeys">
                         <ul className="flex flex-col divide-y divide-rp-line">
                             {legs.map(l => (
                                 <li key={l.key}>
@@ -110,7 +118,10 @@ export const MapDetailSheet: React.FC<MapDetailSheetProps> = ({
                                         onClick={() => onTripClick?.(l.tripId)}
                                         className="flex min-h-14 w-full items-center gap-3 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-rp-muted"
                                     >
-                                        <span className={cn('size-2 shrink-0 rounded-full', STATUS_DOT[l.status])} aria-label={STATUS_LABEL[l.status]} />
+                                        <span className="relative">
+                                            <RpLogo name={l.provider} brandfetchApiKey={brandfetchApiKey} carriers={carriers} fallback={Icon} />
+                                            <span className={cn('absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-rp-inset', STATUS_DOT[l.status])} aria-label={STATUS_LABEL[l.status]} />
+                                        </span>
                                         <span className="min-w-0 flex-1">
                                             <span className="block truncate text-sm font-medium text-rp-ink">{l.tripName.replace(/^Independent: /, '')}</span>
                                             <span className="block truncate text-xs text-rp-muted">
@@ -133,7 +144,7 @@ export const MapDetailSheet: React.FC<MapDetailSheetProps> = ({
         const routes = model.routes.filter(r => r.origin === p.id || r.destination === p.id).sort((a, b) => b.count - a.count);
         return (
             <RpSheet open onClose={onClose} topOffset={topOffset} title={p.label} subtitle={`${p.kind === 'airport' ? 'Airport' : 'Place'} · ${p.count} ${p.count === 1 ? 'visit' : 'visits'}`}>
-                <RpSection title="Routes">
+                <RpSection icon={Path} title="Routes">
                     <ul className="flex flex-col divide-y divide-rp-line">
                         {routes.map(r => {
                             const other = r.origin === p.id ? r.destination : r.origin;
@@ -161,7 +172,7 @@ export const MapDetailSheet: React.FC<MapDetailSheetProps> = ({
     const current = stored.length ? stored : visitedCountryCodes.includes(code) ? ['visited' as CountryResidenceStatus] : [];
     return (
         <RpSheet open onClose={onClose} topOffset={topOffset} title={`${getFlagEmoji(code)} ${name}`} subtitle={current.length ? COUNTRY_STATUSES.filter(s => current.includes(s.value)).map(s => s.label).join(' · ') : 'Not visited'}>
-            <RpSection title="Status">
+            <RpSection icon={CheckCircle} title="Status">
                 <div className="flex flex-wrap gap-2 py-2">
                     {COUNTRY_STATUSES.map(s => (
                         <RpChip

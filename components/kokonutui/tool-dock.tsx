@@ -563,7 +563,7 @@ function ToolSlot({
           className={cn("absolute inset-0", ink ? "bg-rp-surface" : "bg-rp-ink")}
           layoutDependency={vertical}
           layoutId={plateId}
-          style={{ borderRadius: 12 }}
+          style={{ borderRadius: 999 }}
           transition={plateTransition}
         />
       ) : null}
@@ -572,7 +572,7 @@ function ToolSlot({
         aria-label={shown.label}
         aria-pressed={shown.action ? undefined : selected}
         className={cn(
-          "relative flex size-11 items-center justify-center rounded-[12px]",
+          "relative flex size-11 items-center justify-center rounded-full",
           "transition-colors duration-150 ease-out",
           FOCUS_RING,
           ink
@@ -1274,7 +1274,7 @@ export function Toolbar({
             tone === "ink" ? "bg-rp-ink" : "border border-rp-line bg-rp-surface",
             "transition-shadow duration-200 ease-out",
             vertical && "flex-col",
-            dragging ? "rp-shadow-float" : "rp-shadow-raised",
+            tone === "ink" ? "rp-shadow-ink" : dragging ? "rp-shadow-float" : "rp-shadow-raised",
             jump && "[&_*]:transition-none",
             dockClassName
           )}
