@@ -21,6 +21,8 @@
   --rp-green: 44 93 79;
   --rp-rust: 199 68 30;
   --rp-mustard: 240 201 76;
+  /* Mustard for icons and small text on light surfaces (3.8:1); plain mustard in dark mode. */
+  --rp-ochre: 154 116 10;
   /* Text on mustard: always dark, in both themes. */
   --rp-on-mustard: 24 26 26;
 
@@ -40,6 +42,7 @@
   --rp-green: 59 116 100;
   --rp-rust: 199 68 30;
   --rp-mustard: 244 211 106;
+  --rp-ochre: 244 211 106;
 }
 
 .rp-tabular {
@@ -82,6 +85,14 @@
     radial-gradient(1px 1px at 64% 90%, rgb(255 255 255 / 0.4), transparent 60%),
     radial-gradient(1px 1px at 92% 34%, rgb(255 255 255 / 0.5), transparent 60%);
   background-size: 260px 260px;
+}
+
+/* Floating chrome over the map (brand, avatar, switches, tab pills): a soft drop shadow in both themes. */
+.rp-shadow-soft {
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 8px 24px rgb(0 0 0 / 0.1);
+}
+:root.dark .rp-shadow-soft {
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
 }
 
 /* Ink surfaces (dock, toasts): a soft drop shadow only, never the dark-mode hairline. */

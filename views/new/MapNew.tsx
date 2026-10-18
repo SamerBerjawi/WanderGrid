@@ -4,7 +4,7 @@ import { Toolbar, type DockTool } from '../../components/kokonutui/tool-dock';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import ActionSearchBar, { type CommandItem } from '../../components/kokonutui/command-palette';
 import {
-    Airplane, ArrowsIn, ArrowsOut, CornersOut, Funnel, Globe, GlobeHemisphereWest, MapPin, MapTrifold, Maping, MagnifyingGlass, Train,
+    Airplane, ArrowExpand, ArrowShrink, CornersOut, Funnel, Globe, GlobeHemisphereWest, MapPin, MapTrifold, Maping, MagnifyingGlass, MountainSnow, Path,
     Minus, NavigationArrow, Plus, Stack, Suitcase,
 } from '../../components/ui/hugeicons';
 import { useExpeditionMapData } from '../../hooks/useExpeditionMapData';
@@ -126,7 +126,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
             { id: 'layers', label: 'Map settings', icon: Stack as any, shortcut: 'L' },
             { id: 'filter', label: data.activeFilterCount ? `Filter (${data.activeFilterCount})` : 'Filter', icon: Funnel as any, shortcut: 'F' },
         ];
-        const fit: DockTool = { id: 'fit', label: 'Fit all', icon: ArrowsOut as any, action: () => mapRef.current?.fitAll(), dividerBefore: true };
+        const fit: DockTool = { id: 'fit', label: 'Fit all', icon: CornersOut as any, action: () => mapRef.current?.fitAll(), dividerBefore: true };
         if (mobile) return [...panels, fit];
         return [
             ...panels,
@@ -139,7 +139,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                 icon: (appearance.projection === 'globe' ? MapTrifold : GlobeHemisphereWest) as any,
                 action: () => updateAppearance({ projection: appearance.projection === 'globe' ? 'flat' : 'globe' }),
             },
-            { id: 'fullscreen', label: fullscreen ? 'Exit full screen' : 'Full screen', icon: (fullscreen ? ArrowsIn : CornersOut) as any, action: toggleFullscreen },
+            { id: 'fullscreen', label: fullscreen ? 'Exit full screen' : 'Full screen', icon: (fullscreen ? ArrowShrink : ArrowExpand) as any, action: toggleFullscreen },
         ];
     }, [mobile, appearance.projection, fullscreen, data.activeFilterCount, updateAppearance]);
 
@@ -195,9 +195,9 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
     // Every tab has an icon and its count; on phones only the active tab spells out its name.
     const modeItems = ([
         { id: 'all', title: 'All', icon: Globe, badge: metrics.all.count },
-        { id: 'flights', title: 'Flights', icon: Airplane, badge: metrics.flights.count },
-        { id: 'land_sea', title: 'Land & sea', icon: Train, badge: metrics.land_sea.count },
-        { id: 'scratch', title: 'Scratch', icon: Maping, badge: metrics.scratch.count },
+        { id: 'flights', title: 'Flights', icon: Airplane, badge: metrics.flights.count, iconClassName: 'text-rp-rust' },
+        { id: 'land_sea', title: 'Land & sea', icon: MountainSnow, badge: metrics.land_sea.count, iconClassName: 'text-rp-green' },
+        { id: 'scratch', title: 'Scratch', icon: Maping, badge: metrics.scratch.count, iconClassName: 'text-rp-ochre' },
     ] as const).map(item => ({ ...item, hideTitle: mobile && item.id !== mode }));
 
     const onUpdateCountryStatus = (code: string, name: string, status: CountryResidenceStatus[] | 'none') => {
@@ -253,7 +253,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                             panels={false}
                             label="What to show"
                             className="w-auto"
-                            listClassName="bg-rp-surface rp-shadow-raised"
+                            listClassName="bg-rp-surface rp-shadow-soft"
                         />
                     </div>
                 )}
@@ -280,14 +280,14 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
             {/* Totals for what is on screen */}
             {!mobile ? (
                 <div className="pointer-events-none absolute bottom-4 left-1/2 z-float -translate-x-1/2">
-                    <div className="rp-tabular flex items-center gap-4 rounded-full bg-rp-surface px-5 py-2.5 text-sm text-rp-ink rp-shadow-raised">
+                    <div className="rp-tabular flex items-center gap-4 rounded-full bg-rp-surface px-5 py-2.5 text-sm text-rp-ink rp-shadow-soft">
                         {mode === 'scratch' ? (
-                            <span><NumberFlow value={metrics.scratch.count} /> <span className="text-rp-muted">countries</span></span>
+                            <span className="flex items-center gap-1.5"><Maping size={16} className="text-rp-ochre" aria-hidden /><NumberFlow value={metrics.scratch.count} /> <span className="text-rp-muted">countries</span></span>
                         ) : (
                             <>
-                                <span><NumberFlow value={model.totals.routes} /> <span className="text-rp-muted">{model.totals.routes === 1 ? 'journey' : 'journeys'}</span></span>
+                                <span className="flex items-center gap-1.5"><Airplane size={16} className="text-rp-rust" aria-hidden /><NumberFlow value={model.totals.routes} /> <span className="text-rp-muted">{model.totals.routes === 1 ? 'journey' : 'journeys'}</span></span>
                                 <span className="h-4 w-px bg-rp-line" aria-hidden />
-                                <span><NumberFlow value={model.totals.distanceKm} /> <span className="text-rp-muted">km</span></span>
+                                <span className="flex items-center gap-1.5"><Path size={16} className="text-rp-green" aria-hidden /><NumberFlow value={model.totals.distanceKm} /> <span className="text-rp-muted">km</span></span>
                             </>
                         )}
                     </div>

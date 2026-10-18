@@ -68,7 +68,7 @@ const AccountButton: React.FC<{ user: User | null; onNavigate: (p: string) => vo
                 aria-haspopup="menu"
                 aria-expanded={open}
                 onClick={() => setOpen(o => !o)}
-                className="flex size-11 items-center justify-center rounded-full bg-rp-mustard text-sm font-semibold text-rp-on-mustard rp-shadow-rest outline-none focus-visible:ring-2 focus-visible:ring-rp-muted focus-visible:ring-offset-2 focus-visible:ring-offset-rp-canvas"
+                className="flex size-11 items-center justify-center rounded-full bg-rp-mustard text-sm font-semibold text-rp-on-mustard rp-shadow-soft outline-none focus-visible:ring-2 focus-visible:ring-rp-muted focus-visible:ring-offset-2 focus-visible:ring-offset-rp-canvas"
             >
                 {initials(user?.name)}
             </button>
@@ -101,7 +101,7 @@ const AccountButton: React.FC<{ user: User | null; onNavigate: (p: string) => vo
 
 export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, user, isDark, onThemeChange, onLogout, localMode, fullBleed, children }) => {
     const [sheet, setSheet] = useState<'more' | 'add' | null>(null);
-    const navItems = Object.fromEntries(SHELL_NAV.map(i => [i.path, { name: i.label }]));
+    const navItems = Object.fromEntries(SHELL_NAV.map(i => [i.path, { name: i.label, icon: i.icon }]));
     const go = (path: string) => { setSheet(null); onNavigate(path); };
 
     return (
@@ -117,7 +117,7 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
                     type="button"
                     onClick={() => go('/')}
                     aria-label="WanderGrid home"
-                    className="pointer-events-auto flex min-h-11 items-center gap-2.5 rounded-full bg-rp-surface py-1.5 pr-4 pl-1.5 rp-shadow-rest outline-none focus-visible:ring-2 focus-visible:ring-rp-muted"
+                    className="pointer-events-auto flex min-h-11 items-center gap-2.5 rounded-full bg-rp-surface py-1.5 pr-4 pl-1.5 rp-shadow-soft outline-none focus-visible:ring-2 focus-visible:ring-rp-muted"
                 >
                     <span className="flex size-8 items-center justify-center rounded-[10px] bg-rp-ink text-sm font-semibold text-rp-on-ink">W</span>
                     <span className="hidden text-base font-medium text-rp-ink sm:inline">WanderGrid</span>
@@ -135,7 +135,7 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
                     ) : null}
                     <SwitchButton
                         showLabel={false}
-                        className="rp-shadow-rest"
+                        className="rp-shadow-soft"
                         theme={isDark ? 'dark' : 'light'}
                         onThemeChange={onThemeChange}
                     />
@@ -147,7 +147,7 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
 
             {/* Mobile bottom tab bar (decision 7) */}
             <nav aria-label="Main" className="pointer-events-none absolute inset-x-0 bottom-0 z-sticky px-3 pb-[calc(10px+env(safe-area-inset-bottom,0px))] md:hidden">
-                <div className="pointer-events-auto mx-auto flex max-w-md items-center justify-between rounded-full bg-rp-ink p-1.5 rp-shadow-float">
+                <div className="pointer-events-auto mx-auto flex max-w-md items-center justify-between rounded-full bg-rp-ink p-1.5 rp-shadow-ink">
                     {MOBILE_TABS.slice(0, 2).map(path => <TabButton key={path} path={path} active={currentPath === path} onClick={() => go(path)} />)}
                     <button
                         type="button"
