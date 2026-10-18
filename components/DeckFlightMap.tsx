@@ -96,7 +96,6 @@ import { buildRouteCorridors, RouteCorridor, getApproxLocalTime, formatAirportDi
 import { getFlagEmoji, getRegion } from '../services/geoData';
 import { fetchMultiModalRoute, getCachedMultiModalRoute, getMultiModalRouteStatus, generateSmoothRailCorridor, isApproximateMultiModalRoute } from '../services/multiModalRouting';
 import { dataService } from '../services/mockDb';
-import { DataCreditsPopover } from './DataCreditsPopover';
 import GlassPanel from './glass/GlassPanel';
 import { globeHorizonCullExtension } from './GlobeHorizonCullExtension';
 import { GlobeAtmosphericBackground } from './GlobeAtmosphericBackground';
@@ -3765,6 +3764,16 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
     };
 
+    // Phones open on "Fit All" instead of the world overview (full-page map only).
+    const mobileFitDoneRef = useRef<boolean>(false);
+    useEffect(() => {
+        if (isEmbedded || mobileFitDoneRef.current || !mapInstance || enrichedTrips.length === 0) return;
+        if (typeof window === 'undefined' || window.innerWidth >= 768) return;
+        mobileFitDoneRef.current = true;
+        const t = window.setTimeout(() => handleFitBounds(), 500);
+        return () => window.clearTimeout(t);
+    }, [mapInstance, enrichedTrips, isEmbedded]);
+
     const handleToggleAtmosphere = () => {
         const nextAtmosphere = activeAppearance.atmosphere === false ? true : false;
         const nextAppearance: MapAppearanceSettings = {
@@ -3916,21 +3925,21 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     <div className="flex flex-col divide-y divide-black/10 dark:divide-white/10">
                         <button
                             onClick={handleZoomIn}
-                            className="w-11 h-11 flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-lg transition-colors active:scale-95"
+                            className="hidden md:flex w-11 h-11 items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-lg transition-colors active:scale-95"
                             title="Zoom In (+)"
                         >
                             +
                         </button>
                         <button
                             onClick={handleZoomOut}
-                            className="w-11 h-11 flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-lg transition-colors active:scale-95"
+                            className="hidden md:flex w-11 h-11 items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-lg transition-colors active:scale-95"
                             title="Zoom Out (−)"
                         >
                             −
                         </button>
                         <button
                             onClick={handleReset100}
-                            className="w-11 h-11 flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-xs tracking-tight transition-colors active:scale-95"
+                            className="hidden md:flex w-11 h-11 items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-xs tracking-tight transition-colors active:scale-95"
                             title="100% Standard View"
                         >
                             100%
@@ -3967,14 +3976,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 </GlassPanel>
             </div>
 
-            {/* P-07: Dynamic Data Credits Popover (Bottom Right) */}
-            <div className="absolute bottom-3 right-3 md:bottom-6 md:right-6 z-float pointer-events-auto">
-                <DataCreditsPopover
-                    currentBasemap={currentLayer}
-                    activeAppearance={activeAppearance}
-                />
-            </div>
-
+            
             {/* Top-Center Floating "Back to previous view" Button with Liquid Glass (Positioned just below Tab Selector) */}
             {selectedCorridor && (
                 <div className="absolute top-[74px] left-1/2 -translate-x-1/2 z-dropdown pointer-events-auto animate-fade-in">
