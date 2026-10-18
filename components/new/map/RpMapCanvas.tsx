@@ -24,7 +24,8 @@ import { attachMissingImageLoader, initMapLibre } from './mapEngineInit';
 import { normalizePlaceLabels } from './basemapLabels';
 import { cn } from '../../../utils/cn';
 import { readRpPalette, rpTokensReady, rgba, css, mix, type RGB, type RpPalette } from './mapPalette';
-import type { LegStatus, MapModel, MapPlace, MapRoute, LngLat } from './mapModel';
+import type { LegMode, LegStatus, MapModel, MapPlace, MapRoute, LngLat } from './mapModel';
+import { routeModeColor, type RouteColorMode } from './routeModes';
 
 /**
  * The New map engine: MapLibre for the basemap and its native overlays (airport detail, aviation
@@ -61,6 +62,8 @@ export interface RpMapCanvasProps {
     defaultBasemapLight?: string;
     defaultBasemapDark?: string;
     padding: RpMapPadding;
+    /** Route colour (New map setting); defaults to the shared appearance choice. */
+    routeColorMode?: RouteColorMode;
     onRouteClick?: (route: MapRoute) => void;
     onPlaceClick?: (place: MapPlace) => void;
     onCountryClick?: (code: string, name: string) => void;
@@ -422,20 +425,23 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
     const maxCount = useMemo(() => Math.max(1, ...model.routes.map(r => r.count)), [model.routes]);
 
     const statusColor = useCallback((s: LegStatus): RGB => (s === 'upcoming' ? palette.green : s === 'planning' ? palette.mustard : palette.ink), [palette]);
+    const modeColor = useCallback((m: LegMode): RGB => routeModeColor(m, palette, lightBasemap), [palette, lightBasemap]);
 
     /* ------------------------------------------------------------------ travel data (native MapLibre layers) */
 
     // Drawn with MapLibre's own layers so they follow both the flat map and the globe.
     const hex = (c: RGB) => `#${c.map(v => v.toString(16).padStart(2, '0')).join('')}`;
     const showRoutes = !airportsOnly && mode !== 'scratch' && mode !== 'none';
-    const colorMode = appearance.routeColorMode || 'gradient';
+    const colorMode: RouteColorMode = props.routeColorMode ?? appearance.routeColorMode ?? 'gradient';
 
     const routesGeo = useMemo(() => {
         const base = ROUTE_WIDTH[appearance.routeScale || 'normal'];
         const features = showRoutes ? routePaths.map(({ route: r, path, traced }) => {
-            const color = colorMode === 'frequency'
-                ? mix(palette.mustard, palette.rust, (r.count - 1) / Math.max(1, maxCount - 1))
-                : statusColor(r.status);
+            const color = colorMode === 'mode'
+                ? modeColor(r.mode)
+                : colorMode === 'frequency'
+                    ? mix(palette.mustard, palette.rust, (r.count - 1) / Math.max(1, maxCount - 1))
+                    : statusColor(r.status);
             const width = (appearance.routeWidthMode === 'frequency' ? base * (1 + Math.log2(r.count) * 0.6) : base) * (r.mode === 'flight' ? 1 : 0.85);
             return {
                 type: 'Feature' as const,
@@ -445,7 +451,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
             };
         }) : [];
         return { type: 'FeatureCollection' as const, features };
-    }, [showRoutes, routePaths, colorMode, palette, maxCount, statusColor, appearance.routeScale, appearance.routeWidthMode]);
+    }, [showRoutes, routePaths, colorMode, palette, maxCount, statusColor, modeColor, appearance.routeScale, appearance.routeWidthMode]);
 
     const airportsGeo = useMemo(() => {
         const size = MARKER_SIZE[appearance.airportSize || 'medium'];

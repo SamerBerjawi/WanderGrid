@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import type { RouteColorMode } from './routeModes';
 import SwipeTabs from '../../kokonutui/swipe-tabs';
 import UndoButton from '../../kokonutui/undo-button';
 import { FEATURE_FLAGS } from '../../../config/featureFlags';
@@ -111,6 +112,9 @@ export interface MapSettingsSheetProps {
     appearance: MapAppearanceSettings;
     onChange: (patch: Partial<MapAppearanceSettings>) => void;
     onReplace: (next: MapAppearanceSettings) => void;
+    /** Route colour (a New-map setting, kept apart from the shared appearance). */
+    routeColor: RouteColorMode;
+    onRouteColor: (v: RouteColorMode) => void;
     groupAirports: boolean;
     onGroupAirports: (v: boolean) => void;
     isDark: boolean;
@@ -121,7 +125,7 @@ export interface MapSettingsSheetProps {
 }
 
 export const MapSettingsSheet: React.FC<MapSettingsSheetProps> = ({
-    open, onClose, appearance: a, onChange, onReplace, groupAirports, onGroupAirports, isDark, openAipAvailable, topOffset, onThemeChange,
+    open, onClose, appearance: a, onChange, onReplace, routeColor, onRouteColor, groupAirports, onGroupAirports, isDark, openAipAvailable, topOffset, onThemeChange,
 }) => {
     // A dark basemap turns the app dark and a light one turns it light, so the chrome matches the map.
     const chooseBasemap = (value: MapAppearanceSettings['basemap'], tone: BasemapTone) => {
@@ -255,7 +259,7 @@ export const MapSettingsSheet: React.FC<MapSettingsSheetProps> = ({
             </RpSection>
             <RpSection icon={Path} title="Routes">
                 <RpRow icon={Palette} label="Colour">
-                    <RpSegmented label="Route colour" value={a.routeColorMode} onChange={v => onChange({ routeColorMode: v })} options={[{ value: 'gradient', label: 'Gradient' }, { value: 'frequency', label: 'Frequency' }, { value: 'default', label: 'Status' }]} />
+                    <RpSegmented label="Route colour" value={routeColor} onChange={v => onRouteColor(v)} options={[{ value: 'mode' as RouteColorMode, label: 'Transport' }, { value: 'gradient', label: 'Gradient' }, { value: 'frequency', label: 'Frequency' }, { value: 'default', label: 'Status' }]} />
                 </RpRow>
                 <RpRow icon={SlidersHorizontal} label="Thickness">
                     <RpSegmented label="Route thickness" value={a.routeScale} onChange={v => onChange({ routeScale: v })} options={[{ value: 'thin', label: 'Thin' }, { value: 'normal', label: 'Medium' }, { value: 'thick', label: 'Thick' }]} />

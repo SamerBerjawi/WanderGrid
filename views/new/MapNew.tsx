@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ROUTE_COLOR_MODES, ROUTE_MODES, ROUTE_MODE_LABEL, ROUTE_MODE_SWATCH, type RouteColorMode } from '../../components/new/map/routeModes';
 import NumberFlow from '@number-flow/react';
 import { Toolbar, type DockTool } from '../../components/kokonutui/tool-dock';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
@@ -48,6 +49,7 @@ const MODE_PILL: Record<Mode, { bg: string; text: string }> = {
     scratch: { bg: 'bg-rp-mustard', text: 'text-rp-on-mustard' },
 };
 const GROUP_KEY = 'wandergrid_map_new_group_airports';
+const ROUTE_COLOR_KEY = 'wandergrid_map_new_route_color';
 const HEADER = 68;
 
 const readLocal = <T,>(key: string, fallback: T, valid: (v: any) => boolean): T => {
@@ -95,6 +97,12 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
         return () => document.removeEventListener('fullscreenchange', sync);
     }, []);
 
+    // Route colour is a New-map setting (default: one colour per transport mode), kept apart from the
+    // shared appearance so the original map keeps its own choice.
+    const [routeColor, setRouteColor] = useState<RouteColorMode>(
+        () => readLocal<RouteColorMode>(ROUTE_COLOR_KEY, 'mode', v => ROUTE_COLOR_MODES.includes(v))
+    );
+    const changeRouteColor = (v: RouteColorMode) => { setRouteColor(v); writeLocal(ROUTE_COLOR_KEY, v); };
     const updateAppearance = useCallback((patch: Partial<MapAppearanceSettings>) => {
         setAppearance(prev => {
             const next = { ...prev, ...patch };
@@ -211,6 +219,12 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
         void data.handleUpdateCountryStatus(code, name, status);
     };
 
+    // Transport modes on screen, for the route colour legend.
+    const routeModesShown = useMemo(() => {
+        const present = new Set(model.routes.map(r => r.mode));
+        return ROUTE_MODES.filter(m => present.has(m));
+    }, [model.routes]);
+
     const isEmpty = settled && mode !== 'scratch' && model.legs.length === 0;
     const sheetTop = mobile ? 0 : HEADER + 8;
 
@@ -231,6 +245,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                 defaultBasemapLight={settings?.defaultBasemapLight}
                 defaultBasemapDark={settings?.defaultBasemapDark}
                 padding={padding}
+                routeColorMode={routeColor}
                 onRouteClick={(route: MapRoute) => select({ kind: 'route', route })}
                 onPlaceClick={place => select({ kind: 'place', place })}
                 onCountryClick={(code, name) => select({ kind: 'country', code, name })}
@@ -300,7 +315,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
 
             {/* Totals for what is on screen: top-left, under the header */}
             {!mobile ? (
-                <div className="pointer-events-none absolute left-4 z-float" style={{ top: HEADER + 8 }}>
+                <div className="pointer-events-none absolute left-4 z-float flex flex-col items-start gap-2" style={{ top: HEADER + 8 }}>
                     <div className="rp-tabular flex items-center gap-4 rounded-full bg-rp-surface px-5 py-2.5 text-sm text-rp-ink rp-shadow-soft">
                         {mode === 'scratch' ? (
                             <span className="flex items-center gap-1.5"><Maping size={16} className="text-rp-ochre" aria-hidden /><NumberFlow value={metrics.scratch.count} /> <span className="text-rp-muted">countries</span></span>
@@ -312,6 +327,16 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                             </>
                         )}
                     </div>
+                    {routeColor === 'mode' && mode !== 'scratch' && routeModesShown.length > 0 ? (
+                        <ul aria-label="Route colours" className="flex items-center gap-3 rounded-full bg-rp-surface px-4 py-2 text-xs text-rp-ink rp-shadow-soft">
+                            {routeModesShown.map(m => (
+                                <li key={m} className="flex items-center gap-1.5">
+                                    <span aria-hidden className={cn('h-1 w-4 rounded-full', ROUTE_MODE_SWATCH[m], m === 'sea' && 'w-1.5 shadow-[6px_0_0_0_rgb(var(--rp-mustard))]')} />
+                                    <span className={m === 'sea' ? 'ml-1.5' : undefined}>{ROUTE_MODE_LABEL[m]}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : null}
                 </div>
             ) : null}
 
@@ -349,6 +374,8 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                 appearance={appearance}
                 onChange={updateAppearance}
                 onReplace={replaceAppearance}
+                routeColor={routeColor}
+                onRouteColor={changeRouteColor}
                 groupAirports={groupAirports}
                 onGroupAirports={changeGroup}
                 isDark={isDark}
