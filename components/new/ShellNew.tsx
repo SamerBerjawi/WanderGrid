@@ -132,7 +132,7 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
                     <MorphicNavbar items={navItems} currentPath={currentPath} onNavigate={go} className="px-0 py-0" />
                 </div>
 
-                <div className="pointer-events-auto ml-auto flex items-center gap-2">
+                <div className="pointer-events-auto ml-auto flex items-center gap-2 md:ml-0">
                     {localMode ? (
                         <span className="hidden min-h-8 items-center rounded-full bg-rp-mustard px-3 text-xs font-medium text-rp-on-mustard lg:inline-flex" role="status">
                             Local mode
