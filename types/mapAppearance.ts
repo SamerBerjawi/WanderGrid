@@ -129,6 +129,7 @@ export interface MapAppearanceSettings {
 
     // Route Intelligence & Tracing (Road & Rail)
     routeTracing?: boolean; // Realistic road (OSRM) and rail (OSM) tracing
+    animateRoutes?: boolean; // Moving pulse along routes (New map; the original map keeps it as page state)
 
     // Layers Tab
     timeOfDay: boolean; // Live solar day/night shading
