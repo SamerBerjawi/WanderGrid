@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
 import { clsx } from 'clsx';
-import { Airplane, Compass, Globe, MapPin, MapTrifold, SlidersHorizontal, ArrowsOut, ArrowsIn, EyeSlash, CaretUp, CaretDown, X, Calendar } from '@/components/ui/hugeicons';
+import { Airplane, Compass, Globe, MapPin, MountainSnow, Maping, SlidersHorizontal, ArrowsOut, ArrowsIn, EyeSlash, CaretUp, CaretDown, X, Calendar } from '@/components/ui/hugeicons';
 import { MapAppearanceModal } from '../../components/MapAppearanceModal';
 import { LiquidGlassSelect, LiquidGlassMultiSelect } from '../../components/LiquidGlassSelect';
 import DatePicker from '../../components/ui/DatePicker';
@@ -9,6 +9,7 @@ import { MapAppearanceSettings, DEFAULT_MAP_APPEARANCE, loadMapAppearanceSetting
 import { syncThemeWithBasemap } from '../../services/themeSync';
 import { useExpeditionMapData } from '../../hooks/useExpeditionMapData';
 import { formatDate } from '../../utils/formatters';
+import { MapDock, MapDockItem } from '../../components/MapDock';
 import { GhButton, GhChip, GhTabs } from '../../components/golden/Gh';
 import type { GoldenViewProps } from './registry';
 
@@ -27,8 +28,8 @@ const useDarkMode = () => {
 /** Colour carries meaning: teal = flights (distance/go), sun = land & sea (time), lilac = scratch (places), coral = everything. */
 const MODES: { key: PredefinedMapMode; label: string; icon: React.ComponentType<{ className?: string }>; chip: string }[] = [
   { key: 'flights', label: 'Flights', icon: Airplane, chip: 'bg-sunset-teal text-sunset-ink' },
-  { key: 'land_sea', label: 'Land', icon: Compass, chip: 'bg-sunset-sun text-sunset-ink' },
-  { key: 'scratch', label: 'Scratch', icon: MapTrifold, chip: 'bg-sunset-lilac text-sunset-ink' },
+  { key: 'land_sea', label: 'Land', icon: MountainSnow, chip: 'bg-sunset-sun text-sunset-ink' },
+  { key: 'scratch', label: 'Scratch', icon: Maping, chip: 'bg-sunset-lilac text-sunset-ink' },
   { key: 'all', label: 'All', icon: Globe, chip: 'bg-sunset-orange text-white' },
 ];
 
@@ -118,6 +119,42 @@ export const GoldenMap: React.FC<GoldenViewProps> = ({ onTripClick, isSidebarCol
   const chipBase = 'min-h-[44px] rounded-full px-4 inline-flex items-center gap-2 text-sm font-bold shadow-card cursor-pointer transition-transform active:scale-95';
   const chipIdle = 'bg-white dark:bg-sunset-plum text-sunset-ink dark:text-white';
 
+  const dockItems: MapDockItem[] = [
+    ...MODES.map((m): MapDockItem => {
+      const noneActive = m.key === 'all' && viewMode === 'none';
+      const selected = viewMode === m.key || noneActive;
+      const stat = metrics[m.key];
+      return {
+        key: m.key,
+        text: noneActive ? 'Hidden' : m.label,
+        icon: noneActive ? EyeSlash : m.icon,
+        selected,
+        pressed: selected,
+        onSelect: () => handleSelectViewMode(m.key),
+        title: `${m.label}: ${stat.count} · ${stat.distanceStr}`,
+        selectedClass: clsx(m.chip, 'shadow-card'),
+        idleClass: 'bg-white/90 dark:bg-sunset-plum text-sunset-ink dark:text-white opacity-90',
+        badge: stat.count,
+        badgeClass: selected ? 'bg-white/40' : 'bg-sunset-sand dark:bg-sunset-dusk',
+      };
+    }),
+    {
+      key: 'trips',
+      text: sheetTrips.length === 1 ? '1 trip' : `${sheetTrips.length} trips`,
+      mobileText: String(sheetTrips.length),
+      icon: MapPin,
+      iconDesktopOnly: true,
+      iconClass: 'text-sunset-coral',
+      ariaLabel: sheetTrips.length === 0 ? 'No trips yet' : `${sheetTrips.length} trips on the map`,
+      title: 'Trips on the map',
+      expanded: sheetOpen,
+      onSelect: () => setSheetOpen(v => !v),
+      selectedClass: '',
+      idleClass: chipIdle,
+      end: sheetOpen ? <CaretDown className="w-4 h-4 shrink-0" /> : <CaretUp className="w-4 h-4 shrink-0" />,
+    },
+  ];
+
   return (
     <div ref={mapContainerRef} className="relative w-full h-full overflow-hidden bg-sunset-cream dark:bg-sunset-night select-none">
       <div className="absolute inset-0">
@@ -166,7 +203,7 @@ export const GoldenMap: React.FC<GoldenViewProps> = ({ onTripClick, isSidebarCol
           <div className="text-xs font-semibold opacity-90 truncate">{metrics.activeSectorsCount} journeys · {metrics.totalDistanceKm.toLocaleString()} km</div>
         </div>
         <div className="pointer-events-auto flex items-center gap-2 shrink-0">
-          <button type="button" onClick={handleToggleFullscreen} className={clsx(chipBase, chipIdle, '!px-0 w-11 justify-center')} aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
+          <button type="button" onClick={handleToggleFullscreen} className={clsx(chipBase, chipIdle, '!px-0 w-11 justify-center hidden md:inline-flex')} aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
             {isFullscreen ? <ArrowsIn className="w-5 h-5" /> : <ArrowsOut className="w-5 h-5" />}
           </button>
           <button type="button" onClick={() => setIsSidebarOpen(v => !v)} className={clsx(chipBase, isSidebarOpen ? 'bg-sunset-coral text-white' : chipIdle)} aria-label="Controls and appearance" aria-expanded={isSidebarOpen}>
@@ -180,59 +217,13 @@ export const GoldenMap: React.FC<GoldenViewProps> = ({ onTripClick, isSidebarCol
       {/* Mode chips: colour-coded, centred under the header on mobile, floating above the sheet on desktop */}
       <div className={clsx(
         'absolute z-float pointer-events-none flex justify-center transition-opacity',
-        'top-[calc(5.25rem+env(safe-area-inset-top,0px))] inset-x-3 md:top-auto md:inset-x-0 md:bottom-5',
+        'bottom-[calc(4.85rem+env(safe-area-inset-bottom,0px))] inset-x-3 md:inset-x-0 md:bottom-5',
         isSidebarOpen && 'opacity-0'
       )}>
-        <div role="group" aria-label="Map layers" className="pointer-events-auto flex flex-wrap justify-center gap-2 max-w-full p-1">
-          {MODES.map(m => {
-            const noneActive = m.key === 'all' && viewMode === 'none';
-            const selected = viewMode === m.key || noneActive;
-            const Icon = noneActive ? EyeSlash : m.icon;
-            const stat = metrics[m.key];
-            return (
-              <button
-                key={m.key}
-                type="button"
-                onClick={() => handleSelectViewMode(m.key)}
-                aria-pressed={selected}
-                title={`${m.label}: ${stat.count} · ${stat.distanceStr}`}
-                className={clsx(
-                  chipBase, 'whitespace-nowrap !px-3 sm:!px-4',
-                  selected ? clsx(m.chip, 'ring-4 ring-white dark:ring-sunset-night') : 'bg-white/90 dark:bg-sunset-plum text-sunset-ink dark:text-white opacity-90'
-                )}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span>{noneActive ? 'Hidden' : m.label}</span>
-                <span className={clsx('rounded-full px-2 py-0.5 text-xs font-black', selected ? 'bg-white/40' : 'bg-sunset-sand dark:bg-sunset-dusk')}>{stat.count}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Trip bottom sheet */}
-      <section
-        aria-label="Trips on the map"
-        className={clsx(
-          'absolute z-float inset-x-2 md:inset-x-auto md:right-5 md:w-[24rem] bottom-[calc(4.85rem+env(safe-area-inset-bottom,0px))] md:bottom-24',
-          'rounded-3xl bg-white dark:bg-sunset-plum text-sunset-ink dark:text-white shadow-card overflow-hidden transition-opacity',
-          isSidebarOpen && 'opacity-0 pointer-events-none'
-        )}
-      >
-        <button
-          type="button"
-          onClick={() => setSheetOpen(v => !v)}
-          aria-expanded={sheetOpen}
-          className="w-full min-h-[52px] px-5 flex items-center justify-between gap-3 cursor-pointer"
-        >
-          <span className="flex items-center gap-2 font-black">
-            <MapPin className="w-5 h-5 text-sunset-coral" />
-            {sheetTrips.length === 0 ? 'No trips yet' : `${sheetTrips.length} ${sheetTrips.length === 1 ? 'trip' : 'trips'} on the map`}
-          </span>
-          {sheetOpen ? <CaretDown className="w-5 h-5" /> : <CaretUp className="w-5 h-5" />}
-        </button>
+        <div className="pointer-events-auto relative max-w-full p-1">
+        <MapDock items={dockItems} className="rounded-full bg-white/70 dark:bg-sunset-night/70 backdrop-blur-md shadow-card p-1.5" />
         {sheetOpen && (
-          <ul className="max-h-[40vh] overflow-y-auto px-3 pb-3 flex flex-col gap-2">
+          <ul className="absolute right-0 bottom-full mb-2 w-[min(24rem,calc(100vw-1.5rem))] max-h-[40vh] overflow-y-auto p-3 flex flex-col gap-2 rounded-3xl bg-white dark:bg-sunset-plum text-sunset-ink dark:text-white shadow-card text-left">
             {sheetTrips.length === 0 && (
               <li className="rounded-2xl bg-sunset-sand dark:bg-sunset-dusk p-4 text-sm font-semibold text-center">
                 {activeFilterCount > 0 ? 'Nothing matches those filters.' : 'Plan a trip and it lands here.'}
@@ -255,7 +246,8 @@ export const GoldenMap: React.FC<GoldenViewProps> = ({ onTripClick, isSidebarCol
             ))}
           </ul>
         )}
-      </section>
+        </div>
+      </div>
 
       <MapAppearanceModal
         isOpen={isSidebarOpen}

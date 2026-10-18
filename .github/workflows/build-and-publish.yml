@@ -20,6 +20,9 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Pull requests publish a test image tagged pr-<number> (same idea as the Crystal and HAD repos). Forked PRs
+  # and Dependabot get a read-only GITHUB_TOKEN, so they build without pushing.
+  PUSH_IMAGE: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
 
 permissions:
   contents: read
@@ -111,7 +114,7 @@ jobs:
         uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        if: github.event_name != 'pull_request'
+        if: env.PUSH_IMAGE == 'true'
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -125,6 +128,7 @@ jobs:
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=semver,pattern={{version}}
+            type=ref,event=pr,prefix=pr-
             type=ref,event=branch
             type=sha,prefix=sha-
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
@@ -136,12 +140,22 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: echo "rev=$(gh release view assets --json body -q .body | grep -o 'sha256:[0-9a-f]\{64\}' | head -1 || true)" >> "$GITHUB_OUTPUT"
 
+      - name: Show the published tags
+        if: env.PUSH_IMAGE == 'true'
+        run: |
+          {
+            echo "### Published image tags"
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v7
         with:
           context: .
           file: backend_files/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ env.PUSH_IMAGE == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |

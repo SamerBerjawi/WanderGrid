@@ -7,6 +7,11 @@ import { APP_VERSION } from '../../version';
 import Icon from '../ui/Icon';
 import { Compass, Moon, SidebarSimple, SignOut, Sun, Desktop } from '@/components/ui/hugeicons';
 import { GhTone } from './Gh';
+import { PAGE_THEMES } from '../../config/pageThemes';
+
+/** Classic-theme icon accent per page; dropped on the active pill, which is already a solid colour. */
+const iconTint = (view: ViewState, active: boolean) => (active ? '' : PAGE_THEMES[view].color);
+const MORE_TINT = 'text-amber-500 dark:text-amber-400';
 
 interface GoldenSidebarProps {
   currentView: ViewState;
@@ -108,7 +113,7 @@ export const GoldenSidebar: React.FC<GoldenSidebarProps> = ({
                     active ? `${TONE_BG[item.tone]} shadow-card` : 'hover:bg-sunset-sand dark:hover:bg-sunset-dusk'
                   }`}
                 >
-                  <Icon name={item.icon} className="text-xl leading-none shrink-0" />
+                  <Icon name={item.icon} className={`text-xl leading-none shrink-0 ${iconTint(item.value, active)}`} />
                   {!isCollapsed && <span className="truncate">{item.label}</span>}
                 </button>
               );
@@ -171,7 +176,7 @@ export const GoldenSidebar: React.FC<GoldenSidebarProps> = ({
                 aria-current={active ? 'page' : undefined}
                 className={`flex-1 min-w-0 min-h-[44px] h-14 rounded-full flex flex-col items-center justify-center text-2xs font-bold cursor-pointer transition-all ${active ? TONE_BG[tone] : ''}`}
               >
-                <Icon name={item ? item.icon : 'more_horiz'} className="text-xl leading-none" />
+                <Icon name={item ? item.icon : 'more_horiz'} className={`text-xl leading-none ${active ? '' : (item ? iconTint(item.value, false) : MORE_TINT)}`} />
                 <span className="truncate max-w-full">{item ? item.short : 'More'}</span>
               </button>
             );
@@ -189,7 +194,7 @@ export const GoldenSidebar: React.FC<GoldenSidebarProps> = ({
             >
               {moreItems.map(item => (
                 <button key={item.value} type="button" onClick={() => go(item.value)} aria-current={currentView === item.value ? 'page' : undefined} className={`min-h-[44px] rounded-full px-4 flex items-center gap-3 text-sm font-semibold cursor-pointer ${currentView === item.value ? TONE_BG[item.tone] : ''}`}>
-                  <Icon name={item.icon} className="text-xl leading-none" />
+                  <Icon name={item.icon} className={`text-xl leading-none ${iconTint(item.value, currentView === item.value)}`} />
                   {item.label}
                 </button>
               ))}

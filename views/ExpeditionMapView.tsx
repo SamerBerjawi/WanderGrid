@@ -7,7 +7,9 @@ import {
     SlidersHorizontal,
     MapPin,
     CalendarBlank as Calendar,
-    MapTrifold as MapIcon,
+    MountainSnow,
+    CaretDown,
+    Maping,
     Airplane as Plane,
     X,
     ArrowsOut as Maximize,
@@ -21,6 +23,7 @@ import GlassPanel from '../components/glass/GlassPanel';
 import { dataService } from '../services/mockDb';
 import { runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, getResidenceStatuses } from '../types';
+import { MapDock, MapDockItem } from '../components/MapDock';
 import { GlassSegmented } from '../components/glass/GlassSegmented';
 import DatePicker from '../components/ui/DatePicker';
 import { LiquidGlassSelect, LiquidGlassMultiSelect } from '../components/LiquidGlassSelect';
@@ -111,7 +114,7 @@ const MAP_MODE_THEMES: Record<PredefinedMapMode, {
         label: 'Land & Sea',
         shortLabel: 'Land',
         desc: 'Road trips & rail',
-        icon: Compass,
+        icon: MountainSnow,
         color: 'text-emerald-500 dark:text-emerald-400',
         activeText: 'text-emerald-700 dark:text-emerald-300',
         activeBg: 'bg-emerald-500/20 dark:bg-emerald-500/30',
@@ -127,7 +130,7 @@ const MAP_MODE_THEMES: Record<PredefinedMapMode, {
         label: 'Scratch',
         shortLabel: 'Scratch',
         desc: 'Territory explorer',
-        icon: MapIcon,
+        icon: Maping,
         color: 'text-amber-500 dark:text-amber-400',
         activeText: 'text-amber-700 dark:text-amber-300',
         activeBg: 'bg-amber-500/20 dark:bg-amber-500/30',
@@ -899,6 +902,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
     const activeSectorsCount = expeditionTypeMetrics.activeSectorsCount;
 
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isStatsExpanded, setIsStatsExpanded] = useState(false);
     const mapContainerRef = React.useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -934,6 +938,57 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             console.warn("Fullscreen toggle error", e);
         }
     };
+
+    const dockItems: MapDockItem[] = [
+        ...(['flights', 'land_sea', 'scratch', 'all'] as PredefinedMapMode[]).map((modeKey): MapDockItem => {
+            const isAllNoneActive = modeKey === 'all' && viewMode === 'none';
+            const config = isAllNoneActive ? MAP_MODE_THEMES.none : MAP_MODE_THEMES[modeKey];
+            const metrics = expeditionTypeMetrics[modeKey];
+            return {
+                key: modeKey,
+                text: config.label,
+                icon: config.icon,
+                selected: viewMode === modeKey || isAllNoneActive,
+                pressed: viewMode === modeKey || isAllNoneActive,
+                onSelect: () => handleSelectViewMode(modeKey),
+                title: `${config.label} (${metrics.count} • ${metrics.distanceStr})`,
+                selectedClass: `${config.activeText} ${config.activeBg} border ${config.activeBorder} ${config.activeShadow}`,
+                idleClass: `${config.color} opacity-85 hover:opacity-100 border border-transparent`,
+                iconClass: config.color,
+            };
+        }),
+        {
+            key: 'trips',
+            text: `${activeSectorsCount} trips`,
+            mobileText: String(activeSectorsCount),
+            icon: MapPin,
+            iconDesktopOnly: true,
+            ariaLabel: `${activeSectorsCount} trips, ${isStatsExpanded ? 'collapse' : 'expand'} details`,
+            title: 'Trip totals by view',
+            expanded: isStatsExpanded,
+            onSelect: () => setIsStatsExpanded(v => !v),
+            selectedClass: '',
+            idleClass: 'text-light-text dark:text-dark-text font-mono hover:bg-black/5 dark:hover:bg-white/5 border border-transparent',
+            end: <CaretDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isStatsExpanded ? 'rotate-180' : ''}`} weight="bold" />,
+        },
+    ];
+
+    const renderStatsPanel = () => isStatsExpanded && (
+        <div className="mb-2 pointer-events-auto">
+            <GlassPanel className="wg-glass-card shadow-glass-card" padding="8px 12px" overrides={{ borderRadius: 20 }}>
+                <ul className="flex flex-col gap-1">
+                    {(['flights', 'land_sea', 'scratch', 'all'] as PredefinedMapMode[]).map(k => (
+                        <li key={k} className="flex items-center justify-between gap-6 text-2xs font-bold">
+                            <span className={MAP_MODE_THEMES[k].color}>{MAP_MODE_THEMES[k].label}</span>
+                            <span className="font-mono text-light-text dark:text-dark-text">
+                                {expeditionTypeMetrics[k].count} • {expeditionTypeMetrics[k].distanceStr}
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            </GlassPanel>
+        </div>
+    );
 
     return (
         <div ref={mapContainerRef} className="relative w-full h-full overflow-hidden bg-light-bg dark:bg-dark-bg select-none">
@@ -978,57 +1033,14 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             </div>
 
             {/* 2. FLOATING BOTTOM-CENTER PREDEFINED VIEW MODES SELECTOR (Desktop md+) */}
-            <div className="hidden md:block absolute bottom-6 left-1/2 -translate-x-1/2 z-float pointer-events-auto">
+            <div className="hidden md:flex flex-col items-center absolute bottom-6 left-1/2 -translate-x-1/2 z-float pointer-events-none">
+                {renderStatsPanel()}
                 <GlassPanel
-                    className="wg-glass-pill shadow-glass-card"
+                    className="wg-glass-pill shadow-glass-card pointer-events-auto"
                     padding="4px 6px"
                     overrides={{ borderRadius: 9999 }}
                 >
-                    <div className="flex gap-1 relative items-center">
-                        {(['flights', 'land_sea', 'scratch', 'all'] as PredefinedMapMode[]).map((modeKey) => {
-                            const isAllNoneActive = modeKey === 'all' && viewMode === 'none';
-                            const config = isAllNoneActive ? MAP_MODE_THEMES.none : MAP_MODE_THEMES[modeKey];
-                            const isSelected = viewMode === modeKey || isAllNoneActive;
-                            const IconComponent = config.icon;
-                            const metrics = expeditionTypeMetrics[modeKey];
-                            return (
-                                <button
-                                    key={modeKey}
-                                    onClick={() => handleSelectViewMode(modeKey)}
-                                    title={`${config.label} (${metrics.count} expeditions • ${metrics.distanceStr})`}
-                                    className={`relative min-h-[44px] min-w-[44px] rounded-full text-xs font-bold transition-all duration-200 flex flex-col items-center justify-center cursor-pointer select-none active:scale-95 ${isSelected
-                                            ? `${config.activeText} px-4 sm:px-6 py-2`
-                                            : `${config.color} hover:opacity-100 opacity-85 px-3 sm:px-5 py-2`
-                                        }`}
-                                >
-                                    {isSelected && (
-                                        <motion.div
-                                            layoutId="kokonutSmoothTabActive"
-                                            className={`absolute inset-0 rounded-full ${config.activeBg} border ${config.activeBorder} ${config.activeShadow} z-0`}
-                                            transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                                        />
-                                    )}
-                                    <span className="relative z-raised flex flex-col items-center gap-0.5">
-                                        <span className="flex items-center gap-1.5 sm:gap-2">
-                                            <IconComponent className={`w-4.5 h-4.5 shrink-0 transition-colors duration-200 ${config.color}`} weight="duotone" />
-                                            <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden sm:inline'} ${isSelected ? config.activeText : config.color}`}>
-                                                {config.label}
-                                            </span>
-                                            <span className={`text-2xs font-mono px-2 py-0.5 rounded-full font-bold border transition-colors ${config.badgeStyle} ${isSelected
-                                                    ? 'inline shadow-xs'
-                                                    : 'hidden sm:inline opacity-90 hover:opacity-100'
-                                                }`}>
-                                                {metrics.count}
-                                            </span>
-                                        </span>
-                                        <span className="text-2xs font-mono tracking-tight font-bold text-light-text dark:text-dark-text">
-                                            {metrics.distanceStr}
-                                        </span>
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
+                    <MapDock items={dockItems} />
                 </GlassPanel>
             </div>
 
@@ -1110,22 +1122,6 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     >
                         <div className="flex items-center gap-1">
                             <button
-                                onClick={handleToggleFullscreen}
-                                className={`w-11 h-11 rounded-xl flex items-center justify-center cursor-pointer transition-all duration-150 active:scale-95 ${isFullscreen
-                                        ? 'bg-primary-500/20 dark:bg-primary-500/30 text-primary-600 dark:text-primary-400'
-                                        : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
-                                    }`}
-                                title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-                                aria-label="Toggle Fullscreen"
-                            >
-                                {isFullscreen ? (
-                                    <Minimize className="w-4 h-4 text-primary-600 dark:text-primary-400" />
-                                ) : (
-                                    <Maximize className="w-4 h-4" />
-                                )}
-                            </button>
-                            <div className="w-[1px] h-4 bg-black/10 dark:bg-white/10" />
-                            <button
                                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                                 className={`h-11 px-2.5 rounded-xl flex items-center gap-1.5 text-xs font-bold cursor-pointer transition-all duration-150 active:scale-95 ${isSidebarOpen
                                         ? 'bg-primary-500/20 dark:bg-primary-500/30 text-primary-700 dark:text-primary-300'
@@ -1151,51 +1147,13 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             <div className={`flex md:hidden fixed bottom-[calc(4.85rem+env(safe-area-inset-bottom,0px))] inset-x-0 z-sticky items-center justify-center px-4 pointer-events-none transition-opacity duration-200 ${isSidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
                 }`}>
                 <div className="pointer-events-auto w-full max-w-sm">
+                    {renderStatsPanel()}
                     <GlassPanel
                         className="wg-glass-pill shadow-2xl w-full"
                         padding="4px"
                         overrides={{ borderRadius: 9999 }}
                     >
-                        <div className="grid grid-cols-4 gap-1 w-full relative">
-                            {(['flights', 'land_sea', 'scratch', 'all'] as PredefinedMapMode[]).map((modeKey) => {
-                                const isAllNoneActive = modeKey === 'all' && viewMode === 'none';
-                                const config = isAllNoneActive ? MAP_MODE_THEMES.none : MAP_MODE_THEMES[modeKey];
-                                const isSelected = viewMode === modeKey || isAllNoneActive;
-                                const IconComponent = config.icon;
-                                const metrics = expeditionTypeMetrics[modeKey];
-                                return (
-                                    <button
-                                        key={modeKey}
-                                        onClick={() => handleSelectViewMode(modeKey)}
-                                        className={`relative h-12 py-1 rounded-full text-xs font-bold transition-colors duration-200 flex flex-col items-center justify-center cursor-pointer select-none active:scale-95 min-w-0 ${isSelected
-                                                ? config.activeText
-                                                : `${config.color} opacity-85 hover:opacity-100`
-                                            }`}
-                                        title={`${config.label} (${metrics.count} • ${metrics.distanceStr})`}
-                                    >
-                                        {isSelected && (
-                                            <motion.div
-                                                layoutId="kokonutSmoothTabActiveMobile"
-                                                className={`absolute inset-0 rounded-full ${config.activeBg} border ${config.activeBorder} ${config.activeShadow} z-0`}
-                                                transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                                            />
-                                        )}
-                                        <span className="relative z-raised flex flex-col items-center justify-center truncate px-0.5">
-                                            <span className="flex items-center gap-1 truncate">
-                                                <IconComponent className={`w-3.5 h-3.5 shrink-0 transition-colors duration-200 ${config.color}`} weight="duotone" />
-                                                <span className={`text-2xs font-bold tracking-tight ${isSelected ? config.activeText : config.color}`}>{config.shortLabel}</span>
-                                                <span className={`text-[8.5px] font-mono px-1 py-0.2 rounded-full font-bold border transition-colors ${config.badgeStyle}`}>
-                                                    {metrics.count}
-                                                </span>
-                                            </span>
-                                            <span className="text-[8.5px] font-mono tracking-tight font-bold text-light-text dark:text-dark-text mt-0.5">
-                                                {metrics.distanceStr}
-                                            </span>
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
+                        <MapDock items={dockItems} />
                     </GlassPanel>
                 </div>
             </div>

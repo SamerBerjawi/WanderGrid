@@ -115,6 +115,8 @@ import {
   MoreHorizontalCircle01Icon,
   MoreHorizontalIcon,
   MountainIcon,
+  MountainSnowIcon,
+  MapingIcon,
   Navigation03Icon,
   PaintBoardIcon,
   PencilEdit01Icon,
@@ -315,6 +317,8 @@ export const MapPin = make(Location01Icon, 'MapPin');
 export const MapTrifold = make(MapsIcon, 'MapTrifold');
 export const Moon = make(Moon02Icon, 'Moon');
 export const Mountains = make(MountainIcon, 'Mountains');
+export const MountainSnow = make(MountainSnowIcon, 'MountainSnow');
+export const Maping = make(MapingIcon, 'Maping');
 export const NavigationArrow = make(Navigation03Icon, 'NavigationArrow');
 export const Palette = make(PaintBoardIcon, 'Palette');
 export const PaperPlaneTilt = make(SentIcon, 'PaperPlaneTilt');
