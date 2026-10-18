@@ -1271,10 +1271,10 @@ export function Toolbar({
           aria-orientation={vertical ? "vertical" : "horizontal"}
           className={cn(
             "flex items-center gap-0.5 p-1.5",
-            tone === "ink" ? "bg-rp-ink" : "border border-rp-line bg-rp-surface",
+            tone === "ink" ? "bg-rp-ink" : "bg-rp-surface",
             "transition-shadow duration-200 ease-out",
             vertical && "flex-col",
-            tone === "ink" ? "rp-shadow-ink" : dragging ? "rp-shadow-float" : "rp-shadow-raised",
+            tone === "ink" ? "rp-shadow-ink" : dragging ? "rp-shadow-float" : "rp-shadow-soft",
             jump && "[&_*]:transition-none",
             dockClassName
           )}

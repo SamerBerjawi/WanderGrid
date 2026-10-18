@@ -486,7 +486,7 @@ export default function SmoothTab({
           <div
             aria-hidden="true"
             className={cn(
-              "pointer-events-none absolute inset-0 flex p-1",
+              "pointer-events-none absolute inset-0 flex p-1 transition-colors duration-300",
               activeColor
             )}
             ref={overlayRef}

@@ -147,13 +147,13 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
 
             {/* Mobile bottom tab bar (decision 7) */}
             <nav aria-label="Main" className="pointer-events-none absolute inset-x-0 bottom-0 z-sticky px-3 pb-[calc(10px+env(safe-area-inset-bottom,0px))] md:hidden">
-                <div className="pointer-events-auto mx-auto flex max-w-md items-center justify-between rounded-full bg-rp-ink p-1.5 rp-shadow-ink">
+                <div className="pointer-events-auto mx-auto flex max-w-md items-center justify-between rounded-full bg-rp-surface p-1.5 rp-shadow-soft">
                     {MOBILE_TABS.slice(0, 2).map(path => <TabButton key={path} path={path} active={currentPath === path} onClick={() => go(path)} />)}
                     <button
                         type="button"
                         aria-label="Quick actions"
                         onClick={() => setSheet('add')}
-                        className="flex size-12 items-center justify-center rounded-full bg-rp-mustard text-rp-on-mustard outline-none focus-visible:ring-2 focus-visible:ring-rp-on-ink"
+                        className="flex size-12 items-center justify-center rounded-full bg-rp-mustard text-rp-on-mustard outline-none focus-visible:ring-2 focus-visible:ring-rp-muted"
                     >
                         <Plus size={22} />
                     </button>
@@ -162,7 +162,7 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
                         type="button"
                         aria-label="More"
                         onClick={() => setSheet('more')}
-                        className="flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-full px-2 text-rp-on-ink/70 outline-none focus-visible:ring-2 focus-visible:ring-rp-on-ink"
+                        className="flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-full px-2 text-rp-muted outline-none focus-visible:ring-2 focus-visible:ring-rp-muted"
                     >
                         <DotsThreeOutline size={20} />
                         <span className="text-xs">More</span>
@@ -207,8 +207,8 @@ const TabButton: React.FC<{ path: string; active: boolean; onClick: () => void }
             onClick={onClick}
             aria-current={active ? 'page' : undefined}
             className={cn(
-                'flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-full px-2 outline-none focus-visible:ring-2 focus-visible:ring-rp-on-ink',
-                active ? 'text-rp-on-ink' : 'text-rp-on-ink/70'
+                'flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-full px-2 outline-none focus-visible:ring-2 focus-visible:ring-rp-muted',
+                active ? 'text-rp-ink' : 'text-rp-muted'
             )}
         >
             <item.icon size={20} />
