@@ -6,7 +6,7 @@ import {
     DEFAULT_MAP_APPEARANCE, ALL_AIRPORT_CATEGORIES, getYesterdayDateString,
     type AirportCategory, type MapAppearanceSettings,
 } from '../../../types/mapAppearance';
-import { Airplane, AirplaneTilt, Check, AirplaneLanding, ArrowCounterClockwise, Buildings, CalendarBlank, ChartBar, CirclesThree, CloudRain, Eye, Globe, Heart, House, Lightning, Maping, MapPin, MapTrifold, Moon, Mountains, MountainSnow, Palette, Path, Planet, RoadHorizon, SlidersHorizontal, Sparkle, Stack, Sun, SunHorizon, Train, TrendUp } from '../../ui/hugeicons';
+import { Airplane, AirplaneTilt, Airport, Check, EditRoad, MapsGlobal, SquaresUnite, AirplaneLanding, ArrowCounterClockwise, Buildings, CalendarBlank, ChartBar, CirclesThree, CloudRain, Eye, Globe, Heart, House, Lightning, Maping, MapPin, MapTrifold, Moon, Mountains, MountainSnow, Palette, Path, Planet, RoadHorizon, SlidersHorizontal, Sparkle, Stack, Sun, SunHorizon, Train, TrendUp } from '../../ui/hugeicons';
 import { cn } from '../../../utils/cn';
 import { RpChip, RpRow, RpSection, RpSheet, RpSlider, RpToggle, useIsMobile } from '../ui';
 
@@ -242,11 +242,11 @@ export const MapSettingsSheet: React.FC<MapSettingsSheetProps> = ({
                     <RpSegmented label="Airport markers" value={a.airportSize} onChange={v => onChange({ airportSize: v })} options={SIZES as any} />
                 </RpRow>
                 <RpToggle icon={ChartBar} label="Size by traffic" checked={a.airportMode !== 'uniform'} onChange={v => onChange({ airportMode: v ? 'frequency' : 'uniform' })} />
-                <RpRow icon={Path} label="Runway detail">
+                <RpRow icon={EditRoad} label="Runway detail">
                     <RpSegmented label="Runway detail" value={a.airportDetail} onChange={v => onChange({ airportDetail: v })} options={[{ value: 'none', label: 'None' }, { value: 'simple', label: 'Simple' }, { value: 'detailed', label: 'Detailed' }]} />
                 </RpRow>
-                <RpToggle icon={AirplaneLanding} label="Airports only" hint="Hides routes, cities and overlays" checked={Boolean(a.airportsOnly)} onChange={v => onChange({ airportsOnly: v })} />
-                <RpToggle icon={CirclesThree} label="Group nearby airports" checked={groupAirports} onChange={onGroupAirports} />
+                <RpToggle icon={Airport} label="Airports only" hint="Hides routes, cities and overlays" checked={Boolean(a.airportsOnly)} onChange={v => onChange({ airportsOnly: v })} />
+                <RpToggle icon={SquaresUnite} label="Group nearby airports" checked={groupAirports} onChange={onGroupAirports} />
             </RpSection>
             <RpSection icon={Buildings} title="Cities">
                 <RpRow label="Markers">
@@ -304,7 +304,7 @@ export const MapSettingsSheet: React.FC<MapSettingsSheetProps> = ({
                 value={section}
                 onChange={setSection}
                 items={[
-                    { id: 'map', title: 'Map', icon: MapTrifold, content: mapTab },
+                    { id: 'map', title: 'Map', icon: MapsGlobal, content: mapTab },
                     { id: 'layers', title: 'Layers', icon: Stack, content: layersTab },
                     { id: 'routes', title: 'Routes', icon: Path, content: routesTab },
                     { id: 'scratch', title: 'Scratch', icon: Maping, content: scratchTab },
