@@ -4,7 +4,7 @@ import { Toolbar, type DockTool } from '../../components/kokonutui/tool-dock';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import ActionSearchBar, { type CommandItem } from '../../components/kokonutui/command-palette';
 import {
-    Airplane, ArrowsIn, ArrowsOut, CornersOut, Funnel, GlobeHemisphereWest, MapPin, MapTrifold, MagnifyingGlass,
+    Airplane, ArrowsIn, ArrowsOut, CornersOut, Funnel, Globe, GlobeHemisphereWest, MapPin, MapTrifold, Maping, MagnifyingGlass, Train,
     Minus, NavigationArrow, Plus, Stack, Suitcase,
 } from '../../components/ui/hugeicons';
 import { useExpeditionMapData } from '../../hooks/useExpeditionMapData';
@@ -32,6 +32,8 @@ export interface MapNewProps {
     onTripClick?: (tripId: string) => void;
     /** Kept for parity with the page it will replace; the New shell has no sidebar. */
     isSidebarCollapsed?: boolean;
+    /** Lets a light or dark basemap switch the app theme to match. */
+    onThemeChange?: (theme: 'light' | 'dark') => void;
 }
 
 type Tool = 'explore' | 'search' | 'layers' | 'filter';
@@ -61,7 +63,7 @@ const useIsDark = () => {
     return dark;
 };
 
-export const MapNew: React.FC<MapNewProps> = ({ onTripClick }) => {
+export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) => {
     const data = useExpeditionMapData();
     const isDark = useIsDark();
     const mobile = useIsMobile();
@@ -190,12 +192,13 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick }) => {
 
     /* -------------------------------------------------- mode tabs */
 
-    const modeItems = [
-        { id: 'all', title: 'All', badge: mobile ? undefined : metrics.all.count },
-        { id: 'flights', title: 'Flights', badge: mobile ? undefined : metrics.flights.count },
-        { id: 'land_sea', title: 'Land & sea', badge: mobile ? undefined : metrics.land_sea.count },
-        { id: 'scratch', title: 'Scratch', badge: mobile ? undefined : metrics.scratch.count },
-    ];
+    // Every tab has an icon and its count; on phones only the active tab spells out its name.
+    const modeItems = ([
+        { id: 'all', title: 'All', icon: Globe, badge: metrics.all.count },
+        { id: 'flights', title: 'Flights', icon: Airplane, badge: metrics.flights.count },
+        { id: 'land_sea', title: 'Land & sea', icon: Train, badge: metrics.land_sea.count },
+        { id: 'scratch', title: 'Scratch', icon: Maping, badge: metrics.scratch.count },
+    ] as const).map(item => ({ ...item, hideTitle: mobile && item.id !== mode }));
 
     const onUpdateCountryStatus = (code: string, name: string, status: CountryResidenceStatus[] | 'none') => {
         void data.handleUpdateCountryStatus(code, name, status);
@@ -330,6 +333,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick }) => {
                 isDark={isDark}
                 openAipAvailable={openAipAvailable}
                 topOffset={sheetTop}
+                onThemeChange={onThemeChange}
             />
             <MapFilterSheet
                 open={tool === 'filter'}
@@ -364,6 +368,8 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick }) => {
                 visitedCountryCodes={data.visitedCountryCodes}
                 onUpdateCountryStatus={onUpdateCountryStatus}
                 topOffset={sheetTop}
+                brandfetchApiKey={settings?.brandfetchApiKey}
+                carriers={settings?.carriers}
             />
         </div>
     );

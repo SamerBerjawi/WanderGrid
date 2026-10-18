@@ -195,7 +195,7 @@ const KEY_MOVES: Record<string, (i: number, n: number) => number> = {
 
 const SURFACE = "bg-rp-ink";
 const FOCUS_RING =
-  "outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-inset";
+  "outline-none focus-visible:ring-2 focus-visible:ring-rp-mustard focus-visible:ring-inset";
 
 /**
  * In-page anchors scroll to their target and record the hash with
@@ -331,7 +331,7 @@ function Segment({
           <motion.span
             aria-hidden="true"
             className={cn(
-              "absolute inset-y-0 -left-px w-3 origin-left",
+              "absolute inset-y-0 -left-px w-6 origin-left",
               SURFACE
             )}
             style={{ transform: leftCap }}
@@ -341,7 +341,7 @@ function Segment({
           <motion.span
             aria-hidden="true"
             className={cn(
-              "absolute inset-y-0 -right-px w-3 origin-right",
+              "absolute inset-y-0 -right-px w-6 origin-right",
               SURFACE
             )}
             style={{ transform: rightCap }}

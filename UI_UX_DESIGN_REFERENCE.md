@@ -146,6 +146,30 @@ These values come from the video (light) and a derived warm dark theme. Define t
 
 **Near-black exception.** `AGENTS.md` §11.1 forbids near-black surface fills. The video's ink fills (dock, toasts, dark buttons, "travelling now" cards) are a deliberate part of this design, so the New pages allow them **only through the `rp-ink` token**, never `bg-black`, `bg-zinc-900` or a hex value.
 
+### 1.5 Icons and logos (all New pages)
+
+Icons and logos carry a lot of the concept's clarity: every KPI, toolbar button and list row has one. New pages use them consistently.
+
+**Icons (Hugeicons only)**
+- Import icons only from the adapter `components/ui/hugeicons.tsx` (stroke-rounded). If an icon is missing, add a named export there; never import `lucide-react` or another set.
+- **Where icons are required:**
+  - every icon-only button (it also needs an `aria-label`)
+  - toolbar and dock tools
+  - tab and segmented options where they help recognition, such as view modes and settings sections
+  - settings rows and toggles: a leading 18px muted icon, through the `icon` prop of `RpRow` and `RpToggle`
+  - section headings: a 14px icon on `RpSection`
+  - empty states
+  - KPI tiles: an icon in a 40px circle, per §1.2
+- **Sizes:** 14px in section headings and meta lines, 16px in chips and tabs, 18px in rows, 20px in toolbar buttons and the tab bar.
+- **Colour:** icons are `rp-muted` at rest and `rp-ink` (or `rp-on-ink` on ink fills) when active. Icons never carry status colour on their own: status uses the colour tokens and a label.
+- **Compact tabs:** where space is tight (mobile), inactive tabs may show the icon and count only, with the name on the active tab (`hideTitle` on Swipe Tabs). The name stays the accessible label.
+
+**Logos**
+- Show the real logo wherever a carrier, operator, airline, hotel brand or service appears: route and journey rows, operator chips, bookings and integrations.
+- Use `RpLogo` (`components/new/ui.tsx`). It tries `utils/carrierLogo.ts` in order (Brandfetch with the workspace key, then the airline-code image, Clearbit, then the favicon) and falls back to a relevant Hugeicons glyph (the mode icon for transport).
+- Logos sit on a white chip (they are drawn for light backgrounds), with rounded 10px corners, or fully rounded in chips. They are 28px in chips and 36px in rows.
+- A logo never replaces the text name in lists: show both.
+
 ---
 
 ## 2. Layout & Shell Architecture
@@ -484,6 +508,7 @@ The view inventory below lists which **features** each New page inherits, and su
 [ ] Reversible mutations use Undo Button / undo toast; permanent deletes use Hold Button
 [ ] Empty state uses the shared empty component
 [ ] 44px targets, aria-label on icon-only buttons, prefers-reduced-motion disables morphs
+[ ] Icons per §1.5 (Hugeicons adapter only; rows, sections, tools, tabs) and logos wherever a carrier or brand appears
 [ ] Gesture components have keyboard and plain-tap fallbacks
 [ ] Responsive per §2.4: verified at 375, 768 portrait, 1024 landscape and 1440+, in light and dark
 ```

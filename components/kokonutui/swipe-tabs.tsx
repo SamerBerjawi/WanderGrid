@@ -35,9 +35,12 @@ export interface SwipeTabItem {
   id: string;
   title: string;
   /** Shown before the title in the tab. */
-  icon?: ComponentType<{ className?: string; "aria-hidden"?: boolean | "true" }>;
+  // biome-ignore lint/suspicious/noExplicitAny: accepts any icon component (Hugeicons adapter, SVG components)
+  icon?: ComponentType<any>;
   /** Shown after the title, such as a count. */
   badge?: ReactNode;
+  /** Hide the visible title (icon-only tab); `title` stays the accessible name. */
+  hideTitle?: boolean;
   /** The panel shown for this tab. */
   content?: ReactNode;
 }
@@ -61,6 +64,10 @@ export interface SmoothTabProps {
   listClassName?: string;
   /** Classes for the panel box. */
   panelClassName?: string;
+  /** Tighter tab padding, for segmented rows in narrow panels. */
+  compact?: boolean;
+  /** Tabs share the full width of the list. */
+  stretch?: boolean;
 }
 
 // Past the first or last tab the panel moves this fraction of the drag.
@@ -149,7 +156,12 @@ export default function SmoothTab({
   panels = true,
   listClassName,
   panelClassName,
+  compact = false,
+  stretch = false,
 }: SmoothTabProps) {
+  const pad = compact ? "px-3" : "px-4";
+  // The panel box takes the height of the selected panel, not the tallest one.
+  const [panelHeight, setPanelHeight] = useState<number | undefined>(undefined);
   const count = items.length;
   const indexOf = (id: string | undefined) =>
     Math.max(
@@ -295,6 +307,18 @@ export default function SmoothTab({
     [settle]
   );
 
+  useEffect(() => {
+    const panel = panelRefs.current[selected];
+    if (!(panels && panel)) {
+      return;
+    }
+    const measure = () => setPanelHeight(panel.offsetHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(panel);
+    return () => observer.disconnect();
+  }, [selected, panels]);
+
   // A controlled `value` changed from outside: follow it.
   useEffect(() => {
     if (selected !== target.current && !drag.current) {
@@ -320,6 +344,9 @@ export default function SmoothTab({
   };
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('input, textarea, select, [role="slider"], [data-no-swipe]')) {
+      return;
+    }
     if (count < 2 || (e.pointerType === "mouse" && e.button !== 0)) {
       return;
     }
@@ -412,10 +439,10 @@ export default function SmoothTab({
 
   return (
     <div className={cn("flex w-full flex-col gap-3", className)}>
-      <div className="flex justify-center">
+      <div className={cn("flex", stretch ? "w-full" : "justify-center")}>
         <div
           aria-label={label}
-          className={cn("relative inline-flex max-w-full rounded-full bg-rp-inset p-1", listClassName)}
+          className={cn("relative max-w-full rounded-full bg-rp-inset p-1", stretch ? "flex w-full" : "inline-flex", listClassName)}
           ref={tablistRef}
           role="tablist"
         >
@@ -424,10 +451,13 @@ export default function SmoothTab({
             const isSelected = i === selected;
             return (
               <button
-                aria-controls={panelId(i)}
+                aria-controls={panels ? panelId(i) : undefined}
+                aria-label={item.hideTitle ? item.title : undefined}
                 aria-selected={isSelected}
                 className={cn(
-                  "relative flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 font-medium text-sm",
+                  "relative flex min-h-11 items-center justify-center gap-1.5 rounded-full font-medium text-sm",
+                  pad,
+                  stretch ? "min-w-0 flex-1" : "shrink-0",
                   "text-rp-muted transition-colors duration-150 ease-out hover:text-rp-ink",
                   "outline-none focus-visible:outline-2 focus-visible:outline-rp-line focus-visible:outline-offset-2"
                 )}
@@ -443,7 +473,7 @@ export default function SmoothTab({
                 type="button"
               >
                 {Icon && <Icon aria-hidden="true" className="size-4" />}
-                <span className="whitespace-nowrap">{item.title}</span>
+                {item.hideTitle ? null : <span className="whitespace-nowrap">{item.title}</span>}
                 {item.badge !== undefined ? <span className="rp-tabular text-xs opacity-70">{item.badge}</span> : null}
               </button>
             );
@@ -465,13 +495,15 @@ export default function SmoothTab({
               return (
                 <span
                   className={cn(
-                    "flex min-h-11 shrink-0 items-center gap-1.5 px-4 font-medium text-sm",
+                    "flex min-h-11 items-center justify-center gap-1.5 font-medium text-sm",
+                    pad,
+                    stretch ? "min-w-0 flex-1" : "shrink-0",
                     activeTextColor
                   )}
                   key={item.id}
                 >
                   {Icon && <Icon className="size-4" />}
-                  <span className="whitespace-nowrap">{item.title}</span>
+                  {item.hideTitle ? null : <span className="whitespace-nowrap">{item.title}</span>}
                   {item.badge !== undefined ? <span className="rp-tabular text-xs opacity-70">{item.badge}</span> : null}
                 </span>
               );
@@ -481,7 +513,8 @@ export default function SmoothTab({
       </div>
 
       {panels ? <div
-        className={cn("relative touch-pan-y select-none overflow-hidden rounded-rp-inset bg-rp-surface data-[dragging]:cursor-grabbing", panelClassName)}
+        className={cn("relative touch-pan-y select-none overflow-hidden rounded-rp-inset bg-rp-surface transition-[height] duration-300 ease-out data-[dragging]:cursor-grabbing", panelClassName)}
+        style={{ height: panelHeight }}
         onClickCapture={(e) => {
           if (suppressClick.current) {
             suppressClick.current = false;
@@ -496,7 +529,7 @@ export default function SmoothTab({
         onPointerUp={(e) => endDrag(e, false)}
       >
         <div
-          className="flex will-change-transform"
+          className="flex items-start will-change-transform"
           ref={trackRef}
           style={{
             width: `${count * 100}%`,

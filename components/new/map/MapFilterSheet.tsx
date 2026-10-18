@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { MagnifyingGlass } from '../../ui/hugeicons';
+import { AirplaneLanding, AirplaneTakeoff, Calendar, CalendarBlank, CheckCircle, MagnifyingGlass } from '../../ui/hugeicons';
 import { RpChip, RpSection, RpSheet } from '../ui';
 
 type Status = 'all' | 'Past' | 'Upcoming' | 'Planning';
@@ -91,26 +91,26 @@ export const MapFilterSheet: React.FC<MapFilterSheetProps> = props => {
             }
         >
             <div className="flex flex-col gap-5">
-                <RpSection title="Status">
+                <RpSection icon={CheckCircle} title="Status">
                     <div className="flex flex-wrap gap-2 py-2">
                         {STATUSES.map(s => <RpChip key={s.value} selected={props.statusFilter === s.value} onClick={() => props.setStatusFilter(s.value)}>{s.label}</RpChip>)}
                     </div>
                 </RpSection>
                 {props.years.length > 0 ? (
-                    <RpSection title="Year">
+                    <RpSection icon={Calendar} title="Year">
                         <div className="flex flex-wrap gap-2 py-2">
                             <RpChip selected={props.yearFilter === 'all'} onClick={() => props.setYearFilter('all')}>All</RpChip>
                             {props.years.map(y => <RpChip key={y} selected={props.yearFilter === y} onClick={() => props.setYearFilter(y)}>{y}</RpChip>)}
                         </div>
                     </RpSection>
                 ) : null}
-                <RpSection title="From">
+                <RpSection icon={AirplaneTakeoff} title="From">
                     <PlacePicker label="From" options={props.origins} selected={props.depFilter} onChange={props.setDepFilter} />
                 </RpSection>
-                <RpSection title="To">
+                <RpSection icon={AirplaneLanding} title="To">
                     <PlacePicker label="To" options={props.destinations} selected={props.arrFilter} onChange={props.setArrFilter} />
                 </RpSection>
-                <RpSection title="Dates">
+                <RpSection icon={CalendarBlank} title="Dates">
                     <div className="grid grid-cols-2 gap-2 py-2">
                         <label className="flex flex-col gap-1">
                             <span className="px-1 text-xs text-rp-muted">From</span>

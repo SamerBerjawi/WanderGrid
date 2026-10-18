@@ -1,7 +1,9 @@
 import React, { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Drawer } from 'vaul';
-import { X } from '../ui/hugeicons';
+import { X, type Icon } from '../ui/hugeicons';
+import type { Carrier } from '../../types';
+import { carrierLogoSources } from '../../utils/carrierLogo';
 import { cn } from '../../utils/cn';
 
 /**
@@ -62,16 +64,20 @@ export const RpIconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>
 export const RpToggle: React.FC<{
     label: string;
     hint?: string;
+    icon?: Icon;
     checked: boolean;
     onChange: (next: boolean) => void;
     disabled?: boolean;
-}> = ({ label, hint, checked, onChange, disabled }) => {
+}> = ({ label, hint, icon: IconC, checked, onChange, disabled }) => {
     const id = useId();
     return (
         <div className={cn('flex min-h-11 items-center justify-between gap-3', disabled && 'opacity-50')}>
-            <label htmlFor={id} className="flex min-w-0 flex-col">
-                <span className="text-sm font-medium text-rp-ink">{label}</span>
-                {hint ? <span className="text-xs text-rp-muted">{hint}</span> : null}
+            <label htmlFor={id} className="flex min-w-0 items-center gap-3">
+                {IconC ? <IconC size={18} className="shrink-0 text-rp-muted" aria-hidden /> : null}
+                <span className="flex min-w-0 flex-col">
+                    <span className="text-sm font-medium text-rp-ink">{label}</span>
+                    {hint ? <span className="text-xs text-rp-muted">{hint}</span> : null}
+                </span>
             </label>
             <button
                 id={id}
@@ -151,10 +157,13 @@ export const RpChip: React.FC<{
 );
 
 /** A titled group inside a sheet: a muted heading over an inset panel. */
-export const RpSection: React.FC<{ title: string; children: ReactNode; action?: ReactNode }> = ({ title, children, action }) => (
+export const RpSection: React.FC<{ title: string; icon?: Icon; children: ReactNode; action?: ReactNode }> = ({ title, icon: IconC, children, action }) => (
     <section className="flex flex-col gap-2">
         <div className="flex min-h-6 items-center justify-between px-1">
-            <h3 className="text-xs font-medium text-rp-muted">{title}</h3>
+            <h3 className="flex items-center gap-1.5 text-xs font-medium text-rp-muted">
+                {IconC ? <IconC size={14} aria-hidden /> : null}
+                {title}
+            </h3>
             {action}
         </div>
         <div className="flex flex-col gap-1 rounded-rp-inset bg-rp-inset/60 px-4 py-2">{children}</div>
@@ -162,11 +171,14 @@ export const RpSection: React.FC<{ title: string; children: ReactNode; action?: 
 );
 
 /** A label on the left with any control on the right. */
-export const RpRow: React.FC<{ label: string; hint?: string; children: ReactNode }> = ({ label, hint, children }) => (
-    <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 py-1">
-        <div className="flex min-w-0 flex-col">
-            <span className="text-sm font-medium text-rp-ink">{label}</span>
-            {hint ? <span className="text-xs text-rp-muted">{hint}</span> : null}
+export const RpRow: React.FC<{ label: string; hint?: string; icon?: Icon; children: ReactNode }> = ({ label, hint, icon: IconC, children }) => (
+    <div className="flex min-h-11 flex-col items-stretch gap-2 py-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+            {IconC ? <IconC size={18} className="shrink-0 text-rp-muted" aria-hidden /> : null}
+            <span className="flex min-w-0 flex-col">
+                <span className="text-sm font-medium text-rp-ink">{label}</span>
+                {hint ? <span className="text-xs text-rp-muted">{hint}</span> : null}
+            </span>
         </div>
         {children}
     </div>
@@ -214,10 +226,10 @@ export const RpSheet: React.FC<RpSheetProps> = ({ open, onClose, title, subtitle
 
     if (mobile) {
         return (
-            <Drawer.Root open={open} onOpenChange={o => { if (!o) onClose(); }} snapPoints={[0.55, 0.94]} modal={false}>
+            <Drawer.Root open={open} onOpenChange={o => { if (!o) onClose(); }} modal={false}>
                 <Drawer.Portal>
                     <Drawer.Content
-                        className="rp-root fixed inset-x-0 bottom-0 z-modal flex h-[96dvh] flex-col rounded-t-rp-card bg-rp-surface rp-shadow-float outline-none"
+                        className="rp-root fixed inset-x-0 bottom-0 z-modal flex max-h-[92dvh] flex-col rounded-t-rp-card bg-rp-surface rp-shadow-float outline-none"
                         aria-describedby={undefined}
                     >
                         <div className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-rp-line" aria-hidden />
@@ -228,7 +240,7 @@ export const RpSheet: React.FC<RpSheetProps> = ({ open, onClose, title, subtitle
                             </div>
                             <RpIconButton label="Close" tone="ghost" onClick={onClose}><X size={20} /></RpIconButton>
                         </div>
-                        <div className="custom-scrollbar flex-1 overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
+                        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]" data-vaul-no-drag>
                             {children}
                             {footer ? <div className="mt-6 flex items-center justify-between gap-3 border-t border-rp-line pt-4">{footer}</div> : null}
                         </div>
@@ -280,3 +292,30 @@ export const RpEmpty: React.FC<{ title: string; children?: ReactNode; action?: R
         {action ? <div className="mt-2">{action}</div> : null}
     </div>
 );
+
+/**
+ * A carrier or operator logo on a white chip (logos are drawn for light backgrounds), trying each
+ * source in turn and falling back to an icon.
+ */
+export const RpLogo: React.FC<{
+    name?: string;
+    brandfetchApiKey?: string;
+    carriers?: Carrier[];
+    fallback: Icon;
+    size?: 'sm' | 'md';
+    className?: string;
+}> = ({ name, brandfetchApiKey, carriers, fallback: Fallback, size = 'md', className }) => {
+    const sources = React.useMemo(() => carrierLogoSources(name, brandfetchApiKey, carriers), [name, brandfetchApiKey, carriers]);
+    const [attempt, setAttempt] = useState(0);
+    useEffect(() => setAttempt(0), [sources]);
+    const src = sources[attempt];
+    return (
+        <span className={cn('flex shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-white', size === 'sm' ? 'size-7' : 'size-9', className)}>
+            {src ? (
+                <img src={src} alt={name ? `${name} logo` : ''} className="h-full w-full object-contain" referrerPolicy="no-referrer" onError={() => setAttempt(a => a + 1)} />
+            ) : (
+                <Fallback size={size === 'sm' ? 14 : 16} className="text-rp-muted" aria-hidden />
+            )}
+        </span>
+    );
+};

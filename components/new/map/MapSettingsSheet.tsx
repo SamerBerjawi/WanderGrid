@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import SwipeTabs from '../../kokonutui/swipe-tabs';
 import UndoButton from '../../kokonutui/undo-button';
 import { FEATURE_FLAGS } from '../../../config/featureFlags';
@@ -6,8 +6,9 @@ import {
     DEFAULT_MAP_APPEARANCE, ALL_AIRPORT_CATEGORIES, getYesterdayDateString,
     type AirportCategory, type MapAppearanceSettings,
 } from '../../../types/mapAppearance';
-import { ArrowCounterClockwise } from '../../ui/hugeicons';
-import { RpChip, RpRow, RpSection, RpSheet, RpSlider, RpToggle } from '../ui';
+import { Airplane, AirplaneTilt, AirplaneLanding, ArrowCounterClockwise, Buildings, CalendarBlank, ChartBar, CirclesThree, CloudRain, Eye, Globe, Heart, House, Lightning, Maping, MapPin, MapTrifold, Moon, Mountains, MountainSnow, Palette, Path, Planet, RoadHorizon, SlidersHorizontal, Sparkle, Stack, Sun, SunHorizon, Train, TrendUp } from '../../ui/hugeicons';
+import { cn } from '../../../utils/cn';
+import { RpChip, RpRow, RpSection, RpSheet, RpSlider, RpToggle, useIsMobile } from '../ui';
 
 /** Segmented choice built on KokonutUI Swipe Tabs (tabs only). */
 export function RpSegmented<T extends string>({ value, options, onChange, label }: {
@@ -16,14 +17,17 @@ export function RpSegmented<T extends string>({ value, options, onChange, label 
     onChange: (v: T) => void;
     label: string;
 }) {
+    const mobile = useIsMobile();
     return (
         <SwipeTabs
+            compact={!mobile}
+            stretch={mobile}
             items={options.map(o => ({ id: o.value, title: o.label }))}
             value={value}
             onChange={id => onChange(id as T)}
             panels={false}
             label={label}
-            className="w-auto"
+            className={mobile ? 'w-full' : 'w-auto'}
             listClassName="bg-rp-surface"
         />
     );
@@ -36,17 +40,39 @@ const SIZES = [
     { value: 'large', label: 'Large' },
 ] as const;
 
-const BASEMAPS: { value: MapAppearanceSettings['basemap']; label: string; darkOnly?: boolean }[] = [
-    { value: 'default', label: 'Auto' },
-    { value: 'liberty', label: 'Streets' },
-    { value: 'bright', label: 'Bright' },
-    { value: 'positron', label: 'Light grey' },
-    { value: 'dark', label: 'Dark' },
-    { value: 'fiord', label: 'Dark blue' },
-    { value: 'satellite', label: 'Satellite' },
-    { value: 'citylights', label: 'Night lights' },
-    { value: 'ocean', label: 'Ocean', darkOnly: true },
+type BasemapTone = 'light' | 'dark';
+
+/** Basemap choices, grouped by how they look. Previews are one low-zoom tile from the same provider. */
+const BASEMAPS: { value: MapAppearanceSettings['basemap']; label: string; tone: BasemapTone; preview: string; filter?: string }[] = [
+    { value: 'liberty', label: 'Streets', tone: 'light', preview: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/2/1/2' },
+    { value: 'bright', label: 'Bright', tone: 'light', preview: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/2/1/2' },
+    { value: 'positron', label: 'Light grey', tone: 'light', preview: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/2/1/2' },
+    { value: 'dark', label: 'Dark', tone: 'dark', preview: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/2/1/2' },
+    { value: 'fiord', label: 'Dark blue', tone: 'dark', preview: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/2/1/2', filter: 'sepia(0.6) saturate(4) hue-rotate(180deg) brightness(0.85)' },
+    { value: 'citylights', label: 'Night lights', tone: 'dark', preview: 'https://gibs-a.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/default/GoogleMapsCompatible_Level8/2/1/2.png' },
+    { value: 'satellite', label: 'Satellite', tone: 'dark', preview: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/2/1/2' },
+    { value: 'ocean', label: 'Ocean', tone: 'dark', preview: 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/2/1/2' },
 ];
+
+/** Whether a basemap reads as light or dark; Auto follows the theme. */
+export const basemapTone = (value: MapAppearanceSettings['basemap']): BasemapTone | null =>
+    BASEMAPS.find(b => b.value === value)?.tone ?? null;
+
+const BasemapCard: React.FC<{ label: string; selected: boolean; onClick: () => void; children: React.ReactNode }> = ({ label, selected, onClick, children }) => (
+    <button
+        type="button"
+        aria-pressed={selected}
+        onClick={onClick}
+        className={cn(
+            'group flex min-h-11 flex-col gap-1.5 rounded-[18px] p-1.5 text-left outline-none transition-colors',
+            'focus-visible:ring-2 focus-visible:ring-rp-muted',
+            selected ? 'bg-rp-ink text-rp-on-ink' : 'text-rp-ink hover:bg-rp-surface'
+        )}
+    >
+        <span className="relative block h-14 w-full overflow-hidden rounded-[12px] bg-rp-line">{children}</span>
+        <span className="truncate px-1 pb-0.5 text-xs font-medium">{label}</span>
+    </button>
+);
 
 const AIP_GROUPS: { value: NonNullable<MapAppearanceSettings['openAipGroups']>[number]; label: string }[] = [
     { value: 'airspaces', label: 'Airspaces' },
@@ -77,27 +103,55 @@ export interface MapSettingsSheetProps {
     isDark: boolean;
     openAipAvailable: boolean;
     topOffset: number;
+    /** Called when a basemap's tone differs from the current theme. */
+    onThemeChange?: (theme: 'light' | 'dark') => void;
 }
 
 export const MapSettingsSheet: React.FC<MapSettingsSheetProps> = ({
-    open, onClose, appearance: a, onChange, onReplace, groupAirports, onGroupAirports, isDark, openAipAvailable, topOffset,
+    open, onClose, appearance: a, onChange, onReplace, groupAirports, onGroupAirports, isDark, openAipAvailable, topOffset, onThemeChange,
 }) => {
+    // A dark basemap turns the app dark and a light one turns it light, so the chrome matches the map.
+    const chooseBasemap = (value: MapAppearanceSettings['basemap'], tone: BasemapTone) => {
+        onChange({ basemap: value });
+        if ((tone === 'dark') !== isDark) onThemeChange?.(tone);
+    };
     const beforeReset = useRef<MapAppearanceSettings | null>(null);
+    const mobile = useIsMobile();
+    const [section, setSection] = useState('map');
 
     const mapTab = (
         <div className="flex flex-col gap-5 pt-2">
-            <RpSection title="View">
-                <RpRow label="Projection">
+            <RpSection icon={Eye} title="View">
+                <RpRow icon={Globe} label="Projection">
                     <RpSegmented label="Projection" value={a.projection} onChange={v => onChange({ projection: v })} options={[{ value: 'flat', label: 'Flat' }, { value: 'globe', label: 'Globe' }]} />
                 </RpRow>
-                <RpToggle label="Atmosphere" hint="Globe only" checked={a.atmosphere !== false} disabled={a.projection !== 'globe'} onChange={v => onChange({ atmosphere: v })} />
-                <RpToggle label="Day and night" checked={a.timeOfDay} onChange={v => onChange({ timeOfDay: v })} />
+                <RpToggle icon={Sparkle} label="Atmosphere" hint="Globe only" checked={a.atmosphere !== false} disabled={a.projection !== 'globe'} onChange={v => onChange({ atmosphere: v })} />
+                <RpToggle icon={SunHorizon} label="Day and night" checked={a.timeOfDay} onChange={v => onChange({ timeOfDay: v })} />
             </RpSection>
-            <RpSection title="Basemap">
-                <div className="flex flex-wrap gap-2 py-2">
-                    {BASEMAPS.filter(b => !b.darkOnly || isDark).map(b => (
-                        <RpChip key={b.value} selected={a.basemap === b.value} onClick={() => onChange({ basemap: b.value })}>{b.label}</RpChip>
+            <RpSection icon={MapTrifold} title="Basemap">
+                <div className="flex flex-col gap-3 py-2">
+                    <div className="grid grid-cols-3 gap-1.5">
+                        <BasemapCard label="Auto" selected={a.basemap === 'default'} onClick={() => onChange({ basemap: 'default' })}>
+                            <img src={BASEMAPS[0].preview} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover [clip-path:polygon(0_0,100%_0,0_100%)]" />
+                            <img src={BASEMAPS[3].preview} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover [clip-path:polygon(100%_0,100%_100%,0_100%)]" />
+                        </BasemapCard>
+                    </div>
+                    {(['light', 'dark'] as BasemapTone[]).map(tone => (
+                        <div key={tone} className="flex flex-col gap-1.5">
+                            <p className="flex items-center gap-1.5 px-1 text-xs text-rp-muted">
+                                {tone === 'light' ? <Sun size={14} /> : <Moon size={14} />}
+                                {tone === 'light' ? 'Light' : 'Dark'}
+                            </p>
+                            <div className="grid grid-cols-3 gap-1.5">
+                                {BASEMAPS.filter(b => b.tone === tone).map(b => (
+                                    <BasemapCard key={b.value} label={b.label} selected={a.basemap === b.value} onClick={() => chooseBasemap(b.value, b.tone)}>
+                                        <img src={b.preview} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" style={b.filter ? { filter: b.filter } : undefined} />
+                                    </BasemapCard>
+                                ))}
+                            </div>
+                        </div>
                     ))}
+                    <p className="px-1 text-xs text-rp-muted">Light and dark basemaps switch the app theme to match.</p>
                 </div>
             </RpSection>
         </div>
@@ -105,23 +159,23 @@ export const MapSettingsSheet: React.FC<MapSettingsSheetProps> = ({
 
     const layersTab = (
         <div className="flex flex-col gap-5 pt-2">
-            <RpSection title="Weather and terrain">
-                <RpToggle label="Rain radar" checked={a.rainRadar} onChange={v => onChange({ rainRadar: v })} />
+            <RpSection icon={CloudRain} title="Weather and terrain">
+                <RpToggle icon={CloudRain} label="Rain radar" checked={a.rainRadar} onChange={v => onChange({ rainRadar: v })} />
                 {a.rainRadar ? <RpSlider label="Opacity" value={a.rainRadarOpacity ?? 0.85} min={0.2} max={1} step={0.05} format={pct} onChange={v => onChange({ rainRadarOpacity: v })} /> : null}
-                <RpToggle label="Relief shading" checked={Boolean(a.terrainHillshade)} onChange={v => onChange({ terrainHillshade: v })} />
+                <RpToggle icon={Mountains} label="Relief shading" checked={Boolean(a.terrainHillshade)} onChange={v => onChange({ terrainHillshade: v })} />
                 {a.terrainHillshade ? <RpSlider label="Strength" value={a.terrainHillshadeOpacity ?? 0.8} min={0.1} max={1} step={0.05} format={pct} onChange={v => onChange({ terrainHillshadeOpacity: v })} /> : null}
                 {FEATURE_FLAGS.GEV_P04D_TERRAIN ? (
                     <>
-                        <RpToggle label="3D elevation" checked={Boolean(a.terrain3d)} onChange={v => onChange({ terrain3d: v })} />
+                        <RpToggle icon={MountainSnow} label="3D elevation" checked={Boolean(a.terrain3d)} onChange={v => onChange({ terrain3d: v })} />
                         {a.terrain3d ? <RpSlider label="Height" value={a.terrain3dExaggeration ?? 1} min={0.5} max={3} step={0.1} format={v => `${v.toFixed(1)}×`} onChange={v => onChange({ terrain3dExaggeration: v })} /> : null}
                     </>
                 ) : null}
                 {FEATURE_FLAGS.GEV_P04C_GIBS_DAILY ? (
                     <>
-                        <RpToggle label="Daily satellite" checked={Boolean(a.gibsDaily)} onChange={v => onChange({ gibsDaily: v, gibsDailyDate: a.gibsDailyDate || getYesterdayDateString() })} />
+                        <RpToggle icon={Planet} label="Daily satellite" checked={Boolean(a.gibsDaily)} onChange={v => onChange({ gibsDaily: v, gibsDailyDate: a.gibsDailyDate || getYesterdayDateString() })} />
                         {a.gibsDaily ? (
                             <>
-                                <RpRow label="Imagery date">
+                                <RpRow icon={CalendarBlank} label="Imagery date">
                                     <input
                                         type="date"
                                         value={a.gibsDailyDate || getYesterdayDateString()}
@@ -136,10 +190,11 @@ export const MapSettingsSheet: React.FC<MapSettingsSheetProps> = ({
                     </>
                 ) : null}
             </RpSection>
-            <RpSection title="Transport">
-                <RpToggle label="Rail lines" checked={Boolean(a.transitOverlay)} onChange={v => onChange({ transitOverlay: v })} />
+            <RpSection icon={Train} title="Transport">
+                <RpToggle icon={Train} label="Rail lines" checked={Boolean(a.transitOverlay)} onChange={v => onChange({ transitOverlay: v })} />
                 {a.transitOverlay ? <RpSlider label="Opacity" value={a.transitOverlayOpacity ?? 0.4} min={0.1} max={1} step={0.05} format={pct} onChange={v => onChange({ transitOverlayOpacity: v })} /> : null}
                 <RpToggle
+                    icon={AirplaneTilt}
                     label="Aviation charts"
                     hint={openAipAvailable ? undefined : 'Add your OpenAIP key in Settings › Integrations'}
                     checked={Boolean(a.openAipOverlay) && openAipAvailable}
@@ -169,45 +224,45 @@ export const MapSettingsSheet: React.FC<MapSettingsSheetProps> = ({
 
     const routesTab = (
         <div className="flex flex-col gap-5 pt-2">
-            <RpSection title="Airports">
+            <RpSection icon={Airplane} title="Airports">
                 <RpRow label="Markers">
                     <RpSegmented label="Airport markers" value={a.airportSize} onChange={v => onChange({ airportSize: v })} options={SIZES as any} />
                 </RpRow>
-                <RpToggle label="Size by traffic" checked={a.airportMode !== 'uniform'} onChange={v => onChange({ airportMode: v ? 'frequency' : 'uniform' })} />
-                <RpRow label="Runway detail">
+                <RpToggle icon={ChartBar} label="Size by traffic" checked={a.airportMode !== 'uniform'} onChange={v => onChange({ airportMode: v ? 'frequency' : 'uniform' })} />
+                <RpRow icon={Path} label="Runway detail">
                     <RpSegmented label="Runway detail" value={a.airportDetail} onChange={v => onChange({ airportDetail: v })} options={[{ value: 'none', label: 'None' }, { value: 'simple', label: 'Simple' }, { value: 'detailed', label: 'Detailed' }]} />
                 </RpRow>
-                <RpToggle label="Airports only" hint="Hides routes, cities and overlays" checked={Boolean(a.airportsOnly)} onChange={v => onChange({ airportsOnly: v })} />
-                <RpToggle label="Group nearby airports" checked={groupAirports} onChange={onGroupAirports} />
+                <RpToggle icon={AirplaneLanding} label="Airports only" hint="Hides routes, cities and overlays" checked={Boolean(a.airportsOnly)} onChange={v => onChange({ airportsOnly: v })} />
+                <RpToggle icon={CirclesThree} label="Group nearby airports" checked={groupAirports} onChange={onGroupAirports} />
             </RpSection>
-            <RpSection title="Cities">
+            <RpSection icon={Buildings} title="Cities">
                 <RpRow label="Markers">
                     <RpSegmented label="City markers" value={a.citySize || 'medium'} onChange={v => onChange({ citySize: v })} options={SIZES as any} />
                 </RpRow>
             </RpSection>
-            <RpSection title="Routes">
-                <RpRow label="Colour">
+            <RpSection icon={Path} title="Routes">
+                <RpRow icon={Palette} label="Colour">
                     <RpSegmented label="Route colour" value={a.routeColorMode} onChange={v => onChange({ routeColorMode: v })} options={[{ value: 'gradient', label: 'Gradient' }, { value: 'frequency', label: 'Frequency' }, { value: 'default', label: 'Status' }]} />
                 </RpRow>
-                <RpRow label="Thickness">
+                <RpRow icon={SlidersHorizontal} label="Thickness">
                     <RpSegmented label="Route thickness" value={a.routeScale} onChange={v => onChange({ routeScale: v })} options={[{ value: 'thin', label: 'Thin' }, { value: 'normal', label: 'Medium' }, { value: 'thick', label: 'Thick' }]} />
                 </RpRow>
-                <RpToggle label="Width by frequency" checked={a.routeWidthMode === 'frequency'} onChange={v => onChange({ routeWidthMode: v ? 'frequency' : 'uniform' })} />
-                <RpToggle label="Animate routes" checked={Boolean(a.animateRoutes)} onChange={v => onChange({ animateRoutes: v })} />
-                <RpToggle label="Follow roads and rails" checked={a.routeTracing !== false} onChange={v => onChange({ routeTracing: v })} />
+                <RpToggle icon={TrendUp} label="Width by frequency" checked={a.routeWidthMode === 'frequency'} onChange={v => onChange({ routeWidthMode: v ? 'frequency' : 'uniform' })} />
+                <RpToggle icon={Lightning} label="Animate routes" checked={Boolean(a.animateRoutes)} onChange={v => onChange({ animateRoutes: v })} />
+                <RpToggle icon={RoadHorizon} label="Follow roads and rails" checked={a.routeTracing !== false} onChange={v => onChange({ routeTracing: v })} />
             </RpSection>
         </div>
     );
 
     const scratchTab = (
         <div className="flex flex-col gap-5 pt-2">
-            <RpSection title="Scratch map">
-                <RpRow label="City pins">
+            <RpSection icon={Maping} title="Scratch map">
+                <RpRow icon={MapPin} label="City pins">
                     <RpSegmented label="City pins" value={a.scratchCitySize || 'medium'} onChange={v => onChange({ scratchCitySize: v })} options={SIZES as any} />
                 </RpRow>
-                <RpToggle label="Lived in" checked={a.showLivedCountries !== false} onChange={v => onChange({ showLivedCountries: v })} />
-                <RpToggle label="Layovers" checked={a.showLayoverCountries !== false} onChange={v => onChange({ showLayoverCountries: v })} />
-                <RpToggle label="Wishlist" checked={a.showWishlistCountries !== false} onChange={v => onChange({ showWishlistCountries: v })} />
+                <RpToggle icon={House} label="Lived in" checked={a.showLivedCountries !== false} onChange={v => onChange({ showLivedCountries: v })} />
+                <RpToggle icon={AirplaneLanding} label="Layovers" checked={a.showLayoverCountries !== false} onChange={v => onChange({ showLayoverCountries: v })} />
+                <RpToggle icon={Heart} label="Wishlist" checked={a.showWishlistCountries !== false} onChange={v => onChange({ showWishlistCountries: v })} />
             </RpSection>
         </div>
     );
@@ -218,7 +273,7 @@ export const MapSettingsSheet: React.FC<MapSettingsSheetProps> = ({
             onClose={onClose}
             title="Map settings"
             topOffset={topOffset}
-            width={420}
+            width={440}
             footer={
                 <UndoButton
                     label="Reset settings"
@@ -233,12 +288,14 @@ export const MapSettingsSheet: React.FC<MapSettingsSheetProps> = ({
             <SwipeTabs
                 label="Map settings sections"
                 listClassName="bg-rp-inset"
+                value={section}
+                onChange={setSection}
                 items={[
-                    { id: 'map', title: 'Map', content: mapTab },
-                    { id: 'layers', title: 'Layers', content: layersTab },
-                    { id: 'routes', title: 'Routes', content: routesTab },
-                    { id: 'scratch', title: 'Scratch', content: scratchTab },
-                ]}
+                    { id: 'map', title: 'Map', icon: MapTrifold, content: mapTab },
+                    { id: 'layers', title: 'Layers', icon: Stack, content: layersTab },
+                    { id: 'routes', title: 'Routes', icon: Path, content: routesTab },
+                    { id: 'scratch', title: 'Scratch', icon: Maping, content: scratchTab },
+                ].map(t => ({ ...t, hideTitle: mobile && t.id !== section }))}
             />
         </RpSheet>
     );
