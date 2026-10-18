@@ -131,12 +131,14 @@ These values come from the video (light) and a derived warm dark theme. Define t
 | `rp-surface` | Cards | `#F4F2EC` | `#211F1C` | `rp-ink` / `rp-paper` |
 | `rp-inset` | Panels inside cards, segmented tracks, kanban column bodies | `#ECEAE3` | `#2A2824` | `rp-ink` / `rp-paper` |
 | `rp-line` | Hairline separators (tables, lists) | `#DEDBD2` | `#34312C` | — |
-| `rp-ink` | Primary text (light), ink fills: dock, dark buttons, toasts, "travelling now" cards | `#181A1A` | `#EDEAE3` (inverted: fills become light) | `rp-paper` on light / `rp-ink-dark` on dark |
-| `rp-paper` | Text on ink and saturated fills; primary text in dark mode | `#FFFFFF` | `#F2EFE8` | — |
+| `rp-ink` | Primary text (light), ink fills: dock, dark buttons, toasts, "travelling now" cards | `#181A1A` | `#EDEAE3` (inverted: fills become light) | `rp-on-ink` |
+| `rp-on-ink` | Text and icons on an `rp-ink` fill (inverts with it) | `#FFFFFF` | `#171614` | — |
+| `rp-paper` | Text on green and rust fills | `#FFFFFF` | `#F2EFE8` | — |
 | `rp-muted` | Labels, meta, axes | `#6E675C` (4.5:1, darkened from the video's `#8F887C`) | `#A39C8F` (6.6:1) | — |
 | `rp-green` | Confirmed / upcoming; positive | `#2C5D4F` | `#3B7464` | `rp-paper` |
 | `rp-rust` | Action needed; negative / overdue | `#C7441E` | `#C7441E` (unchanged: a lighter rust fails 4.5:1 with white text) | `rp-paper` |
-| `rp-mustard` | Draft / planned; highlight chips; Undo | `#F0C94C` | `#F4D36A` | `rp-ink` (always dark text) |
+| `rp-mustard` | Draft / planned; highlight chips; Undo | `#F0C94C` | `#F4D36A` | `rp-on-mustard` |
+| `rp-on-mustard` | Text on mustard: always dark, in both themes | `#181A1A` | `#181A1A` | — |
 
 **Elevation tokens** (§1.3 values): `rp-shadow-rest` (cards), `rp-shadow-raised` (coloured cards), `rp-shadow-float` (dragged card, modal, sheet, dock, toast). In dark mode shadows are replaced by a 1px `rp-line` outline plus the lighter surface step, because shadows don't read on a dark canvas.
 

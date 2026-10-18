@@ -111,6 +111,7 @@ import {
   Mail01Icon,
   MapsIcon,
   Maximize01Icon,
+  MinusSignIcon,
   Moon02Icon,
   MoreHorizontalCircle01Icon,
   MoreHorizontalIcon,
@@ -315,6 +316,7 @@ export const LockOpen = make(SquareUnlock01Icon, 'LockOpen');
 export const MagnifyingGlass = make(Search01Icon, 'MagnifyingGlass');
 export const MapPin = make(Location01Icon, 'MapPin');
 export const MapTrifold = make(MapsIcon, 'MapTrifold');
+export const Minus = make(MinusSignIcon, 'Minus');
 export const Moon = make(Moon02Icon, 'Moon');
 export const Mountains = make(MountainIcon, 'Mountains');
 export const MountainSnow = make(MountainSnowIcon, 'MountainSnow');

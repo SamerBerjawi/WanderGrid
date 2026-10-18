@@ -13,6 +13,9 @@ import {
     getAirportOverlayGroups
 } from '../services/airportOverlayStyle';
 import { normalizeAirportDetail } from '../types/mapAppearance';
+import { OPENAIP_PROXY_TILES, withApiAuth, isLightEffectiveBasemap, getBasemapTileConfig } from '../services/mapStyle';
+// Shared with the New map engine; re-exported for existing importers.
+export { getBasemapTileConfig };
 import type { AirportOverlayGroup } from '../types/mapAppearance';
 import {
     OPENAIP_AIRSPACE_SOURCE_ID,
@@ -106,15 +109,6 @@ import { MAP_SETTINGS_LABELS } from './mapSettings/labels';
 let geoJsonMemoryCache: any = null;
 
 // OpenAIP tiles come through our authenticated proxy, which adds the workspace key server-side.
-const OPENAIP_PROXY_TILES = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/proxy/openaip/{z}/{x}/{y}`;
-const withApiAuth = (url: string) => {
-    if (typeof window !== 'undefined' && url.startsWith(`${window.location.origin}/api/`)) {
-        const token = localStorage.getItem('wandergrid_session_token');
-        if (token) return { url, headers: { Authorization: `Bearer ${token}` } };
-    }
-    return { url };
-};
-
 const UK_NATION_BY_NAME: Record<string, string> = { ENGLAND: 'GB-ENG', SCOTLAND: 'GB-SCT', WALES: 'GB-WLS', 'NORTHERN IRELAND': 'GB-NIR' };
 const UK_NATION_BY_GU: Record<string, string> = { ENG: 'GB-ENG', SCT: 'GB-SCT', WLS: 'GB-WLS', NIR: 'GB-NIR' };
 
@@ -320,8 +314,6 @@ const getFeatureCentroid = (feature: any): { lat: number; lng: number } => {
     return { lat: 20, lng: 0 };
 };
 
-const LIGHT_BASEMAPS: ReadonlySet<EffectiveBasemap> = new Set(['liberty', 'bright', 'positron']);
-const isLightEffectiveBasemap = (layer: EffectiveBasemap): boolean => LIGHT_BASEMAPS.has(layer);
 
 const useDarkMode = () => {
     const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
@@ -333,83 +325,6 @@ const useDarkMode = () => {
         return () => observer.disconnect();
     }, []);
     return isDark;
-};
-
-export const getBasemapTileConfig = (
-    effectiveLayer: EffectiveBasemap,
-    resolvedCartoKey?: string
-) => {
-    let key = (resolvedCartoKey || '').trim().replace(/^['"]|['"]$/g, '');
-    if (key.startsWith('key=')) key = key.slice(4).trim();
-    if (key.startsWith('?key=')) key = key.slice(5).trim();
-    const keyParam = key ? `?key=${encodeURIComponent(key)}` : '';
-
-    const getCartoTiles = (style: 'dark_all' | 'light_all') => [
-        `https://a.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`,
-        `https://b.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`,
-        `https://c.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`,
-        `https://d.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`
-    ];
-
-    let tiles: string[] = [];
-    let maxzoom = 20;
-    let attribution = '© CARTO, © OpenStreetMap contributors';
-
-    switch (effectiveLayer) {
-        case 'liberty':
-        case 'bright':
-            attribution = 'OpenFreeMap Data © OpenStreetMap contributors';
-            break;
-        case 'satellite':
-            tiles = [
-                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-            ];
-            maxzoom = 19;
-            attribution = 'Source: Esri, Maxar, Earthstar Geographics';
-            break;
-        case 'ocean':
-            tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}'];
-            maxzoom = 10;
-            attribution = 'Source: Esri, GEBCO, NOAA';
-            break;
-        case 'citylights':
-            tiles = [
-                'https://gibs-a.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png',
-                'https://gibs-b.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png',
-                'https://gibs-c.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png'
-            ];
-            maxzoom = 8;
-            attribution = 'NASA EOSDIS GIBS';
-            break;
-        case 'positron':
-            if (key) {
-                tiles = getCartoTiles('light_all');
-                maxzoom = 20;
-                attribution = '© CARTO, © OpenStreetMap contributors';
-            } else {
-                tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'];
-                maxzoom = 16;
-                attribution = 'Esri, HERE, Garmin, © OpenStreetMap contributors';
-            }
-            break;
-        case 'dark':
-        case 'fiord':
-        case '3d':
-        default:
-            if (key) {
-                tiles = getCartoTiles('dark_all');
-                maxzoom = 20;
-                attribution = '© CARTO, © OpenStreetMap contributors';
-            } else {
-                tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'];
-                maxzoom = 16;
-                attribution = 'Esri, HERE, Garmin, © OpenStreetMap contributors';
-            }
-            break;
-    }
-
-    return { tiles, maxzoom, attribution };
 };
 
 export const computeStyleKey = (

@@ -24,6 +24,8 @@ export default {
     extend: {
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"SF Pro Display"', '"SF Pro"', 'sans-serif'],
+        // New pages (UI_UX_DESIGN_REFERENCE.md §1.2)
+        rp: ['"Outfit Variable"', 'Outfit', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       fontSize: {
         // Smallest size in the system: 11px, for pills and counters only (UI-002, decision C-2).
@@ -67,6 +69,22 @@ export default {
           muted: '#8B8F98',
           line: '#2A2D34',
           ok: '#4ADE80',
+        },
+        // New pages (UI_UX_DESIGN_REFERENCE.md §1.4): variables defined in components/new/new.css, scoped to .rp-root
+        rp: {
+          canvas: 'rgb(var(--rp-canvas) / <alpha-value>)',
+          glow: 'rgb(var(--rp-glow) / <alpha-value>)',
+          surface: 'rgb(var(--rp-surface) / <alpha-value>)',
+          inset: 'rgb(var(--rp-inset) / <alpha-value>)',
+          line: 'rgb(var(--rp-line) / <alpha-value>)',
+          ink: 'rgb(var(--rp-ink) / <alpha-value>)',
+          'on-ink': 'rgb(var(--rp-on-ink) / <alpha-value>)',
+          paper: 'rgb(var(--rp-paper) / <alpha-value>)',
+          muted: 'rgb(var(--rp-muted) / <alpha-value>)',
+          green: 'rgb(var(--rp-green) / <alpha-value>)',
+          rust: 'rgb(var(--rp-rust) / <alpha-value>)',
+          mustard: 'rgb(var(--rp-mustard) / <alpha-value>)',
+          'on-mustard': 'rgb(var(--rp-on-mustard) / <alpha-value>)',
         },
         // Golden Hour theme (flag UI_GOLDEN_HOUR)
         sunset: {
@@ -129,6 +147,10 @@ export default {
         'neu-inset-dark': 'inset 2px 2px 4px rgba(0,0,0,0.5), inset -2px -2px 4px rgba(255,255,255,0.05)',
       },
       borderRadius: {
+        // New pages: page cards, deal/trip cards and modals, inset panels
+        'rp-card': '28px',
+        'rp-tile': '22px',
+        'rp-inset': '16px',
         'xl': '12px',
         '2xl': '16px',
         '3xl': '24px',

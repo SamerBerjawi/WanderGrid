@@ -29,6 +29,14 @@ const Auth = lazy(() => loadAuth().then(m => ({ default: m.Auth })));
 // critical path (PERF-001/005).
 const Sidebar = lazy(() => import('./components/Sidebar').then(m => ({ default: m.Sidebar })));
 const GoldenSidebar = lazy(() => import('./components/golden/GoldenSidebar').then(m => ({ default: m.GoldenSidebar })));
+// Redesigned pages (UI_UX_DESIGN_REFERENCE.md §5.0): reached only at their own `-new` URLs, inside ShellNew.
+const ShellNew = lazy(() => import('./components/new/ShellNew').then(m => ({ default: m.ShellNew })));
+const MapNew = lazy(() => import('./views/new/MapNew').then(m => ({ default: m.MapNew })));
+type NewPage = 'map';
+const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map' };
+const getNewPage = (): NewPage | null => {
+    try { return NEW_PAGES[window.location.pathname] ?? null; } catch (e) { return null; }
+};
 
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { Toaster } from './components/Toaster';
@@ -82,6 +90,7 @@ import { getPageTheme } from './config/pageThemes';
 export default function App() {
   const initialState = getUrlState();
   const [view, setView] = useState<ViewState>(initialState.view);
+  const [newPage, setNewPage] = useState<NewPage | null>(getNewPage);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(initialState.userId || null);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(initialState.tripId || null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
@@ -92,6 +101,7 @@ export default function App() {
 
   // Handle URL Navigation (Push State)
   const navigate = (newView: ViewState, id?: string) => {
+      setNewPage(null);
       let path = '/';
       switch(newView) {
           case ViewState.SETTINGS: path = '/settings'; break;
@@ -123,6 +133,7 @@ export default function App() {
 
   useEffect(() => {
       const handlePopState = () => {
+          setNewPage(getNewPage());
           const state = getUrlState();
           setView(state.view);
           if (state.userId) setSelectedUserId(state.userId);
@@ -384,6 +395,44 @@ export default function App() {
   }
 
   const isDarkMode = theme === 'dark' || (theme === 'auto' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  // Links from the New shell: another New page stays in the shell; anything else opens the current page.
+  const navigateFromShell = (path: string) => {
+      try { if (window.location.pathname !== path) window.history.pushState({}, '', path); } catch (e) {}
+      const next = getNewPage();
+      setNewPage(next);
+      if (!next) {
+          const state = getUrlState();
+          setView(state.view);
+          if (state.userId) setSelectedUserId(state.userId);
+          if (state.tripId) setSelectedTripId(state.tripId);
+      }
+  };
+
+  if (newPage) {
+      return (
+        <Suspense fallback={null}>
+          <ShellNew
+            currentPath={window.location.pathname}
+            onNavigate={navigateFromShell}
+            user={currentUser}
+            isDark={isDarkMode}
+            onThemeChange={t => handleThemeChange(t)}
+            onLogout={() => handleLogout()}
+            localMode={!dataService.isDatabaseMode()}
+            fullBleed={newPage === 'map'}
+          >
+            <AppErrorBoundary routeKey={`new-${newPage}`} onResetToDashboard={() => navigate(ViewState.DASHBOARD)}>
+              <Suspense fallback={null}>
+                {newPage === 'map' ? <MapNew onTripClick={handleTripClick} isSidebarCollapsed={isSidebarCollapsed} /> : null}
+              </Suspense>
+            </AppErrorBoundary>
+          </ShellNew>
+          <Toaster />
+          <ConfirmHost />
+        </Suspense>
+      );
+  }
 
   return (
     <IconContext.Provider value={{ weight: 'duotone' }}>
