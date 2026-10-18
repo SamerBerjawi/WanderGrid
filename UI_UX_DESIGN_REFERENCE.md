@@ -139,6 +139,7 @@ These values come from the video (light) and a derived warm dark theme. Define t
 | `rp-rust` | Action needed; negative / overdue | `#C7441E` | `#C7441E` (unchanged: a lighter rust fails 4.5:1 with white text) | `rp-paper` |
 | `rp-mustard` | Draft / planned; highlight chips; Undo | `#F0C94C` | `#F4D36A` | `rp-on-mustard` |
 | `rp-on-mustard` | Text on mustard: always dark, in both themes | `#181A1A` | `#181A1A` | — |
+| `rp-ochre` | Mustard for icons and small accents on light surfaces (3.8:1) | `#9A740A` | `#F4D36A` | — |
 
 **Elevation tokens** (§1.3 values): `rp-shadow-rest` (cards), `rp-shadow-raised` (coloured cards), `rp-shadow-float` (dragged card, modal, sheet, dock, toast). In dark mode shadows are replaced by a 1px `rp-line` outline plus the lighter surface step, because shadows don't read on a dark canvas.
 

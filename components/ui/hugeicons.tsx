@@ -22,9 +22,11 @@ import {
   ArrowDown01Icon,
   ArrowDownLeft01Icon,
   ArrowExpand01Icon,
+  ArrowExpandIcon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
   ArrowShrink02Icon,
+  ArrowShrinkIcon,
   ArrowUp01Icon,
   ArrowUpRight01Icon,
   AtomIcon,
@@ -230,6 +232,8 @@ export const ArrowsClockwise = make(RefreshIcon, 'ArrowsClockwise');
 export const ArrowsIn = make(ArrowShrink02Icon, 'ArrowsIn');
 export const ArrowsMerge = make(GitMergeIcon, 'ArrowsMerge');
 export const ArrowsOut = make(ArrowExpand01Icon, 'ArrowsOut');
+export const ArrowExpand = make(ArrowExpandIcon, 'ArrowExpand');
+export const ArrowShrink = make(ArrowShrinkIcon, 'ArrowShrink');
 export const Atom = make(AtomIcon, 'Atom');
 export const Backpack = make(BackpackIcon, 'Backpack');
 export const Bank = make(Building03Icon, 'Bank');

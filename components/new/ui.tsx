@@ -91,7 +91,7 @@ export const RpToggle: React.FC<{
                     'focus-visible:ring-2 focus-visible:ring-rp-muted focus-visible:ring-offset-2 focus-visible:ring-offset-rp-surface'
                 )}
             >
-                <span className={cn('absolute inset-x-0 top-1/2 h-7 -translate-y-1/2 rounded-full transition-colors duration-200', checked ? 'bg-rp-ink' : 'bg-rp-line')} />
+                <span className={cn('absolute inset-x-0 top-1/2 h-7 -translate-y-1/2 rounded-full transition-colors duration-200', checked ? 'bg-rp-green' : 'bg-rp-line')} />
                 <span
                     className={cn(
                         'relative ml-1 size-5 rounded-full bg-rp-surface rp-shadow-raised transition-transform duration-200',

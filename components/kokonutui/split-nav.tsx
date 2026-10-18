@@ -22,6 +22,7 @@ import {
   useTransform,
 } from "motion/react";
 import {
+  type ComponentType,
   type FocusEvent,
   type KeyboardEvent,
   type MouseEvent,
@@ -36,6 +37,9 @@ import { cn } from "@/utils/cn";
 
 export interface NavItem {
   name: string;
+  /** Shown before the name from the `lg` breakpoint. */
+  // biome-ignore lint/suspicious/noExplicitAny: any icon component
+  icon?: ComponentType<any>;
 }
 
 export interface MorphicNavbarProps {
@@ -61,8 +65,11 @@ export interface MorphicNavbarProps {
 
 /** Gap opened on each side of the active link, in px. */
 const SPLIT = 8;
-/** Gap a hovered link opens around itself, in px. */
-const HOVER_SPLIT = 2;
+/**
+ * Gap a hovered link opens around itself, in px. 0 in WanderGrid: a hover gap made the joint caps
+ * snap in and out (visible squares), so hover only changes the text colour.
+ */
+const HOVER_SPLIT = 0;
 /** Movement before a press turns into a scrub, in px. */
 const DRAG_SLOP = 4;
 /** Seconds of release velocity added to where a flick lands. */
@@ -245,6 +252,8 @@ function ChevronIcon() {
 interface SegmentProps {
   href: string;
   name: string;
+  // biome-ignore lint/suspicious/noExplicitAny: any icon component
+  icon?: ComponentType<any>;
   x: MotionValue<number>;
   prevX?: MotionValue<number>;
   nextX?: MotionValue<number>;
@@ -264,6 +273,7 @@ interface SegmentProps {
 function Segment({
   href,
   name,
+  icon: Icon,
   x,
   prevX,
   nextX,
@@ -347,7 +357,10 @@ function Segment({
             style={{ transform: rightCap }}
           />
         ) : null}
-        <span className="relative">{name}</span>
+        <span className="relative flex items-center gap-1.5">
+          {Icon ? <Icon aria-hidden className="hidden size-4 lg:block" size={16} /> : null}
+          {name}
+        </span>
         <span
           aria-hidden="true"
           className={cn(
@@ -711,8 +724,9 @@ export function MorphicNavbar({
         onPointerUp={(event) => endDrag(event, true)}
         ref={rowRef}
       >
-        {entries.map(([path, { name }], index) => (
+        {entries.map(([path, { name, icon }], index) => (
           <Segment
+            icon={icon}
             current={index === activeIndex}
             fold={fold}
             hidden={folded && index !== activeIndex}

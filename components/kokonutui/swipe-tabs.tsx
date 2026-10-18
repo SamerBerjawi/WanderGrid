@@ -41,6 +41,8 @@ export interface SwipeTabItem {
   badge?: ReactNode;
   /** Hide the visible title (icon-only tab); `title` stays the accessible name. */
   hideTitle?: boolean;
+  /** Colour classes for the icon while the tab is not selected (an accent). */
+  iconClassName?: string;
   /** The panel shown for this tab. */
   content?: ReactNode;
 }
@@ -472,7 +474,7 @@ export default function SmoothTab({
                 tabIndex={isSelected ? 0 : -1}
                 type="button"
               >
-                {Icon && <Icon aria-hidden="true" className="size-4" />}
+                {Icon && <Icon aria-hidden="true" className={cn("size-4", item.iconClassName)} />}
                 {item.hideTitle ? null : <span className="whitespace-nowrap">{item.title}</span>}
                 {item.badge !== undefined ? <span className="rp-tabular text-xs opacity-70">{item.badge}</span> : null}
               </button>

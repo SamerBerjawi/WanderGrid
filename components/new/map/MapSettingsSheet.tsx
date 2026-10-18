@@ -6,7 +6,7 @@ import {
     DEFAULT_MAP_APPEARANCE, ALL_AIRPORT_CATEGORIES, getYesterdayDateString,
     type AirportCategory, type MapAppearanceSettings,
 } from '../../../types/mapAppearance';
-import { Airplane, AirplaneTilt, AirplaneLanding, ArrowCounterClockwise, Buildings, CalendarBlank, ChartBar, CirclesThree, CloudRain, Eye, Globe, Heart, House, Lightning, Maping, MapPin, MapTrifold, Moon, Mountains, MountainSnow, Palette, Path, Planet, RoadHorizon, SlidersHorizontal, Sparkle, Stack, Sun, SunHorizon, Train, TrendUp } from '../../ui/hugeicons';
+import { Airplane, AirplaneTilt, Check, AirplaneLanding, ArrowCounterClockwise, Buildings, CalendarBlank, ChartBar, CirclesThree, CloudRain, Eye, Globe, Heart, House, Lightning, Maping, MapPin, MapTrifold, Moon, Mountains, MountainSnow, Palette, Path, Planet, RoadHorizon, SlidersHorizontal, Sparkle, Stack, Sun, SunHorizon, Train, TrendUp } from '../../ui/hugeicons';
 import { cn } from '../../../utils/cn';
 import { RpChip, RpRow, RpSection, RpSheet, RpSlider, RpToggle, useIsMobile } from '../ui';
 
@@ -58,19 +58,32 @@ const BASEMAPS: { value: MapAppearanceSettings['basemap']; label: string; tone: 
 export const basemapTone = (value: MapAppearanceSettings['basemap']): BasemapTone | null =>
     BASEMAPS.find(b => b.value === value)?.tone ?? null;
 
-const BasemapCard: React.FC<{ label: string; selected: boolean; onClick: () => void; children: React.ReactNode }> = ({ label, selected, onClick, children }) => (
+/**
+ * A basemap tile: the preview fills the card, the name sits on a soft scrim (a photo overlay, so
+ * fixed dark-on-image colours are fine), and the chosen one gets a ring and a check.
+ */
+const BasemapCard: React.FC<{ label: string; hint?: string; selected: boolean; onClick: () => void; children: React.ReactNode }> = ({ label, hint, selected, onClick, children }) => (
     <button
         type="button"
         aria-pressed={selected}
+        aria-label={hint ? `${label}, ${hint}` : label}
         onClick={onClick}
         className={cn(
-            'group flex min-h-11 flex-col gap-1.5 rounded-[18px] p-1.5 text-left outline-none transition-colors',
-            'focus-visible:ring-2 focus-visible:ring-rp-muted',
-            selected ? 'bg-rp-ink text-rp-on-ink' : 'text-rp-ink hover:bg-rp-surface'
+            'group relative block aspect-[4/3] w-full overflow-hidden rounded-[16px] bg-rp-line text-left outline-none',
+            'transition-shadow duration-200 focus-visible:ring-2 focus-visible:ring-rp-muted focus-visible:ring-offset-2 focus-visible:ring-offset-rp-inset',
+            selected ? 'ring-2 ring-rp-ink ring-offset-2 ring-offset-rp-inset' : 'ring-1 ring-rp-line'
         )}
     >
-        <span className="relative block h-14 w-full overflow-hidden rounded-[12px] bg-rp-line">{children}</span>
-        <span className="truncate px-1 pb-0.5 text-xs font-medium">{label}</span>
+        <span className="absolute inset-0 transition-transform duration-500 ease-out group-hover:scale-110 motion-reduce:group-hover:scale-100">{children}</span>
+        <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-2.5 pt-6 pb-2">
+            <span className="block truncate text-xs font-semibold text-white">{label}</span>
+            {hint ? <span className="block truncate text-2xs text-white/75">{hint}</span> : null}
+        </span>
+        {selected ? (
+            <span className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-rp-mustard text-rp-on-mustard rp-shadow-soft" aria-hidden>
+                <Check size={14} />
+            </span>
+        ) : null}
     </button>
 );
 
@@ -129,20 +142,20 @@ export const MapSettingsSheet: React.FC<MapSettingsSheetProps> = ({
                 <RpToggle icon={SunHorizon} label="Day and night" checked={a.timeOfDay} onChange={v => onChange({ timeOfDay: v })} />
             </RpSection>
             <RpSection icon={MapTrifold} title="Basemap">
-                <div className="flex flex-col gap-3 py-2">
-                    <div className="grid grid-cols-3 gap-1.5">
-                        <BasemapCard label="Auto" selected={a.basemap === 'default'} onClick={() => onChange({ basemap: 'default' })}>
+                <div className="flex flex-col gap-4 py-3">
+                    <div className="grid grid-cols-2 gap-2.5">
+                        <BasemapCard label="Auto" hint="Follows the theme" selected={a.basemap === 'default'} onClick={() => onChange({ basemap: 'default' })}>
                             <img src={BASEMAPS[0].preview} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover [clip-path:polygon(0_0,100%_0,0_100%)]" />
                             <img src={BASEMAPS[3].preview} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover [clip-path:polygon(100%_0,100%_100%,0_100%)]" />
                         </BasemapCard>
                     </div>
                     {(['light', 'dark'] as BasemapTone[]).map(tone => (
-                        <div key={tone} className="flex flex-col gap-1.5">
-                            <p className="flex items-center gap-1.5 px-1 text-xs text-rp-muted">
-                                {tone === 'light' ? <Sun size={14} /> : <Moon size={14} />}
+                        <div key={tone} className="flex flex-col gap-2">
+                            <p className="flex items-center gap-1.5 px-0.5 text-xs font-medium text-rp-muted">
+                                {tone === 'light' ? <Sun size={14} className="text-rp-ochre" /> : <Moon size={14} />}
                                 {tone === 'light' ? 'Light' : 'Dark'}
                             </p>
-                            <div className="grid grid-cols-3 gap-1.5">
+                            <div className="grid grid-cols-3 gap-2.5">
                                 {BASEMAPS.filter(b => b.tone === tone).map(b => (
                                     <BasemapCard key={b.value} label={b.label} selected={a.basemap === b.value} onClick={() => chooseBasemap(b.value, b.tone)}>
                                         <img src={b.preview} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" style={b.filter ? { filter: b.filter } : undefined} />
