@@ -60,7 +60,7 @@ const initials = (name?: string) =>
 
 export interface TripActions {
     /** Opens the trip's details (the deck). */
-    onDetails: (trip: Trip) => void;
+    onDetails: (trip: Trip, from?: DOMRect) => void;
     onEdit: (trip: Trip) => void;
     onOpenTrip: (trip: Trip) => void;
     onMove: (trip: Trip, bucket: TripBucket) => void;
@@ -141,7 +141,7 @@ export const TripCardBody: React.FC<CardProps> = ({ trip, users, today, actions,
                 </span>
                 <button
                     type="button"
-                    onClick={() => actions.onDetails(trip)}
+                    onClick={e => actions.onDetails(trip, e.currentTarget.closest('article')?.getBoundingClientRect())}
                     className="min-h-11 min-w-0 flex-1 rounded-rp-inset text-left outline-none focus-visible:ring-2 focus-visible:ring-rp-muted"
                 >
                     <span className="line-clamp-2 break-words text-base font-medium leading-tight">{trip.name}</span>

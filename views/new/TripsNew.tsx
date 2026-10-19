@@ -12,7 +12,7 @@ import { useUndoToast } from '../../components/new/UndoToast';
 import { TripBoard } from '../../components/new/trips/TripBoard';
 import { TripList } from '../../components/new/trips/TripList';
 import { BUCKET_HEAD, BUCKET_LABEL, type TripActions } from '../../components/new/trips/TripCard';
-import { TripDetailsSheet } from '../../components/new/trips/TripDetailsSheet';
+import { TripDetailsModal, type TripOrigin } from '../../components/new/trips/TripDetailsModal';
 import { DeleteTripSheet, TripSheet, type TripSheetTarget } from '../../components/new/trips/TripSheets';
 import { Archive, CalendarBlank, Kanban, List, MagnifyingGlass, MapPin, Plus, Suitcase } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
@@ -69,6 +69,7 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     const [showArchived, setShowArchived] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
     const [detailsId, setDetailsId] = useState<string | null>(null);
+    const [detailsOrigin, setDetailsOrigin] = useState<TripOrigin | null>(null);
     const [sheet, setSheet] = useState<TripSheetTarget | null>(null);
     const [deleting, setDeleting] = useState<Trip | null>(null);
 
@@ -136,7 +137,10 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     });
 
     const actions: TripActions = {
-        onDetails: trip => setDetailsId(trip.id),
+        onDetails: (trip, from) => {
+            setDetailsOrigin(from ? { x: from.left + from.width / 2, y: from.top + from.height / 2, width: from.width } : null);
+            setDetailsId(trip.id);
+        },
         onEdit: trip => setSheet({ kind: 'edit', trip }),
         onOpenTrip: openTrip,
         onMove: move,
@@ -288,13 +292,15 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
                 onDelete={setDeleting}
                 onOpenTrip={openTrip}
             />
-            <TripDetailsSheet
+            <TripDetailsModal
                 trip={detailsTrip}
+                origin={detailsOrigin}
                 users={data.users}
                 brandfetchApiKey={data.brandfetchApiKey}
                 onClose={() => setDetailsId(null)}
                 onEdit={trip => { setDetailsId(null); setSheet({ kind: 'edit', trip }); }}
                 onOpenTrip={trip => { setDetailsId(null); openTrip(trip); }}
+                onMove={move}
             />
             <DeleteTripSheet trip={deleting} onClose={() => setDeleting(null)} onConfirm={confirmDelete} />
             {undo.host}

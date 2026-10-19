@@ -24,7 +24,7 @@ const Row: React.FC<{ trip: Trip; today: string; actions: TripActions }> = ({ tr
     return (
         <li className={cn('flex items-center gap-2 rounded-rp-tile py-1 pr-1 pl-4', now ? 'bg-rp-ink text-rp-on-ink' : 'bg-rp-surface text-rp-ink', 'rp-shadow-rest')}>
             <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-full', now ? 'bg-rp-mustard text-rp-on-mustard' : BUCKET_HEAD[bucket].circle)} aria-hidden><RowIcon bucket={bucket} /></span>
-            <button type="button" onClick={() => actions.onDetails(trip)} className="min-h-11 min-w-0 flex-1 rounded-rp-inset px-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-rp-muted">
+            <button type="button" onClick={e => actions.onDetails(trip, e.currentTarget.closest('li')?.getBoundingClientRect())} className="min-h-11 min-w-0 flex-1 rounded-rp-inset px-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-rp-muted">
                 <span className="block truncate text-sm font-medium">{trip.name}</span>
                 <span className={cn('block truncate text-xs', now ? 'text-rp-on-ink/70' : 'text-rp-muted')}>{destinationsOf(trip).join(' · ') || 'No destination yet'}</span>
             </button>
