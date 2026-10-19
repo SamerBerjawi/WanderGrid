@@ -3,7 +3,7 @@ import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import { TripsLayer } from '@deck.gl/geo-layers';
-import { ArcLayer } from '@deck.gl/layers';
+import { PathLayer } from '@deck.gl/layers';
 import { GlobeHorizonCullExtension } from '../../GlobeHorizonCullExtension';
 import { FEATURE_FLAGS } from '../../../config/featureFlags';
 import type { CountryResidenceStatus, PredefinedMapMode } from '../../../types';
@@ -64,6 +64,10 @@ export interface RpMapCanvasProps {
     onPlaceClick?: (place: MapPlace) => void;
     onCountryClick?: (code: string, name: string) => void;
     onHover?: (hover: RpMapHover | null) => void;
+    /** Routes to emphasise (a selected route, or the routes of a selected place); the rest fade back. */
+    highlightRouteIds?: string[] | null;
+    /** Called once when the chosen basemap fails and a backup basemap is shown instead. */
+    onBasemapFallback?: (failed: string) => void;
     className?: string;
 }
 
@@ -111,11 +115,22 @@ const geodesic = (from: LngLat, to: LngLat, raised: boolean): number[][] => {
     return out;
 };
 
+/**
+ * A great circle lifted off the globe: altitude follows a sine over the route, peaking at 14% of
+ * the distance (capped), so long flights arc higher than short hops. Used for the globe arcs and
+ * their pulse, so both follow exactly the same curve.
+ */
+const raise = (ground: number[][], distanceKm: number): number[][] => {
+    const peakM = Math.min(1600, Math.max(120, distanceKm * 0.14)) * 1000;
+    const n = Math.max(1, ground.length - 1);
+    return ground.map(([lng, lat], i) => [lng, lat, Math.sin((i / n) * Math.PI) * peakM]);
+};
+
 export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function RpMapCanvas(props, ref) {
     const {
         model, mode, appearance, isDark, visitedCountryCodes, countryStatusMap, visitedPlaces,
         openAipAvailable, cartoKey, defaultBasemapLight, defaultBasemapDark, padding,
-        onRouteClick, onPlaceClick, onCountryClick, onHover, className,
+        onRouteClick, onPlaceClick, onCountryClick, onHover, highlightRouteIds, onBasemapFallback, className,
     } = props;
 
     const containerRef = useRef<HTMLDivElement>(null);
@@ -156,10 +171,16 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
 
     const effectiveBasemap = getEffectiveBasemap(appearance.basemap, isDark, defaultBasemapLight, defaultBasemapDark);
     const lightBasemap = isLightEffectiveBasemap(effectiveBasemap);
+    // Set when the chosen basemap keeps failing to load; cleared whenever another basemap is chosen.
+    const [basemapFailed, setBasemapFailed] = useState(false);
+    useEffect(() => setBasemapFailed(false), [effectiveBasemap]);
     const baseStyle = useMemo<string | maplibregl.StyleSpecification>(() => {
         const vector = FEATURE_FLAGS.GEV_P04B_OPENFREEMAP ? OPENFREEMAP_STYLES[effectiveBasemap] : undefined;
-        if (vector) return vector;
-        const { tiles, maxzoom, attribution } = getBasemapTileConfig(effectiveBasemap, cartoKey);
+        // Backup basemaps come from the other provider: a failed vector style falls back to Esri's grey
+        // raster, and a failed raster (Esri, NASA) falls back to OpenFreeMap's vector light or dark map.
+        if (basemapFailed && !vector) return OPENFREEMAP_STYLES[lightBasemap ? 'positron' : 'dark']!;
+        if (vector && !basemapFailed) return vector;
+        const { tiles, maxzoom, attribution } = getBasemapTileConfig(basemapFailed ? (lightBasemap ? 'positron' : 'dark') : effectiveBasemap, basemapFailed ? undefined : cartoKey);
         return {
             version: 8,
             glyphs: GLYPHS_URL,
@@ -171,7 +192,11 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         };
         // palette.canvas only matters for the raster fallback background
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [effectiveBasemap, cartoKey, isDark]);
+    }, [effectiveBasemap, cartoKey, isDark, basemapFailed]);
+
+    // Watch for the basemap failing: repeated tile errors from the base source, or the style itself.
+    const fallbackRef = useRef({ failed: false, label: effectiveBasemap, notify: onBasemapFallback });
+    fallbackRef.current = { failed: basemapFailed, label: effectiveBasemap, notify: onBasemapFallback };
 
     /* ------------------------------------------------------------------ map lifecycle */
 
@@ -202,6 +227,22 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         if (import.meta.env.DEV) (window as any).__rpMap = map;
 
         map.on('style.load', () => setStyleVersion(v => v + 1));
+        const OVERLAY_SOURCES = new Set(['rp-dem', 'rp-dem-3d', 'rp-rail', 'rp-radar', 'rp-gibs', 'rp-night', 'rp-countries', 'rp-routes', 'rp-places', 'rp-pins', 'rp-airports', AIRPORT_SOURCE_ID, OPENAIP_AIRSPACE_SOURCE_ID]);
+        let errorTimes: number[] = [];
+        map.on('error', (e: any) => {
+            const f = fallbackRef.current;
+            if (f.failed) return;
+            const sourceId: string | undefined = e?.sourceId;
+            if (sourceId && OVERLAY_SOURCES.has(sourceId)) return;
+            const styleFailed = !sourceId && !(map as any).style?._loaded;
+            const now = Date.now();
+            errorTimes = [...errorTimes.filter(t => now - t < 15000), now];
+            if (styleFailed || errorTimes.length >= 3) {
+                errorTimes = [];
+                setBasemapFailed(true);
+                f.notify?.(f.label);
+            }
+        });
         map.on('zoomend', () => setZoom(map.getZoom()));
 
         const ro = new ResizeObserver(() => map.resize());
@@ -543,9 +584,13 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         map.setPaintProperty('rp-country-line', 'line-color', css(p.ink, 0.25));
         map.setPaintProperty('rp-night', 'fill-color', lightBasemap ? hex(p.ink) : '#02050f');
         map.setPaintProperty('rp-night', 'fill-opacity', lightBasemap ? 0.055 : 0.085);
+        // A selected route (or a selected place's routes) stays strong; everything else fades back.
+        const highlighted: any = highlightRouteIds?.length ? ['in', ['get', 'id'], ['literal', highlightRouteIds]] : null;
         ['rp-routes', 'rp-routes-sea'].forEach(id => {
-            map.setPaintProperty(id, 'line-width', hover(['+', ['get', 'width'], 2], ['get', 'width']));
-            map.setPaintProperty(id, 'line-opacity', ['get', 'opacity']);
+            map.setPaintProperty(id, 'line-width', highlighted
+                ? ['case', highlighted, ['+', ['get', 'width'], 1.5], ['get', 'width']]
+                : hover(['+', ['get', 'width'], 2], ['get', 'width']));
+            map.setPaintProperty(id, 'line-opacity', highlighted ? ['case', highlighted, 1, 0.14] : ['get', 'opacity']);
             map.setPaintProperty(id, 'line-color', ['get', 'color']);
         });
         // A gradient needs line-progress, which dashed lines cannot use: only solid routes get it.
@@ -571,14 +616,19 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         DATA_LAYERS.slice(2).forEach(id => { if (map.getLayer(id)) map.moveLayer(id); });
         // On the globe, flights are raised deck.gl arcs (below); the flat lines would double them.
         map.setFilter('rp-routes', isGlobe ? ['all', ['!=', ['get', 'mode'], 'sea'], ['!=', ['get', 'mode'], 'flight']] : ['!=', ['get', 'mode'], 'sea']);
-    }, [styleVersion, palette, isDark, lightBasemap, isGlobe, colorMode, routesGeo, airportsGeo, placesGeo, pinsGeo, countriesGeo, nightGeo]);
+    }, [styleVersion, palette, isDark, lightBasemap, isGlobe, colorMode, routesGeo, airportsGeo, placesGeo, pinsGeo, countriesGeo, nightGeo, highlightRouteIds]);
 
-    /* ------------------------------------------------------------------ animated pulse (flat map only) */
+    /* ------------------------------------------------------------------ raised arcs (globe) and the moving pulse */
 
-    // Each vertex is timed by the distance travelled to reach it, in km.
+    // On the globe, flights are drawn raised; ground legs stay on the surface.
+    const deckRoutes = useMemo(() => routePaths.map(rp => (
+        isGlobe && rp.route.mode === 'flight' ? { ...rp, path: raise(rp.path, rp.route.distanceKm) } : rp
+    )), [routePaths, isGlobe]);
+
+    // Each vertex is timed by the distance travelled to reach it, in km (altitude ignored).
     const pulseTimeline = useMemo(() => {
         let longest = 0;
-        const routes = routePaths.map(({ route, path }) => {
+        const routes = deckRoutes.map(({ route, path }) => {
             let km = 0;
             const timestamps = path.map((pt, i) => {
                 if (i > 0) {
@@ -591,44 +641,46 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
             return { route, path, timestamps };
         });
         return { routes, loopKm: longest + PULSE_TRAIL_KM };
-    }, [routePaths]);
+    }, [deckRoutes]);
     pulseLoopKmRef.current = Math.max(1, pulseTimeline.loopKm);
-
-    const flightArcs = useMemo(() => (
-        isGlobe && showRoutes ? routesGeo.features.filter(f => f.properties.mode === 'flight').map(f => {
-            const route = routePaths.find(r => r.route.id === f.properties.id)!.route;
-            return { route, color: f.properties.color, width: f.properties.width };
-        }) : []
-    ), [isGlobe, showRoutes, routesGeo, routePaths]);
 
     useEffect(() => {
         const layers: any[] = [];
-        if (flightArcs.length) {
-            const toRgb = (h: string): RGB => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
-            layers.push(new ArcLayer({
+        const hl = highlightRouteIds?.length ? new Set(highlightRouteIds) : null;
+        const dim = (id: string) => (hl && !hl.has(id) ? 0.14 : 1);
+        const style = new Map(routesGeo.features.map(f => [f.properties.id, f.properties]));
+        const toRgb = (h: string): RGB => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+        const cull = isGlobe ? [new GlobeHorizonCullExtension()] : [];
+        const flights = isGlobe && showRoutes ? deckRoutes.filter(d => d.route.mode === 'flight') : [];
+        if (flights.length) {
+            layers.push(new PathLayer({
                 id: 'rp-flight-arcs',
-                data: flightArcs,
-                getSourcePosition: (d: any) => d.route.from,
-                getTargetPosition: (d: any) => d.route.to,
-                getSourceColor: (d: any) => rgba(colorMode === 'gradient' ? palette.green : toRgb(d.color), 0.95),
-                getTargetColor: (d: any) => rgba(colorMode === 'gradient' ? palette.rust : toRgb(d.color), 0.95),
-                getWidth: (d: any) => d.width + 0.5,
+                data: flights,
+                getPath: (d: any) => d.path,
+                getColor: (d: any) => {
+                    const a = dim(d.route.id) * 0.95;
+                    const c = style.get(d.route.id)?.color;
+                    if (colorMode !== 'gradient') return rgba(c ? toRgb(c) : palette.muted, a);
+                    return d.path.map((_: any, i: number) => rgba(mix(palette.green, palette.rust, i / Math.max(1, d.path.length - 1)), a));
+                },
+                getWidth: (d: any) => (style.get(d.route.id)?.width || 2) + (hl?.has(d.route.id) ? 2 : 0.5),
                 widthUnits: 'pixels',
-                greatCircle: true,
-                // Raised above the curvature like the original globe; the extension hides the far side.
-                getHeight: 0.32,
+                capRounded: true,
+                jointRounded: true,
                 parameters: { cullMode: 'none', depthWriteEnabled: false, depthCompare: 'always' } as any,
-                extensions: [new GlobeHorizonCullExtension()],
+                extensions: cull,
                 pickable: true,
                 autoHighlight: true,
                 highlightColor: rgba(palette.mustard),
-                updateTriggers: { getSourceColor: [colorMode, palette], getTargetColor: [colorMode, palette] },
+                updateTriggers: { getColor: [colorMode, palette, highlightRouteIds, routesGeo], getWidth: [routesGeo, highlightRouteIds] },
             }));
         }
-        if (appearance.animateRoutes && !reducedMotion && !isGlobe && showRoutes && routePaths.length) {
+        if (appearance.animateRoutes && !reducedMotion && showRoutes && pulseTimeline.routes.length) {
+            // While something is selected, only its routes animate.
+            const pulsing = hl ? pulseTimeline.routes.filter(r => hl.has(r.route.id)) : pulseTimeline.routes;
             layers.push(new TripsLayer({
                 id: 'rp-route-pulse',
-                data: pulseTimeline.routes,
+                data: pulsing,
                 getPath: (d: any) => d.path,
                 getTimestamps: (d: any) => d.timestamps,
                 getColor: rgba(palette.mustard),
@@ -638,10 +690,12 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
                 capRounded: true,
                 jointRounded: true,
                 fadeTrail: true,
+                parameters: isGlobe ? ({ depthWriteEnabled: false, depthCompare: 'always' } as any) : undefined,
+                extensions: cull,
             }));
         }
         overlayRef.current?.setProps({ layers, pickingRadius: 8 } as any);
-    }, [flightArcs, colorMode, appearance.animateRoutes, appearance.routeScale, reducedMotion, isGlobe, showRoutes, routePaths, pulseTimeline, animTime, palette]);
+    }, [deckRoutes, routesGeo, highlightRouteIds, colorMode, appearance.animateRoutes, appearance.routeScale, reducedMotion, isGlobe, showRoutes, pulseTimeline, animTime, palette]);
 
     /* ------------------------------------------------------------------ interaction */
 
