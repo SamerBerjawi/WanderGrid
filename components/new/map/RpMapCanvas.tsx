@@ -674,8 +674,12 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
                     const c = style.get(d.route.id)?.color;
                     return rgba(c ? toRgb(c) : palette.muted, a);
                 },
-                getWidth: (d: any) => (style.get(d.route.id)?.width || 2) + (hl?.has(d.route.id) ? 2 : 0.5),
+                // Slimmer than the flat lines: a raised arc reads heavier against the sky.
+                getWidth: (d: any) => (style.get(d.route.id)?.width || 2) * 0.7 + (hl?.has(d.route.id) ? 1.5 : 0),
                 widthUnits: 'pixels',
+                // Extrude in screen space: on the globe deck.gl otherwise sizes the line on the surface,
+                // so the far end of an arc thinned out with distance and broke into dashes over the sky.
+                billboard: true,
                 capRounded: true,
                 jointRounded: true,
                 parameters: { cullMode: 'none', depthWriteEnabled: false, depthCompare: 'always' } as any,
@@ -697,6 +701,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
                 getColor: rgba(palette.mustard),
                 widthMinPixels: ROUTE_WIDTH[appearance.routeScale || 'normal'] + 1,
                 trailLength: PULSE_TRAIL_KM,
+                billboard: true,
                 currentTime: animTime,
                 capRounded: true,
                 jointRounded: true,
