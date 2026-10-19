@@ -4,7 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import { TripsLayer } from '@deck.gl/geo-layers';
 import { PathLayer } from '@deck.gl/layers';
-import { GlobeHorizonCullExtension } from '../../GlobeHorizonCullExtension';
+import { RpGlobeCullExtension } from './RpGlobeCullExtension';
 import { FEATURE_FLAGS } from '../../../config/featureFlags';
 import type { CountryResidenceStatus, PredefinedMapMode } from '../../../types';
 import { getEffectiveBasemap, normalizeAirportDetail, type MapAppearanceSettings, getYesterdayDateString } from '../../../types/mapAppearance';
@@ -116,12 +116,12 @@ const geodesic = (from: LngLat, to: LngLat, raised: boolean): number[][] => {
 };
 
 /**
- * A great circle lifted off the globe: altitude follows a sine over the route, peaking at 14% of
+ * A great circle lifted off the globe: altitude follows a sine over the route, peaking at 10% of
  * the distance (capped), so long flights arc higher than short hops. Used for the globe arcs and
  * their pulse, so both follow exactly the same curve.
  */
 const raise = (ground: number[][], distanceKm: number): number[][] => {
-    const peakM = Math.min(1600, Math.max(120, distanceKm * 0.14)) * 1000;
+    const peakM = Math.min(1200, Math.max(100, distanceKm * 0.1)) * 1000;
     const n = Math.max(1, ground.length - 1);
     return ground.map(([lng, lat], i) => [lng, lat, Math.sin((i / n) * Math.PI) * peakM]);
 };
@@ -650,18 +650,29 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         const dim = (id: string) => (hl && !hl.has(id) ? 0.14 : 1);
         const style = new Map(routesGeo.features.map(f => [f.properties.id, f.properties]));
         const toRgb = (h: string): RGB => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
-        const cull = isGlobe ? [new GlobeHorizonCullExtension()] : [];
+        const cull = isGlobe ? [new RpGlobeCullExtension()] : [];
         const flights = isGlobe && showRoutes ? deckRoutes.filter(d => d.route.mode === 'flight') : [];
         if (flights.length) {
+            // On the globe deck.gl subdivides long paths, so a per-vertex colour list runs out before the
+            // end of the arc (the tail drew transparent). A gradient is drawn as short single-colour
+            // segments instead; each segment keeps its route for picking.
+            const gradient = colorMode === 'gradient';
+            const data = gradient
+                ? flights.flatMap(d => d.path.slice(0, -1).map((pt, i) => ({
+                    route: d.route,
+                    path: [pt, d.path[i + 1]],
+                    t: i / Math.max(1, d.path.length - 2),
+                })))
+                : flights;
             layers.push(new PathLayer({
                 id: 'rp-flight-arcs',
-                data: flights,
+                data,
                 getPath: (d: any) => d.path,
                 getColor: (d: any) => {
                     const a = dim(d.route.id) * 0.95;
+                    if (gradient) return rgba(mix(palette.green, palette.rust, d.t), a);
                     const c = style.get(d.route.id)?.color;
-                    if (colorMode !== 'gradient') return rgba(c ? toRgb(c) : palette.muted, a);
-                    return d.path.map((_: any, i: number) => rgba(mix(palette.green, palette.rust, i / Math.max(1, d.path.length - 1)), a));
+                    return rgba(c ? toRgb(c) : palette.muted, a);
                 },
                 getWidth: (d: any) => (style.get(d.route.id)?.width || 2) + (hl?.has(d.route.id) ? 2 : 0.5),
                 widthUnits: 'pixels',
