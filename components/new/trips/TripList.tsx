@@ -35,7 +35,7 @@ const Row: React.FC<{ trip: Trip; today: string; actions: TripActions }> = ({ tr
             <RpIconButton label={`Open ${trip.name}`} tone="ghost" onClick={() => actions.onOpenTrip(trip)} className={cn(now && 'text-rp-on-ink hover:bg-rp-on-ink/15')}>
                 <ArrowUpRight size={20} />
             </RpIconButton>
-            <TripMenu label={`Actions for ${trip.name}`} items={tripMenuItems(trip, bucket, actions)} tone={now ? 'onInk' : 'ghost'} />
+            <TripMenu label={`Actions for ${trip.name}`} items={tripMenuItems(trip, bucket, actions)} triggerClassName={cn(now && 'text-rp-on-ink hover:bg-rp-on-ink/15')} />
         </li>
     );
 };

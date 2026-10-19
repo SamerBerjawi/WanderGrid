@@ -21,7 +21,7 @@ const WIDTH = 232;
  * The "···" menu on a trip. It is also the keyboard and plain-tap way to do everything a drag does
  * (Move to…, Archive). Rendered in a portal so scrolling columns never clip it.
  */
-export const TripMenu: React.FC<{ label: string; items: TripMenuItem[]; tone?: 'ghost' | 'onInk' }> = ({ label, items, tone = 'ghost' }) => {
+export const TripMenu: React.FC<{ label: string; items: TripMenuItem[]; triggerClassName?: string }> = ({ label, items, triggerClassName }) => {
     const [open, setOpen] = useState(false);
     const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
@@ -79,7 +79,7 @@ export const TripMenu: React.FC<{ label: string; items: TripMenuItem[]; tone?: '
                 aria-haspopup="menu"
                 aria-expanded={open}
                 onClick={() => { setPos(null); setOpen(o => !o); }}
-                className={cn(tone === 'onInk' && 'text-rp-on-ink hover:bg-rp-on-ink/15')}
+                className={triggerClassName}
             >
                 <DotsThreeOutline size={20} />
             </RpIconButton>

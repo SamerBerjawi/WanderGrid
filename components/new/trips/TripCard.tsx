@@ -26,6 +26,27 @@ const BUCKET_LOOK: Record<TripBucket, { circle: string; icon: Icon }> = {
     past: { circle: 'bg-rp-inset text-rp-ink', icon: CheckCircle },
 };
 
+/** The card's fill follows its status: ink while travelling, mustard planned, green confirmed, white past. */
+interface Skin { card: string; muted: string; chip: string; circle: string; button: string; avatar: string }
+const SKINS: Record<'ink' | TripBucket, Skin> = {
+    ink: {
+        card: 'bg-rp-ink text-rp-on-ink', muted: 'text-rp-on-ink/70', chip: 'bg-rp-on-ink/15 text-rp-on-ink',
+        circle: 'bg-rp-mustard text-rp-on-mustard', button: 'text-rp-on-ink hover:bg-rp-on-ink/15', avatar: 'bg-rp-on-ink text-rp-ink ring-rp-ink',
+    },
+    planned: {
+        card: 'bg-rp-mustard text-rp-on-mustard', muted: 'text-rp-on-mustard/70', chip: 'bg-rp-on-mustard/15 text-rp-on-mustard',
+        circle: 'bg-rp-on-mustard/15 text-rp-on-mustard', button: 'text-rp-on-mustard hover:bg-rp-on-mustard/15', avatar: 'bg-rp-on-mustard text-rp-mustard ring-rp-mustard',
+    },
+    confirmed: {
+        card: 'bg-rp-green text-rp-paper', muted: 'text-rp-paper/80', chip: 'bg-rp-paper/20 text-rp-paper',
+        circle: 'bg-rp-paper/20 text-rp-paper', button: 'text-rp-paper hover:bg-rp-paper/20', avatar: 'bg-rp-paper text-rp-green ring-rp-green',
+    },
+    past: {
+        card: 'bg-rp-surface text-rp-ink', muted: 'text-rp-muted', chip: 'bg-rp-inset text-rp-ink',
+        circle: 'bg-rp-inset text-rp-ink', button: '', avatar: 'bg-rp-inset text-rp-ink ring-rp-surface',
+    },
+};
+
 const initials = (name?: string) =>
     (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]!.toUpperCase()).join('');
 
@@ -86,8 +107,9 @@ export const TripCardBody: React.FC<CardProps> = ({ trip, users, today, actions,
     const look = BUCKET_LOOK[bucket];
     const Circle = look.icon;
 
-    const muted = now ? 'text-rp-on-ink/70' : 'text-rp-muted';
-    const chip = cn('inline-flex min-h-6 items-center gap-1 rounded-full px-2 text-2xs font-semibold rp-tabular', now ? 'bg-rp-on-ink/15 text-rp-on-ink' : 'bg-rp-inset text-rp-ink');
+    const skin = SKINS[now ? 'ink' : bucket];
+    const muted = skin.muted;
+    const chip = cn('inline-flex min-h-6 items-center gap-1 rounded-full px-2 text-2xs font-semibold rp-tabular', skin.chip);
 
     return (
         <motion.article
@@ -97,14 +119,14 @@ export const TripCardBody: React.FC<CardProps> = ({ trip, users, today, actions,
             aria-label={trip.name}
             className={cn(
                 'flex flex-col gap-3 rounded-rp-tile p-4',
-                now ? 'bg-rp-ink text-rp-on-ink' : 'bg-rp-surface text-rp-ink',
+                skin.card,
                 overlay ? 'rp-shadow-float' : 'rp-shadow-rest',
                 ghost && 'opacity-40'
             )}
             style={overlay && !reduce ? { rotate: '2deg', scale: 1.02 } : undefined}
         >
             <div className="flex items-start gap-3">
-                <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full', now ? 'bg-rp-mustard text-rp-on-mustard' : look.circle)}>
+                <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full', skin.circle)}>
                     <Circle size={18} aria-hidden />
                 </span>
                 <button
@@ -120,11 +142,11 @@ export const TripCardBody: React.FC<CardProps> = ({ trip, users, today, actions,
                         label={`Open ${trip.name}`}
                         tone="ghost"
                         onClick={() => actions.onOpenTrip(trip)}
-                        className={cn(now && 'text-rp-on-ink hover:bg-rp-on-ink/15')}
+                        className={skin.button}
                     >
                         <ArrowUpRight size={20} />
                     </RpIconButton>
-                    <TripMenu label={`Actions for ${trip.name}`} items={tripMenuItems(trip, bucket, actions)} tone={now ? 'onInk' : 'ghost'} />
+                    <TripMenu label={`Actions for ${trip.name}`} items={tripMenuItems(trip, bucket, actions)} triggerClassName={skin.button} />
                 </div>
             </div>
 
@@ -149,12 +171,12 @@ export const TripCardBody: React.FC<CardProps> = ({ trip, users, today, actions,
                 {members.length > 0 ? (
                     <span className="ml-auto flex -space-x-2" aria-label={`${members.length} ${members.length === 1 ? 'member' : 'members'}`}>
                         {members.slice(0, 3).map(u => (
-                            <span key={u.id} title={u.name} className={cn('flex size-6 items-center justify-center rounded-full text-2xs font-semibold ring-2', now ? 'bg-rp-on-ink text-rp-ink ring-rp-ink' : 'bg-rp-inset text-rp-ink ring-rp-surface')}>
+                            <span key={u.id} title={u.name} className={cn('flex size-6 items-center justify-center rounded-full text-2xs font-semibold ring-2', skin.avatar)}>
                                 {initials(u.name)}
                             </span>
                         ))}
                         {members.length > 3 ? (
-                            <span className={cn('flex size-6 items-center justify-center rounded-full text-2xs font-semibold ring-2', now ? 'bg-rp-on-ink text-rp-ink ring-rp-ink' : 'bg-rp-inset text-rp-ink ring-rp-surface')}>+{members.length - 3}</span>
+                            <span className={cn('flex size-6 items-center justify-center rounded-full text-2xs font-semibold ring-2', skin.avatar)}>+{members.length - 3}</span>
                         ) : null}
                     </span>
                 ) : null}
