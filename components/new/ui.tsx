@@ -308,9 +308,11 @@ export const RpLogo: React.FC<{
     src?: string;
     /** Shown when no logo is found: the mode or type icon. */
     fallback: Icon;
+    /** Colour of that icon (default muted), e.g. an accent for transport or stays. */
+    iconClassName?: string;
     size?: 'sm' | 'md';
     className?: string;
-}> = ({ name, brandfetchApiKey, carriers, src: saved, fallback: Fallback, size = 'md', className }) => {
+}> = ({ name, brandfetchApiKey, carriers, src: saved, fallback: Fallback, iconClassName, size = 'md', className }) => {
     const sources = React.useMemo(
         () => [...(saved ? [saved] : []), ...carrierLogoSources(name, brandfetchApiKey, carriers)],
         [saved, name, brandfetchApiKey, carriers]
@@ -331,7 +333,7 @@ export const RpLogo: React.FC<{
                     onLoad={e => { if (src.includes('google.com/s2/favicons') && e.currentTarget.naturalWidth <= 32) setAttempt(a => a + 1); }}
                 />
             ) : (
-                <Fallback size={size === 'sm' ? 14 : 16} className="text-rp-muted" aria-hidden />
+                <Fallback size={size === 'sm' ? 14 : 16} className={cn('text-rp-muted', iconClassName)} aria-hidden />
             )}
         </span>
     );

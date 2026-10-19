@@ -13,6 +13,7 @@ import { RP_FIELD, RpField } from '../fields';
 import { IconPicker } from '../IconPicker';
 import { RpHugeicon } from '../RpHugeicon';
 import { stayIcon } from './stayIcon';
+import { STAY_ACCENT, TRANSPORT_ACCENT } from './accents';
 import { RpChip, RpIconButton, RpLogo, RpSection, RpSheet } from '../ui';
 import { cn } from '../../../utils/cn';
 
@@ -179,7 +180,7 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
                             const tm = modeOf(t.mode);
                             return (
                                 <li key={i} className="flex items-center gap-3 rounded-rp-inset bg-rp-surface py-1.5 pr-1 pl-3">
-                                    <RpLogo name={t.provider} brandfetchApiKey={brandfetchApiKey} fallback={tm.icon} />
+                                    <RpLogo name={t.provider} brandfetchApiKey={brandfetchApiKey} fallback={tm.icon} iconClassName={TRANSPORT_ACCENT} />
                                     <span className="min-w-0 flex-1">
                                         <span className="block truncate text-sm font-medium text-rp-ink">{t.origin} → {t.destination}</span>
                                         <span className="block truncate text-xs text-rp-muted">
@@ -211,7 +212,7 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
                 <RpField label={leg.mode === 'Flight' ? 'Airline' : 'Operator'}>
                     {id => (
                         <div className="flex items-center gap-2">
-                            <RpLogo name={leg.provider} brandfetchApiKey={brandfetchApiKey} fallback={m.icon} />
+                            <RpLogo name={leg.provider} brandfetchApiKey={brandfetchApiKey} fallback={m.icon} iconClassName={TRANSPORT_ACCENT} />
                             <input id={id} value={leg.provider} onChange={e => patch({ provider: e.target.value })} className={RP_FIELD} placeholder={leg.mode === 'Flight' ? 'KLM' : ''} autoComplete="off" />
                         </div>
                     )}
@@ -256,7 +257,7 @@ const StaysStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKey?: 
                     <ul className="flex flex-col gap-2 py-2">
                         {list.map((a, i) => (
                             <li key={i} className="flex items-center gap-3 rounded-rp-inset bg-rp-surface py-1.5 pr-1 pl-3">
-                                <RpLogo name={a.name} brandfetchApiKey={brandfetchApiKey} fallback={stayIcon(a.type)} />
+                                <RpLogo name={a.name} brandfetchApiKey={brandfetchApiKey} fallback={stayIcon(a.type)} iconClassName={STAY_ACCENT} />
                                 <span className="min-w-0 flex-1">
                                     <span className="block truncate text-sm font-medium text-rp-ink">{a.name}</span>
                                     <span className="block truncate text-xs text-rp-muted">
@@ -274,7 +275,7 @@ const StaysStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKey?: 
                 <RpField label="Name">
                     {id => (
                         <div className="flex items-center gap-2">
-                            <RpLogo name={stay.name} brandfetchApiKey={brandfetchApiKey} fallback={stayIcon(stay.type)} />
+                            <RpLogo name={stay.name} brandfetchApiKey={brandfetchApiKey} fallback={stayIcon(stay.type)} iconClassName={STAY_ACCENT} />
                             <input id={id} value={stay.name} onChange={e => patch({ name: e.target.value })} className={RP_FIELD} placeholder="Hotel Avenida" autoComplete="off" />
                         </div>
                     )}

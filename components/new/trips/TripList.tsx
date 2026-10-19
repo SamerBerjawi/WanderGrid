@@ -8,6 +8,7 @@ import { RpIconButton } from '../ui';
 import { CappedTrips } from './CappedTrips';
 import { BUCKET_HEAD, BUCKET_LABEL, tripMenuItems, type TripActions } from './TripCard';
 import { TripMenu } from './TripMenu';
+import { STAY_ACCENT, TRANSPORT_ACCENT } from './accents';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -62,8 +63,8 @@ const Row: React.FC<{ trip: Trip; users: User[]; today: string; actions: TripAct
             </span>
 
             <span className="hidden items-center gap-2 pl-2 lg:flex">
-                {flights > 0 ? <span className={cn('rp-tabular flex items-center gap-1 text-xs', muted)} title={`${flights} transport`}><Airplane size={14} aria-hidden /> {flights}</span> : null}
-                {stays > 0 ? <span className={cn('rp-tabular flex items-center gap-1 text-xs', muted)} title={`${stays} stays`}><Bed size={14} aria-hidden /> {stays}</span> : null}
+                {flights > 0 ? <span className={cn('rp-tabular flex items-center gap-1 text-xs', muted)} title={`${flights} transport`}><Airplane size={14} className={cn(!now && TRANSPORT_ACCENT)} aria-hidden /> {flights}</span> : null}
+                {stays > 0 ? <span className={cn('rp-tabular flex items-center gap-1 text-xs', muted)} title={`${stays} stays`}><Bed size={14} className={cn(!now && STAY_ACCENT)} aria-hidden /> {stays}</span> : null}
                 {needs.length > 0 ? (
                     <span className="inline-flex min-h-6 items-center rounded-full bg-rp-rust px-2 text-2xs font-semibold whitespace-nowrap text-rp-paper">
                         {needs.length === 2 ? 'Not booked' : needs[0] === 'flights' ? 'No flights' : 'No stay'}

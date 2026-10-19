@@ -10,6 +10,7 @@ import {
 } from '../../ui/hugeicons';
 import { RpLogo, useIsMobile } from '../ui';
 import { stayIcon } from './stayIcon';
+import { STAY_ACCENT, TRANSPORT_ACCENT } from './accents';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -215,7 +216,7 @@ const Body: React.FC<{
                             <Row
                                 key={t.id}
                                 skin={skin}
-                                logo={<RpLogo name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={Mode} />}
+                                logo={<RpLogo name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={Mode} iconClassName={TRANSPORT_ACCENT} />}
                                 title={`${t.origin} → ${t.destination}`}
                                 meta={[t.provider, t.identifier, when(t.departureDate, t.departureTime)].filter(Boolean).join(' · ')}
                                 cost={money(t.cost)}
@@ -231,7 +232,7 @@ const Body: React.FC<{
                         <Row
                             key={a.id}
                             skin={skin}
-                            logo={<RpLogo name={a.name} src={a.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={stayIcon(a.type)} />}
+                            logo={<RpLogo name={a.name} src={a.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={stayIcon(a.type)} iconClassName={STAY_ACCENT} />}
                             title={a.name}
                             meta={[a.checkInDate && a.checkOutDate ? `${formatDate(a.checkInDate, 'short')} – ${formatDate(a.checkOutDate, 'short')}` : '', nights(a.checkInDate, a.checkOutDate)].filter(Boolean).join(' · ')}
                             cost={money(a.cost)}
