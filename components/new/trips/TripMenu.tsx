@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { DotsThreeOutline, type Icon } from '../../ui/hugeicons';
+import { CaretDown, Check, DotsThreeOutline, type Icon } from '../../ui/hugeicons';
 import { RpIconButton } from '../ui';
 import { cn } from '../../../utils/cn';
 
@@ -13,6 +13,8 @@ export interface TripMenuItem {
     tone?: 'danger';
     /** Draws a divider above this item. */
     separated?: boolean;
+    /** A choice that is currently picked (shows a tick). */
+    selected?: boolean;
 }
 
 const WIDTH = 232;
@@ -21,7 +23,13 @@ const WIDTH = 232;
  * The "···" menu on a trip. It is also the keyboard and plain-tap way to do everything a drag does
  * (Move to…, Archive). Rendered in a portal so scrolling columns never clip it.
  */
-export const TripMenu: React.FC<{ label: string; items: TripMenuItem[]; triggerClassName?: string }> = ({ label, items, triggerClassName }) => {
+export const TripMenu: React.FC<{
+    label: string;
+    items: TripMenuItem[];
+    triggerClassName?: string;
+    /** A labelled pill instead of the "···" button (e.g. the sort menu). */
+    pill?: { label: string; icon: Icon };
+}> = ({ label, items, triggerClassName, pill }) => {
     const [open, setOpen] = useState(false);
     const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
@@ -44,7 +52,7 @@ export const TripMenu: React.FC<{ label: string; items: TripMenuItem[]; triggerC
 
     useEffect(() => {
         if (!open) return;
-        menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+        menuRef.current?.querySelector<HTMLElement>('[role^="menuitem"]')?.focus();
         const onDown = (e: PointerEvent) => {
             const t = e.target as Node;
             if (!menuRef.current?.contains(t) && !triggerRef.current?.contains(t)) close(false);
@@ -53,7 +61,7 @@ export const TripMenu: React.FC<{ label: string; items: TripMenuItem[]; triggerC
             if (e.key === 'Escape') { e.preventDefault(); close(); return; }
             if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
             e.preventDefault();
-            const els = Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+            const els = Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? []);
             const at = els.indexOf(document.activeElement as HTMLElement);
             els[(at + (e.key === 'ArrowDown' ? 1 : -1) + els.length) % els.length]?.focus();
         };
@@ -72,17 +80,31 @@ export const TripMenu: React.FC<{ label: string; items: TripMenuItem[]; triggerC
 
     return (
         <>
-            <RpIconButton
-                ref={triggerRef}
-                label={label}
-                tone="ghost"
-                aria-haspopup="menu"
-                aria-expanded={open}
-                onClick={() => { setPos(null); setOpen(o => !o); }}
-                className={triggerClassName}
-            >
-                <DotsThreeOutline size={20} />
-            </RpIconButton>
+            {pill ? (
+                <button
+                    ref={triggerRef}
+                    type="button"
+                    aria-label={label}
+                    aria-haspopup="menu"
+                    aria-expanded={open}
+                    onClick={() => { setPos(null); setOpen(o => !o); }}
+                    className={cn('inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-rp-inset px-4 text-sm font-medium text-rp-ink outline-none transition-colors duration-150 hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted', triggerClassName)}
+                >
+                    <pill.icon size={16} aria-hidden /> {pill.label} <CaretDown size={14} className="text-rp-muted" aria-hidden />
+                </button>
+            ) : (
+                <RpIconButton
+                    ref={triggerRef}
+                    label={label}
+                    tone="ghost"
+                    aria-haspopup="menu"
+                    aria-expanded={open}
+                    onClick={() => { setPos(null); setOpen(o => !o); }}
+                    className={triggerClassName}
+                >
+                    <DotsThreeOutline size={20} />
+                </RpIconButton>
+            )}
             {createPortal(
                 <AnimatePresence>
                     {open ? (
@@ -101,7 +123,8 @@ export const TripMenu: React.FC<{ label: string; items: TripMenuItem[]; triggerC
                                 <React.Fragment key={item.id}>
                                     {item.separated ? <div className="my-1 h-px bg-rp-line" role="separator" /> : null}
                                     <button
-                                        role="menuitem"
+                                        role={item.selected !== undefined ? 'menuitemradio' : 'menuitem'}
+                                        aria-checked={item.selected}
                                         type="button"
                                         onClick={() => { close(false); item.onSelect(); }}
                                         className={cn(
@@ -109,7 +132,8 @@ export const TripMenu: React.FC<{ label: string; items: TripMenuItem[]; triggerC
                                             item.tone === 'danger' ? 'text-rp-rust' : 'text-rp-ink'
                                         )}
                                     >
-                                        <item.icon size={18} aria-hidden /> {item.label}
+                                        <item.icon size={18} aria-hidden /> <span className="flex-1">{item.label}</span>
+                                        {item.selected ? <Check size={16} aria-hidden /> : null}
                                     </button>
                                 </React.Fragment>
                             ))}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Accommodation, Transport, Trip, User } from '../types';
+import type { Accommodation, Activity, EntitlementType, GeoCoordinates, Transport, Trip, User } from '../types';
 import { dataService } from '../services/mockDb';
 import { affectsCollections } from './useWanderSync';
 import { BUCKET_STATUS, bucketOf, destinationsOf, todayISO, tripDays, type TripBucket } from '../utils/tripsModel';
@@ -15,10 +15,58 @@ export interface TripDraft {
     notes?: string;
     /** A Hugeicons free icon name chosen for the trip. */
     icon?: string;
-    /** Legs and stays entered while creating the trip. */
+    /** Where the destination is, when it was picked from the place search. */
+    coordinates?: GeoCoordinates;
+    privacy?: 'Private' | 'Public';
+    /** Leave type this trip counts against; empty means a general event with no leave impact. */
+    entitlementId?: string;
+    /** Legs, stays and activities. Items that already exist carry their ids and every other field. */
     transports?: Partial<Transport>[];
     stays?: Partial<Accommodation>[];
+    activities?: Partial<Activity>[];
 }
+
+const uid = () => crypto.randomUUID();
+
+/** A full leg from a form's partial one, keeping everything an existing leg already had. */
+const toTransport = (t: Partial<Transport>, fallbackDate: string): Transport => ({
+    type: 'One-Way',
+    mode: 'Flight',
+    provider: '',
+    identifier: '',
+    confirmationCode: '',
+    origin: '',
+    destination: '',
+    departureDate: fallbackDate,
+    departureTime: '10:00',
+    arrivalDate: t.departureDate || fallbackDate,
+    arrivalTime: '14:00',
+    reason: 'Personal',
+    ...t,
+    id: t.id || uid(),
+    itineraryId: t.itineraryId || uid(),
+});
+
+const toStay = (a: Partial<Accommodation>, destination: string, start: string, end: string): Accommodation => ({
+    name: 'Stay',
+    type: 'Hotel',
+    address: destination,
+    checkInDate: start,
+    checkInTime: '15:00',
+    checkOutDate: end,
+    checkOutTime: '11:00',
+    ...a,
+    id: a.id || uid(),
+});
+
+const toActivity = (a: Partial<Activity>, fallbackDate: string): Activity => ({
+    date: fallbackDate,
+    time: '10:00',
+    title: 'Activity',
+    type: 'Activity',
+    ...a,
+    id: a.id || uid(),
+});
 
 /**
  * Data and actions for the New Trips page: trips and members, plus every write (create, edit, move
@@ -28,6 +76,7 @@ export interface TripDraft {
 export const useTripsData = () => {
     const [trips, setTrips] = useState<Trip[]>([]);
     const [users, setUsers] = useState<User[]>([]);
+    const [entitlements, setEntitlements] = useState<EntitlementType[]>([]);
     const [brandfetchApiKey, setBrandfetchApiKey] = useState<string | undefined>(undefined);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -37,14 +86,16 @@ export const useTripsData = () => {
 
     const load = useCallback(async () => {
         try {
-            const [t, u, settings] = await Promise.all([
+            const [t, u, settings, ents] = await Promise.all([
                 dataService.getTrips(),
                 dataService.getUsers(),
-                // Logos are optional: a settings failure never blocks the board.
+                // Logos and leave types are optional: a failure never blocks the board.
                 dataService.getWorkspaceSettings().catch(() => null),
+                dataService.getEntitlementTypes().catch(() => [] as EntitlementType[]),
             ]);
             setTrips(t || []);
             setUsers(u || []);
+            setEntitlements(ents || []);
             setBrandfetchApiKey(settings?.brandfetchApiKey || undefined);
             setError(null);
         } catch (e) {
@@ -64,8 +115,9 @@ export const useTripsData = () => {
 
     const today = todayISO();
 
-    // Cancelled trips and bundle-only records never appear on the board.
+    // Bundle-only records never appear. Cancelled trips are kept out of the board and shown on their own.
     const board = useMemo(() => trips.filter(t => t.status !== 'Cancelled' && !t.hideInPlanner), [trips]);
+    const cancelled = useMemo(() => trips.filter(t => t.status === 'Cancelled' && !t.hideInPlanner), [trips]);
     const active = useMemo(() => board.filter(t => !t.archived), [board]);
     const archived = useMemo(() => board.filter(t => t.archived), [board]);
 
@@ -106,49 +158,27 @@ export const useTripsData = () => {
     const create = useCallback(async (draft: TripDraft): Promise<Trip> => {
         const name = draft.name.trim();
         const destination = draft.destination.trim();
+        const start = draft.startDate;
+        const end = draft.endDate || draft.startDate;
         const payload: Trip = {
-            id: crypto.randomUUID(),
+            id: uid(),
             name,
             location: destination,
-            startDate: draft.startDate,
-            endDate: draft.endDate || draft.startDate,
+            startDate: start,
+            endDate: end,
             status: draft.status,
             participants: draft.participants,
             notes: draft.notes?.trim() || undefined,
             hugeicon: draft.icon || undefined,
+            privacy: draft.privacy,
+            entitlementId: draft.entitlementId || undefined,
+            coordinates: draft.coordinates,
             locations: destination
-                ? [{ id: crypto.randomUUID(), name: destination, startDate: draft.startDate, endDate: draft.endDate || draft.startDate }]
+                ? [{ id: uid(), name: destination, startDate: start, endDate: end, coordinates: draft.coordinates }]
                 : [],
-            transports: (draft.transports || []).map(t => ({
-                id: crypto.randomUUID(),
-                itineraryId: crypto.randomUUID(),
-                type: 'One-Way',
-                mode: t.mode || 'Flight',
-                provider: t.provider || '',
-                identifier: t.identifier || '',
-                confirmationCode: t.confirmationCode || '',
-                origin: t.origin || '',
-                destination: t.destination || '',
-                departureDate: t.departureDate || draft.startDate,
-                departureTime: t.departureTime || '10:00',
-                arrivalDate: t.arrivalDate || t.departureDate || draft.startDate,
-                arrivalTime: t.arrivalTime || '14:00',
-                cost: t.cost,
-                reason: 'Personal',
-            })),
-            accommodations: (draft.stays || []).map(a => ({
-                id: crypto.randomUUID(),
-                name: a.name || 'Stay',
-                type: a.type || 'Hotel',
-                address: a.address || destination,
-                checkInDate: a.checkInDate || draft.startDate,
-                checkInTime: a.checkInTime || '15:00',
-                checkOutDate: a.checkOutDate || draft.endDate || draft.startDate,
-                checkOutTime: a.checkOutTime || '11:00',
-                confirmationCode: a.confirmationCode || '',
-                cost: a.cost,
-            })),
-            activities: [],
+            transports: (draft.transports || []).map(t => toTransport(t, start)),
+            accommodations: (draft.stays || []).map(a => toStay(a, destination, start, end)),
+            activities: (draft.activities || []).map(a => toActivity(a, start)),
         };
         const saved = await dataService.addTrip(payload);
         setTrips(prev => [...prev, saved]);
@@ -157,21 +187,34 @@ export const useTripsData = () => {
 
     const update = useCallback(async (trip: Trip, draft: TripDraft): Promise<Trip> => {
         const destination = draft.destination.trim();
-        const locations = (trip.locations || []).length && trip.location.trim() === destination ? trip.locations : undefined;
+        const start = draft.startDate;
+        const end = draft.endDate || draft.startDate;
+        const destinationChanged = trip.location.trim() !== destination || Boolean(draft.coordinates && draft.coordinates !== trip.coordinates);
+        const stops = trip.locations || [];
+        // A changed destination replaces the first stop (and is geocoded on save); later stops stay.
+        const locations = destinationChanged
+            ? [...(destination ? [{ id: uid(), name: destination, startDate: start, endDate: end, coordinates: draft.coordinates }] : []), ...stops.slice(1)]
+            : stops;
+        const entitlementChanged = (draft.entitlementId || undefined) !== (trip.entitlementId || undefined);
         const next: Trip = {
             ...trip,
             name: draft.name.trim(),
             location: destination,
-            startDate: draft.startDate,
-            endDate: draft.endDate || draft.startDate,
+            startDate: start,
+            endDate: end,
             status: draft.status,
             participants: draft.participants,
             notes: draft.notes?.trim() || undefined,
             hugeicon: draft.icon || undefined,
-            // A changed destination replaces the route with that one stop, which is geocoded on save.
-            locations: locations ?? (destination
-                ? [{ id: crypto.randomUUID(), name: destination, startDate: draft.startDate, endDate: draft.endDate || draft.startDate }]
-                : []),
+            privacy: draft.privacy ?? trip.privacy,
+            entitlementId: draft.entitlementId || undefined,
+            // A split across leave types belongs to the old type; choosing another clears it.
+            allocations: entitlementChanged ? undefined : trip.allocations,
+            coordinates: draft.coordinates ?? trip.coordinates,
+            locations,
+            transports: draft.transports ? draft.transports.map(t => toTransport(t, start)) : trip.transports,
+            accommodations: draft.stays ? draft.stays.map(a => toStay(a, destination, start, end)) : trip.accommodations,
+            activities: draft.activities ? draft.activities.map(a => toActivity(a, start)) : trip.activities,
         };
         replace(next);
         const saved = await guarded(() => dataService.updateTrip(next));
@@ -179,6 +222,32 @@ export const useTripsData = () => {
         return saved;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [load]);
+
+    /** A copy of a trip as a new Planned trip, with new ids throughout. */
+    const duplicate = useCallback(async (trip: Trip): Promise<Trip> => {
+        const itineraries = new Map<string, string>();
+        const copy: Trip = {
+            ...trip,
+            id: uid(),
+            name: `${trip.name} (copy)`,
+            originalName: undefined,
+            version: undefined,
+            status: 'Planning',
+            archived: false,
+            locations: (trip.locations || []).map(l => ({ ...l, id: uid() })),
+            transports: (trip.transports || []).map(t => {
+                const old = t.itineraryId;
+                if (!itineraries.has(old)) itineraries.set(old, uid());
+                return { ...t, id: uid(), itineraryId: itineraries.get(old)! };
+            }),
+            accommodations: (trip.accommodations || []).map(a => ({ ...a, id: uid() })),
+            activities: (trip.activities || []).map(a => ({ ...a, id: uid() })),
+            packingList: (trip.packingList || []).map(p => ({ ...p, id: uid() })),
+        };
+        const saved = await dataService.addTrip(copy);
+        setTrips(prev => [...prev, saved]);
+        return saved;
+    }, []);
 
     /** Puts a trip in a column by changing its status. Returns the status it had, for undo. */
     const setStatus = useCallback(async (id: string, status: Trip['status']): Promise<Trip['status'] | undefined> => {
@@ -206,7 +275,7 @@ export const useTripsData = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [load]);
 
-    return { trips, users, brandfetchApiKey, loading, error, reload: load, today, active, archived, columns, years, stats, create, update, setStatus, moveTo, setArchived, remove };
+    return { trips, users, entitlements, brandfetchApiKey, loading, error, reload: load, today, active, archived, cancelled, columns, years, stats, create, update, duplicate, setStatus, moveTo, setArchived, remove };
 };
 
 export type TripsData = ReturnType<typeof useTripsData>;

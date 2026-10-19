@@ -6,7 +6,7 @@ import type { Trip, User } from '../../../types';
 import { formatDateRange } from '../../../utils/formatters';
 import { bucketOf, destinationLabel, isTravelling, timingOf, tripDays, tripNeeds, type TripBucket } from '../../../utils/tripsModel';
 import {
-    Airplane, Archive, ArrowCounterClockwise, ArrowUpRight, Bed, CalendarBlank, CheckCircle, Clock, PencilSimple, Suitcase, Trash, type Icon,
+    Airplane, Archive, ArrowCounterClockwise, ArrowUpRight, Bed, CalendarBlank, CheckCircle, Clock, Copy, PencilSimple, Suitcase, Trash, XCircle, type Icon,
 } from '../../ui/hugeicons';
 import { RpHugeicon } from '../RpHugeicon';
 import { RpIconButton } from '../ui';
@@ -65,7 +65,10 @@ export interface TripActions {
     onOpenTrip: (trip: Trip) => void;
     onMove: (trip: Trip, bucket: TripBucket) => void;
     onArchive: (trip: Trip) => void;
+    /** Restores an archived trip, or a cancelled one (as Planned). */
     onRestore: (trip: Trip) => void;
+    onDuplicate: (trip: Trip) => void;
+    onCancel: (trip: Trip) => void;
     onDelete: (trip: Trip) => void;
 }
 
@@ -75,7 +78,10 @@ export const tripMenuItems = (trip: Trip, bucket: TripBucket, actions: TripActio
         { id: 'edit', label: 'Edit trip', icon: PencilSimple, onSelect: () => actions.onEdit(trip) },
         { id: 'open', label: 'Open trip', icon: ArrowUpRight, onSelect: () => actions.onOpenTrip(trip) },
     ];
-    if (!trip.archived) {
+    items.push({ id: 'duplicate', label: 'Duplicate', icon: Copy, onSelect: () => actions.onDuplicate(trip) });
+    if (trip.status === 'Cancelled') {
+        items.push({ id: 'restore', label: 'Restore as Planned', icon: ArrowCounterClockwise, separated: true, onSelect: () => actions.onRestore(trip) });
+    } else if (!trip.archived) {
         (['planned', 'confirmed', 'past'] as TripBucket[])
             .filter(b => b !== bucket)
             .forEach((b, i) => items.push({
@@ -83,6 +89,7 @@ export const tripMenuItems = (trip: Trip, bucket: TripBucket, actions: TripActio
                 onSelect: () => actions.onMove(trip, b),
             }));
         items.push({ id: 'archive', label: 'Archive', icon: Archive, separated: true, onSelect: () => actions.onArchive(trip) });
+        items.push({ id: 'cancel', label: 'Cancel trip', icon: XCircle, onSelect: () => actions.onCancel(trip) });
     } else {
         items.push({ id: 'restore', label: 'Restore', icon: ArrowCounterClockwise, separated: true, onSelect: () => actions.onRestore(trip) });
     }

@@ -1,25 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import type { Accommodation, Transport, Trip, TransportMode, User } from '../../../types';
+import type { Accommodation, Activity, EntitlementType, Transport, Trip, TransportMode, User } from '../../../types';
 import type { TripDraft } from '../../../hooks/useTripsData';
 import { BUCKET_STATUS, type TripBucket } from '../../../utils/tripsModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import HoldButton from '../../kokonutui/hold-button';
 import ParticleButton from '../../kokonutui/particle-button';
 import {
-    Airplane, ArrowLeft, ArrowRight, ArrowUpRight, Bed, Boat, Bus, CalendarBlank, Car, CarProfile, Check, CheckCircle, Clock, MapPin, Palette, Plus,
-    Suitcase, Train, Users, X, type Icon,
+    Airplane, ArrowLeft, ArrowRight, ArrowUpRight, Bed, Boat, Bus, CalendarBlank, CalendarCheck, Car, CarProfile, Check, CheckCircle, Clock, Globe, Lock, MapPin,
+    Palette, Plus, Suitcase, Train, Users, X, type Icon,
 } from '../../ui/hugeicons';
 import { RP_FIELD, RpField } from '../fields';
 import { IconPicker } from '../IconPicker';
+import { PlaceField } from '../PlaceField';
 import { RpHugeicon } from '../RpHugeicon';
+import { RpChip, RpIconButton, RpLogo, RpSection, RpSheet } from '../ui';
 import { stayIcon } from './stayIcon';
 import { STAY_ACCENT, TRANSPORT_ACCENT } from './accents';
-import { RpChip, RpIconButton, RpLogo, RpSection, RpSheet } from '../ui';
 import { cn } from '../../../utils/cn';
 
 /**
- * Sheets of the New Trips page: a three-step New trip flow (Trip basics, Transport, Stays), a single
- * editing sheet, and the delete confirmation.
+ * Sheets of the New Trips page: a three-step New trip flow (Trip basics, Transport, Stays); an edit
+ * sheet with the same plus Activities, where every leg, stay and activity can be changed or removed;
+ * and the delete confirmation.
  */
 
 export type TripSheetTarget = { kind: 'create'; bucket: TripBucket } | { kind: 'edit'; trip: Trip };
@@ -41,9 +43,11 @@ const MODES: { mode: TransportMode; label: string; icon: Icon; number: string }[
 ];
 
 const STAY_TYPES: Accommodation['type'][] = ['Hotel', 'Airbnb', 'Resort', 'Villa', 'Apartment', 'Hostel', 'Campground', 'Friends/Family'];
+const ACTIVITY_TYPES = ['Activity', 'Dining', 'Tour', 'Sightseeing', 'Museum', 'Outdoor', 'Entertainment', 'Shopping', 'Wellness', 'Nightlife'];
 
 const emptyDraft = (status: Trip['status']): TripDraft => ({
-    name: '', destination: '', startDate: '', endDate: '', status, participants: [], notes: '', icon: undefined, transports: [], stays: [],
+    name: '', destination: '', startDate: '', endDate: '', status, participants: [], notes: '', icon: undefined,
+    privacy: 'Private', entitlementId: undefined, coordinates: undefined, transports: [], stays: [], activities: [],
 });
 const draftOf = (trip: Trip): TripDraft => ({
     name: trip.name,
@@ -54,21 +58,36 @@ const draftOf = (trip: Trip): TripDraft => ({
     participants: trip.participants || [],
     notes: trip.notes || '',
     icon: trip.hugeicon,
+    privacy: trip.privacy || 'Private',
+    entitlementId: trip.entitlementId,
+    coordinates: trip.coordinates,
+    transports: (trip.transports || []).map(t => ({ ...t })),
+    stays: (trip.accommodations || []).map(a => ({ ...a })),
+    activities: (trip.activities || []).map(a => ({ ...a })),
 });
 
 const num = (v: string): number | undefined => {
     const n = parseFloat(v);
     return Number.isFinite(n) && n >= 0 ? n : undefined;
 };
+const costText = (n?: number) => (n != null ? String(n) : '');
 const DATE = cn(RP_FIELD, 'rp-date rp-tabular');
 
 type SetDraft = <K extends keyof TripDraft>(key: K, value: TripDraft[K]) => void;
 
 /* ------------------------------------------------------------------ */
-/* Step 1 / editing: the basics */
+/* Basics */
 /* ------------------------------------------------------------------ */
 
-const Basics: React.FC<{ draft: TripDraft; set: SetDraft; users: User[]; showErrors: boolean; autoFocus: boolean }> = ({ draft, set, users, showErrors, autoFocus }) => {
+const Basics: React.FC<{
+    draft: TripDraft;
+    set: SetDraft;
+    users: User[];
+    entitlements: EntitlementType[];
+    splitCount: number;
+    showErrors: boolean;
+    autoFocus: boolean;
+}> = ({ draft, set, users, entitlements, splitCount, showErrors, autoFocus }) => {
     const [pickingIcon, setPickingIcon] = useState(false);
     const nameError = showErrors && !draft.name.trim() ? 'Give the trip a name.' : undefined;
     const startError = showErrors && !draft.startDate ? 'Pick a start date.' : undefined;
@@ -90,7 +109,16 @@ const Basics: React.FC<{ draft: TripDraft; set: SetDraft; users: User[]; showErr
                     {id => <input id={id} value={draft.name} onChange={e => set('name', e.target.value)} className={RP_FIELD} autoComplete="off" placeholder="Summer in Lisbon" autoFocus={autoFocus} />}
                 </RpField>
                 <RpField label="Destination">
-                    {id => <input id={id} value={draft.destination} onChange={e => set('destination', e.target.value)} className={RP_FIELD} autoComplete="off" placeholder="Lisbon, Portugal" />}
+                    {id => (
+                        <PlaceField
+                            id={id}
+                            value={draft.destination}
+                            located={Boolean(draft.coordinates)}
+                            placeholder="Lisbon, Portugal"
+                            onChange={text => { set('destination', text); if (draft.coordinates) set('coordinates', undefined); }}
+                            onPick={(text, coordinates) => { set('destination', text); set('coordinates', coordinates); }}
+                        />
+                    )}
                 </RpField>
             </RpSection>
 
@@ -122,6 +150,29 @@ const Basics: React.FC<{ draft: TripDraft; set: SetDraft; users: User[]; showErr
                 {pickingIcon ? <IconPicker value={draft.icon} onChange={name => set('icon', name)} /> : null}
             </RpSection>
 
+            {entitlements.length > 0 ? (
+                <RpSection title="Leave" icon={CalendarCheck}>
+                    <div role="group" aria-label="Leave type" className="flex flex-wrap gap-2 py-2">
+                        <RpChip selected={!draft.entitlementId} onClick={() => set('entitlementId', undefined)}>No leave</RpChip>
+                        {entitlements.map(e => (
+                            <RpChip key={e.id} selected={draft.entitlementId === e.id} onClick={() => set('entitlementId', e.id)}>{e.name}</RpChip>
+                        ))}
+                    </div>
+                    <p className="px-1 pb-2 text-xs text-rp-muted">
+                        {splitCount > 0 && draft.entitlementId
+                            ? `Split across ${splitCount} leave ${splitCount === 1 ? 'type' : 'types'}. Choosing another type clears the split.`
+                            : draft.entitlementId ? 'The days of this trip count against that leave.' : 'A general event: no leave is used.'}
+                    </p>
+                </RpSection>
+            ) : null}
+
+            <RpSection title="Who can see it" icon={draft.privacy === 'Public' ? Globe : Lock}>
+                <div role="group" aria-label="Privacy" className="flex flex-wrap gap-2 py-2">
+                    <RpChip selected={draft.privacy !== 'Public'} onClick={() => set('privacy', 'Private')}><Lock size={16} aria-hidden /> Private</RpChip>
+                    <RpChip selected={draft.privacy === 'Public'} onClick={() => set('privacy', 'Public')}><Globe size={16} aria-hidden /> Public</RpChip>
+                </div>
+            </RpSection>
+
             {users.length > 1 ? (
                 <RpSection title="Members" icon={Users}>
                     <div role="group" aria-label="Members" className="flex flex-wrap gap-2 py-2">
@@ -145,12 +196,43 @@ const Basics: React.FC<{ draft: TripDraft; set: SetDraft; users: User[]; showErr
 };
 
 /* ------------------------------------------------------------------ */
-/* Step 2: transport */
+/* Shared bits of the list steps */
 /* ------------------------------------------------------------------ */
+
+const ADD_BUTTON = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-rp-ink px-5 text-sm font-medium text-rp-on-ink outline-none transition-opacity hover:bg-rp-ink/90 focus-visible:ring-2 focus-visible:ring-rp-muted disabled:opacity-40';
+const GHOST_BUTTON = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-rp-surface px-5 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted';
+
+/** A row of the "added so far" list: tap it to edit, X to remove. */
+const ItemRow: React.FC<{ logo: React.ReactNode; title: string; meta: string; active: boolean; onEdit: () => void; onRemove: () => void; removeLabel: string }> = ({
+    logo, title, meta, active, onEdit, onRemove, removeLabel,
+}) => (
+    <li className={cn('flex items-center gap-2 rounded-rp-inset bg-rp-surface py-1 pr-1 pl-3', active && 'ring-2 ring-rp-ink')}>
+        {logo}
+        <button type="button" onClick={onEdit} aria-label={`Edit ${title}`} className="min-h-11 min-w-0 flex-1 rounded-rp-inset px-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-rp-muted">
+            <span className="block truncate text-sm font-medium text-rp-ink">{title}</span>
+            {meta ? <span className="block truncate text-xs text-rp-muted">{meta}</span> : null}
+        </button>
+        <RpIconButton label={removeLabel} tone="ghost" onClick={onRemove}><X size={18} /></RpIconButton>
+    </li>
+);
+
+const FormActions: React.FC<{ editing: boolean; valid: boolean; addLabel: string; onSave: () => void; onCancel: () => void }> = ({ editing, valid, addLabel, onSave, onCancel }) => (
+    <div className="mt-2 mb-1 flex flex-wrap gap-2">
+        <button type="button" onClick={onSave} disabled={!valid} className={ADD_BUTTON}>
+            {editing ? <><Check size={16} aria-hidden /> Save changes</> : <><Plus size={16} aria-hidden /> {addLabel}</>}
+        </button>
+        {editing ? <button type="button" onClick={onCancel} className={GHOST_BUTTON}>Cancel</button> : null}
+    </div>
+);
 
 const modeOf = (mode?: TransportMode) => MODES.find(m => m.mode === mode) ?? MODES[0];
 
-const ADD_BUTTON = 'mt-2 mb-1 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-rp-ink px-5 text-sm font-medium text-rp-on-ink outline-none transition-opacity hover:bg-rp-ink/90 focus-visible:ring-2 focus-visible:ring-rp-muted disabled:opacity-40';
+/** Replace item `at` (when editing) or append, and give back the new list. */
+const upsert = <T,>(list: T[], at: number | null, item: T): T[] => (at === null ? [...list, item] : list.map((x, i) => (i === at ? item : x)));
+
+/* ------------------------------------------------------------------ */
+/* Transport */
+/* ------------------------------------------------------------------ */
 
 const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKey?: string }> = ({ draft, set, brandfetchApiKey }) => {
     const blank = (): Partial<Transport> => ({
@@ -159,17 +241,20 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
     });
     const [leg, setLeg] = useState<Partial<Transport>>(blank);
     const [cost, setCost] = useState('');
+    const [editing, setEditing] = useState<number | null>(null);
     const list = draft.transports || [];
     const m = modeOf(leg.mode);
     const patch = (p: Partial<Transport>) => setLeg(l => ({ ...l, ...p }));
     const valid = Boolean(leg.origin?.trim() && leg.destination?.trim());
 
-    const add = () => {
+    const reset = () => { setLeg(blank()); setCost(''); setEditing(null); };
+    const save = () => {
         if (!valid) return;
-        set('transports', [...list, { ...leg, origin: leg.origin!.trim(), destination: leg.destination!.trim(), cost: num(cost) }]);
-        setLeg(blank());
-        setCost('');
+        set('transports', upsert(list, editing, { ...leg, origin: leg.origin!.trim(), destination: leg.destination!.trim(), cost: num(cost) }));
+        reset();
     };
+    const edit = (i: number) => { setLeg({ ...list[i] }); setCost(costText(list[i].cost)); setEditing(i); };
+    const remove = (i: number) => { set('transports', list.filter((_, j) => j !== i)); if (editing === i) reset(); else if (editing !== null && editing > i) setEditing(editing - 1); };
 
     return (
         <div className="flex flex-col gap-5">
@@ -179,23 +264,23 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
                         {list.map((t, i) => {
                             const tm = modeOf(t.mode);
                             return (
-                                <li key={i} className="flex items-center gap-3 rounded-rp-inset bg-rp-surface py-1.5 pr-1 pl-3">
-                                    <RpLogo name={t.provider} brandfetchApiKey={brandfetchApiKey} fallback={tm.icon} iconClassName={TRANSPORT_ACCENT} />
-                                    <span className="min-w-0 flex-1">
-                                        <span className="block truncate text-sm font-medium text-rp-ink">{t.origin} → {t.destination}</span>
-                                        <span className="block truncate text-xs text-rp-muted">
-                                            {[t.provider, t.departureDate ? formatDate(t.departureDate, 'short') : '', t.cost != null ? formatCurrency(t.cost) : ''].filter(Boolean).join(' · ') || tm.label}
-                                        </span>
-                                    </span>
-                                    <RpIconButton label={`Remove ${t.origin} to ${t.destination}`} tone="ghost" onClick={() => set('transports', list.filter((_, j) => j !== i))}><X size={18} /></RpIconButton>
-                                </li>
+                                <ItemRow
+                                    key={t.id || i}
+                                    active={editing === i}
+                                    logo={<RpLogo name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={tm.icon} iconClassName={TRANSPORT_ACCENT} />}
+                                    title={`${t.origin} → ${t.destination}`}
+                                    meta={[t.provider, t.departureDate ? formatDate(t.departureDate, 'short') : '', t.cost != null ? formatCurrency(t.cost) : ''].filter(Boolean).join(' · ') || tm.label}
+                                    onEdit={() => edit(i)}
+                                    onRemove={() => remove(i)}
+                                    removeLabel={`Remove ${t.origin} to ${t.destination}`}
+                                />
                             );
                         })}
                     </ul>
                 </RpSection>
             ) : null}
 
-            <RpSection title={list.length ? 'Add another' : 'Add a flight, train or ride'} icon={Plus}>
+            <RpSection title={editing !== null ? 'Edit transport' : list.length ? 'Add another' : 'Add a flight, train or ride'} icon={editing !== null ? Airplane : Plus}>
                 <div role="group" aria-label="Type of transport" className="flex flex-wrap gap-2 py-2">
                     {MODES.map(o => (
                         <RpChip key={o.mode} selected={leg.mode === o.mode} onClick={() => patch({ mode: o.mode })}><o.icon size={16} aria-hidden /> {o.label}</RpChip>
@@ -212,7 +297,7 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
                 <RpField label={leg.mode === 'Flight' ? 'Airline' : 'Operator'}>
                     {id => (
                         <div className="flex items-center gap-2">
-                            <RpLogo name={leg.provider} brandfetchApiKey={brandfetchApiKey} fallback={m.icon} iconClassName={TRANSPORT_ACCENT} />
+                            <RpLogo name={leg.provider} src={leg.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={m.icon} iconClassName={TRANSPORT_ACCENT} />
                             <input id={id} value={leg.provider} onChange={e => patch({ provider: e.target.value })} className={RP_FIELD} placeholder={leg.mode === 'Flight' ? 'KLM' : ''} autoComplete="off" />
                         </div>
                     )}
@@ -220,16 +305,17 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
                 <div className="grid gap-x-3 sm:grid-cols-2">
                     <RpField label={m.number}>{id => <input id={id} value={leg.identifier} onChange={e => patch({ identifier: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
                     <RpField label="Confirmation">{id => <input id={id} value={leg.confirmationCode} onChange={e => patch({ confirmationCode: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
+                    <RpField label="Seat">{id => <input id={id} value={leg.seatNumber || ''} onChange={e => patch({ seatNumber: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
+                    <RpField label="Cost">{id => <input id={id} inputMode="decimal" value={cost} onChange={e => setCost(e.target.value)} className={cn(RP_FIELD, 'rp-tabular')} placeholder="0" autoComplete="off" />}</RpField>
                 </div>
-                <RpField label="Cost">{id => <input id={id} inputMode="decimal" value={cost} onChange={e => setCost(e.target.value)} className={cn(RP_FIELD, 'rp-tabular')} placeholder="0" autoComplete="off" />}</RpField>
-                <button type="button" onClick={add} disabled={!valid} className={ADD_BUTTON}><Plus size={16} aria-hidden /> Add transport</button>
+                <FormActions editing={editing !== null} valid={valid} addLabel="Add transport" onSave={save} onCancel={reset} />
             </RpSection>
         </div>
     );
 };
 
 /* ------------------------------------------------------------------ */
-/* Step 3: stays */
+/* Stays */
 /* ------------------------------------------------------------------ */
 
 const StaysStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKey?: string }> = ({ draft, set, brandfetchApiKey }) => {
@@ -239,16 +325,19 @@ const StaysStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKey?: 
     });
     const [stay, setStay] = useState<Partial<Accommodation>>(blank);
     const [cost, setCost] = useState('');
+    const [editing, setEditing] = useState<number | null>(null);
     const list = draft.stays || [];
     const patch = (p: Partial<Accommodation>) => setStay(s => ({ ...s, ...p }));
     const valid = Boolean(stay.name?.trim());
 
-    const add = () => {
+    const reset = () => { setStay(blank()); setCost(''); setEditing(null); };
+    const save = () => {
         if (!valid) return;
-        set('stays', [...list, { ...stay, name: stay.name!.trim(), cost: num(cost) }]);
-        setStay(blank());
-        setCost('');
+        set('stays', upsert(list, editing, { ...stay, name: stay.name!.trim(), cost: num(cost) }));
+        reset();
     };
+    const edit = (i: number) => { setStay({ ...list[i] }); setCost(costText(list[i].cost)); setEditing(i); };
+    const remove = (i: number) => { set('stays', list.filter((_, j) => j !== i)); if (editing === i) reset(); else if (editing !== null && editing > i) setEditing(editing - 1); };
 
     return (
         <div className="flex flex-col gap-5">
@@ -256,26 +345,26 @@ const StaysStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKey?: 
                 <RpSection title={`Added (${list.length})`} icon={Bed}>
                     <ul className="flex flex-col gap-2 py-2">
                         {list.map((a, i) => (
-                            <li key={i} className="flex items-center gap-3 rounded-rp-inset bg-rp-surface py-1.5 pr-1 pl-3">
-                                <RpLogo name={a.name} brandfetchApiKey={brandfetchApiKey} fallback={stayIcon(a.type)} iconClassName={STAY_ACCENT} />
-                                <span className="min-w-0 flex-1">
-                                    <span className="block truncate text-sm font-medium text-rp-ink">{a.name}</span>
-                                    <span className="block truncate text-xs text-rp-muted">
-                                        {[a.type, a.checkInDate && a.checkOutDate ? `${formatDate(a.checkInDate, 'short')} – ${formatDate(a.checkOutDate, 'short')}` : '', a.cost != null ? formatCurrency(a.cost) : ''].filter(Boolean).join(' · ')}
-                                    </span>
-                                </span>
-                                <RpIconButton label={`Remove ${a.name}`} tone="ghost" onClick={() => set('stays', list.filter((_, j) => j !== i))}><X size={18} /></RpIconButton>
-                            </li>
+                            <ItemRow
+                                key={a.id || i}
+                                active={editing === i}
+                                logo={<RpLogo name={a.name} src={a.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={stayIcon(a.type)} iconClassName={STAY_ACCENT} />}
+                                title={a.name || 'Stay'}
+                                meta={[a.type, a.checkInDate && a.checkOutDate ? `${formatDate(a.checkInDate, 'short')} – ${formatDate(a.checkOutDate, 'short')}` : '', a.cost != null ? formatCurrency(a.cost) : ''].filter(Boolean).join(' · ')}
+                                onEdit={() => edit(i)}
+                                onRemove={() => remove(i)}
+                                removeLabel={`Remove ${a.name}`}
+                            />
                         ))}
                     </ul>
                 </RpSection>
             ) : null}
 
-            <RpSection title={list.length ? 'Add another' : 'Add a place to stay'} icon={Plus}>
+            <RpSection title={editing !== null ? 'Edit stay' : list.length ? 'Add another' : 'Add a place to stay'} icon={editing !== null ? Bed : Plus}>
                 <RpField label="Name">
                     {id => (
                         <div className="flex items-center gap-2">
-                            <RpLogo name={stay.name} brandfetchApiKey={brandfetchApiKey} fallback={stayIcon(stay.type)} iconClassName={STAY_ACCENT} />
+                            <RpLogo name={stay.name} src={stay.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={stayIcon(stay.type)} iconClassName={STAY_ACCENT} />
                             <input id={id} value={stay.name} onChange={e => patch({ name: e.target.value })} className={RP_FIELD} placeholder="Hotel Avenida" autoComplete="off" />
                         </div>
                     )}
@@ -292,7 +381,68 @@ const StaysStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKey?: 
                     <RpField label="Confirmation">{id => <input id={id} value={stay.confirmationCode} onChange={e => patch({ confirmationCode: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
                     <RpField label="Cost">{id => <input id={id} inputMode="decimal" value={cost} onChange={e => setCost(e.target.value)} className={cn(RP_FIELD, 'rp-tabular')} placeholder="0" autoComplete="off" />}</RpField>
                 </div>
-                <button type="button" onClick={add} disabled={!valid} className={ADD_BUTTON}><Plus size={16} aria-hidden /> Add stay</button>
+                <FormActions editing={editing !== null} valid={valid} addLabel="Add stay" onSave={save} onCancel={reset} />
+            </RpSection>
+        </div>
+    );
+};
+
+/* ------------------------------------------------------------------ */
+/* Activities (editing only) */
+/* ------------------------------------------------------------------ */
+
+const ActivitiesStep: React.FC<{ draft: TripDraft; set: SetDraft }> = ({ draft, set }) => {
+    const blank = (): Partial<Activity> => ({ title: '', type: 'Activity', date: draft.startDate, time: '10:00', location: '', description: '' });
+    const [item, setItem] = useState<Partial<Activity>>(blank);
+    const [cost, setCost] = useState('');
+    const [editing, setEditing] = useState<number | null>(null);
+    const list = draft.activities || [];
+    const patch = (p: Partial<Activity>) => setItem(a => ({ ...a, ...p }));
+    const valid = Boolean(item.title?.trim());
+
+    const reset = () => { setItem(blank()); setCost(''); setEditing(null); };
+    const save = () => {
+        if (!valid) return;
+        set('activities', upsert(list, editing, { ...item, title: item.title!.trim(), cost: num(cost) }));
+        reset();
+    };
+    const edit = (i: number) => { setItem({ ...list[i] }); setCost(costText(list[i].cost)); setEditing(i); };
+    const remove = (i: number) => { set('activities', list.filter((_, j) => j !== i)); if (editing === i) reset(); else if (editing !== null && editing > i) setEditing(editing - 1); };
+
+    return (
+        <div className="flex flex-col gap-5">
+            {list.length > 0 ? (
+                <RpSection title={`Added (${list.length})`} icon={CalendarBlank}>
+                    <ul className="flex flex-col gap-2 py-2">
+                        {list.map((a, i) => (
+                            <ItemRow
+                                key={a.id || i}
+                                active={editing === i}
+                                logo={<span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-white"><CalendarBlank size={16} className="text-rp-muted" aria-hidden /></span>}
+                                title={a.title || 'Activity'}
+                                meta={[a.date ? formatDate(a.date, 'short') : '', a.time, a.location, a.cost != null && a.cost > 0 ? formatCurrency(a.cost) : ''].filter(Boolean).join(' · ')}
+                                onEdit={() => edit(i)}
+                                onRemove={() => remove(i)}
+                                removeLabel={`Remove ${a.title}`}
+                            />
+                        ))}
+                    </ul>
+                </RpSection>
+            ) : null}
+
+            <RpSection title={editing !== null ? 'Edit activity' : list.length ? 'Add another' : 'Add an activity'} icon={editing !== null ? CalendarBlank : Plus}>
+                <RpField label="Title">{id => <input id={id} value={item.title} onChange={e => patch({ title: e.target.value })} className={RP_FIELD} placeholder="Tea ceremony" autoComplete="off" />}</RpField>
+                <div role="group" aria-label="Type of activity" className="flex flex-wrap gap-2 py-2">
+                    {ACTIVITY_TYPES.map(t => <RpChip key={t} selected={item.type === t} onClick={() => patch({ type: t })}>{t}</RpChip>)}
+                </div>
+                <div className="grid gap-x-3 sm:grid-cols-2">
+                    <RpField label="Date">{id => <input id={id} type="date" value={item.date} onChange={e => patch({ date: e.target.value })} className={DATE} />}</RpField>
+                    <RpField label="Time">{id => <input id={id} type="time" value={item.time} onChange={e => patch({ time: e.target.value })} className={DATE} />}</RpField>
+                    <RpField label="Where">{id => <input id={id} value={item.location} onChange={e => patch({ location: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
+                    <RpField label="Cost">{id => <input id={id} inputMode="decimal" value={cost} onChange={e => setCost(e.target.value)} className={cn(RP_FIELD, 'rp-tabular')} placeholder="0" autoComplete="off" />}</RpField>
+                </div>
+                <RpField label="Notes">{id => <textarea id={id} value={item.description} onChange={e => patch({ description: e.target.value })} rows={2} className={cn(RP_FIELD, 'resize-none py-2.5')} />}</RpField>
+                <FormActions editing={editing !== null} valid={valid} addLabel="Add activity" onSave={save} onCancel={reset} />
             </RpSection>
         </div>
     );
@@ -302,12 +452,13 @@ const StaysStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKey?: 
 /* The sheet */
 /* ------------------------------------------------------------------ */
 
-const STEPS = ['Trip basics', 'Transport', 'Stays'] as const;
+const CREATE_STEPS = ['Trip basics', 'Transport', 'Stays'] as const;
+const EDIT_STEPS = ['Basics', 'Transport', 'Stays', 'Activities'] as const;
 
-const Stepper: React.FC<{ step: number; reached: number; onGo: (i: number) => void }> = ({ step, reached, onGo }) => (
-    <ol aria-label="Steps" className="mb-5 flex items-center gap-2">
-        {STEPS.map((label, i) => {
-            const done = i < step;
+const Stepper: React.FC<{ labels: readonly string[]; step: number; reached: number; onGo: (i: number) => void; numbered: boolean }> = ({ labels, step, reached, onGo, numbered }) => (
+    <ol aria-label="Steps" className={cn('mb-5 flex items-center', numbered ? 'gap-2' : 'gap-1 sm:gap-2')}>
+        {labels.map((label, i) => {
+            const done = numbered && i < step;
             const active = i === step;
             return (
                 <li key={label} className="flex min-w-0 flex-1 items-center">
@@ -317,14 +468,16 @@ const Stepper: React.FC<{ step: number; reached: number; onGo: (i: number) => vo
                         disabled={i > reached}
                         onClick={() => onGo(i)}
                         className={cn(
-                            'flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-rp-muted',
+                            'flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-full text-sm font-medium outline-none', numbered ? 'px-3' : 'px-1.5 sm:px-3', ' transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-rp-muted',
                             active ? 'bg-rp-ink text-rp-on-ink' : done ? 'bg-rp-green text-rp-paper' : 'bg-rp-inset text-rp-muted',
                             i > reached && 'opacity-60'
                         )}
                     >
-                        <span className={cn('rp-tabular flex size-5 shrink-0 items-center justify-center rounded-full text-2xs font-semibold', active ? 'bg-rp-on-ink text-rp-ink' : done ? 'bg-rp-paper text-rp-green' : 'bg-rp-line text-rp-muted')}>
-                            {done ? <Check size={12} aria-hidden /> : i + 1}
-                        </span>
+                        {numbered ? (
+                            <span className={cn('rp-tabular flex size-5 shrink-0 items-center justify-center rounded-full text-2xs font-semibold', active ? 'bg-rp-on-ink text-rp-ink' : done ? 'bg-rp-paper text-rp-green' : 'bg-rp-line text-rp-muted')}>
+                                {done ? <Check size={12} aria-hidden /> : i + 1}
+                            </span>
+                        ) : null}
                         <span className="truncate">{label}</span>
                     </button>
                 </li>
@@ -336,13 +489,14 @@ const Stepper: React.FC<{ step: number; reached: number; onGo: (i: number) => vo
 export const TripSheet: React.FC<{
     target: TripSheetTarget | null;
     users: User[];
+    entitlements: EntitlementType[];
     currentUserId?: string;
     brandfetchApiKey?: string;
     onClose: () => void;
     onSave: (draft: TripDraft, trip?: Trip) => Promise<void>;
     onDelete: (trip: Trip) => void;
     onOpenTrip: (trip: Trip) => void;
-}> = ({ target, users, currentUserId, brandfetchApiKey, onClose, onSave, onDelete, onOpenTrip }) => {
+}> = ({ target, users, entitlements, currentUserId, brandfetchApiKey, onClose, onSave, onDelete, onOpenTrip }) => {
     const [draft, setDraft] = useState<TripDraft>(() => emptyDraft('Planning'));
     const [touched, setTouched] = useState(false);
     const [step, setStep] = useState(0);
@@ -352,7 +506,7 @@ export const TripSheet: React.FC<{
         if (!target) return;
         setTouched(false);
         setStep(0);
-        setReached(0);
+        setReached(target.kind === 'edit' ? EDIT_STEPS.length - 1 : 0);
         setDraft(target.kind === 'edit'
             ? draftOf(target.trip)
             : { ...emptyDraft(BUCKET_STATUS[target.bucket]), participants: currentUserId ? [currentUserId] : [] });
@@ -366,7 +520,7 @@ export const TripSheet: React.FC<{
     const basicsValid = Boolean(draft.name.trim() && draft.startDate && !endError);
 
     const go = (i: number) => {
-        if (i > 0 && !basicsValid) { setTouched(true); return; }
+        if (i > 0 && !basicsValid) { setTouched(true); setStep(0); return; }
         setStep(i);
         setReached(r => Math.max(r, i));
     };
@@ -378,12 +532,32 @@ export const TripSheet: React.FC<{
         onClose();
     };
 
+    const pane = (
+        <>
+            {step === 0 ? (
+                <Basics
+                    draft={draft}
+                    set={set}
+                    users={users}
+                    entitlements={entitlements}
+                    splitCount={editing?.allocations?.length || 0}
+                    showErrors={touched}
+                    autoFocus={!editing}
+                />
+            ) : null}
+            {step === 1 ? <TransportStep draft={draft} set={set} brandfetchApiKey={brandfetchApiKey} /> : null}
+            {step === 2 ? <StaysStep draft={draft} set={set} brandfetchApiKey={brandfetchApiKey} /> : null}
+            {step === 3 && editing ? <ActivitiesStep draft={draft} set={set} /> : null}
+        </>
+    );
+
     if (editing) {
         return (
             <RpSheet
                 open
                 onClose={onClose}
                 title={editing.name}
+                width={460}
                 subtitle={(
                     <button type="button" onClick={() => onOpenTrip(editing)} className="inline-flex min-h-11 items-center gap-1 rounded-full text-sm text-rp-ink underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-rp-muted">
                         Open trip <ArrowUpRight size={14} aria-hidden />
@@ -396,18 +570,19 @@ export const TripSheet: React.FC<{
                     </>
                 }
             >
-                <Basics draft={draft} set={set} users={users} showErrors={touched} autoFocus={false} />
+                <Stepper labels={EDIT_STEPS} step={step} reached={reached} onGo={go} numbered={false} />
+                {pane}
             </RpSheet>
         );
     }
 
-    const last = step === STEPS.length - 1;
+    const last = step === CREATE_STEPS.length - 1;
     return (
         <RpSheet
             open
             onClose={onClose}
             title="New trip"
-            subtitle={`Step ${step + 1} of ${STEPS.length}${step > 0 ? ' · optional' : ''}`}
+            subtitle={`Step ${step + 1} of ${CREATE_STEPS.length}${step > 0 ? ' · optional' : ''}`}
             width={460}
             footer={
                 <>
@@ -426,10 +601,8 @@ export const TripSheet: React.FC<{
                 </>
             }
         >
-            <Stepper step={step} reached={reached} onGo={go} />
-            {step === 0 ? <Basics draft={draft} set={set} users={users} showErrors={touched} autoFocus /> : null}
-            {step === 1 ? <TransportStep draft={draft} set={set} brandfetchApiKey={brandfetchApiKey} /> : null}
-            {step === 2 ? <StaysStep draft={draft} set={set} brandfetchApiKey={brandfetchApiKey} /> : null}
+            <Stepper labels={CREATE_STEPS} step={step} reached={reached} onGo={go} numbered />
+            {pane}
         </RpSheet>
     );
 };

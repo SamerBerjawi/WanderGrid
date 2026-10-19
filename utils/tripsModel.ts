@@ -107,6 +107,20 @@ export const tripMatches = (trip: Trip, query: string): boolean => {
         .some(part => (part || '').toLowerCase().includes(q));
 };
 
+export type TripSort = 'date' | 'name' | 'length' | 'cost' | 'destination';
+
+/** The list in the chosen order. `date` keeps the board's own order (soonest first, past newest first). */
+export const sortTrips = (trips: Trip[], key: TripSort): Trip[] => {
+    if (key === 'date') return trips;
+    const copy = [...trips];
+    const first = (t: Trip) => destinationsOf(t)[0] || '';
+    if (key === 'name') copy.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    else if (key === 'destination') copy.sort((a, b) => first(a).localeCompare(first(b), undefined, { sensitivity: 'base' }) || a.name.localeCompare(b.name));
+    else if (key === 'length') copy.sort((a, b) => tripDays(b) - tripDays(a) || a.name.localeCompare(b.name));
+    else copy.sort((a, b) => tripCost(b) - tripCost(a) || a.name.localeCompare(b.name));
+    return copy;
+};
+
 export const tripYears = (trip: Trip): string[] =>
     Array.from(new Set([trip.startDate, trip.endDate].map(d => (d || '').slice(0, 4)).filter(y => /^\d{4}$/.test(y))));
 

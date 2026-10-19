@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Trip } from '../../types';
 import { useTripsData, type TripDraft } from '../../hooks/useTripsData';
-import { canMoveTo, tripMatches, tripYears, type TripBucket } from '../../utils/tripsModel';
+import { canMoveTo, sortTrips, tripMatches, tripYears, type TripBucket, type TripSort } from '../../utils/tripsModel';
 import { errorMessage, toast } from '../../services/toast';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import type { DockTool } from '../../components/kokonutui/tool-dock';
@@ -12,10 +12,11 @@ import { useUndoToast } from '../../components/new/UndoToast';
 import { TripBoard } from '../../components/new/trips/TripBoard';
 import { CAP } from '../../components/new/trips/CappedTrips';
 import { TripList } from '../../components/new/trips/TripList';
+import { TripMenu } from '../../components/new/trips/TripMenu';
 import { BUCKET_HEAD, BUCKET_LABEL, type TripActions } from '../../components/new/trips/TripCard';
 import { TripDetailsModal, type TripOrigin } from '../../components/new/trips/TripDetailsModal';
 import { DeleteTripSheet, TripSheet, type TripSheetTarget } from '../../components/new/trips/TripSheets';
-import { Archive, CalendarBlank, Kanban, List, MagnifyingGlass, MapPin, Plus, Stack, Suitcase } from '../../components/ui/hugeicons';
+import { Archive, ArrowDown, CalendarBlank, Kanban, List, MagnifyingGlass, MapPin, MapTrifold, Plus, Receipt, Stack, Suitcase, Tag, XCircle } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -33,6 +34,22 @@ interface TripsNewProps {
 type View = 'board' | 'rows' | 'list';
 const VIEW_KEY = 'wandergrid_trips_new_view';
 const STAGE_KEY = 'wandergrid_trips_new_stage';
+const SORT_KEY = 'wandergrid_trips_new_sort';
+
+type Scope = 'active' | 'archived' | 'cancelled';
+const SORTS: { id: TripSort; label: string; icon: typeof Tag }[] = [
+    { id: 'date', label: 'Date', icon: CalendarBlank },
+    { id: 'name', label: 'Name', icon: Tag },
+    { id: 'destination', label: 'Destination', icon: MapTrifold },
+    { id: 'length', label: 'Longest first', icon: ArrowDown },
+    { id: 'cost', label: 'Most expensive', icon: Receipt },
+];
+const readSort = (): TripSort => {
+    try {
+        const v = localStorage.getItem(SORT_KEY);
+        return SORTS.some(o => o.id === v) ? (v as TripSort) : 'date';
+    } catch { return 'date'; }
+};
 const NEW_TRIP_EVENT = 'rp:new-trip';
 
 const readView = (): View => {
@@ -70,7 +87,12 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     const [stage, setStage] = useState<TripBucket>(readStage);
     const [query, setQuery] = useState('');
     const [year, setYear] = useState('all');
-    const [showArchived, setShowArchived] = useState(false);
+    const [scope, setScope] = useState<Scope>('active');
+    const [sort, setSort] = useState<TripSort>(readSort);
+    const changeSort = (next: TripSort) => {
+        setSort(next);
+        try { localStorage.setItem(SORT_KEY, next); } catch { /* storage unavailable */ }
+    };
     const [searchOpen, setSearchOpen] = useState(false);
     // A long status shows its first few trips until you ask for all of them.
     const [expanded, setExpanded] = useState<Record<TripBucket, boolean>>({ planned: false, confirmed: false, past: false });
@@ -109,11 +131,17 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
         [query, year]
     );
     const columns = useMemo(() => ({
-        planned: filterTrips(data.columns.planned),
-        confirmed: filterTrips(data.columns.confirmed),
-        past: filterTrips(data.columns.past),
-    }), [data.columns, filterTrips]);
-    const archived = useMemo(() => filterTrips(data.archived), [data.archived, filterTrips]);
+        planned: sortTrips(filterTrips(data.columns.planned), sort),
+        confirmed: sortTrips(filterTrips(data.columns.confirmed), sort),
+        past: sortTrips(filterTrips(data.columns.past), sort),
+    }), [data.columns, filterTrips, sort]);
+    const archived = useMemo(() => sortTrips(filterTrips(data.archived), sort), [data.archived, filterTrips, sort]);
+    const cancelled = useMemo(() => sortTrips(filterTrips(data.cancelled), sort), [data.cancelled, filterTrips, sort]);
+    const showArchived = scope !== 'active';
+    // Leaving a view empty (the last trip restored) goes back to the board.
+    useEffect(() => {
+        if ((scope === 'archived' && data.archived.length === 0) || (scope === 'cancelled' && data.cancelled.length === 0)) setScope('active');
+    }, [scope, data.archived.length, data.cancelled.length]);
     const shown = columns.planned.length + columns.confirmed.length + columns.past.length;
     const filtering = Boolean(query.trim()) || year !== 'all';
 
@@ -134,8 +162,21 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
         undo.show(`Archived ${trip.name}`, () => attempt(() => data.setArchived([trip.id], false)));
     });
     const restore = (trip: Trip) => attempt(async () => {
+        if (trip.status === 'Cancelled') {
+            await data.setStatus(trip.id, 'Planning');
+            undo.show(`Restored ${trip.name} as Planned`, () => attempt(async () => { await data.setStatus(trip.id, 'Cancelled'); }));
+            return;
+        }
         await data.setArchived([trip.id], false);
         undo.show(`Restored ${trip.name}`, () => attempt(() => data.setArchived([trip.id], true)));
+    });
+    const cancelTrip = (trip: Trip) => attempt(async () => {
+        const previous = await data.setStatus(trip.id, 'Cancelled');
+        undo.show(`Cancelled ${trip.name}`, () => attempt(async () => { if (previous) await data.setStatus(trip.id, previous); }));
+    });
+    const duplicateTrip = (trip: Trip) => attempt(async () => {
+        const copy = await data.duplicate(trip);
+        undo.show(`Duplicated ${trip.name}`, () => attempt(() => data.remove(copy.id)));
     });
     const openTrip = (trip: Trip) => { if (onTripClick) onTripClick(trip.id); };
     const confirmDelete = (trip: Trip) => attempt(async () => {
@@ -155,6 +196,8 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
         onMove: move,
         onArchive: archive,
         onRestore: restore,
+        onDuplicate: duplicateTrip,
+        onCancel: cancelTrip,
         onDelete: setDeleting,
     };
 
@@ -176,8 +219,10 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
         { id: 'new', label: 'New trip', icon: Plus as any, action: () => setSheet({ kind: 'create', bucket: 'planned' }) },
     ];
 
-    const dragEnabled = !mobile && view !== 'list' && !showArchived;
+    const dragEnabled = !mobile && view !== 'list' && scope === 'active';
     const years = data.years;
+    const flat = scope === 'archived' ? archived : cancelled;
+    const sortLabel = SORTS.find(o => o.id === sort)!.label;
 
     return (
         <div className="custom-scrollbar h-full overflow-y-auto px-3 pt-2 pb-32 sm:px-6 md:pb-16">
@@ -216,7 +261,7 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
                 </div>
 
                 <section aria-label="Your trips" className="flex flex-col gap-4">
-                    {mobile && view === 'board' && !showArchived ? (
+                    {mobile && view === 'board' && scope === 'active' ? (
                         <div className="-m-3 overflow-x-auto p-3 [scrollbar-width:none]">
                             <SwipeTabs
                                 items={stageItems}
@@ -233,33 +278,46 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
                         </div>
                     ) : null}
 
-                    {years.length > 1 || data.archived.length > 0 ? (
-                        <div className="-m-3 overflow-x-auto p-3 [scrollbar-width:none]">
-                            <div className="flex items-center gap-2" role="group" aria-label="Filters">
-                                {years.length > 1 ? (
-                                    <>
-                                        <RpChip selected={year === 'all'} onClick={() => setYear('all')} className="shrink-0">All years</RpChip>
-                                        {years.map(y => <RpChip key={y} selected={year === y} onClick={() => setYear(year === y ? 'all' : y)} className="rp-tabular shrink-0">{y}</RpChip>)}
-                                    </>
-                                ) : null}
-                                {data.archived.length > 0 ? (
-                                    <RpChip selected={showArchived} onClick={() => setShowArchived(s => !s)} className="shrink-0">
-                                        <Archive size={16} aria-hidden /> Archived <Count n={data.archived.length} />
-                                    </RpChip>
-                                ) : null}
-                            </div>
+                    <div className="-m-3 overflow-x-auto p-3 [scrollbar-width:none]">
+                        <div className="flex items-center gap-2" role="group" aria-label="Filters">
+                            {years.length > 1 ? (
+                                <>
+                                    <RpChip selected={year === 'all'} onClick={() => setYear('all')} className="shrink-0">All years</RpChip>
+                                    {years.map(y => <RpChip key={y} selected={year === y} onClick={() => setYear(year === y ? 'all' : y)} className="rp-tabular shrink-0">{y}</RpChip>)}
+                                </>
+                            ) : null}
+                            {data.archived.length > 0 ? (
+                                <RpChip selected={scope === 'archived'} onClick={() => setScope(sc => (sc === 'archived' ? 'active' : 'archived'))} className="shrink-0">
+                                    <Archive size={16} aria-hidden /> Archived <Count n={data.archived.length} />
+                                </RpChip>
+                            ) : null}
+                            {data.cancelled.length > 0 ? (
+                                <RpChip selected={scope === 'cancelled'} onClick={() => setScope(sc => (sc === 'cancelled' ? 'active' : 'cancelled'))} className="shrink-0">
+                                    <XCircle size={16} aria-hidden /> Cancelled <Count n={data.cancelled.length} />
+                                </RpChip>
+                            ) : null}
+                            <TripMenu
+                                label="Sort trips"
+                                pill={{ label: `Sort: ${sortLabel}`, icon: ArrowDown }}
+                                triggerClassName="ml-auto"
+                                items={SORTS.map(o => ({ id: o.id, label: o.label, icon: o.icon as any, selected: sort === o.id, onSelect: () => changeSort(o.id) }))}
+                            />
                         </div>
-                    ) : null}
+                    </div>
 
                     {data.loading ? (
                         <div className="grid gap-3 md:grid-cols-3" aria-busy="true">
                             {Array.from({ length: 6 }, (_, i) => <div key={i} className="h-36 animate-pulse rounded-rp-tile bg-rp-surface/70" />)}
                         </div>
                     ) : showArchived ? (
-                        archived.length === 0 ? (
-                            <EmptyCard><RpEmpty title={filtering ? 'No archived trips match' : 'Nothing archived'}>{filtering ? 'Try another search.' : 'Archived trips are kept here until you restore them.'}</RpEmpty></EmptyCard>
+                        flat.length === 0 ? (
+                            <EmptyCard>
+                                <RpEmpty title={filtering ? `No ${scope} trips match` : `Nothing ${scope}`}>
+                                    {filtering ? 'Try another search.' : scope === 'archived' ? 'Archived trips are kept here until you restore them.' : 'Cancelled trips are kept here until you restore or delete them.'}
+                                </RpEmpty>
+                            </EmptyCard>
                         ) : (
-                            <TripList flat={archived} users={data.users} today={data.today} actions={actions} onAdd={() => undefined} />
+                            <TripList flat={flat} users={data.users} today={data.today} actions={actions} onAdd={() => undefined} />
                         )
                     ) : data.active.length === 0 ? (
                         <EmptyCard>
@@ -299,6 +357,7 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
             <TripSheet
                 target={sheet}
                 users={data.users}
+                entitlements={data.entitlements}
                 currentUserId={currentUserId()}
                 brandfetchApiKey={data.brandfetchApiKey}
                 onClose={() => setSheet(null)}

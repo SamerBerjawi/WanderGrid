@@ -28,7 +28,8 @@ const initials = (name?: string) => (name || '?').split(/\s+/).filter(Boolean).s
 
 const Row: React.FC<{ trip: Trip; users: User[]; today: string; actions: TripActions }> = ({ trip, users, today, actions }) => {
     const bucket = bucketOf(trip, today);
-    const now = isTravelling(trip, today);
+    const isCancelled = trip.status === 'Cancelled';
+    const now = !isCancelled && isTravelling(trip, today);
     const timing = timingOf(trip, today);
     const days = tripDays(trip);
     const cost = tripCost(trip);
@@ -59,7 +60,7 @@ const Row: React.FC<{ trip: Trip; users: User[]; today: string; actions: TripAct
             <span className={cn('rp-tabular hidden truncate text-xs lg:block', muted)}>{dates}</span>
             <span className={cn('rp-tabular hidden text-right text-xs lg:block', muted)}>{dayText}</span>
             <span className="rp-tabular hidden text-right text-xs font-medium lg:block">
-                {timing.state === 'past' ? '' : timing.value !== null ? `${timing.value} ${timing.unit}` : timing.unit}
+                {isCancelled ? 'Cancelled' : timing.state === 'past' ? '' : timing.value !== null ? `${timing.value} ${timing.unit}` : timing.unit}
             </span>
 
             <span className="hidden items-center gap-2 pl-2 lg:flex">
