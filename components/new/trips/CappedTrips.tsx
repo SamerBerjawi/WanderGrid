@@ -15,7 +15,7 @@ export const CAP: Record<TripBucket, number> = { planned: 8, confirmed: 8, past:
 
 const yearOf = (trip: Trip) => (trip.endDate || trip.startDate || '').slice(0, 4) || 'Undated';
 
-const BUTTON = 'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-medium text-rp-ink outline-none transition-colors duration-150 hover:bg-rp-inset focus-visible:ring-2 focus-visible:ring-rp-muted';
+const BUTTON = 'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-medium text-rp-ink outline-none transition-colors duration-150 hover:bg-rp-surface/60 focus-visible:ring-2 focus-visible:ring-rp-muted';
 
 export const CappedTrips: React.FC<{
     bucket: TripBucket;
@@ -84,7 +84,7 @@ export const CappedTrips: React.FC<{
                                 type="button"
                                 aria-expanded={open}
                                 onClick={() => toggleYear(year, gi)}
-                                className="flex min-h-11 w-full items-center justify-between gap-2 rounded-rp-inset px-3 text-left text-sm font-medium text-rp-ink outline-none hover:bg-rp-inset focus-visible:ring-2 focus-visible:ring-rp-muted"
+                                className="flex min-h-11 w-full items-center justify-between gap-2 rounded-rp-inset px-3 text-left text-sm font-medium text-rp-ink outline-none hover:bg-rp-surface/60 focus-visible:ring-2 focus-visible:ring-rp-muted"
                             >
                                 <span className="rp-tabular">{year} <span className="font-normal text-rp-muted">· {list.length} {list.length === 1 ? 'trip' : 'trips'}</span></span>
                                 <CaretDown size={16} className={cn('text-rp-muted transition-transform duration-150', open && 'rotate-180')} aria-hidden />

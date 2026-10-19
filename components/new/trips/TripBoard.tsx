@@ -76,7 +76,8 @@ const Column: React.FC<{
                 ref={setNodeRef}
                 className={cn(
                     'flex min-h-40 flex-col gap-3 transition-shadow duration-150',
-                    !bare && 'rounded-rp-card bg-rp-inset/60 p-3',
+                    // Darker than the page in light mode, lighter than it in dark mode, so the cards sit in a visible lane.
+                    !bare && 'rounded-rp-card bg-rp-line/80 p-3 dark:bg-rp-inset/60',
                     isOver && 'ring-2 ring-rp-ink'
                 )}
             >
