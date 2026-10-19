@@ -33,8 +33,9 @@ const GoldenSidebar = lazy(() => import('./components/golden/GoldenSidebar').the
 const ShellNew = lazy(() => import('./components/new/ShellNew').then(m => ({ default: m.ShellNew })));
 const MapNew = lazy(() => import('./views/new/MapNew').then(m => ({ default: m.MapNew })));
 const AtlasNew = lazy(() => import('./views/new/AtlasNew').then(m => ({ default: m.AtlasNew })));
-type NewPage = 'map' | 'atlas';
-const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas' };
+const TripsNew = lazy(() => import('./views/new/TripsNew').then(m => ({ default: m.TripsNew })));
+type NewPage = 'map' | 'atlas' | 'trips';
+const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips' };
 const getNewPage = (): NewPage | null => {
     try { return NEW_PAGES[window.location.pathname] ?? null; } catch (e) { return null; }
 };
@@ -428,6 +429,7 @@ export default function App() {
               <Suspense fallback={null}>
                 {newPage === 'map' ? <MapNew onTripClick={handleTripClick} isSidebarCollapsed={isSidebarCollapsed} onThemeChange={t => handleThemeChange(t)} /> : null}
                 {newPage === 'atlas' ? <AtlasNew onTripClick={handleTripClick} /> : null}
+                {newPage === 'trips' ? <TripsNew onTripClick={handleTripClick} /> : null}
               </Suspense>
             </AppErrorBoundary>
           </ShellNew>
