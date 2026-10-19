@@ -8,6 +8,7 @@ import { bucketOf, destinationsOf, isTravelling, timingOf, tripDays, tripNeeds, 
 import {
     Airplane, Archive, ArrowCounterClockwise, ArrowUpRight, Bed, CalendarBlank, CheckCircle, Clock, PencilSimple, Suitcase, Trash, type Icon,
 } from '../../ui/hugeicons';
+import { RpHugeicon } from '../RpHugeicon';
 import { RpIconButton } from '../ui';
 import { TripMenu, type TripMenuItem } from './TripMenu';
 import { cn } from '../../../utils/cn';
@@ -19,6 +20,13 @@ import { cn } from '../../../utils/cn';
  */
 
 export const BUCKET_LABEL: Record<TripBucket, string> = { planned: 'Planned', confirmed: 'Confirmed', past: 'Past' };
+
+/** The icon and filled circle that head each status: on column headings, list headings and stage tabs. */
+export const BUCKET_HEAD: Record<TripBucket, { icon: Icon; circle: string; text: string }> = {
+    planned: { icon: Clock, circle: 'bg-rp-mustard text-rp-on-mustard', text: 'text-rp-ochre' },
+    confirmed: { icon: Suitcase, circle: 'bg-rp-green text-rp-paper', text: 'text-rp-green' },
+    past: { icon: CheckCircle, circle: 'bg-rp-ink text-rp-on-ink', text: 'text-rp-ink' },
+};
 
 const BUCKET_LOOK: Record<TripBucket, { circle: string; icon: Icon }> = {
     planned: { circle: 'bg-rp-mustard text-rp-on-mustard', icon: Clock },
@@ -51,6 +59,8 @@ const initials = (name?: string) =>
     (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]!.toUpperCase()).join('');
 
 export interface TripActions {
+    /** Opens the trip's details (the deck). */
+    onDetails: (trip: Trip) => void;
     onEdit: (trip: Trip) => void;
     onOpenTrip: (trip: Trip) => void;
     onMove: (trip: Trip, bucket: TripBucket) => void;
@@ -127,11 +137,11 @@ export const TripCardBody: React.FC<CardProps> = ({ trip, users, today, actions,
         >
             <div className="flex items-start gap-3">
                 <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full', skin.circle)}>
-                    <Circle size={18} aria-hidden />
+                    <RpHugeicon name={trip.hugeicon} size={18} fallback={<Circle size={18} aria-hidden />} />
                 </span>
                 <button
                     type="button"
-                    onClick={() => actions.onEdit(trip)}
+                    onClick={() => actions.onDetails(trip)}
                     className="min-h-11 min-w-0 flex-1 rounded-rp-inset text-left outline-none focus-visible:ring-2 focus-visible:ring-rp-muted"
                 >
                     <span className="line-clamp-2 break-words text-base font-medium leading-tight">{trip.name}</span>
@@ -150,13 +160,20 @@ export const TripCardBody: React.FC<CardProps> = ({ trip, users, today, actions,
                 </div>
             </div>
 
-            <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
-                <p className="flex items-baseline gap-1.5">
-                    {timing.value !== null ? <NumberFlow value={timing.value} className="rp-tabular text-[1.75rem] font-semibold leading-none" /> : null}
-                    <span className={cn('whitespace-nowrap text-xs', muted)}>{timing.unit}</span>
+            {timing.state === 'past' || timing.value === null ? (
+                // Past trips show when they were, not how long ago.
+                <p className={cn('rp-tabular text-sm font-medium', timing.value === null && muted)}>
+                    {trip.startDate ? formatDateRange(trip.startDate, trip.endDate || trip.startDate) : timing.unit}
                 </p>
-                <p className={cn('rp-tabular whitespace-nowrap text-right text-xs', muted)}>{trip.startDate ? formatDateRange(trip.startDate, trip.endDate || trip.startDate) : ''}</p>
-            </div>
+            ) : (
+                <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
+                    <p className="flex items-baseline gap-1.5">
+                        <NumberFlow value={timing.value} className="rp-tabular text-[1.75rem] font-semibold leading-none" />
+                        <span className={cn('whitespace-nowrap text-xs', muted)}>{timing.unit}</span>
+                    </p>
+                    <p className={cn('rp-tabular whitespace-nowrap text-right text-xs', muted)}>{trip.startDate ? formatDateRange(trip.startDate, trip.endDate || trip.startDate) : ''}</p>
+                </div>
+            )}
 
             <div className="flex flex-wrap items-center gap-1.5">
                 {now ? <span className="inline-flex min-h-6 items-center rounded-full bg-rp-mustard px-2 text-2xs font-semibold text-rp-on-mustard">Travelling now</span> : null}

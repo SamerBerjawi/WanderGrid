@@ -3,13 +3,14 @@ import {
     DndContext, DragOverlay, MouseSensor, TouchSensor, pointerWithin, rectIntersection, useDroppable, useSensor, useSensors,
     type CollisionDetection, type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core';
+import NumberFlow from '@number-flow/react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import type { Trip, User } from '../../../types';
 import { bucketOf, canMoveTo, tripDays, type TripBucket } from '../../../utils/tripsModel';
 import { toast } from '../../../services/toast';
 import { Archive, Plus, Trash } from '../../ui/hugeicons';
 import { RpIconButton } from '../ui';
-import { BUCKET_LABEL, DraggableTripCard, TripCardBody, type TripActions } from './TripCard';
+import { BUCKET_HEAD, BUCKET_LABEL, DraggableTripCard, TripCardBody, type TripActions } from './TripCard';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -18,12 +19,6 @@ import { cn } from '../../../utils/cn';
  * a time. Dragging (mouse, or a long press on touch) changes the status; while a card is lifted,
  * Archive and Delete drop zones appear. The "···" menu does the same without dragging.
  */
-
-export const BUCKET_ACCENT: Record<TripBucket, string> = {
-    planned: 'bg-rp-mustard',
-    confirmed: 'bg-rp-green',
-    past: 'bg-rp-ink',
-};
 
 const EMPTY_COPY: Record<TripBucket, string> = {
     planned: 'Trips you are still planning',
@@ -34,6 +29,11 @@ const EMPTY_COPY: Record<TripBucket, string> = {
 const collision: CollisionDetection = args => {
     const within = pointerWithin(args);
     return within.length ? within : rectIntersection(args);
+};
+
+const HeadIcon: React.FC<{ bucket: TripBucket }> = ({ bucket }) => {
+    const IconC = BUCKET_HEAD[bucket].icon;
+    return <IconC size={18} aria-hidden />;
 };
 
 const Column: React.FC<{
@@ -53,12 +53,13 @@ const Column: React.FC<{
     return (
         <section aria-label={BUCKET_LABEL[bucket]} className={cn('flex min-w-0 flex-col gap-3', className)}>
             <header className="flex min-h-11 items-center justify-between gap-2 px-1">
-                <h2 className="flex min-w-0 items-center gap-2 text-sm font-medium text-rp-ink">
-                    <span className={cn('size-2.5 shrink-0 rounded-full', BUCKET_ACCENT[bucket])} aria-hidden />
-                    {BUCKET_LABEL[bucket]}
-                    <span className="rp-tabular text-xs font-normal text-rp-muted">
-                        {trips.length}{days > 0 ? ` · ${days} ${days === 1 ? 'day' : 'days'}` : ''}
+                <h2 className="flex min-w-0 items-center gap-2.5 text-base font-medium text-rp-ink">
+                    <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full', BUCKET_HEAD[bucket].circle)}>
+                        <HeadIcon bucket={bucket} />
                     </span>
+                    {BUCKET_LABEL[bucket]}
+                    <NumberFlow value={trips.length} className="rp-tabular text-2xl leading-none font-semibold text-rp-ink" aria-label={`${trips.length} trips`} />
+                    {days > 0 ? <span className="rp-tabular text-xs font-normal text-rp-muted">{days} {days === 1 ? 'day' : 'days'}</span> : null}
                 </h2>
                 <RpIconButton label={`Add a trip to ${BUCKET_LABEL[bucket]}`} tone="ghost" onClick={() => onAdd(bucket)}>
                     <Plus size={20} />

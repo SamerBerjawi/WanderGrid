@@ -4,14 +4,17 @@ import { useTripsData, type TripDraft } from '../../hooks/useTripsData';
 import { canMoveTo, tripMatches, tripYears, type TripBucket } from '../../utils/tripsModel';
 import { errorMessage, toast } from '../../services/toast';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
+import type { DockTool } from '../../components/kokonutui/tool-dock';
 import { RpChip, RpEmpty, useIsMobile } from '../../components/new/ui';
 import { RpKpi } from '../../components/new/atlas/AtlasParts';
+import { RpPageToolbar } from '../../components/new/PageToolbar';
 import { useUndoToast } from '../../components/new/UndoToast';
 import { TripBoard } from '../../components/new/trips/TripBoard';
 import { TripList } from '../../components/new/trips/TripList';
-import { BUCKET_LABEL, type TripActions } from '../../components/new/trips/TripCard';
+import { BUCKET_HEAD, BUCKET_LABEL, type TripActions } from '../../components/new/trips/TripCard';
+import { TripDetailsSheet } from '../../components/new/trips/TripDetailsSheet';
 import { DeleteTripSheet, TripSheet, type TripSheetTarget } from '../../components/new/trips/TripSheets';
-import { Archive, CalendarBlank, Kanban, List, MagnifyingGlass, MapPin, Plus, Suitcase, X } from '../../components/ui/hugeicons';
+import { Archive, CalendarBlank, Kanban, List, MagnifyingGlass, MapPin, Plus, Suitcase } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -53,7 +56,7 @@ const STAGE_PILL: Record<TripBucket, { bg: string; text: string }> = {
 
 const PILL = 'inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-rp-muted focus-visible:ring-offset-2 focus-visible:ring-offset-rp-canvas active:scale-[0.97]';
 
-const Count: React.FC<{ n: number }> = ({ n }) => <span className="rp-tabular text-xs opacity-70">{n}</span>;
+const Count: React.FC<{ n: number }> = ({ n }) => <span className="rp-tabular text-sm font-semibold">{n}</span>;
 
 export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     const data = useTripsData();
@@ -64,6 +67,8 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     const [query, setQuery] = useState('');
     const [year, setYear] = useState('all');
     const [showArchived, setShowArchived] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [detailsId, setDetailsId] = useState<string | null>(null);
     const [sheet, setSheet] = useState<TripSheetTarget | null>(null);
     const [deleting, setDeleting] = useState<Trip | null>(null);
 
@@ -127,9 +132,11 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
         await data.remove(trip.id);
         setDeleting(null);
         setSheet(null);
+        setDetailsId(null);
     });
 
     const actions: TripActions = {
+        onDetails: trip => setDetailsId(trip.id),
         onEdit: trip => setSheet({ kind: 'edit', trip }),
         onOpenTrip: openTrip,
         onMove: move,
@@ -141,8 +148,19 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     const stageItems = (['planned', 'confirmed', 'past'] as TripBucket[]).map(b => ({
         id: b,
         title: BUCKET_LABEL[b],
+        icon: BUCKET_HEAD[b].icon,
+        iconClassName: stage === b ? undefined : BUCKET_HEAD[b].text,
         badge: <Count n={columns[b].length} />,
     }));
+
+    const detailsTrip = detailsId ? data.trips.find(t => t.id === detailsId) ?? null : null;
+
+    const tools: DockTool[] = [
+        { id: 'board', label: 'Board', icon: Kanban as any },
+        { id: 'list', label: 'List', icon: List as any },
+        { id: 'search', label: 'Search trips', icon: MagnifyingGlass as any, action: () => setSearchOpen(o => !o), dividerBefore: true },
+        { id: 'new', label: 'New trip', icon: Plus as any, action: () => setSheet({ kind: 'create', bucket: 'planned' }) },
+    ];
 
     const dragEnabled = !mobile && view === 'board' && !showArchived;
     const years = data.years;
@@ -150,7 +168,24 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     return (
         <div className="custom-scrollbar h-full overflow-y-auto px-3 pt-2 pb-32 sm:px-6 md:pb-16">
             <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6">
-                <h1 className="text-[2.25rem] font-medium leading-[1.05] tracking-tight text-rp-ink sm:text-[2.5rem]">Trips</h1>
+                <div className="flex flex-wrap items-center justify-between gap-x-3">
+                    <h1 className="text-[2.25rem] font-medium leading-[1.05] tracking-tight text-rp-ink sm:text-[2.5rem]">Trips</h1>
+                    <RpPageToolbar
+                        tools={tools}
+                        value={view}
+                        onValueChange={id => changeView(id as View)}
+                        ariaLabel="Trip tools"
+                        search={{
+                            open: searchOpen || Boolean(query),
+                            query,
+                            onQueryChange: setQuery,
+                            onClose: () => setSearchOpen(false),
+                            label: 'Search trips',
+                            placeholder: 'Search trips',
+                        }}
+                        className="-my-2"
+                    />
+                </div>
 
                 {data.error ? (
                     <div className="rounded-rp-card bg-rp-surface rp-shadow-rest">
@@ -167,59 +202,22 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
                 </div>
 
                 <section aria-label="Your trips" className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                        {mobile && view === 'board' && !showArchived ? (
-                            <div className="-m-3 overflow-x-auto p-3 [scrollbar-width:none]">
-                                <SwipeTabs
-                                    items={stageItems}
-                                    value={stage}
-                                    onChange={id => changeStage(id as TripBucket)}
-                                    panels={false}
-                                    label="Trip status"
-                                    className="w-full"
-                                    stretch
-                                    listClassName="bg-rp-surface rp-shadow-soft"
-                                    activeColor={STAGE_PILL[stage].bg}
-                                    activeTextColor={STAGE_PILL[stage].text}
-                                />
-                            </div>
-                        ) : <span className="hidden lg:block" />}
-                        <div className="flex flex-wrap items-center gap-2">
+                    {mobile && view === 'board' && !showArchived ? (
+                        <div className="-m-3 overflow-x-auto p-3 [scrollbar-width:none]">
                             <SwipeTabs
-                                items={[
-                                    { id: 'board', title: 'Board', icon: Kanban, hideTitle: true },
-                                    { id: 'list', title: 'List', icon: List, hideTitle: true },
-                                ]}
-                                value={view}
-                                onChange={id => changeView(id as View)}
+                                items={stageItems}
+                                value={stage}
+                                onChange={id => changeStage(id as TripBucket)}
                                 panels={false}
-                                compact
-                                label="View"
-                                className="w-auto shrink-0"
+                                label="Trip status"
+                                className="w-full"
+                                stretch
                                 listClassName="bg-rp-surface rp-shadow-soft"
+                                activeColor={STAGE_PILL[stage].bg}
+                                activeTextColor={STAGE_PILL[stage].text}
                             />
-                            <label className="relative flex min-w-0 flex-1 basis-40 items-center sm:basis-auto lg:w-64 lg:flex-none">
-                                <span className="sr-only">Search trips</span>
-                                <MagnifyingGlass size={16} className="pointer-events-none absolute left-4 text-rp-muted" aria-hidden />
-                                <input
-                                    type="search"
-                                    value={query}
-                                    onChange={e => setQuery(e.target.value)}
-                                    placeholder="Search trips"
-                                    className="min-h-11 w-full rounded-full bg-rp-surface pr-10 pl-10 text-sm text-rp-ink outline-none rp-shadow-soft placeholder:text-rp-muted focus-visible:ring-2 focus-visible:ring-rp-muted [&::-webkit-search-cancel-button]:hidden"
-                                />
-                                {query ? (
-                                    <button type="button" aria-label="Clear search" onClick={() => setQuery('')} className="absolute right-0 flex size-11 items-center justify-center rounded-full text-rp-muted hover:text-rp-ink">
-                                        <X size={16} />
-                                    </button>
-                                ) : null}
-                            </label>
-                            {/* On phones the tab bar's "+" starts a new trip. */}
-                            <button type="button" onClick={() => setSheet({ kind: 'create', bucket: 'planned' })} className={cn(PILL, 'hidden bg-rp-ink text-rp-on-ink hover:bg-rp-ink/90 md:inline-flex')}>
-                                <Plus size={16} aria-hidden /> New trip
-                            </button>
                         </div>
-                    </div>
+                    ) : null}
 
                     {years.length > 1 || data.archived.length > 0 ? (
                         <div className="-m-3 overflow-x-auto p-3 [scrollbar-width:none]">
@@ -284,10 +282,19 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
                 target={sheet}
                 users={data.users}
                 currentUserId={currentUserId()}
+                brandfetchApiKey={data.brandfetchApiKey}
                 onClose={() => setSheet(null)}
                 onSave={async (draft: TripDraft, trip?: Trip) => { if (trip) await data.update(trip, draft); else await data.create(draft); }}
                 onDelete={setDeleting}
                 onOpenTrip={openTrip}
+            />
+            <TripDetailsSheet
+                trip={detailsTrip}
+                users={data.users}
+                brandfetchApiKey={data.brandfetchApiKey}
+                onClose={() => setDetailsId(null)}
+                onEdit={trip => { setDetailsId(null); setSheet({ kind: 'edit', trip }); }}
+                onOpenTrip={trip => { setDetailsId(null); openTrip(trip); }}
             />
             <DeleteTripSheet trip={deleting} onClose={() => setDeleting(null)} onConfirm={confirmDelete} />
             {undo.host}

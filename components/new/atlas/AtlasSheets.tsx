@@ -394,3 +394,50 @@ const ScanRow: React.FC<{
         <SourceIcon size={16} className="shrink-0 text-rp-muted" aria-hidden />
     </button>
 );
+
+
+/* ------------------------------------------------------------------ */
+/* Add a city (from the tool bar) */
+/* ------------------------------------------------------------------ */
+
+export const CityQuickAddSheet: React.FC<{ open: boolean; onClose: () => void; onAdd: (text: string) => Promise<void> }> = ({ open, onClose, onAdd }) => {
+    const [text, setText] = useState('');
+    useEffect(() => { if (open) setText(''); }, [open]);
+    const add = async () => {
+        await onAdd(text.trim());
+        onClose();
+    };
+    return (
+        <RpSheet
+            open={open}
+            onClose={onClose}
+            title="Add city"
+            subtitle="We'll find it on the map."
+            footer={
+                <>
+                    <span />
+                    <ParticleButton onClick={add} disabled={!text.trim()} pendingLabel="Adding" successLabel="Added" errorLabel="Not found">
+                        Add
+                    </ParticleButton>
+                </>
+            }
+        >
+            <RpSection title="City" icon={Buildings}>
+                <Field label="City and country">
+                    {id => (
+                        <input
+                            id={id}
+                            value={text}
+                            onChange={e => setText(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && text.trim()) { e.preventDefault(); void add().catch(() => undefined); } }}
+                            className={FIELD}
+                            placeholder="Porto, Portugal"
+                            autoComplete="off"
+                            autoFocus
+                        />
+                    )}
+                </Field>
+            </RpSection>
+        </RpSheet>
+    );
+};

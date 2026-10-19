@@ -4,12 +4,17 @@ import { formatDateRange } from '../../../utils/formatters';
 import { bucketOf, destinationsOf, isTravelling, timingOf, tripDays, type TripBucket } from '../../../utils/tripsModel';
 import { ArrowUpRight } from '../../ui/hugeicons';
 import { RpIconButton } from '../ui';
-import { BUCKET_LABEL, tripMenuItems, type TripActions } from './TripCard';
+import NumberFlow from '@number-flow/react';
+import { BUCKET_HEAD, BUCKET_LABEL, tripMenuItems, type TripActions } from './TripCard';
 import { TripMenu } from './TripMenu';
-import { BUCKET_ACCENT } from './TripBoard';
 import { cn } from '../../../utils/cn';
 
 /** The list view: the same trips as rows, grouped by status, or one flat list for the archive. */
+
+const RowIcon: React.FC<{ bucket: TripBucket; size?: number }> = ({ bucket, size = 16 }) => {
+    const IconC = BUCKET_HEAD[bucket].icon;
+    return <IconC size={size} aria-hidden />;
+};
 
 const Row: React.FC<{ trip: Trip; today: string; actions: TripActions }> = ({ trip, today, actions }) => {
     const bucket = bucketOf(trip, today);
@@ -18,8 +23,8 @@ const Row: React.FC<{ trip: Trip; today: string; actions: TripActions }> = ({ tr
     const days = tripDays(trip);
     return (
         <li className={cn('flex items-center gap-2 rounded-rp-tile py-1 pr-1 pl-4', now ? 'bg-rp-ink text-rp-on-ink' : 'bg-rp-surface text-rp-ink', 'rp-shadow-rest')}>
-            <span className={cn('size-2.5 shrink-0 rounded-full', now ? 'bg-rp-mustard' : BUCKET_ACCENT[bucket])} aria-hidden />
-            <button type="button" onClick={() => actions.onEdit(trip)} className="min-h-11 min-w-0 flex-1 rounded-rp-inset px-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-rp-muted">
+            <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-full', now ? 'bg-rp-mustard text-rp-on-mustard' : BUCKET_HEAD[bucket].circle)} aria-hidden><RowIcon bucket={bucket} /></span>
+            <button type="button" onClick={() => actions.onDetails(trip)} className="min-h-11 min-w-0 flex-1 rounded-rp-inset px-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-rp-muted">
                 <span className="block truncate text-sm font-medium">{trip.name}</span>
                 <span className={cn('block truncate text-xs', now ? 'text-rp-on-ink/70' : 'text-rp-muted')}>{destinationsOf(trip).join(' · ') || 'No destination yet'}</span>
             </button>
@@ -30,7 +35,7 @@ const Row: React.FC<{ trip: Trip; today: string; actions: TripActions }> = ({ tr
                 {days > 0 ? `${days} ${days === 1 ? 'day' : 'days'}` : ''}
             </span>
             <span className="rp-tabular hidden w-28 shrink-0 text-right text-xs font-medium lg:block">
-                {timing.value !== null ? `${timing.value} ${timing.unit}` : timing.unit}
+                {timing.state === 'past' ? '' : timing.value !== null ? `${timing.value} ${timing.unit}` : timing.unit}
             </span>
             <RpIconButton label={`Open ${trip.name}`} tone="ghost" onClick={() => actions.onOpenTrip(trip)} className={cn(now && 'text-rp-on-ink hover:bg-rp-on-ink/15')}>
                 <ArrowUpRight size={20} />
@@ -55,10 +60,10 @@ export const TripList: React.FC<{
         <div className="flex flex-col gap-6">
             {(['planned', 'confirmed', 'past'] as TripBucket[]).filter(b => columns![b].length > 0).map(b => (
                 <section key={b} aria-label={BUCKET_LABEL[b]} className="flex flex-col gap-2">
-                    <h2 className="flex items-center gap-2 px-1 text-sm font-medium text-rp-ink">
-                        <span className={cn('size-2.5 rounded-full', BUCKET_ACCENT[b])} aria-hidden />
+                    <h2 className="flex items-center gap-2.5 px-1 text-base font-medium text-rp-ink">
+                        <span className={cn('flex size-9 items-center justify-center rounded-full', BUCKET_HEAD[b].circle)}><RowIcon bucket={b} size={18} /></span>
                         {BUCKET_LABEL[b]}
-                        <span className="rp-tabular text-xs font-normal text-rp-muted">{columns![b].length}</span>
+                        <NumberFlow value={columns![b].length} className="rp-tabular text-2xl leading-none font-semibold text-rp-ink" />
                     </h2>
                     <ul className="flex flex-col gap-2">{columns![b].map(t => <Row key={t.id} trip={t} today={today} actions={actions} />)}</ul>
                 </section>

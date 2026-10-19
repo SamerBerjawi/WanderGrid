@@ -8,7 +8,9 @@ import { formatDate } from '../../utils/formatters';
 import ScrollIndex from '../../components/kokonutui/scroll-index';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import MomentumRail, { type RailItem } from '../../components/kokonutui/momentum-rail';
-import MorphPopover from '../../components/kokonutui/morph-popover';
+import type { DockTool } from '../../components/kokonutui/tool-dock';
+import { RpPageToolbar } from '../../components/new/PageToolbar';
+import { CityQuickAddSheet } from '../../components/new/atlas/AtlasSheets';
 import { RpEmpty } from '../../components/new/ui';
 import { AtlasMap } from '../../components/new/atlas/AtlasMap';
 import { CityTile, CountryTile, FlagArt, RegionHeading, RpChipLabel, RpKpi } from '../../components/new/atlas/AtlasParts';
@@ -18,7 +20,7 @@ import { MergeDrawer } from '../../components/new/atlas/MergeDrawer';
 import { TONE_LABEL, toneOf, type AtlasTone } from '../../components/new/atlas/atlasStatus';
 import { openNewPage } from '../../components/new/devLinks';
 import {
-    Airplane, ArrowUpRight, Buildings, Carousel, Globe, Heart, MagnifyingGlass, Plus, Sparkle, SquaresFour, Stack, X,
+    Airplane, ArrowUpRight, Buildings, Carousel, Globe, Heart, MagnifyingGlass, Plus, Sparkle, SquaresFour, Stack,
 } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
@@ -80,6 +82,8 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
     const [adding, setAdding] = useState<'visited' | 'wishlist' | null>(null);
     const [scanOpen, setScanOpen] = useState(false);
     const [mergeOpen, setMergeOpen] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [addingCity, setAddingCity] = useState(false);
 
     const changeTab = (next: Tab) => {
         setTab(next);
@@ -139,6 +143,28 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
         { id: 'wishlist', title: 'Wishlist', icon: Heart, iconClassName: 'text-rp-ochre', badge: <TabCount n={data.wishlist.length} /> },
     ];
 
+    const tools: DockTool[] = [
+        ...(tab === 'countries' || tab === 'cities'
+            ? [
+                { id: 'grid', label: 'Grid', icon: SquaresFour as any },
+                { id: 'rail', label: 'Rail', icon: Carousel as any },
+            ]
+            : []),
+        { id: 'search', label: 'Search places', icon: MagnifyingGlass as any, action: () => setSearchOpen(o => !o), dividerBefore: tab === 'countries' || tab === 'cities' },
+        {
+            id: 'scan',
+            label: 'Find in trips',
+            icon: Sparkle as any,
+            action: () => { if (data.hasHistory) setScanOpen(true); else toast.info('Log a trip or flight first.'); },
+        },
+        {
+            id: 'add',
+            label: tab === 'cities' ? 'Add city' : tab === 'wishlist' ? 'Add to wishlist' : 'Add country',
+            icon: Plus as any,
+            action: () => { if (tab === 'cities') setAddingCity(true); else setAdding(tab === 'wishlist' ? 'wishlist' : 'visited'); },
+        },
+    ];
+
     const addCity = async (text: string) => {
         const draft = await resolveCityText(text);
         if (!draft) {
@@ -158,7 +184,24 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                 railClassName="hidden lg:flex"
             >
                 <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6">
-                    <h1 className="text-[2.25rem] font-medium leading-[1.05] tracking-tight text-rp-ink sm:text-[2.5rem]">Travel Atlas</h1>
+                    <div className="flex flex-wrap items-center justify-between gap-x-3">
+                        <h1 className="text-[2.25rem] font-medium leading-[1.05] tracking-tight text-rp-ink sm:text-[2.5rem]">Travel Atlas</h1>
+                        <RpPageToolbar
+                            tools={tools}
+                            value={view}
+                            onValueChange={id => changeView(id as ListView)}
+                            ariaLabel="Atlas tools"
+                            search={{
+                                open: searchOpen || Boolean(query),
+                                query,
+                                onQueryChange: setQuery,
+                                onClose: () => setSearchOpen(false),
+                                label: 'Search places',
+                                placeholder: 'Search places',
+                            }}
+                            className="-my-2"
+                        />
+                    </div>
 
                     {data.error ? (
                         <div className="rounded-rp-card bg-rp-surface rp-shadow-rest">
@@ -252,61 +295,6 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                                     activeTextColor={TAB_PILL[tab].text}
                                 />
                             </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                                {tab === 'countries' || tab === 'cities' ? (
-                                    <SwipeTabs
-                                        items={[
-                                            { id: 'grid', title: 'Grid', icon: SquaresFour, hideTitle: true },
-                                            { id: 'rail', title: 'Rail', icon: Carousel, hideTitle: true },
-                                        ]}
-                                        value={view}
-                                        onChange={id => changeView(id as ListView)}
-                                        panels={false}
-                                        compact
-                                        label="View"
-                                        className="w-auto shrink-0"
-                                        listClassName="bg-rp-surface rp-shadow-soft"
-                                    />
-                                ) : null}
-                                <label className="relative flex min-w-0 flex-1 basis-40 items-center sm:basis-auto lg:w-64 lg:flex-none">
-                                    <span className="sr-only">Search places</span>
-                                    <MagnifyingGlass size={16} className="pointer-events-none absolute left-4 text-rp-muted" aria-hidden />
-                                    <input
-                                        type="search"
-                                        value={query}
-                                        onChange={e => setQuery(e.target.value)}
-                                        placeholder="Search places"
-                                        className="min-h-11 w-full rounded-full bg-rp-surface pr-10 pl-10 text-sm text-rp-ink outline-none rp-shadow-soft placeholder:text-rp-muted focus-visible:ring-2 focus-visible:ring-rp-muted [&::-webkit-search-cancel-button]:hidden"
-                                    />
-                                    {query ? (
-                                        <button type="button" aria-label="Clear search" onClick={() => setQuery('')} className="absolute right-0 flex size-11 items-center justify-center rounded-full text-rp-muted hover:text-rp-ink">
-                                            <X size={16} />
-                                        </button>
-                                    ) : null}
-                                </label>
-                                <button type="button" onClick={() => setScanOpen(true)} className={cn(PILL, 'bg-rp-surface text-rp-ink rp-shadow-soft hover:bg-rp-inset')} disabled={!data.hasHistory} title={data.hasHistory ? undefined : 'Log a trip or flight first'}>
-                                    <Sparkle size={16} aria-hidden /> Find in trips
-                                </button>
-                                {tab === 'cities' ? (
-                                    <MorphPopover
-                                        label="Add city"
-                                        icon={<Plus size={16} />}
-                                        placeholder="City, country"
-                                        multiline={false}
-                                        submitLabel="Add"
-                                        pendingLabel="Adding"
-                                        sentLabel="Added"
-                                        footerHint="We'll find it on the map."
-                                        align="end"
-                                        width={320}
-                                        onSubmit={addCity}
-                                    />
-                                ) : (
-                                    <button type="button" onClick={() => setAdding(tab === 'wishlist' ? 'wishlist' : 'visited')} className={cn(PILL, 'bg-rp-ink text-rp-on-ink hover:bg-rp-ink/90')}>
-                                        <Plus size={16} aria-hidden /> {tab === 'wishlist' ? 'Add to wishlist' : 'Add country'}
-                                    </button>
-                                )}
-                            </div>
                         </div>
 
                         {data.loading ? (
@@ -367,6 +355,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                     openCountry(code, name, [...statuses]);
                 }}
             />
+            <CityQuickAddSheet open={addingCity} onClose={() => setAddingCity(false)} onAdd={addCity} />
             <ScanSheet open={scanOpen} onClose={() => setScanOpen(false)} data={data} />
             <MergeDrawer open={mergeOpen} onOpenChange={setMergeOpen} review={data.cleanup.review} onConfirm={() => data.mergeDuplicates()} />
         </div>

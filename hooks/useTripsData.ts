@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Trip, User } from '../types';
+import type { Accommodation, Transport, Trip, User } from '../types';
 import { dataService } from '../services/mockDb';
 import { affectsCollections } from './useWanderSync';
 import { BUCKET_STATUS, bucketOf, destinationsOf, todayISO, tripDays, type TripBucket } from '../utils/tripsModel';
@@ -13,6 +13,11 @@ export interface TripDraft {
     status: Trip['status'];
     participants: string[];
     notes?: string;
+    /** A Hugeicons free icon name chosen for the trip. */
+    icon?: string;
+    /** Legs and stays entered while creating the trip. */
+    transports?: Partial<Transport>[];
+    stays?: Partial<Accommodation>[];
 }
 
 /**
@@ -23,6 +28,7 @@ export interface TripDraft {
 export const useTripsData = () => {
     const [trips, setTrips] = useState<Trip[]>([]);
     const [users, setUsers] = useState<User[]>([]);
+    const [brandfetchApiKey, setBrandfetchApiKey] = useState<string | undefined>(undefined);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     // Undo runs from an old render, so writes read the latest trips through a ref, never a closure.
@@ -31,9 +37,15 @@ export const useTripsData = () => {
 
     const load = useCallback(async () => {
         try {
-            const [t, u] = await Promise.all([dataService.getTrips(), dataService.getUsers()]);
+            const [t, u, settings] = await Promise.all([
+                dataService.getTrips(),
+                dataService.getUsers(),
+                // Logos are optional: a settings failure never blocks the board.
+                dataService.getWorkspaceSettings().catch(() => null),
+            ]);
             setTrips(t || []);
             setUsers(u || []);
+            setBrandfetchApiKey(settings?.brandfetchApiKey || undefined);
             setError(null);
         } catch (e) {
             console.error('Trips: failed to load', e);
@@ -103,11 +115,39 @@ export const useTripsData = () => {
             status: draft.status,
             participants: draft.participants,
             notes: draft.notes?.trim() || undefined,
+            hugeicon: draft.icon || undefined,
             locations: destination
                 ? [{ id: crypto.randomUUID(), name: destination, startDate: draft.startDate, endDate: draft.endDate || draft.startDate }]
                 : [],
-            transports: [],
-            accommodations: [],
+            transports: (draft.transports || []).map(t => ({
+                id: crypto.randomUUID(),
+                itineraryId: crypto.randomUUID(),
+                type: 'One-Way',
+                mode: t.mode || 'Flight',
+                provider: t.provider || '',
+                identifier: t.identifier || '',
+                confirmationCode: t.confirmationCode || '',
+                origin: t.origin || '',
+                destination: t.destination || '',
+                departureDate: t.departureDate || draft.startDate,
+                departureTime: t.departureTime || '10:00',
+                arrivalDate: t.arrivalDate || t.departureDate || draft.startDate,
+                arrivalTime: t.arrivalTime || '14:00',
+                cost: t.cost,
+                reason: 'Personal',
+            })),
+            accommodations: (draft.stays || []).map(a => ({
+                id: crypto.randomUUID(),
+                name: a.name || 'Stay',
+                type: a.type || 'Hotel',
+                address: a.address || destination,
+                checkInDate: a.checkInDate || draft.startDate,
+                checkInTime: a.checkInTime || '15:00',
+                checkOutDate: a.checkOutDate || draft.endDate || draft.startDate,
+                checkOutTime: a.checkOutTime || '11:00',
+                confirmationCode: a.confirmationCode || '',
+                cost: a.cost,
+            })),
             activities: [],
         };
         const saved = await dataService.addTrip(payload);
@@ -127,6 +167,7 @@ export const useTripsData = () => {
             status: draft.status,
             participants: draft.participants,
             notes: draft.notes?.trim() || undefined,
+            hugeicon: draft.icon || undefined,
             // A changed destination replaces the route with that one stop, which is geocoded on save.
             locations: locations ?? (destination
                 ? [{ id: crypto.randomUUID(), name: destination, startDate: draft.startDate, endDate: draft.endDate || draft.startDate }]
@@ -165,7 +206,7 @@ export const useTripsData = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [load]);
 
-    return { trips, users, loading, error, reload: load, today, active, archived, columns, years, stats, create, update, setStatus, moveTo, setArchived, remove };
+    return { trips, users, brandfetchApiKey, loading, error, reload: load, today, active, archived, columns, years, stats, create, update, setStatus, moveTo, setArchived, remove };
 };
 
 export type TripsData = ReturnType<typeof useTripsData>;
