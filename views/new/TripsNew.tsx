@@ -10,11 +10,12 @@ import { RpKpi } from '../../components/new/atlas/AtlasParts';
 import { RpPageToolbar } from '../../components/new/PageToolbar';
 import { useUndoToast } from '../../components/new/UndoToast';
 import { TripBoard } from '../../components/new/trips/TripBoard';
+import { CAP } from '../../components/new/trips/CappedTrips';
 import { TripList } from '../../components/new/trips/TripList';
 import { BUCKET_HEAD, BUCKET_LABEL, type TripActions } from '../../components/new/trips/TripCard';
 import { TripDetailsModal, type TripOrigin } from '../../components/new/trips/TripDetailsModal';
 import { DeleteTripSheet, TripSheet, type TripSheetTarget } from '../../components/new/trips/TripSheets';
-import { Archive, CalendarBlank, Kanban, List, MagnifyingGlass, MapPin, Plus, Suitcase } from '../../components/ui/hugeicons';
+import { Archive, CalendarBlank, Kanban, List, MagnifyingGlass, MapPin, Plus, Stack, Suitcase } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -29,13 +30,16 @@ interface TripsNewProps {
     onTripClick?: (tripId: string) => void;
 }
 
-type View = 'board' | 'list';
+type View = 'board' | 'rows' | 'list';
 const VIEW_KEY = 'wandergrid_trips_new_view';
 const STAGE_KEY = 'wandergrid_trips_new_stage';
 const NEW_TRIP_EVENT = 'rp:new-trip';
 
 const readView = (): View => {
-    try { return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'board'; } catch { return 'board'; }
+    try {
+        const v = localStorage.getItem(VIEW_KEY);
+        return v === 'list' || v === 'rows' ? v : 'board';
+    } catch { return 'board'; }
 };
 const readStage = (): TripBucket => {
     try {
@@ -68,6 +72,9 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     const [year, setYear] = useState('all');
     const [showArchived, setShowArchived] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
+    // A long status shows its first few trips until you ask for all of them.
+    const [expanded, setExpanded] = useState<Record<TripBucket, boolean>>({ planned: false, confirmed: false, past: false });
+    const setBucketExpanded = (bucket: TripBucket, value: boolean) => setExpanded(e => ({ ...e, [bucket]: value }));
     const [detailsId, setDetailsId] = useState<string | null>(null);
     const [detailsOrigin, setDetailsOrigin] = useState<TripOrigin | null>(null);
     const [sheet, setSheet] = useState<TripSheetTarget | null>(null);
@@ -117,6 +124,8 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     const move = (trip: Trip, bucket: TripBucket) => attempt(async () => {
         const can = canMoveTo(trip, bucket, data.today);
         if (!can.ok) { toast.info(can.reason); return; }
+        // A trip moved into a long status must not land out of sight.
+        if (columns[bucket].length >= CAP[bucket]) setBucketExpanded(bucket, true);
         const previous = await data.moveTo(trip.id, bucket);
         if (previous) undo.show(`Moved ${trip.name} to ${BUCKET_LABEL[bucket]}`, () => attempt(async () => { await data.setStatus(trip.id, previous); }));
     });
@@ -160,13 +169,14 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     const detailsTrip = detailsId ? data.trips.find(t => t.id === detailsId) ?? null : null;
 
     const tools: DockTool[] = [
-        { id: 'board', label: 'Board', icon: Kanban as any },
+        { id: 'board', label: 'Columns', icon: Kanban as any },
+        { id: 'rows', label: 'Rows', icon: Stack as any },
         { id: 'list', label: 'List', icon: List as any },
         { id: 'search', label: 'Search trips', icon: MagnifyingGlass as any, action: () => setSearchOpen(o => !o), dividerBefore: true },
         { id: 'new', label: 'New trip', icon: Plus as any, action: () => setSheet({ kind: 'create', bucket: 'planned' }) },
     ];
 
-    const dragEnabled = !mobile && view === 'board' && !showArchived;
+    const dragEnabled = !mobile && view !== 'list' && !showArchived;
     const years = data.years;
 
     return (
@@ -264,14 +274,18 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
                             </RpEmpty>
                         </EmptyCard>
                     ) : view === 'list' ? (
-                        <TripList columns={columns} users={data.users} today={data.today} actions={actions} onAdd={() => undefined} />
+                        <TripList columns={columns} users={data.users} today={data.today} actions={actions} onAdd={() => undefined} expanded={expanded} onExpandedChange={setBucketExpanded} filtering={filtering} />
                     ) : (
                         <TripBoard
                             columns={columns}
                             users={data.users}
                             today={data.today}
                             actions={actions}
-                            show={mobile ? stage : 'all'}
+                            show={mobile && view === 'board' ? stage : 'all'}
+                            layout={view === 'rows' ? 'rows' : 'columns'}
+                            expanded={expanded}
+                            onExpandedChange={setBucketExpanded}
+                            filtering={filtering}
                             dragEnabled={dragEnabled}
                             onAdd={bucket => setSheet({ kind: 'create', bucket })}
                             onDropMove={move}

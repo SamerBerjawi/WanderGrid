@@ -5,6 +5,7 @@ import { bucketOf, destinationsOf, isTravelling, timingOf, tripDays, type TripBu
 import { ArrowUpRight } from '../../ui/hugeicons';
 import { RpIconButton } from '../ui';
 import NumberFlow from '@number-flow/react';
+import { CappedTrips } from './CappedTrips';
 import { BUCKET_HEAD, BUCKET_LABEL, tripMenuItems, type TripActions } from './TripCard';
 import { TripMenu } from './TripMenu';
 import { cn } from '../../../utils/cn';
@@ -52,7 +53,10 @@ export const TripList: React.FC<{
     today: string;
     actions: TripActions;
     onAdd: (bucket: TripBucket) => void;
-}> = ({ columns, flat, today, actions }) => {
+    expanded?: Record<TripBucket, boolean>;
+    onExpandedChange?: (bucket: TripBucket, expanded: boolean) => void;
+    filtering?: boolean;
+}> = ({ columns, flat, today, actions, expanded, onExpandedChange, filtering }) => {
     if (flat) {
         return <ul className="flex flex-col gap-2">{flat.map(t => <Row key={t.id} trip={t} today={today} actions={actions} />)}</ul>;
     }
@@ -65,7 +69,15 @@ export const TripList: React.FC<{
                         {BUCKET_LABEL[b]}
                         <NumberFlow value={columns![b].length} className="rp-tabular text-2xl leading-none font-semibold text-rp-ink" />
                     </h2>
-                    <ul className="flex flex-col gap-2">{columns![b].map(t => <Row key={t.id} trip={t} today={today} actions={actions} />)}</ul>
+                    <CappedTrips
+                        bucket={b}
+                        trips={columns![b]}
+                        expanded={expanded?.[b] ?? false}
+                        onExpandedChange={v => onExpandedChange?.(b, v)}
+                        filtering={Boolean(filtering)}
+                        layout="stack"
+                        renderItem={t => <ul><Row trip={t} today={today} actions={actions} /></ul>}
+                    />
                 </section>
             ))}
         </div>

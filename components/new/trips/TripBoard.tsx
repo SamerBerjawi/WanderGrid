@@ -10,13 +10,15 @@ import { bucketOf, canMoveTo, tripDays, type TripBucket } from '../../../utils/t
 import { toast } from '../../../services/toast';
 import { Archive, Plus, Trash } from '../../ui/hugeicons';
 import { RpIconButton } from '../ui';
+import { CappedTrips } from './CappedTrips';
 import { BUCKET_HEAD, BUCKET_LABEL, DraggableTripCard, TripCardBody, type TripActions } from './TripCard';
 import { cn } from '../../../utils/cn';
 
 /**
- * The board (UI_UX_DESIGN_REFERENCE.md §5.2 row 3): one column per trip status. On desktop every
- * column is visible; on tablets the columns scroll sideways; on phones the page shows one column at
- * a time. Dragging (mouse, or a long press on touch) changes the status; while a card is lifted,
+ * The board (UI_UX_DESIGN_REFERENCE.md §5.2 row 3): one section per trip status, as columns or as
+ * rows (cards wrapping onto several lines per status). On desktop every column is visible; on tablets the columns scroll
+ * sideways; on phones the page shows one column at a time, or the rows. Long statuses are capped
+ * (CappedTrips). Dragging (mouse, or a long press on touch) changes the status; while a card is lifted,
  * Archive and Delete drop zones appear. The "···" menu does the same without dragging.
  */
 
@@ -45,9 +47,14 @@ const Column: React.FC<{
     dragEnabled: boolean;
     /** One column on its own (phones): no inset panel around the cards. */
     bare?: boolean;
+    /** A full-width row whose cards wrap onto several lines, instead of a column. */
+    grid?: boolean;
+    expanded: boolean;
+    onExpandedChange: (expanded: boolean) => void;
+    filtering: boolean;
     className?: string;
     onAdd: (bucket: TripBucket) => void;
-}> = ({ bucket, trips, users, today, actions, dragEnabled, bare, className, onAdd }) => {
+}> = ({ bucket, trips, users, today, actions, dragEnabled, bare, grid, expanded, onExpandedChange, filtering, className, onAdd }) => {
     const { setNodeRef, isOver } = useDroppable({ id: `column:${bucket}`, disabled: !dragEnabled });
     const days = trips.reduce((sum, t) => sum + tripDays(t), 0);
     return (
@@ -75,9 +82,17 @@ const Column: React.FC<{
             >
                 {trips.length === 0 ? (
                     <p className="my-auto px-4 py-8 text-center text-sm text-rp-muted">{dragEnabled ? 'Drop a trip here' : EMPTY_COPY[bucket]}</p>
-                ) : trips.map((trip, i) => (
-                    <DraggableTripCard key={trip.id} trip={trip} users={users} today={today} actions={actions} index={i} dragEnabled={dragEnabled} />
-                ))}
+                ) : (
+                    <CappedTrips
+                        bucket={bucket}
+                        trips={trips}
+                        expanded={expanded}
+                        onExpandedChange={onExpandedChange}
+                        filtering={filtering}
+                        layout={grid ? 'grid' : 'stack'}
+                        renderItem={(trip, i) => <DraggableTripCard trip={trip} users={users} today={today} actions={actions} index={i} dragEnabled={dragEnabled} />}
+                    />
+                )}
             </div>
         </section>
     );
@@ -103,15 +118,20 @@ export const TripBoard: React.FC<{
     users: User[];
     today: string;
     actions: TripActions;
-    /** Which columns to show: all of them, or one at a time (phones). */
+    /** Which sections to show: all of them, or one at a time (phones). */
     show: 'all' | TripBucket;
+    /** Sections side by side (columns) or one under another (rows). */
+    layout: 'columns' | 'rows';
+    expanded: Record<TripBucket, boolean>;
+    onExpandedChange: (bucket: TripBucket, expanded: boolean) => void;
+    filtering: boolean;
     /** Mouse and touch dragging on. Off on phones, where the menu moves trips. */
     dragEnabled: boolean;
     onAdd: (bucket: TripBucket) => void;
     onDropMove: (trip: Trip, bucket: TripBucket) => void;
     onDropArchive: (trip: Trip) => void;
     onDropDelete: (trip: Trip) => void;
-}> = ({ columns, users, today, actions, show, dragEnabled, onAdd, onDropMove, onDropArchive, onDropDelete }) => {
+}> = ({ columns, users, today, actions, show, layout, expanded, onExpandedChange, filtering, dragEnabled, onAdd, onDropMove, onDropArchive, onDropDelete }) => {
     const reduce = useReducedMotion();
     const [activeId, setActiveId] = useState<string | null>(null);
     const sensors = useSensors(
@@ -144,7 +164,9 @@ export const TripBoard: React.FC<{
         <DndContext sensors={sensors} collisionDetection={collision} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setActiveId(null)}>
             <div
                 className={cn(
-                    show === 'all' && 'custom-scrollbar -m-3 flex snap-x gap-4 overflow-x-auto p-3 lg:m-0 lg:grid lg:grid-cols-3 lg:items-start lg:overflow-visible lg:p-0'
+                    layout === 'rows'
+                        ? 'flex flex-col gap-8'
+                        : show === 'all' && 'custom-scrollbar -m-3 flex snap-x gap-4 overflow-x-auto p-3 lg:m-0 lg:grid lg:grid-cols-3 lg:items-start lg:overflow-visible lg:p-0'
                 )}
             >
                 {buckets.map(bucket => (
@@ -156,9 +178,13 @@ export const TripBoard: React.FC<{
                         today={today}
                         actions={actions}
                         dragEnabled={dragEnabled}
-                        bare={show !== 'all'}
+                        bare={layout === 'columns' && show !== 'all'}
+                        grid={layout === 'rows'}
+                        expanded={expanded[bucket]}
+                        onExpandedChange={v => onExpandedChange(bucket, v)}
+                        filtering={filtering}
                         onAdd={onAdd}
-                        className={cn(show === 'all' && 'w-[min(20rem,82vw)] shrink-0 snap-start lg:w-auto')}
+                        className={cn(layout === 'columns' && show === 'all' && 'w-[min(20rem,82vw)] shrink-0 snap-start lg:w-auto')}
                     />
                 ))}
             </div>
