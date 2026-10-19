@@ -3,7 +3,6 @@ import type { VisitedItem } from '../../types';
 import { useAtlasData } from '../../hooks/useAtlasData';
 import { groupByRegion, regionOf, resolveCityText } from '../../utils/atlasModel';
 import { normalizeCountryCode } from '../../services/countryRegistry';
-import { toast } from '../../services/toast';
 import { formatDate } from '../../utils/formatters';
 import ScrollIndex from '../../components/kokonutui/scroll-index';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
@@ -37,6 +36,7 @@ interface AtlasNewProps {
 type Tab = 'countries' | 'cities' | 'layovers' | 'wishlist';
 const TAB_KEY = 'wandergrid_atlas_new_tab';
 const VIEW_KEY = 'wandergrid_atlas_new_view';
+const MAP_CITIES_KEY = 'wandergrid_atlas_new_map_cities';
 type ListView = 'grid' | 'rail';
 const readView = (): ListView => {
     try { return localStorage.getItem(VIEW_KEY) === 'rail' ? 'rail' : 'grid'; } catch { return 'grid'; }
@@ -66,10 +66,20 @@ const matches = (q: string, ...parts: (string | undefined)[]) => {
     return parts.some(p => p?.toLowerCase().includes(needle));
 };
 
-export const AtlasNew: React.FC<AtlasNewProps> = () => {
+export const AtlasNew: React.FC<AtlasNewProps> = ({ onTripClick }) => {
     const data = useAtlasData();
     const [tab, setTab] = useState<Tab>(readTab);
     const [view, setView] = useState<ListView>(readView);
+    // Cities on the world map: on by default, remembered.
+    const [showCities, setShowCities] = useState(() => {
+        try { return localStorage.getItem(MAP_CITIES_KEY) !== 'off'; } catch { return true; }
+    });
+    const toggleCities = () => {
+        setShowCities(v => {
+            try { localStorage.setItem(MAP_CITIES_KEY, v ? 'off' : 'on'); } catch { /* storage unavailable */ }
+            return !v;
+        });
+    };
     const changeView = (next: ListView) => {
         setView(next);
         try { localStorage.setItem(VIEW_KEY, next); } catch { /* storage unavailable */ }
@@ -106,6 +116,13 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
         Object.values(tones).forEach(t => { out[t] += 1; });
         return out;
     }, [tones]);
+    // Cities with coordinates (places from trips often have none, and can't be pinned).
+    const mapCities = useMemo(
+        () => data.cities
+            .filter(c => Number.isFinite(c.lat) && Number.isFinite(c.lng))
+            .map(c => ({ id: c.id, lat: c.lat as number, lng: c.lng as number, name: c.name })),
+        [data.cities]
+    );
     const known = useMemo(() => new Set(data.countries.map(c => normalizeCountryCode(c.code))), [data.countries]);
 
     const recent = useMemo(
@@ -139,10 +156,13 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
         { id: 'wishlist', title: 'Wishlist', icon: Heart, iconClassName: 'text-rp-ochre', badge: <TabCount n={data.wishlist.length} /> },
     ];
 
+    // Shown inside the Add city popover, where the user is looking.
+    const [cityError, setCityError] = useState<string | null>(null);
     const addCity = async (text: string) => {
+        setCityError(null);
         const draft = await resolveCityText(text);
         if (!draft) {
-            toast.error(`Couldn't find "${text}". Try the city and country, like "Porto, Portugal".`);
+            setCityError(`Couldn't find "${text}". Try "Porto, Portugal".`);
             throw new Error('not found');
         }
         await data.saveCity(draft);
@@ -190,11 +210,29 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                                     <h2 id="atlas-world" className="text-base font-medium text-rp-ink">World</h2>
                                     <p className="text-xs text-rp-muted">Tap a country to open it or add it.</p>
                                 </div>
-                                <button type="button" onClick={() => openNewPage('/map-new')} className={cn(PILL, 'bg-rp-inset text-rp-ink hover:bg-rp-line')}>
-                                    <span className="hidden sm:inline">Open in map</span><span className="sm:hidden">Map</span> <ArrowUpRight size={16} aria-hidden />
-                                </button>
+                                <div className="flex shrink-0 items-center gap-2">
+                                    {mapCities.length > 0 ? (
+                                        <button
+                                            type="button"
+                                            aria-pressed={showCities}
+                                            onClick={toggleCities}
+                                            className={cn(PILL, showCities ? 'bg-rp-rust text-rp-paper hover:bg-rp-rust/90' : 'bg-rp-inset text-rp-ink hover:bg-rp-line')}
+                                        >
+                                            <Buildings size={16} aria-hidden /> Cities
+                                        </button>
+                                    ) : null}
+                                    <button type="button" onClick={() => openNewPage('/map-new')} className={cn(PILL, 'bg-rp-inset text-rp-ink hover:bg-rp-line')}>
+                                        <span className="hidden sm:inline">Open in map</span><span className="sm:hidden">Map</span> <ArrowUpRight size={16} aria-hidden />
+                                    </button>
+                                </div>
                             </div>
-                            <AtlasMap tones={tones} counts={toneCounts} onCountryClick={(code, name) => openCountry(code, name)} />
+                            <AtlasMap
+                                tones={tones}
+                                counts={toneCounts}
+                                onCountryClick={(code, name) => openCountry(code, name)}
+                                cities={showCities ? mapCities : undefined}
+                                onCityClick={id => { const c = data.cities.find(x => x.id === id); if (c && data.storedIds.has(id)) setCity(c); }}
+                            />
                         </section>
                         <div className="order-first grid grid-cols-2 gap-3 md:grid-cols-4 lg:order-none lg:grid-cols-2 lg:gap-6">
                             <StatTile>
@@ -296,7 +334,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                                         submitLabel="Add"
                                         pendingLabel="Adding"
                                         sentLabel="Added"
-                                        footerHint="We'll find it on the map."
+                                        footerHint={cityError ? <span role="alert" className="text-rp-rust">{cityError}</span> : "We'll find it on the map."}
                                         align="end"
                                         width={320}
                                         onSubmit={addCity}
@@ -355,7 +393,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = () => {
                 </div>
             </ScrollIndex>
 
-            <CountrySheet target={countryTarget} onClose={() => setCountryTarget(null)} data={data} />
+            <CountrySheet target={countryTarget} onClose={() => setCountryTarget(null)} data={data} onTripClick={onTripClick} />
             <CitySheet city={city} onClose={() => setCity(null)} data={data} />
             <AddCountrySheet
                 open={adding !== null}

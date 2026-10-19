@@ -30,6 +30,7 @@ import {
 } from "./choropleth-context";
 import { ChoroplethFeature as ChoroplethFeatureLayer } from "./choropleth-feature";
 import { ChoroplethGraticule as ChoroplethGraticuleLayer } from "./choropleth-graticule";
+import { ChoroplethPoints as ChoroplethPointsLayer } from "./choropleth-points";
 
 export interface ChoroplethChartProps {
   /** GeoJSON FeatureCollection data */
@@ -74,11 +75,13 @@ const DEFAULT_MARGIN: Margin = { top: 0, right: 0, bottom: 0, left: 0 };
 const SVG_COMPONENT_NAMES = new Set([
   "ChoroplethFeature",
   "ChoroplethGraticule",
+  "ChoroplethPoints",
 ]);
 
 const SVG_COMPONENT_TYPES = new Set([
   ChoroplethFeatureLayer,
   ChoroplethGraticuleLayer,
+  ChoroplethPointsLayer,
 ]);
 
 function resolveComponentType(type: unknown): unknown {
