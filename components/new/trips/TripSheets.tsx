@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import type { Accommodation, Activity, EntitlementType, Transport, Trip, TransportMode, User } from '../../../types';
+import type { Accommodation, Activity, EntitlementType, Transport, Trip, TripAllocation, TransportMode, User } from '../../../types';
 import type { TripDraft } from '../../../hooks/useTripsData';
-import { BUCKET_STATUS, type TripBucket } from '../../../utils/tripsModel';
+import { BUCKET_STATUS, tripDays, type TripBucket } from '../../../utils/tripsModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import HoldButton from '../../kokonutui/hold-button';
 import ParticleButton from '../../kokonutui/particle-button';
@@ -13,7 +13,8 @@ import { RP_FIELD, RpField } from '../fields';
 import { IconPicker } from '../IconPicker';
 import { PlaceField } from '../PlaceField';
 import { RpHugeicon } from '../RpHugeicon';
-import { RpChip, RpIconButton, RpLogo, RpSection, RpSheet } from '../ui';
+import { RpChip, RpIconButton, RpLogo, RpSection, RpSheet, RpToggle } from '../ui';
+import { TripMenu } from './TripMenu';
 import { stayIcon } from './stayIcon';
 import { STAY_ACCENT, TRANSPORT_ACCENT } from './accents';
 import { cn } from '../../../utils/cn';
@@ -47,7 +48,7 @@ const ACTIVITY_TYPES = ['Activity', 'Dining', 'Tour', 'Sightseeing', 'Museum', '
 
 const emptyDraft = (status: Trip['status']): TripDraft => ({
     name: '', destination: '', startDate: '', endDate: '', status, participants: [], notes: '', icon: undefined,
-    privacy: 'Private', entitlementId: undefined, coordinates: undefined, transports: [], stays: [], activities: [],
+    privacy: 'Private', entitlementId: undefined, allocations: [], coordinates: undefined, transports: [], stays: [], activities: [],
 });
 const draftOf = (trip: Trip): TripDraft => ({
     name: trip.name,
@@ -60,6 +61,7 @@ const draftOf = (trip: Trip): TripDraft => ({
     icon: trip.hugeicon,
     privacy: trip.privacy || 'Private',
     entitlementId: trip.entitlementId,
+    allocations: (trip.allocations || []).map(a => ({ ...a })),
     coordinates: trip.coordinates,
     transports: (trip.transports || []).map(t => ({ ...t })),
     stays: (trip.accommodations || []).map(a => ({ ...a })),
@@ -76,6 +78,105 @@ const DATE = cn(RP_FIELD, 'rp-date rp-tabular');
 type SetDraft = <K extends keyof TripDraft>(key: K, value: TripDraft[K]) => void;
 
 /* ------------------------------------------------------------------ */
+/* Leave */
+/* ------------------------------------------------------------------ */
+
+const yearOf = (d: string) => Number(d.slice(0, 4)) || undefined;
+
+/** The leave a trip counts against: one type, or its days split across types (and years). */
+const LeaveSection: React.FC<{ draft: TripDraft; set: SetDraft; entitlements: EntitlementType[] }> = ({ draft, set, entitlements }) => {
+    const allocations = draft.allocations || [];
+    const split = allocations.length > 0;
+    const length = tripDays({ startDate: draft.startDate, endDate: draft.endDate || draft.startDate } as Trip);
+    const assigned = allocations.reduce((sum, a) => sum + (Number(a.days) || 0), 0);
+    const startYear = yearOf(draft.startDate);
+    const endYear = yearOf(draft.endDate || draft.startDate);
+    const years = startYear && endYear && endYear > startYear ? Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i) : [];
+    const nameOf = (id: string) => entitlements.find(e => e.id === id)?.name || 'Leave type';
+
+    const setAllocations = (next: TripAllocation[]) => set('allocations', next);
+    const update = (i: number, patch: Partial<TripAllocation>) => setAllocations(allocations.map((a, j) => (j === i ? { ...a, ...patch } : a)));
+    const toggleSplit = (on: boolean) => {
+        if (on && draft.entitlementId) {
+            setAllocations([{ entitlementId: draft.entitlementId, days: length }]);
+        } else {
+            // Back to one type: keep the first one as the trip's leave.
+            if (allocations[0]) set('entitlementId', allocations[0].entitlementId);
+            setAllocations([]);
+        }
+    };
+
+    return (
+        <RpSection title="Leave" icon={CalendarCheck}>
+            {!split ? (
+                <div role="group" aria-label="Leave type" className="flex flex-wrap gap-2 py-2">
+                    <RpChip selected={!draft.entitlementId} onClick={() => set('entitlementId', undefined)}>No leave</RpChip>
+                    {entitlements.map(e => (
+                        <RpChip key={e.id} selected={draft.entitlementId === e.id} onClick={() => set('entitlementId', e.id)}>{e.name}</RpChip>
+                    ))}
+                </div>
+            ) : null}
+
+            {entitlements.length > 1 && (draft.entitlementId || split) ? (
+                <RpToggle label="Split across leave types" hint={split ? undefined : 'Use more than one type, or more than one year.'} checked={split} onChange={toggleSplit} />
+            ) : null}
+
+            {split ? (
+                <div className="flex flex-col gap-2 py-2">
+                    {allocations.map((a, i) => (
+                        <div key={i} className="flex flex-col gap-2 rounded-rp-inset bg-rp-surface p-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <TripMenu
+                                    label={`Leave type for part ${i + 1}`}
+                                    pill={{ label: nameOf(a.entitlementId), icon: CalendarCheck }}
+                                    items={entitlements.map(e => ({ id: e.id, label: e.name, icon: CalendarCheck, selected: a.entitlementId === e.id, onSelect: () => update(i, { entitlementId: e.id }) }))}
+                                />
+                                <label className="ml-auto flex items-center gap-2 text-sm text-rp-muted">
+                                    <span className="sr-only">Days for {nameOf(a.entitlementId)}</span>
+                                    <input
+                                        type="number"
+                                        inputMode="decimal"
+                                        min={0}
+                                        step={0.5}
+                                        value={a.days}
+                                        onChange={e => update(i, { days: Math.max(0, Number(e.target.value) || 0) })}
+                                        className={cn(RP_FIELD, 'rp-tabular w-20 text-right')}
+                                    />
+                                    days
+                                </label>
+                                {allocations.length > 1 ? (
+                                    <RpIconButton label={`Remove ${nameOf(a.entitlementId)}`} tone="ghost" onClick={() => setAllocations(allocations.filter((_, j) => j !== i))}><X size={18} /></RpIconButton>
+                                ) : null}
+                            </div>
+                            {years.length > 0 ? (
+                                <div role="group" aria-label="Year this part counts in" className="flex flex-wrap gap-2">
+                                    <RpChip selected={a.targetYear === undefined} onClick={() => update(i, { targetYear: undefined })}>Any year</RpChip>
+                                    {years.map(y => <RpChip key={y} selected={a.targetYear === y} onClick={() => update(i, { targetYear: y })} className="rp-tabular">{y}</RpChip>)}
+                                </div>
+                            ) : null}
+                        </div>
+                    ))}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setAllocations([...allocations, { entitlementId: entitlements.find(e => !allocations.some(a => a.entitlementId === e.id))?.id || entitlements[0].id, days: Math.max(0, length - assigned) }])}
+                            className={GHOST_BUTTON}
+                        >
+                            <Plus size={16} aria-hidden /> Add a type
+                        </button>
+                        <p className={cn('rp-tabular text-xs', assigned > length && length > 0 ? 'text-rp-rust' : 'text-rp-muted')} role="status">
+                            {assigned} of {length} {length === 1 ? 'day' : 'days'} assigned{assigned > length && length > 0 ? ` (${assigned - length} over)` : ''}
+                        </p>
+                    </div>
+                </div>
+            ) : (
+                <p className="px-1 pb-2 text-xs text-rp-muted">{draft.entitlementId ? 'The days of this trip count against that leave.' : 'A general event: no leave is used.'}</p>
+            )}
+        </RpSection>
+    );
+};
+
+/* ------------------------------------------------------------------ */
 /* Basics */
 /* ------------------------------------------------------------------ */
 
@@ -84,10 +185,9 @@ const Basics: React.FC<{
     set: SetDraft;
     users: User[];
     entitlements: EntitlementType[];
-    splitCount: number;
     showErrors: boolean;
     autoFocus: boolean;
-}> = ({ draft, set, users, entitlements, splitCount, showErrors, autoFocus }) => {
+}> = ({ draft, set, users, entitlements, showErrors, autoFocus }) => {
     const [pickingIcon, setPickingIcon] = useState(false);
     const nameError = showErrors && !draft.name.trim() ? 'Give the trip a name.' : undefined;
     const startError = showErrors && !draft.startDate ? 'Pick a start date.' : undefined;
@@ -150,21 +250,7 @@ const Basics: React.FC<{
                 {pickingIcon ? <IconPicker value={draft.icon} onChange={name => set('icon', name)} /> : null}
             </RpSection>
 
-            {entitlements.length > 0 ? (
-                <RpSection title="Leave" icon={CalendarCheck}>
-                    <div role="group" aria-label="Leave type" className="flex flex-wrap gap-2 py-2">
-                        <RpChip selected={!draft.entitlementId} onClick={() => set('entitlementId', undefined)}>No leave</RpChip>
-                        {entitlements.map(e => (
-                            <RpChip key={e.id} selected={draft.entitlementId === e.id} onClick={() => set('entitlementId', e.id)}>{e.name}</RpChip>
-                        ))}
-                    </div>
-                    <p className="px-1 pb-2 text-xs text-rp-muted">
-                        {splitCount > 0 && draft.entitlementId
-                            ? `Split across ${splitCount} leave ${splitCount === 1 ? 'type' : 'types'}. Choosing another type clears the split.`
-                            : draft.entitlementId ? 'The days of this trip count against that leave.' : 'A general event: no leave is used.'}
-                    </p>
-                </RpSection>
-            ) : null}
+            {entitlements.length > 0 ? <LeaveSection draft={draft} set={set} entitlements={entitlements} /> : null}
 
             <RpSection title="Who can see it" icon={draft.privacy === 'Public' ? Globe : Lock}>
                 <div role="group" aria-label="Privacy" className="flex flex-wrap gap-2 py-2">
@@ -540,7 +626,6 @@ export const TripSheet: React.FC<{
                     set={set}
                     users={users}
                     entitlements={entitlements}
-                    splitCount={editing?.allocations?.length || 0}
                     showErrors={touched}
                     autoFocus={!editing}
                 />

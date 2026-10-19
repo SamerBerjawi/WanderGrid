@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Accommodation, Activity, EntitlementType, GeoCoordinates, Transport, Trip, User } from '../types';
+import type { Accommodation, Activity, EntitlementType, GeoCoordinates, Transport, Trip, TripAllocation, User } from '../types';
 import { dataService } from '../services/mockDb';
 import { affectsCollections } from './useWanderSync';
 import { BUCKET_STATUS, bucketOf, destinationsOf, todayISO, tripDays, type TripBucket } from '../utils/tripsModel';
@@ -20,6 +20,8 @@ export interface TripDraft {
     privacy?: 'Private' | 'Public';
     /** Leave type this trip counts against; empty means a general event with no leave impact. */
     entitlementId?: string;
+    /** The days split across leave types (and years). The first one is the trip's main leave type. */
+    allocations?: TripAllocation[];
     /** Legs, stays and activities. Items that already exist carry their ids and every other field. */
     transports?: Partial<Transport>[];
     stays?: Partial<Accommodation>[];
@@ -171,7 +173,8 @@ export const useTripsData = () => {
             notes: draft.notes?.trim() || undefined,
             hugeicon: draft.icon || undefined,
             privacy: draft.privacy,
-            entitlementId: draft.entitlementId || undefined,
+            entitlementId: draft.allocations?.[0]?.entitlementId || draft.entitlementId || undefined,
+            allocations: draft.allocations?.length ? draft.allocations : undefined,
             coordinates: draft.coordinates,
             locations: destination
                 ? [{ id: uid(), name: destination, startDate: start, endDate: end, coordinates: draft.coordinates }]
@@ -195,7 +198,6 @@ export const useTripsData = () => {
         const locations = destinationChanged
             ? [...(destination ? [{ id: uid(), name: destination, startDate: start, endDate: end, coordinates: draft.coordinates }] : []), ...stops.slice(1)]
             : stops;
-        const entitlementChanged = (draft.entitlementId || undefined) !== (trip.entitlementId || undefined);
         const next: Trip = {
             ...trip,
             name: draft.name.trim(),
@@ -207,9 +209,8 @@ export const useTripsData = () => {
             notes: draft.notes?.trim() || undefined,
             hugeicon: draft.icon || undefined,
             privacy: draft.privacy ?? trip.privacy,
-            entitlementId: draft.entitlementId || undefined,
-            // A split across leave types belongs to the old type; choosing another clears it.
-            allocations: entitlementChanged ? undefined : trip.allocations,
+            entitlementId: draft.allocations?.[0]?.entitlementId || draft.entitlementId || undefined,
+            allocations: draft.allocations?.length ? draft.allocations : undefined,
             coordinates: draft.coordinates ?? trip.coordinates,
             locations,
             transports: draft.transports ? draft.transports.map(t => toTransport(t, start)) : trip.transports,
