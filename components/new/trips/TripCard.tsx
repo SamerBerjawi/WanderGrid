@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from 'motion/react';
 import { useDraggable } from '@dnd-kit/core';
 import type { Trip, User } from '../../../types';
 import { formatDateRange } from '../../../utils/formatters';
-import { bucketOf, destinationsOf, isTravelling, timingOf, tripDays, tripNeeds, type TripBucket } from '../../../utils/tripsModel';
+import { bucketOf, destinationLabel, isTravelling, timingOf, tripDays, tripNeeds, type TripBucket } from '../../../utils/tripsModel';
 import {
     Airplane, Archive, ArrowCounterClockwise, ArrowUpRight, Bed, CalendarBlank, CheckCircle, Clock, PencilSimple, Suitcase, Trash, type Icon,
 } from '../../ui/hugeicons';
@@ -110,7 +110,6 @@ export const TripCardBody: React.FC<CardProps> = ({ trip, users, today, actions,
     const timing = timingOf(trip, today);
     const days = tripDays(trip);
     const needs = tripNeeds(trip, today);
-    const destinations = destinationsOf(trip);
     const flights = (trip.transports || []).length;
     const stays = (trip.accommodations || []).length;
     const members = useMemo(() => (trip.participants || []).map(id => users.find(u => u.id === id)).filter((u): u is User => Boolean(u)), [trip.participants, users]);
@@ -145,7 +144,7 @@ export const TripCardBody: React.FC<CardProps> = ({ trip, users, today, actions,
                     className="min-h-11 min-w-0 flex-1 rounded-rp-inset text-left outline-none focus-visible:ring-2 focus-visible:ring-rp-muted"
                 >
                     <span className="line-clamp-2 break-words text-base font-medium leading-tight">{trip.name}</span>
-                    <span className={cn('block truncate text-xs', muted)}>{destinations.join(' · ') || 'No destination yet'}</span>
+                    <span className={cn('block truncate text-xs', muted)}>{destinationLabel(trip, 2) || 'No destination yet'}</span>
                 </button>
                 <div className="-mt-1 -mr-2 flex shrink-0">
                     <RpIconButton

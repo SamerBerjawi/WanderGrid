@@ -27,7 +27,9 @@ export const CappedTrips: React.FC<{
     /** `stack`: items one under another. `grid`: items wrapping onto as many lines as they need. */
     layout: 'stack' | 'grid';
     renderItem: (trip: Trip, index: number) => React.ReactNode;
-}> = ({ bucket, trips, expanded, onExpandedChange, filtering, layout, renderItem }) => {
+    /** Space between stacked items (a Tailwind gap class). */
+    gap?: string;
+}> = ({ bucket, trips, expanded, onExpandedChange, filtering, layout, renderItem, gap = 'gap-3' }) => {
     const cap = CAP[bucket];
     const overCap = trips.length > cap;
     const capped = overCap && !expanded && !filtering;
@@ -53,7 +55,7 @@ export const CappedTrips: React.FC<{
     const toggleYear = (year: string, index: number) => setClosed(c => ({ ...c, [year]: isOpen(year, index) }));
 
     const itemsLayout = (list: Trip[], offset = 0) => (
-        <div className={layout === 'stack' ? 'flex flex-col gap-3' : 'grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-3'}>
+        <div className={layout === 'stack' ? cn('flex flex-col', gap) : 'grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-3'}>
             {list.map((t, i) => <React.Fragment key={t.id}>{renderItem(t, offset + i)}</React.Fragment>)}
         </div>
     );

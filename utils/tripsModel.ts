@@ -109,3 +109,14 @@ export const tripMatches = (trip: Trip, query: string): boolean => {
 
 export const tripYears = (trip: Trip): string[] =>
     Array.from(new Set([trip.startDate, trip.endDate].map(d => (d || '').slice(0, 4)).filter(y => /^\d{4}$/.test(y))));
+
+/** "Kyoto · Osaka · +3": at most `max` names, then how many more. */
+export const destinationLabel = (trip: Trip, max = 2): string => {
+    const all = destinationsOf(trip);
+    if (all.length <= max) return all.join(' · ');
+    return `${all.slice(0, max).join(' · ')} · +${all.length - max}`;
+};
+
+/** Everything booked on the trip (transport, stays, activities). */
+export const tripCost = (trip: Trip): number =>
+    [...(trip.transports || []), ...(trip.accommodations || []), ...(trip.activities || [])].reduce((sum, i) => sum + (i.cost || 0), 0);
