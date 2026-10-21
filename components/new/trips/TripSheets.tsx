@@ -12,6 +12,7 @@ import {
 import { RP_FIELD, RpField } from '../fields';
 import { IconPicker } from '../IconPicker';
 import { PlaceField } from '../PlaceField';
+import type { Place, PlaceKind, SearchMode } from '../../../services/placeSearch';
 import { RpHugeicon } from '../RpHugeicon';
 import { RpChip, RpIconButton, RpLogo, RpSection, RpSheet, RpToggle } from '../ui';
 import { TripMenu } from './TripMenu';
@@ -321,6 +322,19 @@ const upsert = <T,>(list: T[], at: number | null, item: T): T[] => (at === null 
 /* Transport */
 /* ------------------------------------------------------------------ */
 
+/** What to search for in From and To, by kind of transport: the search mode and the kinds to list first. */
+const LEG_PLACES: Record<TransportMode, { mode: SearchMode; prefer: PlaceKind[]; hint: string }> = {
+    Flight: { mode: 'airport', prefer: ['airport', 'city'], hint: 'Airport or city (AMS)' },
+    Train: { mode: 'station', prefer: ['station', 'city'], hint: 'Station or city' },
+    Bus: { mode: 'bus', prefer: ['station', 'city'], hint: 'Station or city' },
+    Cruise: { mode: 'auto', prefer: ['port', 'city'], hint: 'Port or city' },
+    Ferry: { mode: 'auto', prefer: ['port', 'city'], hint: 'Port or city' },
+    'Car Rental': { mode: 'auto', prefer: ['city', 'airport', 'station'], hint: 'City, airport or station' },
+    'Personal Car': { mode: 'auto', prefer: ['city'], hint: 'City or address' },
+};
+/** Flights keep the airport's IATA code (as the Map and flight tracking expect); other legs keep the place name. */
+const legText = (mode: TransportMode | undefined) => (p: Place) => (mode === 'Flight' && p.iata ? p.iata : p.name);
+
 const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKey?: string }> = ({ draft, set, brandfetchApiKey }) => {
     const blank = (): Partial<Transport> => ({
         mode: 'Flight', origin: '', destination: '', departureDate: draft.startDate, departureTime: '10:00',
@@ -331,6 +345,10 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
     const [editing, setEditing] = useState<number | null>(null);
     const list = draft.transports || [];
     const m = modeOf(leg.mode);
+    const places = LEG_PLACES[leg.mode || 'Flight'];
+    const format = legText(leg.mode);
+    // A leg has a position when it was picked here, or looked up on an earlier save for this same text.
+    const located = (text?: string, lat?: number, key?: string) => Boolean(text && lat != null && (key === undefined || key === text));
     const patch = (p: Partial<Transport>) => setLeg(l => ({ ...l, ...p }));
     const valid = Boolean(leg.origin?.trim() && leg.destination?.trim());
 
@@ -374,8 +392,35 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
                     ))}
                 </div>
                 <div className="grid gap-x-3 sm:grid-cols-2">
-                    <RpField label="From">{id => <input id={id} value={leg.origin} onChange={e => patch({ origin: e.target.value })} className={RP_FIELD} placeholder={leg.mode === 'Flight' ? 'AMS' : 'Amsterdam'} autoComplete="off" />}</RpField>
-                    <RpField label="To">{id => <input id={id} value={leg.destination} onChange={e => patch({ destination: e.target.value })} className={RP_FIELD} placeholder={leg.mode === 'Flight' ? 'LIS' : 'Lisbon'} autoComplete="off" />}</RpField>
+                    <RpField label="From">{id => (
+                        <PlaceField
+                            id={id}
+                            value={leg.origin || ''}
+                            located={located(leg.origin, leg.originLat, leg.originGeoKey)}
+                            placeholder={places.hint}
+                            mode={places.mode}
+                            prefer={places.prefer}
+                            format={format}
+                            onChange={text => patch({ origin: text, originLat: undefined, originLng: undefined, originGeoKey: undefined })}
+                            onPick={(text, c) => patch({ origin: text, originLat: c.lat, originLng: c.lng, originGeoKey: text })}
+                        />
+                    )}</RpField>
+                    <RpField label="To">{id => (
+                        <PlaceField
+                            id={id}
+                            value={leg.destination || ''}
+                            located={located(leg.destination, leg.destLat, leg.destGeoKey)}
+                            placeholder={places.hint}
+                            mode={places.mode}
+                            prefer={places.prefer}
+                            align="end"
+                            // Near the trip's destination first, as a leg usually ends there.
+                            bias={draft.coordinates ? { lat: draft.coordinates.lat, lon: draft.coordinates.lng } : undefined}
+                            format={format}
+                            onChange={text => patch({ destination: text, destLat: undefined, destLng: undefined, destGeoKey: undefined })}
+                            onPick={(text, c) => patch({ destination: text, destLat: c.lat, destLng: c.lng, destGeoKey: text })}
+                        />
+                    )}</RpField>
                     <RpField label="Departs">{id => <input id={id} type="date" value={leg.departureDate} onChange={e => patch({ departureDate: e.target.value, arrivalDate: leg.arrivalDate && leg.arrivalDate >= e.target.value ? leg.arrivalDate : e.target.value })} className={DATE} />}</RpField>
                     <RpField label="Departure time">{id => <input id={id} type="time" value={leg.departureTime} onChange={e => patch({ departureTime: e.target.value })} className={DATE} />}</RpField>
                     <RpField label="Arrives">{id => <input id={id} type="date" value={leg.arrivalDate} min={leg.departureDate || undefined} onChange={e => patch({ arrivalDate: e.target.value })} className={DATE} />}</RpField>

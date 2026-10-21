@@ -114,6 +114,9 @@ export interface Transport {
   originLng?: number;
   destLat?: number;
   destLng?: number;
+  /** The origin / destination text the coordinates above were found for; they are looked up again only when the text changes. */
+  originGeoKey?: string;
+  destGeoKey?: string;
   
   // Helper for flight tracking
   providerCode?: string; // IATA code for airline (e.g. AA)
