@@ -10,3 +10,4 @@ export {
 } from "./choropleth-context";
 export { ChoroplethFeature, type ChoroplethFeatureProps } from "./choropleth-feature";
 export { ChoroplethGraticule, type ChoroplethGraticuleProps } from "./choropleth-graticule";
+export { ChoroplethPoints, type ChoroplethPoint, type ChoroplethPointsProps } from "./choropleth-points";

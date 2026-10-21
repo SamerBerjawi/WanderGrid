@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { FeatureCollection, Geometry } from 'geojson';
 import {
-    ChoroplethChart, ChoroplethFeature, ChoroplethGraticule, useChoroplethInteraction, useChoroplethZoom,
+    ChoroplethChart, ChoroplethFeature, ChoroplethGraticule, ChoroplethPoints, useChoroplethInteraction, useChoroplethZoom,
     type ChoroplethFeatureData, type ChoroplethFeatureProperties,
 } from '../../bklit/choropleth';
 import { readRpPalette, rpTokensReady, css, type RpPalette } from '../map/mapPalette';
@@ -72,6 +72,9 @@ export interface AtlasMapProps {
     tones: Record<string, AtlasTone>;
     counts: Record<AtlasTone, number>;
     onCountryClick: (code: string, name: string) => void;
+    /** Cities to mark on the map (empty to hide them). */
+    cities?: { id: string; lat: number; lng: number; name: string }[];
+    onCityClick?: (id: string) => void;
     className?: string;
 }
 
@@ -108,7 +111,7 @@ const ZoomControls: React.FC = () => {
     );
 };
 
-export const AtlasMap: React.FC<AtlasMapProps> = ({ tones, counts, onCountryClick, className }) => {
+export const AtlasMap: React.FC<AtlasMapProps> = ({ tones, counts, onCountryClick, cities, onCityClick, className }) => {
     const rootRef = useRef<HTMLDivElement>(null);
     const palette = usePalette(rootRef);
     const coarse = useCoarsePointer();
@@ -162,6 +165,16 @@ export const AtlasMap: React.FC<AtlasMapProps> = ({ tones, counts, onCountryClic
                             fadedOpacity={0.55}
                             onFeatureClick={f => { const code = featureCode(f); if (code) onCountryClick(code, featureName(f)); }}
                         />
+                        {cities && cities.length > 0 ? (
+                            <ChoroplethPoints
+                                points={cities.map(c => ({ id: c.id, lng: c.lng, lat: c.lat, label: c.name }))}
+                                fill={css(palette.rust)}
+                                stroke={css(palette.surface)}
+                                labelColor={css(palette.ink)}
+                                labelHalo={css(palette.surface, 0.9)}
+                                onPointClick={onCityClick ? p => onCityClick(p.id) : undefined}
+                            />
+                        ) : null}
                         <Tooltip tones={byFeature} />
                         {!coarse ? <ZoomControls /> : null}
                     </ChoroplethChart>
@@ -183,6 +196,13 @@ export const AtlasMap: React.FC<AtlasMapProps> = ({ tones, counts, onCountryClic
                     </li>
                     );
                 })}
+                {cities && cities.length > 0 ? (
+                    <li className="flex items-center gap-1.5 text-xs text-rp-muted">
+                        <span aria-hidden className="size-2.5 rounded-full bg-rp-rust" />
+                        <span className="text-rp-ink">Cities</span>
+                        <span className="rp-tabular">{cities.length}</span>
+                    </li>
+                ) : null}
             </ul>
         </div>
     );

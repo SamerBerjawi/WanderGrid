@@ -225,7 +225,10 @@ export const cityRecordFor = async (draft: CityDraft, editing?: VisitedItem): Pr
 export const resolveCityText = async (text: string): Promise<CityDraft | null> => {
     const res = await resolvePlaceName(text.trim()).catch(() => null);
     if (!res?.city) return null;
-    const code = normalizeCountryCode(res.countryCode || 'XX');
+    // A miss comes back as the typed text with an "Unknown" country and no code: not a place.
+    if (!res.countryCode || res.country === 'Unknown') return null;
+    const code = normalizeCountryCode(res.countryCode);
+    if (code === 'XX') return null;
     return {
         name: cleanCityName(res.city, code),
         countryCode: code,
@@ -316,3 +319,50 @@ export const scanImportRecords = async (
 };
 
 export const cityScanKey = (c: { name: string; countryCode: string }) => `${c.name.toLowerCase()}_${c.countryCode.toLowerCase()}`;
+
+/** True when two country codes mean the same place (a UK nation matches the UK). */
+export const sameCountry = (a?: string, b?: string) => {
+    if (!a || !b) return false;
+    const x = normalizeCountryCode(a);
+    const y = normalizeCountryCode(b);
+    if (x === 'XX' || y === 'XX') return false;
+    const base = (c: string) => (c.startsWith('GB-') ? 'GB' : c);
+    return base(x) === base(y);
+};
+
+export interface CountryActivity {
+    trips: Trip[];
+    flights: any[];
+    roadTrips: any[];
+    /** Latest date among them (ISO), if any. */
+    lastDate?: string;
+}
+
+/** Country a flight lands in: its stored code, or the destination airport's country. */
+const flightArrivalCountry = (f: any): string | undefined => {
+    if (f.destCountryCode) return f.destCountryCode;
+    const ap = (STATIC_GEO_DATA as Record<string, any>)[String(f.destination || '').toUpperCase()];
+    return ap?.iso;
+};
+
+/**
+ * What the user's travel log holds for a country: past and planned trips there, flights that land
+ * there and road trips in it. Cancelled records are left out.
+ */
+export const activityForCountry = (code: string, trips: Trip[], flights: any[], roadTrips: any[]): CountryActivity => {
+    const t = trips
+        .filter(x => x.status !== 'Cancelled' && sameCountry(x.coordinates?.countryCode, code))
+        .sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
+    const f = flights
+        .filter(x => x.status !== 'Cancelled' && sameCountry(flightArrivalCountry(x), code))
+        .sort((a, b) => String(b.arrivalDate || b.date || '').localeCompare(String(a.arrivalDate || a.date || '')));
+    const r = roadTrips
+        .filter(x => x.status !== 'Cancelled' && sameCountry(x.countryCode, code))
+        .sort((a, b) => String(b.arrivalDate || b.date || '').localeCompare(String(a.arrivalDate || a.date || '')));
+    const dates = [
+        ...t.map(x => x.endDate || x.startDate),
+        ...f.map(x => x.arrivalDate || x.date),
+        ...r.map(x => x.arrivalDate || x.date),
+    ].filter(Boolean).map(String).sort();
+    return { trips: t, flights: f, roadTrips: r, lastDate: dates.at(-1) };
+};

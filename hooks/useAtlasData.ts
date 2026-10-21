@@ -15,7 +15,7 @@ export interface CleanupReviewItem {
 }
 import {
     CityDraft, CountryDraft, ScanResult, buildTrackedCities, cityRecordFor, countryRecordFor, duplicateIdsOf, isLayoverCountry,
-    isVisitedCountry, isWishlistCountry, promoteToVisited, resolveAirportCity, scanHistory, scanImportRecords, WORLD_COUNTRY_COUNT,
+    activityForCountry, isVisitedCountry, isWishlistCountry, promoteToVisited, resolveAirportCity, scanHistory, scanImportRecords, WORLD_COUNTRY_COUNT,
 } from '../utils/atlasModel';
 
 /**
@@ -163,6 +163,8 @@ export const useAtlasData = () => {
         return records.length;
     }, [countries, changed]);
 
+    const activityFor = useCallback((code: string) => activityForCountry(code, trips, flights, roadTrips), [trips, flights, roadTrips]);
+
     /** Stored record ids, to tell user-added cities from places derived from trips. */
     const storedIds = useMemo(() => new Set(visited.map(v => v.id)), [visited]);
     const hasHistory = trips.length > 0 || flights.length > 0 || roadTrips.length > 0;
@@ -171,7 +173,7 @@ export const useAtlasData = () => {
         loading, error, reload: load,
         visited, countries, visitedCountries, layovers, wishlist, cities, storedIds,
         worldShare, cityCountryCount, cleanup, hasHistory,
-        saveCountry, saveCity, promote, remove, mergeDuplicates, scan, importScan,
+        saveCountry, saveCity, promote, remove, mergeDuplicates, scan, importScan, activityFor,
     };
 };
 

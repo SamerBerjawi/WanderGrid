@@ -4,14 +4,14 @@ import { RpChip, RpEmpty, RpSection, RpSheet } from '../ui';
 import HoldButton from '../../kokonutui/hold-button';
 import ParticleButton from '../../kokonutui/particle-button';
 import ActionSearchBar, { type CommandItem } from '../../kokonutui/command-palette';
-import { Airplane, Buildings, Car, Check, Globe, MapPin, Suitcase } from '../../ui/hugeicons';
+import { Airplane, ArrowUpRight, Buildings, Car, Check, Globe, MapPin, Suitcase } from '../../ui/hugeicons';
 import { COUNTRY_REGION_MAP, getFlagEmoji } from '../../../services/geoData';
 import { canonicalCountryName, UK_CONSTITUENTS } from '../../../services/countryRegistry';
-import { formatDate } from '../../../utils/formatters';
+import { formatDate, formatDateRange } from '../../../utils/formatters';
 import { cityScanKey, isLayoverCountry, isWishlistCountry, regionOf, type AtlasSource, type ScanResult } from '../../../utils/atlasModel';
 import type { AtlasData } from '../../../hooks/useAtlasData';
 import { STATUS_OPTIONS, toneOf } from './atlasStatus';
-import { FlagBadge, ToneChip } from './AtlasParts';
+import { FlagBadge, RpChipLabel, ToneChip } from './AtlasParts';
 import { cn } from '../../../utils/cn';
 
 /** Sheets of the New Atlas page: a country, a city, adding a country, and finding places in trips. */
@@ -43,7 +43,7 @@ export interface CountryTarget {
     initialStatuses?: CountryResidenceStatus[];
 }
 
-export const CountrySheet: React.FC<{ target: CountryTarget | null; onClose: () => void; data: AtlasData }> = ({ target, onClose, data }) => {
+export const CountrySheet: React.FC<{ target: CountryTarget | null; onClose: () => void; data: AtlasData; onTripClick?: (tripId: string) => void }> = ({ target, onClose, data, onTripClick }) => {
     const item = target?.item;
     const [statuses, setStatuses] = useState<CountryResidenceStatus[]>(['visited']);
     const [visitDate, setVisitDate] = useState('');
@@ -60,6 +60,12 @@ export const CountrySheet: React.FC<{ target: CountryTarget | null; onClose: () 
 
     if (!target) return <RpSheet open={false} onClose={onClose} title="">{null}</RpSheet>;
 
+    const activity = data.activityFor(target.code);
+    const counts = [
+        activity.trips.length ? `${activity.trips.length} ${activity.trips.length === 1 ? 'trip' : 'trips'}` : null,
+        activity.flights.length ? `${activity.flights.length} ${activity.flights.length === 1 ? 'flight' : 'flights'}` : null,
+        activity.roadTrips.length ? `${activity.roadTrips.length} ${activity.roadTrips.length === 1 ? 'road trip' : 'road trips'}` : null,
+    ].filter(Boolean) as string[];
     const canPromote = item && (isWishlistCountry(item) || isLayoverCountry(item)) && !getResidenceStatuses(item).some(s => s === 'visited' || s.startsWith('lived'));
     const save = async () => {
         await data.saveCountry({ code: target.code, name: target.name, statuses, visitDate: visitDate || undefined, notes: notes.trim() || undefined }, item);
@@ -105,6 +111,31 @@ export const CountrySheet: React.FC<{ target: CountryTarget | null; onClose: () 
                     >
                         Been there
                     </ParticleButton>
+                ) : null}
+
+                {counts.length > 0 ? (
+                    <RpSection title="In your log" icon={Suitcase}>
+                        <div className="flex flex-wrap items-center gap-2 py-2">
+                            {counts.map(c => <RpChipLabel key={c} tone="inset">{c}</RpChipLabel>)}
+                            {activity.lastDate ? <span className="rp-tabular text-xs text-rp-muted">Last {formatDate(activity.lastDate, 'month-year')}</span> : null}
+                        </div>
+                        {activity.trips.slice(0, 5).map(trip => (
+                            <button
+                                key={trip.id}
+                                type="button"
+                                disabled={!onTripClick}
+                                onClick={() => onTripClick?.(trip.id)}
+                                className="flex min-h-12 w-full items-center gap-3 rounded-rp-inset px-1 text-left outline-none enabled:hover:bg-rp-inset focus-visible:ring-2 focus-visible:ring-rp-muted"
+                            >
+                                <span className="flex min-w-0 flex-1 flex-col">
+                                    <span className="truncate text-sm font-medium text-rp-ink">{trip.name}</span>
+                                    <span className="rp-tabular truncate text-xs text-rp-muted">{formatDateRange(trip.startDate, trip.endDate)}</span>
+                                </span>
+                                {onTripClick ? <ArrowUpRight size={16} className="shrink-0 text-rp-muted" aria-hidden /> : null}
+                            </button>
+                        ))}
+                        {activity.trips.length > 5 ? <p className="px-1 pb-2 text-xs text-rp-muted">and {activity.trips.length - 5} more</p> : null}
+                    </RpSection>
                 ) : null}
 
                 <RpSection title="Status" icon={Globe}>
@@ -400,7 +431,7 @@ const ScanRow: React.FC<{
 /* Add a city (from the tool bar) */
 /* ------------------------------------------------------------------ */
 
-export const CityQuickAddSheet: React.FC<{ open: boolean; onClose: () => void; onAdd: (text: string) => Promise<void> }> = ({ open, onClose, onAdd }) => {
+export const CityQuickAddSheet: React.FC<{ open: boolean; onClose: () => void; onAdd: (text: string) => Promise<void>; error?: string | null }> = ({ open, onClose, onAdd, error }) => {
     const [text, setText] = useState('');
     useEffect(() => { if (open) setText(''); }, [open]);
     const add = async () => {
@@ -437,6 +468,7 @@ export const CityQuickAddSheet: React.FC<{ open: boolean; onClose: () => void; o
                         />
                     )}
                 </Field>
+                {error ? <p role="alert" className="px-1 pb-2 text-xs text-rp-rust">{error}</p> : null}
             </RpSection>
         </RpSheet>
     );
