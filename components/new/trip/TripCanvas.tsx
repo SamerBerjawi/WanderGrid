@@ -63,7 +63,7 @@ const HEAD = 'sticky top-0 z-raised flex items-center gap-2 bg-rp-canvas/95 px-3
 const CHIP = 'flex min-h-11 w-full min-w-0 items-center gap-2 rounded-rp-inset bg-rp-inset px-2.5 text-left outline-none transition-colors duration-150 hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted';
 const ADD = 'inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-rp-muted outline-none transition-colors duration-150 hover:bg-rp-inset hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted';
 
-interface StaySpan { stay: Accommodation; first: number; last: number; nights: number }
+interface StaySpan { stay: Accommodation; first: number; last: number; nights: number; /** Side-by-side position when stays share nights. */ lane: number; lanes: number }
 interface Gap { first: number; last: number; date: string }
 
 /** The slots (two per day: morning, afternoon) each stay covers, and the uncovered stretches between. */
@@ -79,7 +79,17 @@ const layoutStays = (trip: Trip, days: TripDay[]): { spans: StaySpan[]; gaps: Ga
         const first = 2 * inIdx + 1;
         const last = outIdx > inIdx ? 2 * outIdx : first;
         for (let s = first; s <= last && s < total; s++) covered[s] = true;
-        spans.push({ stay, first, last: Math.min(last, total - 1), nights: Math.max(1, outIdx - inIdx) });
+        spans.push({ stay, first, last: Math.min(last, total - 1), nights: Math.max(1, outIdx - inIdx), lane: 0, lanes: 1 });
+    });
+    // Stays that share nights sit side by side instead of on top of each other.
+    spans.sort((a, b) => a.first - b.first || a.last - b.last);
+    spans.forEach((sp, i) => {
+        const taken = new Set(spans.slice(0, i).filter(o => o.last >= sp.first).map(o => o.lane));
+        while (taken.has(sp.lane)) sp.lane += 1;
+    });
+    spans.forEach(sp => {
+        const overlapping = spans.filter(o => o.first <= sp.last && o.last >= sp.first);
+        sp.lanes = Math.max(...overlapping.map(o => o.lane)) + 1;
     });
     // The first morning and last afternoon are travel time, not a missing stay.
     const gaps: Gap[] = [];
@@ -124,6 +134,8 @@ const ActivityChip: React.FC<{ item: Extract<DayItem, { kind: 'activity' }>; onC
 
 const StayBar: React.FC<{ span: StaySpan; brandfetchApiKey?: string; onClick: () => void; className?: string; style?: React.CSSProperties }> = ({ span, brandfetchApiKey, onClick, className, style }) => {
     const a = span.stay;
+    // Stays side by side are narrow: name and nights only, wrapped rather than cut off.
+    const compact = span.lanes > 1;
     return (
         <button
             type="button"
@@ -131,17 +143,17 @@ const StayBar: React.FC<{ span: StaySpan; brandfetchApiKey?: string; onClick: ()
             style={style}
             className={cn('flex min-h-11 min-w-0 flex-col justify-start gap-2 rounded-rp-inset border border-rp-mustard/50 bg-rp-mustard/20 p-2.5 text-left outline-none transition-colors duration-150 hover:bg-rp-mustard/30 focus-visible:ring-2 focus-visible:ring-rp-muted', className)}
         >
-            <span className="flex min-w-0 items-center gap-2">
+            <span className={cn('flex min-w-0 gap-2', compact ? 'flex-col items-start' : 'items-center')}>
                 <RpLogo size="sm" name={a.name} src={a.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={stayIcon(a.type)} iconClassName={STAY_ACCENT} />
                 <span className="min-w-0 flex-1">
-                    <span className="block truncate text-xs font-medium text-rp-ink">{a.name}</span>
-                    <span className="block truncate text-2xs text-rp-muted">{a.type}</span>
+                    <span className={cn('block text-xs font-medium text-rp-ink', compact ? 'break-words' : 'truncate')}>{a.name}</span>
+                    {compact ? null : <span className="block truncate text-2xs text-rp-muted">{a.type}</span>}
                 </span>
-                {money(a.cost) ? <span className="rp-tabular text-xs text-rp-ink">{money(a.cost)}</span> : null}
+                {!compact && money(a.cost) ? <span className="rp-tabular text-xs text-rp-ink">{money(a.cost)}</span> : null}
             </span>
             <span className="flex items-center gap-1.5 text-2xs text-rp-muted">
                 <Moon size={12} aria-hidden /> {nights(a.checkInDate, a.checkOutDate) ?? `${span.nights} night`}
-                {a.checkInDate ? <span className="truncate">· {formatDate(a.checkInDate, 'short')}{a.checkOutDate ? ` – ${formatDate(a.checkOutDate, 'short')}` : ''}</span> : null}
+                {!compact && a.checkInDate ? <span className="truncate">· {formatDate(a.checkInDate, 'short')}{a.checkOutDate ? ` – ${formatDate(a.checkOutDate, 'short')}` : ''}</span> : null}
             </span>
         </button>
     );
@@ -274,7 +286,7 @@ export const TripCanvas: React.FC<{ trip: Trip; brandfetchApiKey?: string; onEdi
                     <div
                         role="table"
                         aria-label="Trip canvas"
-                        className="grid gap-x-3 md:grid-cols-[6rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)]"
+                        className="grid gap-x-3 md:grid-cols-[5.5rem_minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1.1fr)]"
                         style={{ gridAutoRows: 'minmax(2.75rem, auto)' }}
                     >
                         <div role="columnheader" className={HEAD} style={{ gridColumn: 1, gridRow: 1 }}><CalendarBlank size={14} aria-hidden /> Day</div>
@@ -307,7 +319,7 @@ export const TripCanvas: React.FC<{ trip: Trip; brandfetchApiKey?: string; onEdi
                                 data={{ kind: 'stay', id: sp.stay.id, dayIndex: Math.floor(sp.first / 2) }}
                                 label={`Move ${sp.stay.name}`}
                                 className="z-raised my-1 flex"
-                                style={{ gridColumn: 3, gridRow: `${sp.first + 2} / ${sp.last + 3}` }}
+                                style={{ gridColumn: 3, gridRow: `${sp.first + 2} / ${sp.last + 3}`, width: `${100 / sp.lanes}%`, marginLeft: `${(100 / sp.lanes) * sp.lane}%` }}
                             >
                                 <StayBar span={sp} brandfetchApiKey={brandfetchApiKey} onClick={() => onEdit(2)} className="w-full" />
                             </Draggable>

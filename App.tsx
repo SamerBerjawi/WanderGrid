@@ -421,6 +421,12 @@ export default function App() {
       }
   };
 
+  // Inside the New pages a trip opens on its New page; a flight that belongs to no trip still goes to Flights.
+  const openTripNew = (id: string) => {
+      if (id.startsWith('independent-flight-')) handleTripClick(id);
+      else navigateFromShell(`/trip-new/${encodeURIComponent(id)}`);
+  };
+
   if (newPage) {
       return (
         <Suspense fallback={null}>
@@ -437,9 +443,9 @@ export default function App() {
           >
             <AppErrorBoundary routeKey={`new-${newPage}`} onResetToDashboard={() => navigate(ViewState.DASHBOARD)}>
               <Suspense fallback={null}>
-                {newPage === 'map' ? <MapNew onTripClick={handleTripClick} isSidebarCollapsed={isSidebarCollapsed} onThemeChange={t => handleThemeChange(t)} /> : null}
-                {newPage === 'atlas' ? <AtlasNew onTripClick={handleTripClick} /> : null}
-                {newPage === 'trips' ? <TripsNew onTripClick={id => navigateFromShell(`/trip-new/${encodeURIComponent(id)}`)} /> : null}
+                {newPage === 'map' ? <MapNew onTripClick={openTripNew} isSidebarCollapsed={isSidebarCollapsed} onThemeChange={t => handleThemeChange(t)} /> : null}
+                {newPage === 'atlas' ? <AtlasNew onTripClick={openTripNew} /> : null}
+                {newPage === 'trips' ? <TripsNew onTripClick={openTripNew} /> : null}
                 {newPage === 'trip' && getNewTripId() ? (
                   <TripNew key={getNewTripId()!} tripId={getNewTripId()!} onBack={() => navigateFromShell('/trips-new')} onOpenOriginal={handleTripClick} />
                 ) : null}
