@@ -14,15 +14,16 @@ import { TripMenu } from '../../components/new/trips/TripMenu';
 import { BUCKET_LABEL, tripMenuItems, type TripActions } from '../../components/new/trips/TripCard';
 import { MODE_ICON, SKINS, STEPS, initials, nextMove } from '../../components/new/trips/TripDetailsModal';
 import { DeleteTripSheet, TripSheet, type TripSheetTarget } from '../../components/new/trips/TripSheets';
+import { TripCanvas } from '../../components/new/trip/TripCanvas';
 import { BookingsPanel, CostsPanel, GearPanel, ItineraryPanel, NotesPanel, type EditStep } from '../../components/new/trip/TripPanels';
-import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, FileText, MapPin, PencilSimple, Receipt, Suitcase, Ticket } from '../../components/ui/hugeicons';
+import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, FileText, Kanban, MapPin, PencilSimple, Receipt, Suitcase, Ticket } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
  * TripNew (UI_UX_DESIGN_REFERENCE.md §5.0): the redesigned page for one trip, at /trip-new/:id. The
  * features come from the data layer (useTripsData: the trip, status, archive, duplicate, delete, edit
  * of legs, stays and activities, packing list, notes); the layout is new: a header in the trip's
- * status colour, four counts, and tabs for Itinerary, Bookings, Costs, Gear and Notes.
+ * status colour, four counts, and tabs for Itinerary, Canvas (the whole plan on one grid), Bookings, Costs, Gear and Notes.
  * Not carried over yet: AI guide, weather, route map, calendar view, flight import and ICS export.
  */
 
@@ -34,19 +35,20 @@ interface TripNewProps {
     onOpenOriginal?: (tripId: string) => void;
 }
 
-type TabId = 'itinerary' | 'bookings' | 'costs' | 'gear' | 'notes';
+type TabId = 'itinerary' | 'canvas' | 'bookings' | 'costs' | 'gear' | 'notes';
 const TAB_KEY = 'wandergrid_trip_new_tab';
 const TAB_PILL: Record<TabId, { bg: string; text: string; icon: string }> = {
     itinerary: { bg: 'bg-rp-mustard', text: 'text-rp-on-mustard', icon: 'text-rp-ochre' },
+    canvas: { bg: 'bg-rp-green', text: 'text-rp-paper', icon: 'text-rp-green' },
     bookings: { bg: 'bg-rp-rust', text: 'text-rp-paper', icon: 'text-rp-rust' },
-    costs: { bg: 'bg-rp-green', text: 'text-rp-paper', icon: 'text-rp-green' },
+    costs: { bg: 'bg-rp-ink', text: 'text-rp-on-ink', icon: 'text-rp-ink' },
     gear: { bg: 'bg-rp-ink', text: 'text-rp-on-ink', icon: 'text-rp-ink' },
     notes: { bg: 'bg-rp-ink', text: 'text-rp-on-ink', icon: 'text-rp-muted' },
 };
 const readTab = (): TabId => {
     try {
         const v = localStorage.getItem(TAB_KEY);
-        return v === 'bookings' || v === 'costs' || v === 'gear' || v === 'notes' ? v : 'itinerary';
+        return v === 'canvas' || v === 'bookings' || v === 'costs' || v === 'gear' || v === 'notes' ? v : 'itinerary';
     } catch { return 'itinerary'; }
 };
 const currentUserId = (): string | undefined => {
@@ -147,6 +149,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
 
     const tabItems = ([
         { id: 'itinerary', title: 'Itinerary', icon: CalendarBlank },
+        { id: 'canvas', title: 'Canvas', icon: Kanban },
         { id: 'bookings', title: 'Bookings', icon: Ticket },
         { id: 'costs', title: 'Costs', icon: Receipt },
         { id: 'gear', title: 'Gear', icon: Backpack },
@@ -245,6 +248,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
 
                 <section aria-label={tabItems.find(t => t.id === tab)?.title}>
                     {tab === 'itinerary' ? <ItineraryPanel trip={trip} brandfetchApiKey={data.brandfetchApiKey} onEdit={edit} /> : null}
+                    {tab === 'canvas' ? <TripCanvas trip={trip} brandfetchApiKey={data.brandfetchApiKey} onEdit={edit} /> : null}
                     {tab === 'bookings' ? <BookingsPanel trip={trip} brandfetchApiKey={data.brandfetchApiKey} onEdit={edit} /> : null}
                     {tab === 'costs' ? <CostsPanel trip={trip} members={members.length} /> : null}
                     {tab === 'gear' ? <GearPanel items={trip.packingList || []} onChange={savePacking} /> : null}
