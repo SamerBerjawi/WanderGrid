@@ -23,7 +23,8 @@ import { getLatestRainRadarTileUrl } from '../../../services/rainViewer';
 import { attachMissingImageLoader, initMapLibre } from './mapEngineInit';
 import { cn } from '../../../utils/cn';
 import { readRpPalette, rpTokensReady, rgba, css, mix, type RGB, type RpPalette } from './mapPalette';
-import type { LegStatus, MapModel, MapPlace, MapRoute, LngLat } from './mapModel';
+import { featureCentroid, geoColor, gradientRuns } from './mapGeoColor';
+import type { MapModel, MapPlace, MapRoute, LngLat } from './mapModel';
 
 /**
  * The New map engine: MapLibre for the basemap and its native overlays (airport detail, aviation
@@ -458,31 +459,44 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
 
     const maxCount = useMemo(() => Math.max(1, ...model.routes.map(r => r.count)), [model.routes]);
 
-    const statusColor = useCallback((s: LegStatus): RGB => (s === 'upcoming' ? palette.green : s === 'planning' ? palette.mustard : palette.ink), [palette]);
+    // Land and sea legs keep one colour each; flights take the regional gradient (or frequency).
+    // Past / upcoming / planning is no longer a colour: it shows in the opacity.
+    const fixedColor = useCallback((m: MapRoute['mode']): RGB | null => (
+        m === 'sea' ? mix(palette.green, palette.ink, 0.3) : m === 'flight' ? null : palette.ink
+    ), [palette]);
 
     /* ------------------------------------------------------------------ travel data (native MapLibre layers) */
 
     // Drawn with MapLibre's own layers so they follow both the flat map and the globe.
     const hex = (c: RGB) => `#${c.map(v => v.toString(16).padStart(2, '0')).join('')}`;
     const showRoutes = !airportsOnly && mode !== 'scratch' && mode !== 'none';
-    const colorMode = appearance.routeColorMode || 'gradient';
+    // 'default' (the old Status colouring) no longer exists: stored settings fall back to the gradient.
+    const colorMode = appearance.routeColorMode === 'frequency' ? 'frequency' : 'gradient';
 
     const routesGeo = useMemo(() => {
         const base = ROUTE_WIDTH[appearance.routeScale || 'normal'];
-        const features = showRoutes ? routePaths.map(({ route: r, path, traced }) => {
-            const color = colorMode === 'frequency'
-                ? mix(palette.mustard, palette.rust, (r.count - 1) / Math.max(1, maxCount - 1))
-                : statusColor(r.status);
+        const features: any[] = [];
+        if (showRoutes) routePaths.forEach(({ route: r, path, traced }) => {
             const width = (appearance.routeWidthMode === 'frequency' ? base * (1 + Math.log2(r.count) * 0.6) : base) * (r.mode === 'flight' ? 1 : 0.85);
-            return {
+            const opacity = traced ? (r.status === 'past' ? 0.85 : 0.95) : 0.35;
+            const feature = (color: RGB, coordinates: any) => ({
                 type: 'Feature' as const,
                 id: r.id,
-                properties: { id: r.id, mode: r.mode, color: hex(color), width, opacity: traced ? (r.status === 'past' ? 0.85 : 0.95) : 0.35 },
-                geometry: { type: 'LineString' as const, coordinates: path },
-            };
-        }) : [];
+                properties: { id: r.id, mode: r.mode, color: hex(color), width, opacity },
+                geometry: { type: 'LineString' as const, coordinates },
+            });
+            const fixed = fixedColor(r.mode);
+            if (fixed) features.push(feature(fixed, path));
+            else if (colorMode === 'frequency') features.push(feature(mix(palette.mustard, palette.rust, (r.count - 1) / Math.max(1, maxCount - 1)), path));
+            else {
+                // Region colour of the origin blends into that of the destination along the route.
+                const from = geoColor(r.from[1], r.from[0], palette);
+                const to = geoColor(r.to[1], r.to[0], palette);
+                gradientRuns(path as [number, number][], from, to, 4).forEach(run => features.push(feature(run.color, run.path)));
+            }
+        });
         return { type: 'FeatureCollection' as const, features };
-    }, [showRoutes, routePaths, colorMode, palette, maxCount, statusColor, appearance.routeScale, appearance.routeWidthMode]);
+    }, [showRoutes, routePaths, colorMode, palette, maxCount, fixedColor, appearance.routeScale, appearance.routeWidthMode]);
 
     const airportsGeo = useMemo(() => {
         const size = MARKER_SIZE[appearance.airportSize || 'medium'];
@@ -527,9 +541,11 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
             const statuses = asList(countryStatusMap[code] ?? countryStatusMap[name.toUpperCase()]);
             const lived = statuses.includes('lived_current') || statuses.includes('lived_past');
             let fill = hex(palette.surface);
+            const centre = featureCentroid(f.geometry);
+            const region = hex(geoColor(centre.lat, centre.lng, palette));
             let opacity = 0.01; // not 0: MapLibre skips invisible features when querying clicks
-            if (lived && appearance.showLivedCountries !== false) { fill = hex(palette.green); opacity = 0.85; }
-            else if (visited.has(code)) { fill = hex(palette.green); opacity = 0.45; }
+            if (lived && appearance.showLivedCountries !== false) { fill = hex(palette.ink); opacity = 0.6; }
+            else if (visited.has(code) || statuses.includes('visited')) { fill = region; opacity = 0.85; }
             else if (statuses.includes('layover') && appearance.showLayoverCountries !== false) { fill = hex(palette.mustard); opacity = 0.6; }
             else if (statuses.includes('wishlist') && appearance.showWishlistCountries !== false) { fill = hex(palette.rust); opacity = 0.35; }
             return { type: 'Feature', id: i, properties: { code, name, fill, opacity }, geometry: f.geometry };
@@ -593,10 +609,6 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
             map.setPaintProperty(id, 'line-opacity', highlighted ? ['case', highlighted, 1, 0.14] : ['get', 'opacity']);
             map.setPaintProperty(id, 'line-color', ['get', 'color']);
         });
-        // A gradient needs line-progress, which dashed lines cannot use: only solid routes get it.
-        map.setPaintProperty('rp-routes', 'line-gradient', colorMode === 'gradient'
-            ? ['interpolate', ['linear'], ['line-progress'], 0, hex(p.green), 1, hex(p.rust)]
-            : undefined);
         map.setPaintProperty('rp-places', 'circle-radius', ['get', 'radius']);
         map.setPaintProperty('rp-places', 'circle-color', hex(p.ink));
         map.setPaintProperty('rp-places', 'circle-stroke-color', hex(p.surface));
@@ -658,11 +670,11 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
             // segments instead; each segment keeps its route for picking.
             const gradient = colorMode === 'gradient';
             const data = gradient
-                ? flights.flatMap(d => d.path.slice(0, -1).map((pt, i) => ({
-                    route: d.route,
-                    path: [pt, d.path[i + 1]],
-                    t: i / Math.max(1, d.path.length - 2),
-                })))
+                ? flights.flatMap(d => {
+                    const from = geoColor(d.route.from[1], d.route.from[0], palette);
+                    const to = geoColor(d.route.to[1], d.route.to[0], palette);
+                    return gradientRuns(d.path as [number, number][], from, to).map(run => ({ route: d.route, path: run.path, color: run.color }));
+                })
                 : flights;
             layers.push(new PathLayer({
                 id: 'rp-flight-arcs',
@@ -670,7 +682,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
                 getPath: (d: any) => d.path,
                 getColor: (d: any) => {
                     const a = dim(d.route.id) * 0.95;
-                    if (gradient) return rgba(mix(palette.green, palette.rust, d.t), a);
+                    if (gradient) return rgba(d.color, a);
                     const c = style.get(d.route.id)?.color;
                     return rgba(c ? toRgb(c) : palette.muted, a);
                 },

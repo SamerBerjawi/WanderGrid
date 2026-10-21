@@ -255,7 +255,7 @@ export const MapSettingsSheet: React.FC<MapSettingsSheetProps> = ({
             </RpSection>
             <RpSection icon={Path} title="Routes">
                 <RpRow icon={Palette} label="Colour">
-                    <RpSegmented label="Route colour" value={a.routeColorMode} onChange={v => onChange({ routeColorMode: v })} options={[{ value: 'gradient', label: 'Gradient' }, { value: 'frequency', label: 'Frequency' }, { value: 'default', label: 'Status' }]} />
+                    <RpSegmented label="Flight colour" value={a.routeColorMode === 'frequency' ? 'frequency' : 'gradient'} onChange={v => onChange({ routeColorMode: v })} options={[{ value: 'gradient', label: 'Region' }, { value: 'frequency', label: 'Frequency' }]} />
                 </RpRow>
                 <RpRow icon={SlidersHorizontal} label="Thickness">
                     <RpSegmented label="Route thickness" value={a.routeScale} onChange={v => onChange({ routeScale: v })} options={[{ value: 'thin', label: 'Thin' }, { value: 'normal', label: 'Medium' }, { value: 'thick', label: 'Thick' }]} />
