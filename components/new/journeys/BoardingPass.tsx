@@ -45,7 +45,7 @@ export const BoardingPass: React.FC<{ t: Transport; brandfetchApiKey?: string; c
                 </span>
                 <span className="flex min-w-6 flex-1 items-center gap-1 opacity-80" aria-hidden>
                     <span className="h-px flex-1 border-t-2 border-dotted border-current" />
-                    <look.icon size={18} className={t.mode === 'Flight' ? 'rotate-90' : undefined} />
+                    <look.icon size={18} />
                     <span className="h-px flex-1 border-t-2 border-dotted border-current" />
                 </span>
                 <span className="flex flex-col items-end text-right">

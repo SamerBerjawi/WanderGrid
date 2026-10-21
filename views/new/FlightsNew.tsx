@@ -7,10 +7,10 @@ import {
     SORT_LABEL, aroundTheWorld, isIndependent, journeyStatus, journeyTotals, sortJourneys,
     type JourneyRecord, type JourneySortKey, type JourneyState,
 } from '../../utils/journeysModel';
+import NumberFlow from '@number-flow/react';
 import type { DockTool } from '../../components/kokonutui/tool-dock';
 import HoldButton from '../../components/kokonutui/hold-button';
 import { RpChip, RpEmpty, RpSheet, useIsMobile } from '../../components/new/ui';
-import { RpKpi, RpChipLabel } from '../../components/new/atlas/AtlasParts';
 import { RpPageToolbar } from '../../components/new/PageToolbar';
 import { openNewPage } from '../../components/new/devLinks';
 import { useUndoToast } from '../../components/new/UndoToast';
@@ -21,7 +21,7 @@ import { JourneySheet } from '../../components/new/journeys/JourneySheet';
 import { JourneyEditor, type JourneyEditorTarget } from '../../components/new/journeys/JourneyEditor';
 import { ImportSheet, exportJourneys, type ExportFormat } from '../../components/new/journeys/JourneyTransfer';
 import {
-    Airplane, AirplaneTakeoff, ArrowDown, CalendarBlank, CheckSquare, Clock, DownloadSimple, Funnel, Globe, MagnifyingGlass, PencilSimple, Plus, Suitcase, Table, Trash, UploadSimple, X, XCircle,
+    Airplane, AirplaneTakeoff, ArrowDown, type Icon, CalendarBlank, CheckSquare, Clock, DownloadSimple, Funnel, Globe, MagnifyingGlass, PencilSimple, Plus, Suitcase, Table, Trash, UploadSimple, X, XCircle,
 } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
@@ -60,24 +60,39 @@ const CLASSES = ['Economy', 'Premium Economy', 'Business', 'First'] as const;
 const STATES: { id: JourneyState; label: string }[] = [
     { id: 'scheduled', label: 'Scheduled' }, { id: 'travelling', label: 'In the air' }, { id: 'done', label: 'Landed' }, { id: 'cancelled', label: 'Cancelled' },
 ];
-const SORTS: { key: JourneySortKey; asc: boolean; label: string }[] = [
-    { key: 'date', asc: false, label: 'Date, newest first' },
-    { key: 'date', asc: true, label: 'Date, oldest first' },
-    { key: 'journey', asc: true, label: 'Airline' },
-    { key: 'route', asc: true, label: 'Route' },
-    { key: 'duration', asc: false, label: 'Longest first' },
-    { key: 'distance', asc: false, label: 'Furthest first' },
-    { key: 'cost', asc: false, label: 'Most expensive' },
+const SORTS: { key: JourneySortKey; asc: boolean; label: string; short: string }[] = [
+    { key: 'date', asc: false, label: 'Date, newest first', short: 'Newest' },
+    { key: 'date', asc: true, label: 'Date, oldest first', short: 'Oldest' },
+    { key: 'journey', asc: true, label: 'Airline', short: 'Airline' },
+    { key: 'route', asc: true, label: 'Route', short: 'Route' },
+    { key: 'duration', asc: false, label: 'Longest first', short: 'Longest' },
+    { key: 'distance', asc: false, label: 'Furthest first', short: 'Furthest' },
+    { key: 'cost', asc: false, label: 'Most expensive', short: 'Priciest' },
 ];
 
-const StatTile: React.FC<{ tone: 'ink' | 'green' | 'mustard'; children: React.ReactNode }> = ({ tone, children }) => (
-    <div className={cn(
-        'flex min-w-0 flex-col justify-center rounded-rp-tile p-3 rp-shadow-rest sm:p-4 lg:p-5',
-        tone === 'ink' && 'bg-rp-ink text-rp-on-ink',
-        tone === 'green' && 'bg-rp-green text-rp-paper',
-        tone === 'mustard' && 'bg-rp-mustard text-rp-on-mustard'
-    )}>{children}</div>
-);
+/** The tiles are filled with their accent: ink, green and mustard, each with its own readable text. */
+const TILE_TONE = {
+    ink: { card: 'bg-rp-ink text-rp-on-ink', muted: 'text-rp-on-ink/70', circle: 'bg-rp-on-ink/15' },
+    green: { card: 'bg-rp-green text-rp-paper', muted: 'text-rp-paper/80', circle: 'bg-rp-paper/20' },
+    mustard: { card: 'bg-rp-mustard text-rp-on-mustard', muted: 'text-rp-on-mustard/70', circle: 'bg-rp-on-mustard/10' },
+} as const;
+
+/** One tile of the totals: a rolling figure with its unit, and one line of detail. */
+const StatTile: React.FC<{ icon: Icon; tone: keyof typeof TILE_TONE; value: number; unit: string; sub: string; subShort: string }> = ({ icon: IconC, tone, value, unit, sub, subShort }) => {
+    const t = TILE_TONE[tone];
+    return (
+        <div className={cn('flex min-w-0 items-center gap-3 rounded-rp-tile p-3 rp-shadow-rest sm:p-4', t.card)}>
+            <span className={cn('hidden size-10 shrink-0 items-center justify-center rounded-full sm:flex', t.circle)}><IconC size={18} aria-hidden /></span>
+            <span className="min-w-0">
+                <span className="flex flex-wrap items-baseline gap-x-1.5">
+                    <NumberFlow value={value} format={{ maximumFractionDigits: 0 }} className="rp-tabular text-xl leading-tight font-semibold" />
+                    <span className={cn('text-sm', t.muted)}>{unit}</span>
+                </span>
+                <span className={cn('block truncate text-xs leading-snug', t.muted)}><span className="sm:hidden">{subShort}</span><span className="hidden sm:inline">{sub}</span></span>
+            </span>
+        </div>
+    );
+};
 
 const EmptyCard: React.FC<{ children: React.ReactNode }> = ({ children }) => <div className="rounded-rp-card bg-rp-surface rp-shadow-rest">{children}</div>;
 
@@ -198,7 +213,7 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
 
     const brandfetchApiKey = log.workspaceSettings?.brandfetchApiKey || undefined;
     const years = log.uniqueYears;
-    const sortLabel = (SORTS.find(s => s.key === sortKey && s.asc === sortAsc) ?? SORTS[0]).label;
+    const sortLabel = (SORTS.find(s => s.key === sortKey && s.asc === sortAsc) ?? SORTS[0]).short;
     const earth = aroundTheWorld(totals.km);
     const tickets = shown.filter(r => selected.has(r.flight.id));
 
@@ -234,27 +249,36 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                     </EmptyCard>
                 ) : null}
 
-                <div className="grid grid-cols-3 gap-3 lg:gap-6">
-                    <StatTile tone="ink">
-                        <RpKpi accent="ink" icon={Airplane} value={totals.count} label="Flights" chip={<>
-                            {totals.upcoming > 0 ? <RpChipLabel>{totals.upcoming} upcoming</RpChipLabel> : null}
-                            {totals.carriers > 0 ? <span className="hidden sm:inline-flex"><RpChipLabel tone="inset">{totals.carriers} {totals.carriers === 1 ? 'airline' : 'airlines'}</RpChipLabel></span> : null}
-                        </>} />
-                    </StatTile>
-                    <StatTile tone="green">
-                        <RpKpi accent="green" icon={Globe} value={totals.km} label="Kilometres" chip={<>
-                            {totals.airports > 0 ? <RpChipLabel tone="inset">{totals.airports} airports</RpChipLabel> : null}
-                            {earth >= 0.1 ? <span className="hidden sm:inline-flex"><RpChipLabel>{earth.toFixed(1)}× the Earth</RpChipLabel></span> : null}
-                        </>} />
-                    </StatTile>
-                    <StatTile tone="mustard">
-                        <RpKpi accent="mustard" icon={Clock} value={Math.round(totals.minutes / 60)} label="Hours in the air" chip={totals.countries > 0 ? <RpChipLabel tone="inset">{totals.countries} {totals.countries === 1 ? 'country' : 'countries'}</RpChipLabel> : undefined} />
-                    </StatTile>
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
+                    <StatTile
+                        tone="ink"
+                        icon={Airplane}
+                        value={totals.count}
+                        unit={totals.count === 1 ? 'flight' : 'flights'}
+                        sub={[totals.upcoming > 0 ? `${totals.upcoming} upcoming` : '', `${totals.carriers} ${totals.carriers === 1 ? 'airline' : 'airlines'}`].filter(Boolean).join(' · ')}
+                        subShort={totals.upcoming > 0 ? `${totals.upcoming} upcoming` : `${totals.carriers} airlines`}
+                    />
+                    <StatTile
+                        tone="green"
+                        icon={Globe}
+                        value={totals.km}
+                        unit="km"
+                        sub={[`${totals.airports} ${totals.airports === 1 ? 'airport' : 'airports'}`, earth >= 0.1 ? `${earth.toFixed(1)}× the Earth` : ''].filter(Boolean).join(' · ')}
+                        subShort={`${totals.airports} ${totals.airports === 1 ? 'airport' : 'airports'}`}
+                    />
+                    <StatTile
+                        tone="mustard"
+                        icon={Clock}
+                        value={Math.round(totals.minutes / 60)}
+                        unit="hours"
+                        sub={`${totals.countries} ${totals.countries === 1 ? 'country' : 'countries'}`}
+                        subShort={`${totals.countries} ${totals.countries === 1 ? 'country' : 'countries'}`}
+                    />
                 </div>
 
                 <section aria-label="Your flights" className="flex flex-col gap-4">
-                    <div className="-m-3 overflow-x-auto p-3 [scrollbar-width:none]">
-                        <div className="flex items-center gap-2" role="group" aria-label="Filters">
+                    <div className="-m-3 overflow-x-auto p-3 [scrollbar-width:none] sm:m-0 sm:overflow-visible sm:p-0">
+                        <div className="flex items-center gap-2 sm:flex-wrap" role="group" aria-label="Filters">
                             {(['all', 'upcoming', 'past'] as const).map(t => (
                                 <RpChip key={t} selected={log.timeFilter === t} onClick={() => log.setTimeFilter(t)} className="shrink-0">{t === 'all' ? 'All flights' : t === 'upcoming' ? 'Upcoming' : 'Past'}</RpChip>
                             ))}
@@ -262,7 +286,7 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                             {independentCount > 0 ? (
                                 <RpChip selected={noTrip} onClick={() => setNoTrip(n => !n)} className="shrink-0"><Suitcase size={16} aria-hidden /> No trip <span className="rp-tabular text-sm font-semibold">{independentCount}</span></RpChip>
                             ) : null}
-                            <span className="ml-auto flex shrink-0 items-center gap-2">
+                            <span className="ml-auto flex shrink-0 items-center gap-2 sm:flex-wrap sm:justify-end">
                                 <TripMenu
                                     label="Filter by class"
                                     pill={{ label: log.classFilter === 'all' ? 'Class' : log.classFilter, icon: Funnel }}

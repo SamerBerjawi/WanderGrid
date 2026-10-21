@@ -130,7 +130,7 @@ export const JourneySheet: React.FC<{
             open={Boolean(record)}
             onClose={onClose}
             title={title}
-            subtitle={<span className="flex flex-wrap items-center gap-2">{subtitle}<StatusPill status={status} mode={t.mode} /></span>}
+            subtitle={subtitle}
             width={440}
             footer={confirming ? undefined : actions}
         >

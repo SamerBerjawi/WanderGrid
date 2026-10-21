@@ -65,7 +65,7 @@ export const JourneyBoard: React.FC<{
                                 type="button"
                                 onClick={() => onOpen(rec)}
                                 aria-label={`${t.origin} to ${t.destination}, ${formatDate(t.departureDate, 'short-with-year')}`}
-                                className="grid min-h-14 w-full grid-cols-[3.75rem_minmax(0,1fr)_auto] items-center gap-x-3 rounded-rp-inset px-2 py-2 text-left outline-none transition-colors duration-150 hover:bg-rp-on-ink/10 focus-visible:ring-2 focus-visible:ring-rp-muted sm:grid-cols-[4.5rem_minmax(0,1.2fr)_minmax(0,1fr)_auto] sm:gap-x-4"
+                                className="grid min-h-14 w-full grid-cols-[3.75rem_minmax(0,1fr)_6.5rem] items-center gap-x-3 rounded-rp-inset px-2 py-2 text-left outline-none transition-colors duration-150 hover:bg-rp-on-ink/10 focus-visible:ring-2 focus-visible:ring-rp-muted sm:grid-cols-[4.5rem_minmax(0,1fr)_minmax(0,13rem)_6.5rem] sm:gap-x-4"
                             >
                                 <span className="flex flex-col">
                                     <span className={cn('rp-tabular text-lg font-medium leading-tight', done && sub)}>{t.departureTime || '--:--'}</span>
@@ -127,9 +127,9 @@ const NextUp: React.FC<{ rec: JourneyRecord; onOpen: (r: JourneyRecord) => void;
                 <span className="flex items-center gap-3">
                     <span className="rp-tabular text-3xl font-medium leading-none sm:text-4xl">{placeCode(t.origin)}</span>
                     <span className="flex min-w-6 flex-1 items-center gap-1 text-rp-muted" aria-hidden>
-                        <span className="h-px flex-1 border-t-2 border-dotted border-rp-line" />
-                        <look.icon size={18} className={cn(look.text, t.mode === 'Flight' && 'rotate-90')} />
-                        <span className="h-px flex-1 border-t-2 border-dotted border-rp-line" />
+                        <span className="h-px flex-1 border-t-2 border-dotted border-rp-muted/60" />
+                        <look.icon size={18} className={look.text} />
+                        <span className="h-px flex-1 border-t-2 border-dotted border-rp-muted/60" />
                     </span>
                     <span className="rp-tabular text-3xl font-medium leading-none sm:text-4xl">{placeCode(t.destination)}</span>
                 </span>

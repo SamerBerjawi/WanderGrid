@@ -104,22 +104,26 @@ export const JourneyTable: React.FC<{
                             ) : null}
 
                             {/* Phones: a small card per journey. */}
-                            <div role="cell" className="flex min-w-0 flex-1 flex-col gap-1.5 md:hidden">
-                                <button type="button" onClick={() => onOpen(rec)} aria-label={label} className="flex min-w-0 items-center gap-3 text-left outline-none after:absolute after:inset-0 after:rounded-rp-inset focus-visible:after:ring-2 focus-visible:after:ring-rp-muted">
-                                    <CarrierCell t={t} brandfetchApiKey={brandfetchApiKey} carriers={carriers} className="min-w-0 flex-1" />
-                                </button>
-                                <div className="flex items-center gap-2 pl-12">
-                                    <span className="rp-tabular text-base font-semibold text-rp-ink">{placeCode(t.origin)}</span>
-                                    <ArrowRight size={14} className={look.text} aria-hidden />
-                                    <span className="rp-tabular text-base font-semibold text-rp-ink">{placeCode(t.destination)}</span>
+                            <div role="cell" className="flex min-w-0 flex-1 flex-col gap-2 md:hidden">
+                                <div className="flex items-center gap-2">
+                                    <button type="button" onClick={() => onOpen(rec)} aria-label={label} className="flex min-w-0 flex-1 items-center text-left outline-none after:absolute after:inset-0 after:rounded-rp-inset focus-visible:after:ring-2 focus-visible:after:ring-rp-muted">
+                                        <CarrierCell t={t} brandfetchApiKey={brandfetchApiKey} carriers={carriers} className="min-w-0 flex-1" />
+                                    </button>
+                                    <span className="flex shrink-0 flex-col items-end gap-1">
+                                        <StatusPill status={status} mode={t.mode} />
+                                        <DelayChip delay={status.delay} />
+                                    </span>
                                 </div>
-                                <p className="rp-tabular truncate pl-12 text-xs text-rp-muted">
-                                    {formatDate(t.departureDate, 'short')} · {t.departureTime || '--:--'}{journeyMinutes(t) ? ` · ${formatMinutes(journeyMinutes(t))}` : ''}
-                                </p>
-                            </div>
-                            <div role="cell" className="flex shrink-0 flex-col items-end gap-1 md:hidden">
-                                <StatusPill status={status} mode={t.mode} />
-                                <DelayChip delay={status.delay} />
+                                <div className="flex items-center justify-between gap-3">
+                                    <span className="flex items-center gap-2">
+                                        <span className="rp-tabular text-base font-semibold text-rp-ink">{placeCode(t.origin)}</span>
+                                        <ArrowRight size={14} className={look.text} aria-hidden />
+                                        <span className="rp-tabular text-base font-semibold text-rp-ink">{placeCode(t.destination)}</span>
+                                    </span>
+                                    <span className="rp-tabular truncate text-xs text-rp-muted">
+                                        {formatDate(t.departureDate, 'short')} · {t.departureTime || '--:--'}{journeyMinutes(t) ? ` · ${formatMinutes(journeyMinutes(t))}` : ''}
+                                    </span>
+                                </div>
                             </div>
 
                             {/* Tablet and up: one cell per column. */}
@@ -153,7 +157,7 @@ export const JourneyTable: React.FC<{
                                 <StatusPill status={status} mode={t.mode} />
                                 <DelayChip delay={status.delay} />
                             </div>
-                            <div role="cell" className="relative z-raised shrink-0">
+                            <div role="cell" className="relative z-raised shrink-0 self-start md:self-center">
                                 {selecting ? null : <TripMenu label={`More for ${label}`} items={menu(rec)} />}
                             </div>
                         </div>
