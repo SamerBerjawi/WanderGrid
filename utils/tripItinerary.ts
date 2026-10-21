@@ -1,4 +1,5 @@
 import type { Accommodation, Activity, Transport, Trip } from '../types';
+import { calculateDistance } from '../services/geocoding';
 
 /** One thing happening on one day of a trip. */
 export type DayItem =
@@ -68,4 +69,39 @@ export const costSplit = (trip: Trip): CostSplit => {
     const stays = sum(trip.accommodations);
     const activities = sum(trip.activities);
     return { transport, stays, activities, total: transport + stays + activities };
+};
+
+export interface TripStats {
+    days: number;
+    /** Nights covered by a booked stay, and the nights the trip has. */
+    nightsBooked: number;
+    nightsTotal: number;
+    distanceKm: number;
+    excursions: number;
+}
+
+const nightsOf = (a?: string, b?: string) => {
+    if (!a || !b) return 0;
+    const n = Math.round((toTime(b) - toTime(a)) / DAY_MS);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+};
+
+/** Counts for the page header: how long, how many nights have a bed, how far, how many excursions. */
+export const tripStats = (trip: Trip): TripStats => {
+    const days = trip.startDate ? daysBetween(trip.startDate, trip.endDate || trip.startDate).length : 0;
+    const nightsTotal = Math.max(0, days - 1);
+    const nightsBooked = Math.min(nightsTotal || Infinity, (trip.accommodations || []).reduce((n, a) => n + nightsOf(a.checkInDate, a.checkOutDate), 0));
+    const distanceKm = Math.round((trip.transports || []).reduce((sum, t) => {
+        if (t.distance != null) return sum + t.distance;
+        if (t.originLat != null && t.originLng != null && t.destLat != null && t.destLng != null) return sum + calculateDistance(t.originLat, t.originLng, t.destLat, t.destLng);
+        return sum;
+    }, 0));
+    return { days, nightsBooked: Number.isFinite(nightsBooked) ? nightsBooked : 0, nightsTotal, distanceKm, excursions: (trip.transports || []).filter(t => t.isExcursion).length };
+};
+
+/** The trip's target budget: the saved one, or one an older page stored as a custom field. */
+export const targetBudgetOf = (trip: Trip): number | undefined => {
+    if (trip.targetBudget && trip.targetBudget > 0) return trip.targetBudget;
+    const legacy = Number((trip as unknown as { customFields?: Array<{ key: string; value: string }> }).customFields?.find(f => f.key === 'targetBudget')?.value);
+    return legacy > 0 ? legacy : undefined;
 };

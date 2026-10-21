@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { Accommodation, PackingItem, Trip, Transport, User } from '../../../types';
-import { buildDays, costSplit, type DayItem, type TripDay } from '../../../utils/tripItinerary';
+import { buildDays, costSplit, targetBudgetOf, type DayItem, type TripDay } from '../../../utils/tripItinerary';
 import { tripDays } from '../../../utils/tripsModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import { Airplane, Bed, Backpack, CalendarBlank, Check, FileText, PencilSimple, Plus, Receipt, Square, CheckSquare, Trash, type Icon } from '../../ui/hugeicons';
@@ -189,8 +189,50 @@ export const BookingsPanel: React.FC<{ trip: Trip; brandfetchApiKey?: string; on
 /* Costs */
 /* ------------------------------------------------------------------ */
 
-export const CostsPanel: React.FC<{ trip: Trip; members: number }> = ({ trip, members }) => {
+const BudgetCard: React.FC<{ total: number; target?: number; onSave: (target: number | undefined) => Promise<void> | void }> = ({ total, target, onSave }) => {
+    const [value, setValue] = useState(target ? String(target) : '');
+    const [base, setBase] = useState(target);
+    if (target !== base) { setBase(target); setValue(target ? String(target) : ''); }
+    const parsed = value.trim() === '' ? undefined : Number(value.replace(',', '.'));
+    const valid = parsed === undefined || (Number.isFinite(parsed) && parsed > 0);
+    const dirty = valid && parsed !== target;
+    const pct = target ? Math.min(100, (total / target) * 100) : 0;
+    const over = target ? total > target : false;
+    const commit = () => { if (dirty) void onSave(parsed); };
+    return (
+        <div className="mt-5 rounded-rp-inset bg-rp-inset p-3">
+            <div className="flex items-end justify-between gap-3">
+                <label htmlFor="trip-budget" className="text-xs text-rp-muted">Target budget</label>
+                {target ? (
+                    <span className={cn('rp-tabular text-xs font-medium', over ? 'text-rp-rust' : 'text-rp-green')}>
+                        {over ? `${formatCurrency(total - target)} over` : `${formatCurrency(target - total)} left`}
+                    </span>
+                ) : null}
+            </div>
+            <input
+                id="trip-budget"
+                inputMode="decimal"
+                value={value}
+                onChange={e => setValue(e.target.value)}
+                onBlur={commit}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } }}
+                placeholder="Set a budget"
+                aria-invalid={!valid}
+                className={cn(RP_FIELD, 'mt-1.5 rp-tabular bg-rp-surface', !valid && 'ring-2 ring-rp-rust')}
+                autoComplete="off"
+            />
+            {target ? (
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-rp-surface" role="img" aria-label={`${Math.round((total / target) * 100)} percent of the budget`}>
+                    <div className={cn('h-full rounded-full transition-[width] duration-300', over ? 'bg-rp-rust' : 'bg-rp-green')} style={{ width: `${pct}%` }} />
+                </div>
+            ) : null}
+        </div>
+    );
+};
+
+export const CostsPanel: React.FC<{ trip: Trip; members: number; onSaveBudget: (target: number | undefined) => Promise<void> | void }> = ({ trip, members, onSaveBudget }) => {
     const split = costSplit(trip);
+    const target = targetBudgetOf(trip);
     const days = Math.max(1, tripDays(trip));
     const people = Math.max(1, members);
     const rows: { label: string; icon: Icon; value: number; bar: string; accent: string }[] = [
@@ -199,7 +241,12 @@ export const CostsPanel: React.FC<{ trip: Trip; members: number }> = ({ trip, me
         { label: 'Activities', icon: CalendarBlank, value: split.activities, bar: 'bg-rp-green', accent: 'text-rp-green' },
     ];
     if (split.total === 0) {
-        return <div className={CARD}><RpEmpty title="No costs yet">Costs you add to transport, stays and activities are totalled here.</RpEmpty></div>;
+        return (
+            <div className={CARD}>
+                <RpEmpty title="No costs yet">Costs you add to transport, stays and activities are totalled here.</RpEmpty>
+                <div className="mx-auto max-w-sm"><BudgetCard total={0} target={target} onSave={onSaveBudget} /></div>
+            </div>
+        );
     }
     return (
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:gap-6">
@@ -210,6 +257,7 @@ export const CostsPanel: React.FC<{ trip: Trip; members: number }> = ({ trip, me
                     <div className="rounded-rp-inset bg-rp-inset p-3"><dt className="text-xs text-rp-muted">Per person</dt><dd className="rp-tabular text-base font-semibold text-rp-ink">{formatCurrency(split.total / people)}</dd></div>
                     <div className="rounded-rp-inset bg-rp-inset p-3"><dt className="text-xs text-rp-muted">Per day</dt><dd className="rp-tabular text-base font-semibold text-rp-ink">{formatCurrency(split.total / days)}</dd></div>
                 </dl>
+                <BudgetCard total={split.total} target={target} onSave={onSaveBudget} />
             </section>
             <section className={CARD}>
                 <Heading icon={Receipt} title="Breakdown" />

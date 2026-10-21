@@ -2,12 +2,12 @@ import React, { useMemo, useState } from 'react';
 import type { PackingItem, Trip, User } from '../../types';
 import { useTripsData, type TripDraft } from '../../hooks/useTripsData';
 import { bucketOf, canMoveTo, destinationsOf, isTravelling, timingOf, todayISO, tripDays, type TripBucket } from '../../utils/tripsModel';
-import { costSplit } from '../../utils/tripItinerary';
+import { costSplit, tripStats } from '../../utils/tripItinerary';
 import { formatCurrency, formatDateRange } from '../../utils/formatters';
 import { errorMessage, toast } from '../../services/toast';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import { RpEmpty } from '../../components/new/ui';
-import { RpKpi } from '../../components/new/atlas/AtlasParts';
+import { RpChipLabel, RpKpi } from '../../components/new/atlas/AtlasParts';
 import { RpHugeicon } from '../../components/new/RpHugeicon';
 import { useUndoToast } from '../../components/new/UndoToast';
 import { TripMenu } from '../../components/new/trips/TripMenu';
@@ -16,7 +16,7 @@ import { MODE_ICON, SKINS, STEPS, initials, nextMove } from '../../components/ne
 import { DeleteTripSheet, TripSheet, type TripSheetTarget } from '../../components/new/trips/TripSheets';
 import { TripCanvas } from '../../components/new/trip/TripCanvas';
 import { BookingsPanel, CostsPanel, GearPanel, ItineraryPanel, NotesPanel, type EditStep } from '../../components/new/trip/TripPanels';
-import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, FileText, Kanban, MapPin, PencilSimple, Receipt, Suitcase, Ticket } from '../../components/ui/hugeicons';
+import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, FileText, Kanban, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -107,6 +107,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
     const split = costSplit(trip);
     const timing = timingOf(trip, today);
     const days = tripDays(trip);
+    const stats = tripStats(trip);
     const members = (trip.participants || []).map(id => data.users.find(u => u.id === id)).filter((u): u is User => Boolean(u));
     const hero = split.total > 0
         ? { text: formatCurrency(split.total), unit: 'Total cost' }
@@ -225,9 +226,27 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
                     </div>
                 </header>
 
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:gap-6">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-4">
                     <Tile><RpKpi accent="ink" icon={CalendarBlank} value={days} label={days === 1 ? 'Day' : 'Days'} /></Tile>
-                    <Tile><RpKpi accent="rust" icon={Airplane} value={(trip.transports || []).length} label="Transport" /></Tile>
+                    <Tile>
+                        <RpKpi
+                            accent="mustard"
+                            icon={Moon}
+                            value={stats.nightsBooked}
+                            label="Nights booked"
+                            chip={stats.nightsTotal > 0 ? <RpChipLabel tone={stats.nightsBooked >= stats.nightsTotal ? 'green' : 'mustard'}>of {stats.nightsTotal}</RpChipLabel> : undefined}
+                        />
+                    </Tile>
+                    <Tile><RpKpi accent="rust" icon={Path} value={stats.distanceKm} format={{ maximumFractionDigits: 0 }} label="km travelled" /></Tile>
+                    <Tile>
+                        <RpKpi
+                            accent="rust"
+                            icon={Airplane}
+                            value={(trip.transports || []).length}
+                            label="Transport"
+                            chip={stats.excursions > 0 ? <RpChipLabel tone="inset">{stats.excursions} {stats.excursions === 1 ? 'excursion' : 'excursions'}</RpChipLabel> : undefined}
+                        />
+                    </Tile>
                     <Tile><RpKpi accent="mustard" icon={Bed} value={(trip.accommodations || []).length} label="Stays" /></Tile>
                     <Tile><RpKpi accent="green" icon={Ticket} value={(trip.activities || []).length} label="Activities" /></Tile>
                 </div>
@@ -250,7 +269,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
                     {tab === 'itinerary' ? <ItineraryPanel trip={trip} brandfetchApiKey={data.brandfetchApiKey} onEdit={edit} /> : null}
                     {tab === 'canvas' ? <TripCanvas trip={trip} brandfetchApiKey={data.brandfetchApiKey} onEdit={edit} /> : null}
                     {tab === 'bookings' ? <BookingsPanel trip={trip} brandfetchApiKey={data.brandfetchApiKey} onEdit={edit} /> : null}
-                    {tab === 'costs' ? <CostsPanel trip={trip} members={members.length} /> : null}
+                    {tab === 'costs' ? <CostsPanel trip={trip} members={members.length} onSaveBudget={target => attempt(async () => { await data.patch(trip.id, { targetBudget: target }); })} /> : null}
                     {tab === 'gear' ? <GearPanel items={trip.packingList || []} onChange={savePacking} /> : null}
                     {tab === 'notes' ? (
                         <NotesPanel
