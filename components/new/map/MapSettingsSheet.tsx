@@ -1,5 +1,4 @@
 import React, { useRef, useState } from 'react';
-import type { RouteColorMode } from './routeModes';
 import SwipeTabs from '../../kokonutui/swipe-tabs';
 import UndoButton from '../../kokonutui/undo-button';
 import { FEATURE_FLAGS } from '../../../config/featureFlags';
@@ -7,7 +6,7 @@ import {
     DEFAULT_MAP_APPEARANCE, ALL_AIRPORT_CATEGORIES, getYesterdayDateString,
     type AirportCategory, type MapAppearanceSettings,
 } from '../../../types/mapAppearance';
-import { Airplane, AirplaneTilt, Airport, Check, EditRoad, MapsGlobal, SquaresUnite, AirplaneLanding, ArrowCounterClockwise, Buildings, CalendarBlank, ChartBar, CirclesThree, CloudRain, Eye, Globe, Heart, House, Lightning, Maping, MapPin, MapTrifold, Moon, Mountains, MountainSnow, Palette, Path, Planet, RoadHorizon, SlidersHorizontal, Sparkle, Stack, Sun, SunHorizon, Train, TrendUp } from '../../ui/hugeicons';
+import { Airplane, AirplaneTilt, Airport, Boat, Check, EditRoad, MapsGlobal, SquaresUnite, AirplaneLanding, ArrowCounterClockwise, Buildings, CalendarBlank, ChartBar, CirclesThree, CloudRain, Eye, Globe, Heart, House, Lightning, Maping, MapPin, MapTrifold, Moon, Mountains, MountainSnow, Palette, Path, Planet, RoadHorizon, SlidersHorizontal, Sparkle, Stack, Sun, SunHorizon, Train, TrendUp } from '../../ui/hugeicons';
 import { cn } from '../../../utils/cn';
 import { RpChip, RpRow, RpSection, RpSheet, RpSlider, RpToggle, useIsMobile } from '../ui';
 
@@ -112,9 +111,6 @@ export interface MapSettingsSheetProps {
     appearance: MapAppearanceSettings;
     onChange: (patch: Partial<MapAppearanceSettings>) => void;
     onReplace: (next: MapAppearanceSettings) => void;
-    /** Route colour (a New-map setting, kept apart from the shared appearance). */
-    routeColor: RouteColorMode;
-    onRouteColor: (v: RouteColorMode) => void;
     groupAirports: boolean;
     onGroupAirports: (v: boolean) => void;
     isDark: boolean;
@@ -125,7 +121,7 @@ export interface MapSettingsSheetProps {
 }
 
 export const MapSettingsSheet: React.FC<MapSettingsSheetProps> = ({
-    open, onClose, appearance: a, onChange, onReplace, routeColor, onRouteColor, groupAirports, onGroupAirports, isDark, openAipAvailable, topOffset, onThemeChange,
+    open, onClose, appearance: a, onChange, onReplace, groupAirports, onGroupAirports, isDark, openAipAvailable, topOffset, onThemeChange,
 }) => {
     // A dark basemap turns the app dark and a light one turns it light, so the chrome matches the map.
     const chooseBasemap = (value: MapAppearanceSettings['basemap'], tone: BasemapTone) => {
@@ -259,7 +255,7 @@ export const MapSettingsSheet: React.FC<MapSettingsSheetProps> = ({
             </RpSection>
             <RpSection icon={Path} title="Routes">
                 <RpRow icon={Palette} label="Colour">
-                    <RpSegmented label="Route colour" value={routeColor} onChange={v => onRouteColor(v)} options={[{ value: 'mode' as RouteColorMode, label: 'Transport' }, { value: 'gradient', label: 'Gradient' }, { value: 'frequency', label: 'Frequency' }, { value: 'default', label: 'Status' }]} />
+                    <RpSegmented label="Flight colour" value={a.routeColorMode === 'frequency' ? 'frequency' : 'gradient'} onChange={v => onChange({ routeColorMode: v })} options={[{ value: 'gradient', label: 'Region' }, { value: 'frequency', label: 'Frequency' }]} />
                 </RpRow>
                 <RpRow icon={SlidersHorizontal} label="Thickness">
                     <RpSegmented label="Route thickness" value={a.routeScale} onChange={v => onChange({ routeScale: v })} options={[{ value: 'thin', label: 'Thin' }, { value: 'normal', label: 'Medium' }, { value: 'thick', label: 'Thick' }]} />
@@ -280,6 +276,11 @@ export const MapSettingsSheet: React.FC<MapSettingsSheetProps> = ({
                 <RpToggle icon={House} label="Lived in" checked={a.showLivedCountries !== false} onChange={v => onChange({ showLivedCountries: v })} />
                 <RpToggle icon={AirplaneLanding} label="Layovers" checked={a.showLayoverCountries !== false} onChange={v => onChange({ showLayoverCountries: v })} />
                 <RpToggle icon={Heart} label="Wishlist" checked={a.showWishlistCountries !== false} onChange={v => onChange({ showWishlistCountries: v })} />
+            </RpSection>
+            <RpSection icon={Path} title="Routes on the scratch map">
+                {([['flight', Airplane, 'Flights'], ['land', Train, 'Land'], ['sea', Boat, 'Sea']] as const).map(([kind, icon, label]) => (
+                    <RpToggle key={kind} icon={icon} label={label} checked={(a.scratchRoutes || []).includes(kind)} onChange={v => onChange({ scratchRoutes: toggleIn(a.scratchRoutes, kind) })} />
+                ))}
             </RpSection>
         </div>
     );

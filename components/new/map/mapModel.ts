@@ -108,9 +108,11 @@ const clusterAirports = (airports: Map<string, MapPlace>, km: number) => {
 export interface MapModelOptions {
     mode: PredefinedMapMode;
     groupAirports: boolean;
+    /** Route types drawn on the scratch map (it has none unless asked). */
+    scratchRoutes?: ('flight' | 'land' | 'sea')[];
 }
 
-export const buildMapModel = (trips: Trip[], { mode, groupAirports }: MapModelOptions): MapModel => {
+export const buildMapModel = (trips: Trip[], { mode, groupAirports, scratchRoutes = [] }: MapModelOptions): MapModel => {
     const today = new Date().toISOString().split('T')[0];
     const legs: MapLeg[] = [];
     const seen = new Set<string>();
@@ -121,7 +123,8 @@ export const buildMapModel = (trips: Trip[], { mode, groupAirports }: MapModelOp
         (trip.transports || []).forEach((t, i) => {
             const legMode = legModeOf(t.mode);
             if (!legMode) return;
-            if (mode === 'scratch' || mode === 'none') return;
+            if (mode === 'none') return;
+            if (mode === 'scratch' && !scratchRoutes.includes(legMode === 'flight' ? 'flight' : legMode === 'sea' ? 'sea' : 'land')) return;
             if (mode === 'flights' && legMode !== 'flight') return;
             if (mode === 'land_sea' && legMode === 'flight') return;
             if (t.originLat == null || t.originLng == null || t.destLat == null || t.destLng == null) return;

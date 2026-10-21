@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ROUTE_COLOR_MODES, type RouteColorMode } from '../../components/new/map/routeModes';
 import NumberFlow from '@number-flow/react';
 import { Toolbar, type DockTool } from '../../components/kokonutui/tool-dock';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
@@ -22,6 +21,7 @@ import { MapFilterSheet } from '../../components/new/map/MapFilterSheet';
 import { MapDetailSheet, type MapSelection } from '../../components/new/map/MapDetailSheet';
 import { RpEmpty, useIsMobile } from '../../components/new/ui';
 import { cn } from '../../utils/cn';
+import { MAP_PATH, readMapLink } from '../../utils/mapLinks';
 
 /**
  * MapNew (UI_UX_DESIGN_REFERENCE.md §5.0): the redesigned map at /map-new. Features come from the
@@ -49,7 +49,6 @@ const MODE_PILL: Record<Mode, { bg: string; text: string }> = {
     scratch: { bg: 'bg-rp-mustard', text: 'text-rp-on-mustard' },
 };
 const GROUP_KEY = 'wandergrid_map_new_group_airports';
-const ROUTE_COLOR_KEY = 'wandergrid_map_new_route_color';
 const HEADER = 68;
 
 const readLocal = <T,>(key: string, fallback: T, valid: (v: any) => boolean): T => {
@@ -88,6 +87,9 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
     const [fullscreen, setFullscreen] = useState(false);
     const [placeResults, setPlaceResults] = useState<Place[]>([]);
     const [settled, setSettled] = useState(false);
+    // Routes emphasised by a map link to a trip (?trip=); cleared by the next selection.
+    const [tripFocusIds, setTripFocusIds] = useState<string[] | null>(null);
+    const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
 
     useEffect(() => { dataService.getWorkspaceSettings().then(setSettings).catch(() => undefined); }, []);
     useEffect(() => { const id = window.setTimeout(() => setSettled(true), 1800); return () => window.clearTimeout(id); }, []);
@@ -97,12 +99,6 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
         return () => document.removeEventListener('fullscreenchange', sync);
     }, []);
 
-    // Route colour is a New-map setting (default: one colour per transport mode), kept apart from the
-    // shared appearance so the original map keeps its own choice.
-    const [routeColor, setRouteColor] = useState<RouteColorMode>(
-        () => readLocal<RouteColorMode>(ROUTE_COLOR_KEY, 'mode', v => ROUTE_COLOR_MODES.includes(v))
-    );
-    const changeRouteColor = (v: RouteColorMode) => { setRouteColor(v); writeLocal(ROUTE_COLOR_KEY, v); };
     const updateAppearance = useCallback((patch: Partial<MapAppearanceSettings>) => {
         setAppearance(prev => {
             const next = { ...prev, ...patch };
@@ -114,14 +110,75 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
     const changeMode = (m: Mode) => { setMode(m); writeLocal(MODE_KEY, m); setSelection(null); };
     const changeGroup = (v: boolean) => { setGroupAirports(v); writeLocal(GROUP_KEY, v); };
 
-    const model = useMemo(() => buildMapModel(data.filteredTrips, { mode, groupAirports }), [data.filteredTrips, mode, groupAirports]);
+    const model = useMemo(() => buildMapModel(data.filteredTrips, { mode, groupAirports, scratchRoutes: appearance.scratchRoutes }), [data.filteredTrips, mode, groupAirports, appearance.scratchRoutes]);
     const openAipAvailable = Boolean(settings?.openAipApiKey || settings?.configuredKeys?.openAipApiKey);
     const metrics = data.expeditionTypeMetrics;
 
     /* -------------------------------------------------- panels */
 
     const openTool = (t: Tool) => { setTool(t); if (t !== 'explore') setSelection(null); };
-    const select = (s: MapSelection | null) => { setSelection(s); if (s && tool !== 'explore') setTool('explore'); };
+    const select = (s: MapSelection | null) => {
+        setSelection(s);
+        setTripFocusIds(null);
+        if (s && tool !== 'explore') setTool('explore');
+        // Keep the URL shareable: a selected route is in ?route=, anything else clears it.
+        try {
+            const next = s?.kind === 'route' ? `${MAP_PATH}?route=${encodeURIComponent(`${s.route.origin}-${s.route.destination}`)}` : MAP_PATH;
+            if (window.location.pathname === MAP_PATH && `${window.location.pathname}${window.location.search}` !== next) window.history.replaceState({}, '', next);
+        } catch { /* history unavailable */ }
+    };
+
+    // The selected route, or the routes of a selected place (or of a linked trip), stay strong on the map.
+    const highlightRouteIds = useMemo(() => {
+        if (selection?.kind === 'route') return [selection.route.id];
+        if (selection?.kind === 'place') {
+            const id = selection.place.id;
+            return model.routes.filter(r => r.origin === id || r.destination === id).map(r => r.id);
+        }
+        return tripFocusIds;
+    }, [selection, model.routes, tripFocusIds]);
+
+    // Open on what a map link points at (utils/mapLinks.ts), once the routes have loaded.
+    const linkHandled = useRef(false);
+    useEffect(() => {
+        if (linkHandled.current) return;
+        const target = readMapLink(window.location.search);
+        if (!target.route && !target.tripId && !target.focus) { linkHandled.current = true; return; }
+        if (target.focus) {
+            linkHandled.current = true;
+            window.setTimeout(() => mapRef.current?.flyTo(target.focus!.lng, target.focus!.lat, target.focus!.zoom ?? 6), 400);
+            return;
+        }
+        if (!data.trips.length) return;
+        // A linked route or trip may be outside the current view mode: show everything.
+        if (mode !== 'all') { changeMode('all'); return; }
+        if (!model.routes.length) return;
+        linkHandled.current = true;
+        if (target.route) {
+            const [a, b] = target.route.map(x => x.toUpperCase());
+            const route = model.routes.find(r => (r.origin === a && r.destination === b) || (r.origin === b && r.destination === a));
+            if (route) {
+                select({ kind: 'route', route });
+                const lngs = [route.from[0], route.to[0]]; const lats = [route.from[1], route.to[1]];
+                window.setTimeout(() => mapRef.current?.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]]), 400);
+            }
+        } else if (target.tripId) {
+            const routes = model.routes.filter(r => r.legs.some(l => l.tripId === target.tripId));
+            if (routes.length) {
+                setTripFocusIds(routes.map(r => r.id));
+                const pts = routes.flatMap(r => [r.from, r.to]);
+                const lngs = pts.map(p => p[0]); const lats = pts.map(p => p[1]);
+                window.setTimeout(() => mapRef.current?.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]]), 400);
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data.trips, model.routes, mode]);
+
+    useEffect(() => {
+        if (!fallbackNotice) return;
+        const id = window.setTimeout(() => setFallbackNotice(null), 6000);
+        return () => window.clearTimeout(id);
+    }, [fallbackNotice]);
 
     const sheetOpen = tool === 'layers' || tool === 'filter' || selection !== null;
     const padding = useMemo(() => mobile
@@ -239,11 +296,12 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                 defaultBasemapLight={settings?.defaultBasemapLight}
                 defaultBasemapDark={settings?.defaultBasemapDark}
                 padding={padding}
-                routeColorMode={routeColor}
                 onRouteClick={(route: MapRoute) => select({ kind: 'route', route })}
                 onPlaceClick={place => select({ kind: 'place', place })}
                 onCountryClick={(code, name) => select({ kind: 'country', code, name })}
                 onHover={mobile ? undefined : setHover}
+                highlightRouteIds={highlightRouteIds}
+                onBasemapFallback={() => setFallbackNotice("That basemap isn't loading, so a backup map is showing.")}
             />
 
             {/* The search palette, at the top while searching */}
@@ -337,6 +395,12 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                 </div>
             ) : null}
 
+            {fallbackNotice ? (
+                <div className="pointer-events-none absolute inset-x-0 z-toast flex justify-center px-3" style={{ top: HEADER + 64 }} role="status">
+                    <span className="rounded-full bg-rp-mustard px-4 py-2 text-sm font-medium text-rp-on-mustard rp-shadow-soft">{fallbackNotice}</span>
+                </div>
+            ) : null}
+
             {isEmpty ? (
                 <div className="pointer-events-none absolute inset-0 z-raised flex items-center justify-center p-6">
                     <div className="pointer-events-auto max-w-sm rounded-rp-card bg-rp-surface rp-shadow-float">
@@ -358,8 +422,6 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                 appearance={appearance}
                 onChange={updateAppearance}
                 onReplace={replaceAppearance}
-                routeColor={routeColor}
-                onRouteColor={changeRouteColor}
                 groupAirports={groupAirports}
                 onGroupAirports={changeGroup}
                 isDark={isDark}
@@ -391,7 +453,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
             />
             <MapDetailSheet
                 selection={selection}
-                onClose={() => setSelection(null)}
+                onClose={() => select(null)}
                 onSelect={select}
                 onTripClick={onTripClick}
                 trips={data.filteredTrips}
