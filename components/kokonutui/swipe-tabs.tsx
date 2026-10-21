@@ -441,10 +441,13 @@ export default function SmoothTab({
 
   return (
     <div className={cn("flex w-full flex-col gap-3", className)}>
-      <div className={cn("flex", stretch ? "w-full" : "justify-center")}>
+      {/* The list is as wide as its tabs, so the pill and the selected tab are never cut off: it is centred
+          when there is room, and when there isn't the parent scrolls (auto margins, unlike justify-center,
+          never push the start of the list out of reach). */}
+      <div className={cn("flex", stretch && "w-full")}>
         <div
           aria-label={label}
-          className={cn("relative max-w-full rounded-full bg-rp-inset p-1", stretch ? "flex w-full" : "inline-flex", listClassName)}
+          className={cn("relative rounded-full bg-rp-inset p-1", stretch ? "flex w-full min-w-max" : "mx-auto inline-flex shrink-0", listClassName)}
           ref={tablistRef}
           role="tablist"
         >
@@ -459,7 +462,7 @@ export default function SmoothTab({
                 className={cn(
                   "relative flex min-h-11 items-center justify-center gap-1.5 rounded-full font-medium text-sm",
                   pad,
-                  stretch ? "min-w-0 flex-1" : "shrink-0",
+                  stretch ? "min-w-max flex-1" : "shrink-0",
                   "text-rp-muted transition-colors duration-150 ease-out hover:text-rp-ink",
                   "outline-none focus-visible:outline-2 focus-visible:outline-rp-line focus-visible:outline-offset-2"
                 )}
@@ -499,7 +502,7 @@ export default function SmoothTab({
                   className={cn(
                     "flex min-h-11 items-center justify-center gap-1.5 font-medium text-sm",
                     pad,
-                    stretch ? "min-w-0 flex-1" : "shrink-0",
+                    stretch ? "min-w-max flex-1" : "shrink-0",
                     activeTextColor
                   )}
                   key={item.id}
