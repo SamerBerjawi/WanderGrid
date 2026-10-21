@@ -12,13 +12,12 @@ import {
 import { RP_FIELD, RpField } from '../fields';
 import { IconPicker } from '../IconPicker';
 import { PlaceField } from '../PlaceField';
-import type { Place, PlaceKind, SearchMode } from '../../../services/placeSearch';
 import { RpHugeicon } from '../RpHugeicon';
 import { RpChip, RpIconButton, RpLogo, RpSection, RpSheet, RpToggle } from '../ui';
 import { TripMenu } from './TripMenu';
 import { stayIcon } from './stayIcon';
 import { STAY_ACCENT } from './accents';
-import { MODE_LOOKS, modeLook } from './transportModes';
+import { LEG_PLACES, MODE_LOOKS, legText, modeLook } from './transportModes';
 import { LegDetails } from './LegDetails';
 import { calculateDistance } from '../../../services/geocoding';
 import { cn } from '../../../utils/cn';
@@ -315,19 +314,6 @@ const upsert = <T,>(list: T[], at: number | null, item: T): T[] => (at === null 
 /* ------------------------------------------------------------------ */
 /* Transport */
 /* ------------------------------------------------------------------ */
-
-/** What to search for in From and To, by kind of transport: the search mode and the kinds to list first. */
-const LEG_PLACES: Record<TransportMode, { mode: SearchMode; prefer: PlaceKind[]; hint: string }> = {
-    Flight: { mode: 'airport', prefer: ['airport', 'city'], hint: 'Airport or city (AMS)' },
-    Train: { mode: 'station', prefer: ['station', 'city'], hint: 'Station or city' },
-    Bus: { mode: 'bus', prefer: ['station', 'city'], hint: 'Station or city' },
-    Cruise: { mode: 'auto', prefer: ['port', 'city'], hint: 'Port or city' },
-    Ferry: { mode: 'auto', prefer: ['port', 'city'], hint: 'Port or city' },
-    'Car Rental': { mode: 'auto', prefer: ['city', 'airport', 'station'], hint: 'City, airport or station' },
-    'Personal Car': { mode: 'auto', prefer: ['city'], hint: 'City or address' },
-};
-/** Flights keep the airport's IATA code (as the Map and flight tracking expect); other legs keep the place name. */
-const legText = (mode: TransportMode | undefined) => (p: Place) => (mode === 'Flight' && p.iata ? p.iata : p.name);
 
 const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKey?: string }> = ({ draft, set, brandfetchApiKey }) => {
     const blank = (): Partial<Transport> => ({

@@ -1,4 +1,5 @@
 import type { TransportMode } from '../../../types';
+import type { Place, PlaceKind, SearchMode } from '../../../services/placeSearch';
 import { Airplane, Bus, Car, CarProfile, Ferry, Ship, Train, type Icon } from '../../ui/hugeicons';
 
 /**
@@ -31,3 +32,17 @@ export const MODE_LOOKS: ModeLook[] = [
 
 const FALLBACK = MODE_LOOKS[0];
 export const modeLook = (mode?: string): ModeLook => MODE_LOOKS.find(m => m.mode === mode) ?? FALLBACK;
+
+/** What to search for in From and To, by kind of transport: the search mode and the kinds to list first. */
+export const LEG_PLACES: Record<TransportMode, { mode: SearchMode; prefer: PlaceKind[]; hint: string }> = {
+    Flight: { mode: 'airport', prefer: ['airport', 'city'], hint: 'Airport or city (AMS)' },
+    Train: { mode: 'station', prefer: ['station', 'city'], hint: 'Station or city' },
+    Bus: { mode: 'bus', prefer: ['station', 'city'], hint: 'Station or city' },
+    Cruise: { mode: 'auto', prefer: ['port', 'city'], hint: 'Port or city' },
+    Ferry: { mode: 'auto', prefer: ['port', 'city'], hint: 'Port or city' },
+    'Car Rental': { mode: 'auto', prefer: ['city', 'airport', 'station'], hint: 'City, airport or station' },
+    'Personal Car': { mode: 'auto', prefer: ['city'], hint: 'City or address' },
+};
+/** Flights keep the airport's IATA code (as the Map and flight tracking expect); other legs keep the place name. */
+export const legText = (mode: TransportMode | undefined) => (p: Place) => (mode === 'Flight' && p.iata ? p.iata : p.name);
+

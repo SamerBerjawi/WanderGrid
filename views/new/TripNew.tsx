@@ -1,9 +1,10 @@
-import React, { lazy, Suspense, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import type { PackingItem, Trip, User } from '../../types';
 import { useTripsData, type TripDraft } from '../../hooks/useTripsData';
 import { bucketOf, canMoveTo, destinationsOf, isTravelling, timingOf, todayISO, tripDays, type TripBucket } from '../../utils/tripsModel';
 import { costSplit, shiftDate, tripStats } from '../../utils/tripItinerary';
 import { formatCurrency, formatDate, formatDateRange } from '../../utils/formatters';
+import { formatProperLocationName } from '../../services/geocoding';
 import { errorMessage, toast } from '../../services/toast';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import { RpEmpty } from '../../components/new/ui';
@@ -15,7 +16,11 @@ import { BUCKET_LABEL, tripMenuItems, type TripActions } from '../../components/
 import { MODE_ICON, SKINS, STEPS, initials, nextMove } from '../../components/new/trips/TripDetailsModal';
 import { DeleteTripSheet, TripSheet, type TripSheetTarget } from '../../components/new/trips/TripSheets';
 import { TripCanvas } from '../../components/new/trip/TripCanvas';
-const TripMapPanel = lazy(() => import('../../components/new/trip/TripMapPanel'));
+const TripHeroMap = lazy(() => import('../../components/new/trip/TripMapPanel'));
+import type { RpMapHandle } from '../../components/new/map/RpMapCanvas';
+import { RoutePlanner } from '../../components/new/trip/RoutePlanner';
+import { WeatherChip } from '../../components/new/WeatherChip';
+import { boundsOf } from '../../utils/mapBounds';
 import { BookingsPanel, CostsPanel, GearPanel, ItineraryPanel, NotesPanel, type EditStep } from '../../components/new/trip/TripPanels';
 import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, FileText, Kanban, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
@@ -65,6 +70,8 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
     const [sheet, setSheet] = useState<TripSheetTarget | null>(null);
     const [deleting, setDeleting] = useState<Trip | null>(null);
     const trip = useMemo(() => data.trips.find(t => t.id === tripId), [data.trips, tripId]);
+    const mapRef = useRef<RpMapHandle>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
 
     const changeTab = (next: TabId) => {
         setTab(next);
@@ -106,6 +113,8 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
     const step = bucket === 'planned' ? 0 : bucket === 'confirmed' ? (travelling ? 2 : 1) : 3;
     const move = nextMove(bucket);
     const cities = destinationsOf(trip);
+    // Up to three stops on the route that are on the map, each with its weather.
+    const stopsWithWeather = (trip.locations || []).filter(l => l.coordinates).slice(0, 3);
     const split = costSplit(trip);
     const timing = timingOf(trip, today);
     const days = tripDays(trip);
@@ -184,7 +193,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
     const tabItems = ([
         { id: 'itinerary', title: 'Itinerary', icon: CalendarBlank },
         { id: 'canvas', title: 'Canvas', icon: Kanban },
-        { id: 'map', title: 'Map', icon: MapTrifold },
+        { id: 'map', title: 'Route', icon: Path },
         { id: 'bookings', title: 'Bookings', icon: Ticket },
         { id: 'costs', title: 'Costs', icon: Receipt },
         { id: 'gear', title: 'Gear', icon: Backpack },
@@ -195,7 +204,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
     const pill = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-medium outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-current focus-visible:ring-offset-2 active:scale-[0.98]';
 
     return (
-        <div className="custom-scrollbar h-full overflow-y-auto px-3 pt-2 pb-32 sm:px-6 md:pb-16">
+        <div ref={scrollRef} className="custom-scrollbar h-full overflow-y-auto px-3 pt-2 pb-32 sm:px-6 md:pb-16">
             <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-4 lg:gap-6">
                 <div>
                     <button type="button" onClick={onBack} className="inline-flex min-h-11 items-center gap-2 rounded-full pr-3 text-sm font-medium text-rp-muted outline-none hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted">
@@ -203,7 +212,8 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
                     </button>
                 </div>
 
-                <header className={cn('rounded-rp-card p-5 rp-shadow-rest sm:p-8', skin.card)}>
+                <header className={cn('overflow-hidden rounded-rp-card rp-shadow-rest lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]', skin.card)}>
+                    <div className="min-w-0 p-5 sm:p-8">
                     <div className="flex items-start justify-between gap-3">
                         <span className={cn('flex size-12 items-center justify-center rounded-full', skin.panel)}>
                             <RpHugeicon name={trip.hugeicon} size={22} fallback={<Suitcase size={22} aria-hidden />} />
@@ -218,8 +228,18 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
                         <div className="min-w-0">
                             <p className={cn('rp-tabular text-sm', skin.muted)}>{trip.startDate ? formatDateRange(trip.startDate, trip.endDate || trip.startDate) : 'No dates yet'}</p>
                             <h1 className="mt-1 text-[2.25rem] leading-[1.05] font-medium tracking-tight sm:text-[3rem]">{trip.name}</h1>
+                            {stopsWithWeather.length > 0 ? (
+                                <ul className="mt-3 flex flex-wrap gap-2" aria-label="Weather at the stops">
+                                    {stopsWithWeather.map(l => (
+                                        <li key={l.id} className={cn('flex min-h-9 items-center gap-2 rounded-full py-1 pr-1 pl-3 text-sm', skin.panel)}>
+                                            {formatProperLocationName(l.name)}
+                                            <WeatherChip lat={l.coordinates!.lat} lng={l.coordinates!.lng} date={l.startDate} className="bg-rp-surface" />
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : null}
                             {cities.length > 0 ? (
-                                <p className={cn('mt-2 flex items-center gap-1.5 text-base', skin.muted)}>
+                                <p className={cn('mt-3 flex items-center gap-1.5 text-base', skin.muted)}>
                                     <MapPin size={16} className="shrink-0" aria-hidden />
                                     <span className="truncate">{cities.slice(0, SHOW_CITIES).join(' · ')}{cities.length > SHOW_CITIES ? ` · +${cities.length - SHOW_CITIES}` : ''}</span>
                                 </p>
@@ -257,6 +277,12 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
                                 {move.label} <ArrowRight size={16} aria-hidden />
                             </button>
                         ) : null}
+                    </div>
+                    </div>
+                    <div className="p-3 pt-0 lg:p-4 lg:pl-0">
+                        <Suspense fallback={<div className="h-64 animate-pulse rounded-rp-tile bg-rp-on-ink/10 sm:h-80 lg:h-full lg:min-h-[26rem]" aria-busy="true" />}>
+                            <TripHeroMap trip={trip} mapRef={mapRef} className="h-64 rounded-rp-tile sm:h-80 lg:h-full lg:min-h-[26rem]" />
+                        </Suspense>
                     </div>
                 </header>
 
@@ -303,9 +329,15 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
                     {tab === 'itinerary' ? <ItineraryPanel trip={trip} brandfetchApiKey={data.brandfetchApiKey} onEdit={edit} /> : null}
                     {tab === 'canvas' ? <TripCanvas trip={trip} brandfetchApiKey={data.brandfetchApiKey} onEdit={edit} onMoveActivity={moveActivity} onMoveTransport={moveTransport} onMoveStay={moveStay} /> : null}
                     {tab === 'map' ? (
-                        <Suspense fallback={<div className="h-[24rem] animate-pulse rounded-rp-card bg-rp-surface/70 lg:h-[36rem]" aria-busy="true" />}>
-                            <TripMapPanel trip={trip} onSaveStops={async locations => { await data.patch(trip.id, { locations }); }} />
-                        </Suspense>
+                        <RoutePlanner
+                            trip={trip}
+                            onSave={async (transports, locations) => { await data.patch(trip.id, { transports, locations }); }}
+                            onFocus={seg => {
+                                const b = boundsOf([[seg.originLng!, seg.originLat!], [seg.destLng!, seg.destLat!]]);
+                                scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                                if (b) mapRef.current?.fitBounds(b);
+                            }}
+                        />
                     ) : null}
                     {tab === 'bookings' ? <BookingsPanel trip={trip} brandfetchApiKey={data.brandfetchApiKey} onEdit={edit} /> : null}
                     {tab === 'costs' ? <CostsPanel trip={trip} members={members.length} onSaveBudget={target => attempt(async () => { await data.patch(trip.id, { targetBudget: target }); })} /> : null}
