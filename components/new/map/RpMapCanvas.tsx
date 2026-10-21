@@ -469,7 +469,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
 
     // Drawn with MapLibre's own layers so they follow both the flat map and the globe.
     const hex = (c: RGB) => `#${c.map(v => v.toString(16).padStart(2, '0')).join('')}`;
-    const showRoutes = !airportsOnly && mode !== 'scratch' && mode !== 'none';
+    const showRoutes = !airportsOnly && mode !== 'none' && (mode !== 'scratch' || model.routes.length > 0);
     // 'default' (the old Status colouring) no longer exists: stored settings fall back to the gradient.
     const colorMode = appearance.routeColorMode === 'frequency' ? 'frequency' : 'gradient';
 

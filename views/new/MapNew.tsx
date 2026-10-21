@@ -110,7 +110,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
     const changeMode = (m: Mode) => { setMode(m); writeLocal(MODE_KEY, m); setSelection(null); };
     const changeGroup = (v: boolean) => { setGroupAirports(v); writeLocal(GROUP_KEY, v); };
 
-    const model = useMemo(() => buildMapModel(data.filteredTrips, { mode, groupAirports }), [data.filteredTrips, mode, groupAirports]);
+    const model = useMemo(() => buildMapModel(data.filteredTrips, { mode, groupAirports, scratchRoutes: appearance.scratchRoutes }), [data.filteredTrips, mode, groupAirports, appearance.scratchRoutes]);
     const openAipAvailable = Boolean(settings?.openAipApiKey || settings?.configuredKeys?.openAipApiKey);
     const metrics = data.expeditionTypeMetrics;
 
