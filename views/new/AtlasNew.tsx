@@ -3,6 +3,7 @@ import type { VisitedItem } from '../../types';
 import { useAtlasData } from '../../hooks/useAtlasData';
 import { groupByRegion, regionOf, resolveCityText } from '../../utils/atlasModel';
 import { normalizeCountryCode } from '../../services/countryRegistry';
+import { toast } from '../../services/toast';
 import { formatDate } from '../../utils/formatters';
 import ScrollIndex from '../../components/kokonutui/scroll-index';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
