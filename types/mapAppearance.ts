@@ -164,6 +164,7 @@ export interface MapAppearanceSettings {
     showLivedCountries?: boolean; // Show/hide lived (current & past) residence highlights
     showWishlistCountries?: boolean; // Show/hide dream wishlist targets
     showLayoverCountries?: boolean; // Show/hide layover-only transit territories
+    scratchRoutes?: ('flight' | 'land' | 'sea')[]; // New map: route types drawn over the scratch map (none by default)
 }
 
 export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
@@ -200,6 +201,7 @@ export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     showLivedCountries: true,
     showWishlistCountries: true,
     showLayoverCountries: true,
+    scratchRoutes: [],
 };
 
 const MAP_APPEARANCE_STORAGE_KEY = 'wandergrid_map_appearance_v1';
