@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Accommodation, Activity, EntitlementType, GeoCoordinates, Transport, Trip, TripAllocation, User } from '../types';
 import { dataService } from '../services/mockDb';
+import { syncPitStopsToVisited } from '../services/pitStopSync';
 import { affectsCollections } from './useWanderSync';
 import { BUCKET_STATUS, bucketOf, destinationsOf, todayISO, tripDays, type TripBucket } from '../utils/tripsModel';
 
@@ -31,6 +32,15 @@ export interface TripDraft {
 const uid = () => crypto.randomUUID();
 
 /** A full leg from a form's partial one, keeping everything an existing leg already had. */
+/** Road-trip stops count as visited places; this runs after a save and never blocks or fails it. */
+const syncStops = (trip: Trip, before?: Trip) => {
+    (trip.transports || []).forEach(t => {
+        const old = before?.transports?.find(o => o.id === t.id);
+        // Only legs whose stops are new or changed: a save of anything else must not look every stop up again.
+        if (t.waypoints?.length && JSON.stringify(old?.waypoints) !== JSON.stringify(t.waypoints)) void syncPitStopsToVisited(t.waypoints, { date: t.departureDate, origin: t.origin, destination: t.destination }).catch(() => undefined);
+    });
+};
+
 const toTransport = (t: Partial<Transport>, fallbackDate: string): Transport => ({
     type: 'One-Way',
     mode: 'Flight',
@@ -185,6 +195,7 @@ export const useTripsData = () => {
         };
         const saved = await dataService.addTrip(payload);
         setTrips(prev => [...prev, saved]);
+        syncStops(saved);
         return saved;
     }, []);
 
@@ -220,6 +231,7 @@ export const useTripsData = () => {
         replace(next);
         const saved = await guarded(() => dataService.updateTrip(next));
         replace(saved);
+        syncStops(saved, trip);
         return saved;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [load]);

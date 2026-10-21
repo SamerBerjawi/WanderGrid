@@ -19,6 +19,8 @@ import { TripMenu } from './TripMenu';
 import { stayIcon } from './stayIcon';
 import { STAY_ACCENT } from './accents';
 import { MODE_LOOKS, modeLook } from './transportModes';
+import { LegDetails } from './LegDetails';
+import { calculateDistance } from '../../../services/geocoding';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -347,11 +349,26 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
     const reset = () => { setLeg(blank()); setCost(''); setEditing(null); };
     const save = () => {
         if (!valid) return;
-        set('transports', upsert(list, editing, { ...leg, origin: leg.origin!.trim(), destination: leg.destination!.trim(), cost: num(cost) }));
+        // Distance is worked out from the two places when it wasn't typed; empty stops are dropped.
+        const distance = leg.distance ?? (leg.originLat != null && leg.originLng != null && leg.destLat != null && leg.destLng != null
+            ? Math.round(calculateDistance(leg.originLat, leg.originLng, leg.destLat, leg.destLng))
+            : undefined);
+        const waypoints = (leg.waypoints || []).filter(w => w.name.trim()).map(w => ({ ...w, name: w.name.trim() }));
+        set('transports', upsert(list, editing, { ...leg, origin: leg.origin!.trim(), destination: leg.destination!.trim(), cost: num(cost), distance, waypoints: waypoints.length ? waypoints : undefined }));
         reset();
     };
     const edit = (i: number) => { setLeg({ ...list[i] }); setCost(costText(list[i].cost)); setEditing(i); };
-    const remove = (i: number) => { set('transports', list.filter((_, j) => j !== i)); if (editing === i) reset(); else if (editing !== null && editing > i) setEditing(editing - 1); };
+    const remove = (i: number) => {
+        const removed = list[i];
+        let next = list.filter((_, j) => j !== i);
+        // A round trip's price may sit on one leg: removing that leg hands it to a remaining leg of the same booking.
+        if (removed?.cost && removed.itineraryId) {
+            const k = next.findIndex(t => t.itineraryId === removed.itineraryId);
+            if (k >= 0) next = next.map((t, j) => (j === k ? { ...t, cost: (t.cost || 0) + removed.cost! } : t));
+        }
+        set('transports', next);
+        if (editing === i) reset(); else if (editing !== null && editing > i) setEditing(editing - 1);
+    };
 
     return (
         <div className="flex flex-col gap-5">
@@ -436,6 +453,7 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
                     <RpField label="Seat">{id => <input id={id} value={leg.seatNumber || ''} onChange={e => patch({ seatNumber: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
                     <RpField label="Cost">{id => <input id={id} inputMode="decimal" value={cost} onChange={e => setCost(e.target.value)} className={cn(RP_FIELD, 'rp-tabular')} placeholder="0" autoComplete="off" />}</RpField>
                 </div>
+                <LegDetails key={editing ?? 'new'} leg={leg} patch={patch} open={editing !== null && Boolean(leg.waypoints?.length)} />
                 <FormActions editing={editing !== null} valid={valid} addLabel="Add transport" onSave={save} onCancel={reset} />
             </RpSection>
         </div>
