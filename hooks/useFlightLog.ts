@@ -607,6 +607,88 @@ export const useFlightLog = () => {
     window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
   };
 
+  // ---------------- Whole-record writes (the New Flights page) ----------------
+
+  /**
+   * Saves a flight with every field it has (the form-based `saveFlight` rebuilds a flight from its own
+   * fields, which would drop terminals, gates, aircraft and positions). Moves it between a trip and
+   * "no trip" when `tripId` changed, and finds the map position of a place that has none yet.
+   */
+  const saveJourney = async (leg: Transport, tripId: string, original?: { flight: Transport; tripId: string }): Promise<void> => {
+    const withPlaces: Transport = { ...leg };
+    try {
+      const { getCoordinates } = await import('../services/geocoding');
+      if (withPlaces.origin?.trim() && (withPlaces.originLat == null || withPlaces.originGeoKey !== withPlaces.origin)) {
+        const c = await getCoordinates(withPlaces.origin);
+        if (c) { withPlaces.originLat = c.lat; withPlaces.originLng = c.lng; withPlaces.originGeoKey = withPlaces.origin; }
+      }
+      if (withPlaces.destination?.trim() && (withPlaces.destLat == null || withPlaces.destGeoKey !== withPlaces.destination)) {
+        const c = await getCoordinates(withPlaces.destination);
+        if (c) { withPlaces.destLat = c.lat; withPlaces.destLng = c.lng; withPlaces.destGeoKey = withPlaces.destination; }
+      }
+    } catch { /* positions are optional: the flight is saved without them */ }
+
+    const target = tripId !== 'unassigned' ? trips.find(t => t.id === tripId) : undefined;
+    if (tripId !== 'unassigned' && !target) throw new Error('That trip no longer exists.');
+    const from = original?.tripId ?? 'unassigned';
+
+    if (original && from === tripId) {
+      if (tripId === 'unassigned') await dataService.updateFlight(withPlaces);
+      else await dataService.updateTrip({ ...target!, transports: (target!.transports || []).map(t => (t.id === withPlaces.id ? withPlaces : t)) });
+    } else if (original) {
+      const move: { upsertTrips: Trip[]; deleteFlights: string[]; upsertFlights: Transport[] } = { upsertTrips: [], deleteFlights: [], upsertFlights: [] };
+      if (from === 'unassigned') move.deleteFlights.push(original.flight.id);
+      else {
+        const old = trips.find(t => t.id === from);
+        if (old) move.upsertTrips.push({ ...old, transports: (old.transports || []).filter(t => t.id !== original.flight.id) });
+      }
+      if (tripId === 'unassigned') move.upsertFlights.push(withPlaces);
+      else move.upsertTrips.push({ ...target!, transports: [...(target!.transports || []), withPlaces] });
+      await dataService.applyBatch(move);
+    } else if (tripId === 'unassigned') {
+      await dataService.addFlight(withPlaces);
+    } else {
+      await dataService.updateTrip({ ...target!, transports: [...(target!.transports || []), withPlaces] });
+    }
+    refreshData();
+  };
+
+  /** Moves flights to a trip, or to "no trip" (`'unassigned'`), in one transaction. */
+  const assignJourneys = async (records: FlightRecord[], tripId: string): Promise<void> => {
+    const target = tripId !== 'unassigned' ? trips.find(t => t.id === tripId) : undefined;
+    if (tripId !== 'unassigned' && !target) throw new Error('That trip no longer exists.');
+    const moving = records.filter(r => (isUnassigned(r.trip.id) ? 'unassigned' : r.trip.id) !== tripId);
+    if (moving.length === 0) return;
+    const deleteFlights: string[] = [];
+    const touched = new Map<string, Trip>();
+    const edit = (id: string) => {
+      if (!touched.has(id)) { const t = trips.find(x => x.id === id); if (t) touched.set(id, { ...t, transports: [...(t.transports || [])] }); }
+      return touched.get(id);
+    };
+    for (const r of moving) {
+      if (isUnassigned(r.trip.id)) deleteFlights.push(r.flight.id);
+      else { const t = edit(r.trip.id); if (t) t.transports = (t.transports || []).filter(x => x.id !== r.flight.id); }
+    }
+    const upsertFlights: Transport[] = [];
+    if (tripId === 'unassigned') moving.forEach(r => upsertFlights.push({ ...r.flight, itineraryId: '' }));
+    else { const t = edit(tripId)!; t.transports = [...(t.transports || []), ...moving.map(r => ({ ...r.flight }))]; }
+    await dataService.applyBatch({ upsertTrips: Array.from(touched.values()), deleteFlights, upsertFlights });
+    refreshData();
+  };
+
+  /** Deletes flights (from their trips, or the independent list) in one transaction. */
+  const deleteJourneys = async (records: FlightRecord[]): Promise<void> => {
+    const deleteFlights = records.filter(r => isUnassigned(r.trip.id)).map(r => r.flight.id);
+    const byTrip = new Map<string, Trip>();
+    for (const r of records) {
+      if (isUnassigned(r.trip.id)) continue;
+      const base = byTrip.get(r.trip.id) ?? trips.find(t => t.id === r.trip.id) ?? r.trip;
+      byTrip.set(r.trip.id, { ...base, transports: (base.transports || []).filter(t => t.id !== r.flight.id) });
+    }
+    await dataService.applyBatch({ deleteFlights, upsertTrips: Array.from(byTrip.values()) });
+    refreshData();
+  };
+
   // ---------------- Derived ----------------
 
   const filteredFlights = useMemo(() => {
@@ -758,6 +840,8 @@ export const useFlightLog = () => {
     // form
     isEditing, setIsEditing, editingFlight, form, patchForm, openFlightForm, saveFlight, saveDraft, flightFormError, isSavingFlight,
     showManualFields, setShowManualFields, searchedFlights, setSearchedFlights, isRouteSearching, routeSearchError, searchRouteFlights, selectRouteFlight,
+    // whole-record writes
+    saveJourney, assignJourneys, deleteJourneys,
     // derived
     filteredFlights, groupedFlights, groupedByYear, nextUpcomingFlight, metrics, uniqueYears, monthlyData,
   };

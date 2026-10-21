@@ -17,8 +17,8 @@ import { RpChip, RpIconButton, RpLogo, RpSection, RpSheet, RpToggle } from '../u
 import { TripMenu } from './TripMenu';
 import { stayIcon } from './stayIcon';
 import { STAY_ACCENT } from './accents';
-import { LEG_PLACES, MODE_LOOKS, legText, modeLook } from './transportModes';
-import { LegDetails } from './LegDetails';
+import { modeLook } from './transportModes';
+import { LegForm } from './LegForm';
 import { calculateDistance } from '../../../services/geocoding';
 import { cn } from '../../../utils/cn';
 
@@ -325,10 +325,6 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
     const [editing, setEditing] = useState<number | null>(null);
     const list = draft.transports || [];
     const m = modeOf(leg.mode);
-    const places = LEG_PLACES[leg.mode || 'Flight'];
-    const format = legText(leg.mode);
-    // A leg has a position when it was picked here, or looked up on an earlier save for this same text.
-    const located = (text?: string, lat?: number, key?: string) => Boolean(text && lat != null && (key === undefined || key === text));
     const patch = (p: Partial<Transport>) => setLeg(l => ({ ...l, ...p }));
     const valid = Boolean(leg.origin?.trim() && leg.destination?.trim());
 
@@ -381,65 +377,16 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
             ) : null}
 
             <RpSection title={editing !== null ? 'Edit transport' : list.length ? 'Add another' : 'Add a flight, train or ride'} icon={editing !== null ? Airplane : Plus}>
-                <div role="group" aria-label="Type of transport" className="flex flex-wrap gap-2 py-2">
-                    {MODE_LOOKS.map(o => (
-                        <RpChip key={o.mode} selected={leg.mode === o.mode} onClick={() => patch({ mode: o.mode })} className={leg.mode === o.mode ? o.fill : undefined}>
-                            <o.icon size={16} className={leg.mode === o.mode ? undefined : o.text} aria-hidden /> {o.label}
-                        </RpChip>
-                    ))}
-                </div>
-                <div className="grid gap-x-3 sm:grid-cols-2">
-                    <RpField label="From">{id => (
-                        <PlaceField
-                            id={id}
-                            value={leg.origin || ''}
-                            located={located(leg.origin, leg.originLat, leg.originGeoKey)}
-                            placeholder={places.hint}
-                            mode={places.mode}
-                            prefer={places.prefer}
-                            format={format}
-                            pillClassName={m.tint}
-                            onChange={text => patch({ origin: text, originLat: undefined, originLng: undefined, originGeoKey: undefined })}
-                            onPick={(text, c) => patch({ origin: text, originLat: c.lat, originLng: c.lng, originGeoKey: text })}
-                        />
-                    )}</RpField>
-                    <RpField label="To">{id => (
-                        <PlaceField
-                            id={id}
-                            value={leg.destination || ''}
-                            located={located(leg.destination, leg.destLat, leg.destGeoKey)}
-                            placeholder={places.hint}
-                            mode={places.mode}
-                            prefer={places.prefer}
-                            align="end"
-                            // Near the trip's destination first, as a leg usually ends there.
-                            bias={draft.coordinates ? { lat: draft.coordinates.lat, lon: draft.coordinates.lng } : undefined}
-                            format={format}
-                            pillClassName={m.tint}
-                            onChange={text => patch({ destination: text, destLat: undefined, destLng: undefined, destGeoKey: undefined })}
-                            onPick={(text, c) => patch({ destination: text, destLat: c.lat, destLng: c.lng, destGeoKey: text })}
-                        />
-                    )}</RpField>
-                    <RpField label="Departs">{id => <input id={id} type="date" value={leg.departureDate} onChange={e => patch({ departureDate: e.target.value, arrivalDate: leg.arrivalDate && leg.arrivalDate >= e.target.value ? leg.arrivalDate : e.target.value })} className={DATE} />}</RpField>
-                    <RpField label="Departure time">{id => <input id={id} type="time" value={leg.departureTime} onChange={e => patch({ departureTime: e.target.value })} className={DATE} />}</RpField>
-                    <RpField label="Arrives">{id => <input id={id} type="date" value={leg.arrivalDate} min={leg.departureDate || undefined} onChange={e => patch({ arrivalDate: e.target.value })} className={DATE} />}</RpField>
-                    <RpField label="Arrival time">{id => <input id={id} type="time" value={leg.arrivalTime} onChange={e => patch({ arrivalTime: e.target.value })} className={DATE} />}</RpField>
-                </div>
-                <RpField label={leg.mode === 'Flight' ? 'Airline' : 'Operator'}>
-                    {id => (
-                        <div className="flex items-center gap-2">
-                            <RpLogo name={leg.provider} src={leg.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={m.icon} iconClassName={m.text} />
-                            <input id={id} value={leg.provider} onChange={e => patch({ provider: e.target.value })} className={RP_FIELD} placeholder={leg.mode === 'Flight' ? 'KLM' : ''} autoComplete="off" />
-                        </div>
-                    )}
-                </RpField>
-                <div className="grid gap-x-3 sm:grid-cols-2">
-                    <RpField label={m.number}>{id => <input id={id} value={leg.identifier} onChange={e => patch({ identifier: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
-                    <RpField label="Confirmation">{id => <input id={id} value={leg.confirmationCode} onChange={e => patch({ confirmationCode: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
-                    <RpField label="Seat">{id => <input id={id} value={leg.seatNumber || ''} onChange={e => patch({ seatNumber: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
-                    <RpField label="Cost">{id => <input id={id} inputMode="decimal" value={cost} onChange={e => setCost(e.target.value)} className={cn(RP_FIELD, 'rp-tabular')} placeholder="0" autoComplete="off" />}</RpField>
-                </div>
-                <LegDetails key={editing ?? 'new'} leg={leg} patch={patch} open={editing !== null && Boolean(leg.waypoints?.length)} />
+                <LegForm
+                    leg={leg}
+                    patch={patch}
+                    cost={cost}
+                    onCost={setCost}
+                    brandfetchApiKey={brandfetchApiKey}
+                    bias={draft.coordinates}
+                    detailsKey={editing ?? 'new'}
+                    detailsOpen={editing !== null && Boolean(leg.waypoints?.length)}
+                />
                 <FormActions editing={editing !== null} valid={valid} addLabel="Add transport" onSave={save} onCancel={reset} />
             </RpSection>
         </div>

@@ -25,13 +25,13 @@ export interface ShellNavItem {
 export const SHELL_NAV: ShellNavItem[] = [
     { path: '/', label: 'Dashboard', icon: House },
     { path: '/trips-new', label: 'Trips', icon: Suitcase },
-    { path: '/flights', label: 'Flights', icon: Airplane },
+    { path: '/flights-new', label: 'Flights', icon: Airplane },
     { path: '/calendar', label: 'Calendar', icon: CalendarBlank },
     { path: '/atlas-new', label: 'Atlas', icon: Globe },
     { path: '/map-new', label: 'Map', icon: MapTrifold },
 ];
 
-const MOBILE_TABS = ['/', '/trips-new', '/map-new', '/flights'];
+const MOBILE_TABS = ['/', '/trips-new', '/map-new', '/flights-new'];
 
 export interface ShellNewProps {
     currentPath: string;
@@ -195,7 +195,7 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
                     <button type="button" onClick={() => (currentPath === '/trips-new' ? (setSheet(null), window.dispatchEvent(new Event('rp:new-trip'))) : go('/trips-new?new=1'))} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
                         <Suitcase size={20} /> New trip
                     </button>
-                    <button type="button" onClick={() => go('/flights')} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
+                    <button type="button" onClick={() => (currentPath === '/flights-new' ? (setSheet(null), window.dispatchEvent(new Event('rp:new-flight'))) : go('/flights-new?new=1'))} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
                         <Airplane size={20} /> Log a flight
                     </button>
                 </div>
