@@ -297,7 +297,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
                         full={stats.nightsTotal > 0 && stats.nightsBooked >= stats.nightsTotal}
                     />
                     <StatTile
-                        tone="rust"
+                        tone="green"
                         icon={Path}
                         value={stats.distanceKm}
                         unit="km"
@@ -374,10 +374,10 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
     );
 };
 
-/** The tiles are filled with their accent: ink, rust and mustard, each with its own readable text. */
+/** The tiles are filled with their accent: ink, green and mustard, each with its own readable text. */
 const TILE_TONE = {
     ink: { card: 'bg-rp-ink text-rp-on-ink', muted: 'text-rp-on-ink/70', circle: 'bg-rp-on-ink/15' },
-    rust: { card: 'bg-rp-rust text-rp-paper', muted: 'text-rp-paper/80', circle: 'bg-rp-paper/20' },
+    green: { card: 'bg-rp-green text-rp-paper', muted: 'text-rp-paper/80', circle: 'bg-rp-paper/20' },
     mustard: { card: 'bg-rp-mustard text-rp-on-mustard', muted: 'text-rp-on-mustard/70', circle: 'bg-rp-on-mustard/10' },
 } as const;
 
