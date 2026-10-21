@@ -8,7 +8,7 @@ import { formatProperLocationName } from '../../services/geocoding';
 import { errorMessage, toast } from '../../services/toast';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import { RpEmpty } from '../../components/new/ui';
-import { RpChipLabel, RpKpi } from '../../components/new/atlas/AtlasParts';
+import NumberFlow from '@number-flow/react';
 import { RpHugeicon } from '../../components/new/RpHugeicon';
 import { useUndoToast } from '../../components/new/UndoToast';
 import { TripMenu } from '../../components/new/trips/TripMenu';
@@ -22,7 +22,7 @@ import { RoutePlanner } from '../../components/new/trip/RoutePlanner';
 import { WeatherChip } from '../../components/new/WeatherChip';
 import { boundsOf } from '../../utils/mapBounds';
 import { BookingsPanel, CostsPanel, GearPanel, ItineraryPanel, NotesPanel, type EditStep } from '../../components/new/trip/TripPanels';
-import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, FileText, Kanban, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket } from '../../components/ui/hugeicons';
+import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, FileText, Kanban, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket, type Icon } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -212,103 +212,104 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
                     </button>
                 </div>
 
-                <header className={cn('overflow-hidden rounded-rp-card rp-shadow-rest lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]', skin.card)}>
-                    <div className="min-w-0 p-5 sm:p-8">
-                    <div className="flex items-start justify-between gap-3">
-                        <span className={cn('flex size-12 items-center justify-center rounded-full', skin.panel)}>
-                            <RpHugeicon name={trip.hugeicon} size={22} fallback={<Suitcase size={22} aria-hidden />} />
-                        </span>
-                        <div className="flex shrink-0 items-center gap-2">
-                            <button type="button" aria-label={`Edit ${trip.name}`} onClick={() => setSheet({ kind: 'edit', trip })} className={circleBtn}><PencilSimple size={18} aria-hidden /></button>
-                            <TripMenu label={`${trip.name} actions`} items={menu} triggerClassName={cn('!size-11 !rounded-full border !text-current', skin.ring)} />
+                <header className={cn('overflow-hidden rounded-rp-card rp-shadow-rest lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]', skin.card)}>
+                    <div className="min-w-0 p-4 sm:p-5">
+                        <div className="flex items-center justify-between gap-3">
+                            <p className={cn('rp-tabular flex min-w-0 items-center gap-2 text-sm', skin.muted)}>
+                                <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full', skin.panel)}>
+                                    <RpHugeicon name={trip.hugeicon} size={18} fallback={<Suitcase size={18} aria-hidden />} />
+                                </span>
+                                <span className="truncate">{trip.startDate ? formatDateRange(trip.startDate, trip.endDate || trip.startDate) : 'No dates yet'}</span>
+                            </p>
+                            <div className="flex shrink-0 items-center gap-2">
+                                <button type="button" aria-label={`Edit ${trip.name}`} onClick={() => setSheet({ kind: 'edit', trip })} className={circleBtn}><PencilSimple size={18} aria-hidden /></button>
+                                <TripMenu label={`${trip.name} actions`} items={menu} triggerClassName={cn('!size-11 !rounded-full border !text-current', skin.ring)} />
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-                        <div className="min-w-0">
-                            <p className={cn('rp-tabular text-sm', skin.muted)}>{trip.startDate ? formatDateRange(trip.startDate, trip.endDate || trip.startDate) : 'No dates yet'}</p>
-                            <h1 className="mt-1 text-[2.25rem] leading-[1.05] font-medium tracking-tight sm:text-[3rem]">{trip.name}</h1>
-                            {stopsWithWeather.length > 0 ? (
-                                <ul className="mt-3 flex flex-wrap gap-2" aria-label="Weather at the stops">
-                                    {stopsWithWeather.map(l => (
-                                        <li key={l.id} className={cn('flex min-h-9 items-center gap-2 rounded-full py-1 pr-1 pl-3 text-sm', skin.panel)}>
-                                            {formatProperLocationName(l.name)}
-                                            <WeatherChip lat={l.coordinates!.lat} lng={l.coordinates!.lng} date={l.startDate} className="bg-rp-surface" />
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : null}
-                            {cities.length > 0 ? (
-                                <p className={cn('mt-3 flex items-center gap-1.5 text-base', skin.muted)}>
-                                    <MapPin size={16} className="shrink-0" aria-hidden />
-                                    <span className="truncate">{cities.slice(0, SHOW_CITIES).join(' · ')}{cities.length > SHOW_CITIES ? ` · +${cities.length - SHOW_CITIES}` : ''}</span>
+                        <div className="mt-2 flex items-end justify-between gap-4">
+                            <h1 className="min-w-0 text-[1.75rem] leading-[1.1] font-medium tracking-tight sm:text-[2.25rem]">{trip.name}</h1>
+                            {hero ? (
+                                <p className="shrink-0 text-right">
+                                    <span className="rp-tabular block text-[1.75rem] leading-none font-semibold tracking-tight sm:text-[2.25rem]">{hero.text}</span>
+                                    <span className={cn('block text-xs', skin.muted)}>{hero.unit}</span>
                                 </p>
                             ) : null}
                         </div>
-                        {hero ? (
-                            <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 lg:flex-col lg:items-end lg:gap-1">
-                                <span className="rp-tabular text-[3rem] leading-none font-semibold tracking-tight sm:text-[3.5rem]">{hero.text}</span>
-                                <span className={cn('text-sm', skin.muted)}>{hero.unit}</span>
+
+                        {stopsWithWeather.length > 0 ? (
+                            <ul className="mt-3 flex flex-wrap items-center gap-1.5" aria-label="Weather at the stops">
+                                {stopsWithWeather.map(l => (
+                                    <li key={l.id} className={cn('flex min-h-8 items-center gap-1.5 rounded-full py-0.5 pr-0.5 pl-2.5 text-xs', skin.panel)}>
+                                        {formatProperLocationName(l.name)}
+                                        <WeatherChip lat={l.coordinates!.lat} lng={l.coordinates!.lng} date={l.startDate} className="bg-rp-surface" />
+                                    </li>
+                                ))}
+                                {cities.length > stopsWithWeather.length ? <li className={cn('px-1 text-xs', skin.muted)}>+{cities.length - stopsWithWeather.length} more</li> : null}
+                            </ul>
+                        ) : cities.length > 0 ? (
+                            <p className={cn('mt-3 flex items-center gap-1.5 text-sm', skin.muted)}>
+                                <MapPin size={14} className="shrink-0" aria-hidden />
+                                <span className="truncate">{cities.slice(0, SHOW_CITIES).join(' · ')}{cities.length > SHOW_CITIES ? ` · +${cities.length - SHOW_CITIES}` : ''}</span>
                             </p>
                         ) : null}
-                    </div>
 
-                    <ol className="mt-6 grid grid-cols-4 gap-1.5" aria-label="Status">
-                        {STEPS.map((label, i) => (
-                            <li key={label} aria-current={i === step ? 'step' : undefined} className="flex flex-col gap-2">
-                                <span className={cn('h-1.5 rounded-full', i <= step ? skin.bar : skin.track)} />
-                                <span className={cn('truncate text-xs', i === step ? 'font-semibold' : skin.muted)}>{label}</span>
-                            </li>
-                        ))}
-                    </ol>
-
-                    <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                            {members.slice(0, 4).map(u => (
-                                <span key={u.id} className="flex items-center gap-2 text-sm">
-                                    <span className={cn('flex size-9 items-center justify-center rounded-full text-xs font-semibold', skin.panel)}>{initials(u.name)}</span>
-                                    {u.name.split(' ')[0]}
-                                </span>
+                        <ol className="mt-4 grid grid-cols-4 gap-1.5" aria-label="Status">
+                            {STEPS.map((label, i) => (
+                                <li key={label} aria-current={i === step ? 'step' : undefined} className="flex flex-col gap-1.5">
+                                    <span className={cn('h-1 rounded-full', i <= step ? skin.bar : skin.track)} />
+                                    <span className={cn('truncate text-2xs', i === step ? 'font-semibold' : skin.muted)}>{label}</span>
+                                </li>
                             ))}
-                            {members.length > 4 ? <span className={cn('text-sm', skin.muted)}>+{members.length - 4}</span> : null}
+                        </ol>
+
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                {members.slice(0, 4).map(u => (
+                                    <span key={u.id} className="flex items-center gap-1.5 text-sm">
+                                        <span className={cn('flex size-7 items-center justify-center rounded-full text-2xs font-semibold', skin.panel)}>{initials(u.name)}</span>
+                                        {u.name.split(' ')[0]}
+                                    </span>
+                                ))}
+                                {members.length > 4 ? <span className={cn('text-sm', skin.muted)}>+{members.length - 4}</span> : null}
+                            </div>
+                            {move ? (
+                                <button type="button" onClick={() => void moveTo(move.to)} className={cn(pill, skin.primary, '!px-4')}>
+                                    {move.label} <ArrowRight size={16} aria-hidden />
+                                </button>
+                            ) : null}
                         </div>
-                        {move ? (
-                            <button type="button" onClick={() => void moveTo(move.to)} className={cn(pill, skin.primary)}>
-                                {move.label} <ArrowRight size={16} aria-hidden />
-                            </button>
-                        ) : null}
                     </div>
-                    </div>
-                    <div className="p-3 pt-0 lg:p-4 lg:pl-0">
-                        <Suspense fallback={<div className="h-64 animate-pulse rounded-rp-tile bg-rp-on-ink/10 sm:h-80 lg:h-full lg:min-h-[26rem]" aria-busy="true" />}>
-                            <TripHeroMap trip={trip} mapRef={mapRef} className="h-64 rounded-rp-tile sm:h-80 lg:h-full lg:min-h-[26rem]" />
+                    <div className="p-3 pt-0 lg:p-3 lg:pl-0">
+                        <Suspense fallback={<div className="h-36 animate-pulse rounded-rp-tile bg-rp-on-ink/10 sm:h-52 lg:h-full lg:min-h-[15rem]" aria-busy="true" />}>
+                            <TripHeroMap trip={trip} mapRef={mapRef} className="h-36 rounded-rp-tile sm:h-52 lg:h-full lg:min-h-[15rem]" />
                         </Suspense>
                     </div>
                 </header>
 
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-4">
-                    <Tile><RpKpi accent="ink" icon={CalendarBlank} value={days} label={days === 1 ? 'Day' : 'Days'} /></Tile>
-                    <Tile>
-                        <RpKpi
-                            accent="mustard"
-                            icon={Moon}
-                            value={stats.nightsBooked}
-                            label="Nights booked"
-                            chip={stats.nightsTotal > 0 ? <RpChipLabel tone={stats.nightsBooked >= stats.nightsTotal ? 'green' : 'mustard'}>of {stats.nightsTotal}</RpChipLabel> : undefined}
-                        />
-                    </Tile>
-                    <Tile><RpKpi accent="rust" icon={Path} value={stats.distanceKm} format={{ maximumFractionDigits: 0 }} label="km travelled" /></Tile>
-                    <Tile>
-                        <RpKpi
-                            accent="rust"
-                            icon={Airplane}
-                            value={(trip.transports || []).length}
-                            label="Transport"
-                            chip={stats.excursions > 0 ? <RpChipLabel tone="inset">{stats.excursions} {stats.excursions === 1 ? 'excursion' : 'excursions'}</RpChipLabel> : undefined}
-                        />
-                    </Tile>
-                    <Tile><RpKpi accent="mustard" icon={Bed} value={(trip.accommodations || []).length} label="Stays" /></Tile>
-                    <Tile><RpKpi accent="green" icon={Ticket} value={(trip.activities || []).length} label="Activities" /></Tile>
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
+                    <StatTile
+                        accent="bg-rp-ink text-rp-on-ink"
+                        icon={CalendarBlank}
+                        value={days}
+                        unit={days === 1 ? 'day' : 'days'}
+                        sub={stats.nightsTotal > 0 ? `${stats.nightsBooked} of ${stats.nightsTotal} nights booked` : 'Single day'}
+                        full={stats.nightsTotal > 0 && stats.nightsBooked >= stats.nightsTotal}
+                    />
+                    <StatTile
+                        accent="bg-rp-rust text-rp-paper"
+                        icon={Path}
+                        value={stats.distanceKm}
+                        unit="km"
+                        sub={`${(trip.transports || []).length} ${(trip.transports || []).length === 1 ? 'leg' : 'legs'}${stats.excursions > 0 ? ` · ${stats.excursions} ${stats.excursions === 1 ? 'excursion' : 'excursions'}` : ''}`}
+                    />
+                    <StatTile
+                        accent="bg-rp-mustard text-rp-on-mustard"
+                        icon={Bed}
+                        value={(trip.accommodations || []).length}
+                        unit={(trip.accommodations || []).length === 1 ? 'stay' : 'stays'}
+                        sub={`${(trip.activities || []).length} ${(trip.activities || []).length === 1 ? 'activity' : 'activities'}`}
+                    />
                 </div>
 
                 <div className="-m-3 overflow-x-auto p-3 [scrollbar-width:none]">
@@ -373,8 +374,18 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
     );
 };
 
-const Tile: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <div className="flex min-w-0 flex-col justify-center rounded-rp-tile bg-rp-surface p-3 rp-shadow-rest sm:p-4 lg:p-5">{children}</div>
+/** One tile of the trip's numbers: a rolling figure with its unit, and one line of detail. */
+const StatTile: React.FC<{ icon: Icon; accent: string; value: number; unit: string; sub: string; full?: boolean }> = ({ icon: IconC, accent, value, unit, sub, full }) => (
+    <div className="flex min-w-0 items-center gap-3 rounded-rp-tile bg-rp-surface p-3 rp-shadow-rest sm:p-4">
+        <span className={cn('hidden size-10 shrink-0 items-center justify-center rounded-full sm:flex', accent)}><IconC size={18} aria-hidden /></span>
+        <span className="min-w-0">
+            <span className="flex flex-wrap items-baseline gap-x-1.5">
+                <NumberFlow value={value} format={{ maximumFractionDigits: 0 }} className="rp-tabular text-xl leading-tight font-semibold text-rp-ink" />
+                <span className="text-sm text-rp-muted">{unit}</span>
+            </span>
+            <span className={cn('block text-xs leading-snug sm:truncate', full ? 'text-rp-green' : 'text-rp-muted')}>{sub}</span>
+        </span>
+    </div>
 );
 
 export default TripNew;
