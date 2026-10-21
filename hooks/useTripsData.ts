@@ -250,6 +250,18 @@ export const useTripsData = () => {
         return saved;
     }, []);
 
+    /** Saves a change to part of a trip (packing list, notes, an activity) without touching the rest. */
+    const patch = useCallback(async (id: string, changes: Partial<Trip>): Promise<Trip | undefined> => {
+        const current = tripsRef.current.find(t => t.id === id);
+        if (!current) return undefined;
+        const next = { ...current, ...changes };
+        replace(next);
+        const saved = await guarded(() => dataService.updateTrip(next));
+        replace(saved);
+        return saved;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [load]);
+
     /** Puts a trip in a column by changing its status. Returns the status it had, for undo. */
     const setStatus = useCallback(async (id: string, status: Trip['status']): Promise<Trip['status'] | undefined> => {
         const current = tripsRef.current.find(t => t.id === id);
@@ -276,7 +288,7 @@ export const useTripsData = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [load]);
 
-    return { trips, users, entitlements, brandfetchApiKey, loading, error, reload: load, today, active, archived, cancelled, columns, years, stats, create, update, duplicate, setStatus, moveTo, setArchived, remove };
+    return { trips, users, entitlements, brandfetchApiKey, loading, error, reload: load, today, active, archived, cancelled, columns, years, stats, create, update, patch, duplicate, setStatus, moveTo, setArchived, remove };
 };
 
 export type TripsData = ReturnType<typeof useTripsData>;

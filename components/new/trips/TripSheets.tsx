@@ -25,7 +25,8 @@ import { cn } from '../../../utils/cn';
  * and the delete confirmation.
  */
 
-export type TripSheetTarget = { kind: 'create'; bucket: TripBucket } | { kind: 'edit'; trip: Trip };
+/** `step` opens an edit on a given step: 0 Basics, 1 Transport, 2 Stays, 3 Activities. */
+export type TripSheetTarget = { kind: 'create'; bucket: TripBucket } | { kind: 'edit'; trip: Trip; step?: number };
 
 const STATUS_CHOICES: { status: Trip['status']; label: string; icon: Icon; on: string }[] = [
     { status: 'Planning', label: 'Planned', icon: Clock, on: 'bg-rp-mustard text-rp-on-mustard hover:bg-rp-mustard' },
@@ -591,7 +592,7 @@ export const TripSheet: React.FC<{
     useEffect(() => {
         if (!target) return;
         setTouched(false);
-        setStep(0);
+        setStep(target.kind === 'edit' ? target.step ?? 0 : 0);
         setReached(target.kind === 'edit' ? EDIT_STEPS.length - 1 : 0);
         setDraft(target.kind === 'edit'
             ? draftOf(target.trip)
