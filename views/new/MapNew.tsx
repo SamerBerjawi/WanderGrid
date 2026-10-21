@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ROUTE_COLOR_MODES, type RouteColorMode } from '../../components/new/map/routeModes';
 import NumberFlow from '@number-flow/react';
 import { Toolbar, type DockTool } from '../../components/kokonutui/tool-dock';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
@@ -50,7 +49,6 @@ const MODE_PILL: Record<Mode, { bg: string; text: string }> = {
     scratch: { bg: 'bg-rp-mustard', text: 'text-rp-on-mustard' },
 };
 const GROUP_KEY = 'wandergrid_map_new_group_airports';
-const ROUTE_COLOR_KEY = 'wandergrid_map_new_route_color';
 const HEADER = 68;
 
 const readLocal = <T,>(key: string, fallback: T, valid: (v: any) => boolean): T => {
@@ -101,12 +99,6 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
         return () => document.removeEventListener('fullscreenchange', sync);
     }, []);
 
-    // Route colour is a New-map setting (default: one colour per transport mode), kept apart from the
-    // shared appearance so the original map keeps its own choice.
-    const [routeColor, setRouteColor] = useState<RouteColorMode>(
-        () => readLocal<RouteColorMode>(ROUTE_COLOR_KEY, 'mode', v => ROUTE_COLOR_MODES.includes(v))
-    );
-    const changeRouteColor = (v: RouteColorMode) => { setRouteColor(v); writeLocal(ROUTE_COLOR_KEY, v); };
     const updateAppearance = useCallback((patch: Partial<MapAppearanceSettings>) => {
         setAppearance(prev => {
             const next = { ...prev, ...patch };
@@ -304,7 +296,6 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                 defaultBasemapLight={settings?.defaultBasemapLight}
                 defaultBasemapDark={settings?.defaultBasemapDark}
                 padding={padding}
-                routeColorMode={routeColor}
                 onRouteClick={(route: MapRoute) => select({ kind: 'route', route })}
                 onPlaceClick={place => select({ kind: 'place', place })}
                 onCountryClick={(code, name) => select({ kind: 'country', code, name })}
@@ -431,8 +422,6 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                 appearance={appearance}
                 onChange={updateAppearance}
                 onReplace={replaceAppearance}
-                routeColor={routeColor}
-                onRouteColor={changeRouteColor}
                 groupAirports={groupAirports}
                 onGroupAirports={changeGroup}
                 isDark={isDark}

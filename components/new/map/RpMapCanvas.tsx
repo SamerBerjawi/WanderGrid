@@ -62,8 +62,6 @@ export interface RpMapCanvasProps {
     defaultBasemapLight?: string;
     defaultBasemapDark?: string;
     padding: RpMapPadding;
-    /** Route colour (New map setting); defaults to the shared appearance choice. */
-    routeColorMode?: RouteColorMode;
     onRouteClick?: (route: MapRoute) => void;
     onPlaceClick?: (place: MapPlace) => void;
     onCountryClick?: (code: string, name: string) => void;
