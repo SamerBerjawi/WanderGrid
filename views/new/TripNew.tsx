@@ -289,7 +289,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
 
                 <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
                     <StatTile
-                        accent="bg-rp-ink text-rp-on-ink"
+                        tone="ink"
                         icon={CalendarBlank}
                         value={days}
                         unit={days === 1 ? 'day' : 'days'}
@@ -297,14 +297,14 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
                         full={stats.nightsTotal > 0 && stats.nightsBooked >= stats.nightsTotal}
                     />
                     <StatTile
-                        accent="bg-rp-rust text-rp-paper"
+                        tone="rust"
                         icon={Path}
                         value={stats.distanceKm}
                         unit="km"
                         sub={`${(trip.transports || []).length} ${(trip.transports || []).length === 1 ? 'leg' : 'legs'}${stats.excursions > 0 ? ` · ${stats.excursions} ${stats.excursions === 1 ? 'excursion' : 'excursions'}` : ''}`}
                     />
                     <StatTile
-                        accent="bg-rp-mustard text-rp-on-mustard"
+                        tone="mustard"
                         icon={Bed}
                         value={(trip.accommodations || []).length}
                         unit={(trip.accommodations || []).length === 1 ? 'stay' : 'stays'}
@@ -374,18 +374,28 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
     );
 };
 
+/** The tiles are filled with their accent: ink, rust and mustard, each with its own readable text. */
+const TILE_TONE = {
+    ink: { card: 'bg-rp-ink text-rp-on-ink', muted: 'text-rp-on-ink/70', circle: 'bg-rp-on-ink/15' },
+    rust: { card: 'bg-rp-rust text-rp-paper', muted: 'text-rp-paper/80', circle: 'bg-rp-paper/20' },
+    mustard: { card: 'bg-rp-mustard text-rp-on-mustard', muted: 'text-rp-on-mustard/70', circle: 'bg-rp-on-mustard/10' },
+} as const;
+
 /** One tile of the trip's numbers: a rolling figure with its unit, and one line of detail. */
-const StatTile: React.FC<{ icon: Icon; accent: string; value: number; unit: string; sub: string; full?: boolean }> = ({ icon: IconC, accent, value, unit, sub, full }) => (
-    <div className="flex min-w-0 items-center gap-3 rounded-rp-tile bg-rp-surface p-3 rp-shadow-rest sm:p-4">
-        <span className={cn('hidden size-10 shrink-0 items-center justify-center rounded-full sm:flex', accent)}><IconC size={18} aria-hidden /></span>
-        <span className="min-w-0">
-            <span className="flex flex-wrap items-baseline gap-x-1.5">
-                <NumberFlow value={value} format={{ maximumFractionDigits: 0 }} className="rp-tabular text-xl leading-tight font-semibold text-rp-ink" />
-                <span className="text-sm text-rp-muted">{unit}</span>
+const StatTile: React.FC<{ icon: Icon; tone: keyof typeof TILE_TONE; value: number; unit: string; sub: string; full?: boolean }> = ({ icon: IconC, tone, value, unit, sub, full }) => {
+    const t = TILE_TONE[tone];
+    return (
+        <div className={cn('flex min-w-0 items-center gap-3 rounded-rp-tile p-3 rp-shadow-rest sm:p-4', t.card)}>
+            <span className={cn('hidden size-10 shrink-0 items-center justify-center rounded-full sm:flex', t.circle)}><IconC size={18} aria-hidden /></span>
+            <span className="min-w-0">
+                <span className="flex flex-wrap items-baseline gap-x-1.5">
+                    <NumberFlow value={value} format={{ maximumFractionDigits: 0 }} className="rp-tabular text-xl leading-tight font-semibold" />
+                    <span className={cn('text-sm', t.muted)}>{unit}</span>
+                </span>
+                <span className={cn('block text-xs leading-snug sm:truncate', full ? 'font-semibold' : t.muted)}>{full ? `${sub} ✓` : sub}</span>
             </span>
-            <span className={cn('block text-xs leading-snug sm:truncate', full ? 'text-rp-green' : 'text-rp-muted')}>{sub}</span>
-        </span>
-    </div>
-);
+        </div>
+    );
+};
 
 export default TripNew;
