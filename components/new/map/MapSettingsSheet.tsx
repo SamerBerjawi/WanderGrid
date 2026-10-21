@@ -6,7 +6,7 @@ import {
     DEFAULT_MAP_APPEARANCE, ALL_AIRPORT_CATEGORIES, getYesterdayDateString,
     type AirportCategory, type MapAppearanceSettings,
 } from '../../../types/mapAppearance';
-import { Airplane, AirplaneTilt, Airport, Check, EditRoad, MapsGlobal, SquaresUnite, AirplaneLanding, ArrowCounterClockwise, Buildings, CalendarBlank, ChartBar, CirclesThree, CloudRain, Eye, Globe, Heart, House, Lightning, Maping, MapPin, MapTrifold, Moon, Mountains, MountainSnow, Palette, Path, Planet, RoadHorizon, SlidersHorizontal, Sparkle, Stack, Sun, SunHorizon, Train, TrendUp } from '../../ui/hugeicons';
+import { Airplane, AirplaneTilt, Airport, Boat, Check, EditRoad, MapsGlobal, SquaresUnite, AirplaneLanding, ArrowCounterClockwise, Buildings, CalendarBlank, ChartBar, CirclesThree, CloudRain, Eye, Globe, Heart, House, Lightning, Maping, MapPin, MapTrifold, Moon, Mountains, MountainSnow, Palette, Path, Planet, RoadHorizon, SlidersHorizontal, Sparkle, Stack, Sun, SunHorizon, Train, TrendUp } from '../../ui/hugeicons';
 import { cn } from '../../../utils/cn';
 import { RpChip, RpRow, RpSection, RpSheet, RpSlider, RpToggle, useIsMobile } from '../ui';
 
@@ -276,6 +276,11 @@ export const MapSettingsSheet: React.FC<MapSettingsSheetProps> = ({
                 <RpToggle icon={House} label="Lived in" checked={a.showLivedCountries !== false} onChange={v => onChange({ showLivedCountries: v })} />
                 <RpToggle icon={AirplaneLanding} label="Layovers" checked={a.showLayoverCountries !== false} onChange={v => onChange({ showLayoverCountries: v })} />
                 <RpToggle icon={Heart} label="Wishlist" checked={a.showWishlistCountries !== false} onChange={v => onChange({ showWishlistCountries: v })} />
+            </RpSection>
+            <RpSection icon={Path} title="Routes on the scratch map">
+                {([['flight', Airplane, 'Flights'], ['land', Train, 'Land'], ['sea', Boat, 'Sea']] as const).map(([kind, icon, label]) => (
+                    <RpToggle key={kind} icon={icon} label={label} checked={(a.scratchRoutes || []).includes(kind)} onChange={v => onChange({ scratchRoutes: toggleIn(a.scratchRoutes, kind) })} />
+                ))}
             </RpSection>
         </div>
     );
