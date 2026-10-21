@@ -105,3 +105,10 @@ export const targetBudgetOf = (trip: Trip): number | undefined => {
     const legacy = Number((trip as unknown as { customFields?: Array<{ key: string; value: string }> }).customFields?.find(f => f.key === 'targetBudget')?.value);
     return legacy > 0 ? legacy : undefined;
 };
+
+/** An ISO date moved by whole days (UTC, so daylight saving never shifts it). */
+export const shiftDate = (date: string | undefined, days: number): string => {
+    if (!date) return '';
+    const t = toTime(date);
+    return Number.isNaN(t) ? date : iso(t + days * DAY_MS);
+};

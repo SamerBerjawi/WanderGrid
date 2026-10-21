@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { DndContext, DragOverlay, KeyboardSensor, MouseSensor, TouchSensor, pointerWithin, useDraggable, useDroppable, useSensor, useSensors, type CollisionDetection, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
 import type { Accommodation, Activity, Transport, Trip } from '../../../types';
 import { buildDays, type DayItem, type TripDay } from '../../../utils/tripItinerary';
 import { formatDate } from '../../../utils/formatters';
 import { Airplane, Bed, CalendarBlank, Moon, Plus } from '../../ui/hugeicons';
-import { RpEmpty, RpLogo } from '../ui';
+import { RpEmpty, RpLogo, useIsMobile } from '../ui';
 import { MODE_ICON, money, nights } from '../trips/TripDetailsModal';
 import { stayIcon } from '../trips/stayIcon';
 import { STAY_ACCENT, TRANSPORT_ACCENT } from '../trips/accents';
@@ -16,7 +17,47 @@ import { cn } from '../../../utils/cn';
  * Transport, Stay and Activities side by side. A stay is one bar that runs from its check-in
  * afternoon to its check-out morning, so the nights you have a bed (and the ones you don't) show at
  * a glance. Phones stack the same things in one card per day.
+ *
+ * Activities, transport legs and stays can be dragged to another day (mouse, a long press on touch, or
+ * the keyboard); a leg or stay keeps its length and moves as a whole.
  */
+
+export type CanvasKind = 'activity' | 'transport' | 'stay';
+export interface CanvasMoves {
+    /** Moves an activity to a day. */
+    onMoveActivity: (id: string, date: string) => void;
+    /** Moves a leg by whole days; its arrival moves with it. */
+    onMoveTransport: (id: string, deltaDays: number) => void;
+    /** Moves a stay by whole days; check-out moves with it. */
+    onMoveStay: (id: string, deltaDays: number) => void;
+}
+
+interface DragData { kind: CanvasKind; id: string; dayIndex: number }
+interface DropData { kind: CanvasKind; date: string; dayIndex: number }
+
+/** Only a drop cell of the dragged thing's own kind counts, under the pointer. */
+const collision: CollisionDetection = args => {
+    const kind = (args.active.data.current as DragData | undefined)?.kind;
+    return pointerWithin({ ...args, droppableContainers: args.droppableContainers.filter(c => (c.data.current as DropData | undefined)?.kind === kind) });
+};
+
+const Draggable: React.FC<{ id: string; data: DragData; label: string; className?: string; style?: React.CSSProperties; children: React.ReactNode }> = ({ id, data, label, className, style, children }) => {
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id, data });
+    return (
+        <div ref={setNodeRef} {...attributes} {...listeners} aria-label={label} style={style} className={cn(className, isDragging && 'opacity-30')}>
+            {children}
+        </div>
+    );
+};
+
+const DropCell: React.FC<{ id: string; data: DropData; className?: string; style?: React.CSSProperties; role?: string; children?: React.ReactNode }> = ({ id, data, className, style, role, children }) => {
+    const { setNodeRef, isOver } = useDroppable({ id, data });
+    return (
+        <div ref={setNodeRef} role={role} style={style} className={cn(className, isOver && 'rounded-rp-inset bg-rp-mustard/20 ring-2 ring-rp-mustard')}>
+            {children}
+        </div>
+    );
+};
 
 const HEAD = 'sticky top-0 z-raised flex items-center gap-2 bg-rp-canvas/95 px-3 pb-3 text-xs font-medium text-rp-muted backdrop-blur-sm';
 const CHIP = 'flex min-h-11 w-full min-w-0 items-center gap-2 rounded-rp-inset bg-rp-inset px-2.5 text-left outline-none transition-colors duration-150 hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted';
@@ -124,93 +165,160 @@ const dayTitle = (d: TripDay) => (
     </>
 );
 
-export const TripCanvas: React.FC<{ trip: Trip; brandfetchApiKey?: string; onEdit: (step: EditStep) => void }> = ({ trip, brandfetchApiKey, onEdit }) => {
+export const TripCanvas: React.FC<{ trip: Trip; brandfetchApiKey?: string; onEdit: (step: EditStep) => void } & CanvasMoves> = ({
+    trip, brandfetchApiKey, onEdit, onMoveActivity, onMoveTransport, onMoveStay,
+}) => {
+    const mobile = useIsMobile();
     const days = useMemo(() => buildDays(trip), [trip]);
     const { spans, gaps } = useMemo(() => layoutStays(trip, days), [trip, days]);
+    const [dragging, setDragging] = useState<{ kind: CanvasKind; id: string; label: string } | null>(null);
+    const sensors = useSensors(
+        useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
+        useSensor(KeyboardSensor)
+    );
     if (days.length === 0) {
         return <div className="rounded-rp-card bg-rp-surface rp-shadow-rest"><RpEmpty title="No dates yet">Add the trip's dates and the canvas fills in.</RpEmpty></div>;
     }
+    const dayIndex = new Map(days.map((d, i) => [d.date, i]));
     const transport = (d: TripDay) => d.items.filter((i): i is Extract<DayItem, { kind: 'transport' }> => i.kind === 'transport');
     const activities = (d: TripDay) => d.items.filter((i): i is Extract<DayItem, { kind: 'activity' }> => i.kind === 'activity');
     // The stay that holds the night after a day (afternoon slot), for the phone cards.
     const stayAfter = (i: number) => spans.find(s => s.first <= 2 * i + 1 && s.last >= 2 * i + 1);
     const gapAfter = (i: number) => gaps.find(g => g.first <= 2 * i + 1 && g.last >= 2 * i + 1);
 
+    const onDragStart = (e: DragStartEvent) => {
+        const d = e.active.data.current as DragData | undefined;
+        if (d) setDragging({ kind: d.kind, id: d.id, label: String(e.active.id) });
+    };
+    const onDragEnd = (e: DragEndEvent) => {
+        setDragging(null);
+        const from = e.active.data.current as DragData | undefined;
+        const to = e.over?.data.current as DropData | undefined;
+        if (!from || !to || from.kind !== to.kind || from.dayIndex === to.dayIndex) return;
+        const delta = to.dayIndex - from.dayIndex;
+        if (from.kind === 'activity') onMoveActivity(from.id, to.date);
+        else if (from.kind === 'transport') onMoveTransport(from.id, delta);
+        else onMoveStay(from.id, delta);
+    };
+
+    // What follows the pointer: a copy of the chip being dragged.
+    const overlay = (() => {
+        if (!dragging) return null;
+        if (dragging.kind === 'stay') {
+            const sp = spans.find(x => x.stay.id === dragging.id);
+            return sp ? <StayBar span={sp} brandfetchApiKey={brandfetchApiKey} onClick={() => undefined} className="w-64 rp-shadow-float" /> : null;
+        }
+        for (const d of days) {
+            const it = d.items.find(x => x.kind === dragging.kind && (x.item as { id: string }).id === dragging.id);
+            if (!it) continue;
+            return (
+                <div className="w-64 rp-shadow-float">
+                    {it.kind === 'transport' ? <TransportChip item={it} brandfetchApiKey={brandfetchApiKey} onClick={() => undefined} />
+                        : it.kind === 'activity' ? <ActivityChip item={it} onClick={() => undefined} /> : null}
+                </div>
+            );
+        }
+        return null;
+    })();
+
+    const transportChip = (it: Extract<DayItem, { kind: 'transport' }>, i: number) => it.part === 'depart' ? (
+        <Draggable key={it.id} id={`transport:${it.item.id}`} data={{ kind: 'transport', id: it.item.id, dayIndex: i }} label={`Move ${it.item.origin} to ${it.item.destination}`}>
+            <TransportChip item={it} brandfetchApiKey={brandfetchApiKey} onClick={() => onEdit(1)} />
+        </Draggable>
+    ) : <TransportChip key={it.id} item={it} brandfetchApiKey={brandfetchApiKey} onClick={() => onEdit(1)} />;
+    const activityChip = (it: Extract<DayItem, { kind: 'activity' }>, i: number) => (
+        <Draggable key={it.id} id={`activity:${it.item.id}`} data={{ kind: 'activity', id: it.item.id, dayIndex: i }} label={`Move ${it.item.title}`}>
+            <ActivityChip item={it} onClick={() => onEdit(3)} />
+        </Draggable>
+    );
+
     return (
-        <div className="rounded-rp-card bg-rp-surface p-3 rp-shadow-rest sm:p-5">
-            {/* Tablets and up: rows are days, columns are Transport, Stay and Activities. */}
-            <div
-                role="table"
-                aria-label="Trip canvas"
-                className="hidden gap-x-3 md:grid md:grid-cols-[6rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)]"
-                style={{ gridAutoRows: 'minmax(2.75rem, auto)' }}
-            >
-                <div role="columnheader" className={HEAD} style={{ gridColumn: 1, gridRow: 1 }}><CalendarBlank size={14} aria-hidden /> Day</div>
-                <div role="columnheader" className={HEAD} style={{ gridColumn: 2, gridRow: 1 }}><Airplane size={14} className={TRANSPORT_ACCENT} aria-hidden /> Transport</div>
-                <div role="columnheader" className={HEAD} style={{ gridColumn: 3, gridRow: 1 }}><Bed size={14} className={STAY_ACCENT} aria-hidden /> Stay</div>
-                <div role="columnheader" className={HEAD} style={{ gridColumn: 4, gridRow: 1 }}><CalendarBlank size={14} className="text-rp-green" aria-hidden /> Activities</div>
+        <DndContext sensors={sensors} collisionDetection={collision} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
+            <div className="rounded-rp-card bg-rp-surface p-3 rp-shadow-rest sm:p-5">
+                {mobile ? (
+                    /* Phones: one card per day. */
+                    <ol className="flex flex-col gap-3" aria-label="Trip canvas">
+                        {days.map((d, i) => {
+                            const stay = stayAfter(i);
+                            const gap = gapAfter(i);
+                            return (
+                                <li key={d.date} className="rounded-rp-tile bg-rp-inset p-3">
+                                    <div className="mb-2 flex items-baseline justify-between gap-3">
+                                        <h3 className="text-sm font-medium text-rp-ink">{formatDate(d.date, 'long')}</h3>
+                                        <span className="text-xs text-rp-muted">{d.number > 0 ? `Day ${d.number}` : 'Outside the trip'}</span>
+                                    </div>
+                                    <DropCell id={`activity:${d.date}`} data={{ kind: 'activity', date: d.date, dayIndex: i }} className="flex flex-col gap-1.5">
+                                        {activities(d).map(it => activityChip(it, i))}
+                                    </DropCell>
+                                    <DropCell id={`transport:${d.date}`} data={{ kind: 'transport', date: d.date, dayIndex: i }} className="mt-1.5 flex flex-col gap-1.5">
+                                        {transport(d).map(it => transportChip(it, i))}
+                                    </DropCell>
+                                    <div className="mt-1.5 flex flex-col gap-1.5">
+                                        {stay ? (
+                                            stay.first === 2 * i + 1 ? <StayBar span={stay} brandfetchApiKey={brandfetchApiKey} onClick={() => onEdit(2)} /> : (
+                                                <p className="flex min-h-11 items-center gap-2 px-1 text-xs text-rp-muted"><Moon size={14} aria-hidden /> Staying at {stay.stay.name}</p>
+                                            )
+                                        ) : gap ? <GapBar onClick={() => onEdit(2)} /> : null}
+                                    </div>
+                                    <div className="mt-1 flex flex-wrap gap-1">
+                                        <button type="button" onClick={() => onEdit(1)} className={ADD}><Plus size={14} aria-hidden /> Transport</button>
+                                        <button type="button" onClick={() => onEdit(3)} className={ADD}><Plus size={14} aria-hidden /> Activity</button>
+                                    </div>
+                                </li>
+                            );
+                        })}
+                    </ol>
+                ) : (
+                    /* Tablets and up: rows are days, columns are Transport, Stay and Activities. */
+                    <div
+                        role="table"
+                        aria-label="Trip canvas"
+                        className="grid gap-x-3 md:grid-cols-[6rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)]"
+                        style={{ gridAutoRows: 'minmax(2.75rem, auto)' }}
+                    >
+                        <div role="columnheader" className={HEAD} style={{ gridColumn: 1, gridRow: 1 }}><CalendarBlank size={14} aria-hidden /> Day</div>
+                        <div role="columnheader" className={HEAD} style={{ gridColumn: 2, gridRow: 1 }}><Airplane size={14} className={TRANSPORT_ACCENT} aria-hidden /> Transport</div>
+                        <div role="columnheader" className={HEAD} style={{ gridColumn: 3, gridRow: 1 }}><Bed size={14} className={STAY_ACCENT} aria-hidden /> Stay</div>
+                        <div role="columnheader" className={HEAD} style={{ gridColumn: 4, gridRow: 1 }}><CalendarBlank size={14} className="text-rp-green" aria-hidden /> Activities</div>
 
-                {days.map((d, i) => {
-                    const row = `${2 * i + 2} / span 2`;
-                    return (
-                        <React.Fragment key={d.date}>
-                            <div role="rowheader" className="border-t border-rp-line py-2 pr-2" style={{ gridColumn: 1, gridRow: row }}>{dayTitle(d)}</div>
-                            <div role="cell" className="flex flex-col gap-1.5 border-t border-rp-line py-2" style={{ gridColumn: 2, gridRow: row }}>
-                                {transport(d).map(it => <TransportChip key={it.id} item={it} brandfetchApiKey={brandfetchApiKey} onClick={() => onEdit(1)} />)}
-                                <button type="button" onClick={() => onEdit(1)} className={cn(ADD, 'self-start')} aria-label={`Add transport on ${formatDate(d.date, 'short')}`}><Plus size={14} aria-hidden /> Add</button>
-                            </div>
-                            <div role="cell" className="border-t border-rp-line" style={{ gridColumn: 3, gridRow: row }} aria-hidden />
-                            <div role="cell" className="flex flex-col gap-1.5 border-t border-rp-line py-2" style={{ gridColumn: 4, gridRow: row }}>
-                                {activities(d).map(it => <ActivityChip key={it.id} item={it} onClick={() => onEdit(3)} />)}
-                                <button type="button" onClick={() => onEdit(3)} className={cn(ADD, 'self-start')} aria-label={`Add activity on ${formatDate(d.date, 'short')}`}><Plus size={14} aria-hidden /> Add</button>
-                            </div>
-                        </React.Fragment>
-                    );
-                })}
+                        {days.map((d, i) => {
+                            const row = `${2 * i + 2} / span 2`;
+                            return (
+                                <React.Fragment key={d.date}>
+                                    <div role="rowheader" className="border-t border-rp-line py-2 pr-2" style={{ gridColumn: 1, gridRow: row }}>{dayTitle(d)}</div>
+                                    <DropCell id={`transport:${d.date}`} data={{ kind: 'transport', date: d.date, dayIndex: i }} role="cell" className="flex flex-col gap-1.5 border-t border-rp-line py-2" style={{ gridColumn: 2, gridRow: row }}>
+                                        {transport(d).map(it => transportChip(it, i))}
+                                        <button type="button" onClick={() => onEdit(1)} className={cn(ADD, 'self-start')} aria-label={`Add transport on ${formatDate(d.date, 'short')}`}><Plus size={14} aria-hidden /> Add</button>
+                                    </DropCell>
+                                    <DropCell id={`stay:${d.date}`} data={{ kind: 'stay', date: d.date, dayIndex: i }} role="cell" className="border-t border-rp-line" style={{ gridColumn: 3, gridRow: row }} />
+                                    <DropCell id={`activity:${d.date}`} data={{ kind: 'activity', date: d.date, dayIndex: i }} role="cell" className="flex flex-col gap-1.5 border-t border-rp-line py-2" style={{ gridColumn: 4, gridRow: row }}>
+                                        {activities(d).map(it => activityChip(it, i))}
+                                        <button type="button" onClick={() => onEdit(3)} className={cn(ADD, 'self-start')} aria-label={`Add activity on ${formatDate(d.date, 'short')}`}><Plus size={14} aria-hidden /> Add</button>
+                                    </DropCell>
+                                </React.Fragment>
+                            );
+                        })}
 
-                {spans.map(sp => (
-                    <StayBar
-                        key={sp.stay.id}
-                        span={sp}
-                        brandfetchApiKey={brandfetchApiKey}
-                        onClick={() => onEdit(2)}
-                        className="z-raised my-1"
-                        style={{ gridColumn: 3, gridRow: `${sp.first + 2} / ${sp.last + 3}` }}
-                    />
-                ))}
-                {gaps.map(g => (
-                    <GapBar key={`${g.first}`} onClick={() => onEdit(2)} className="z-raised my-1" style={{ gridColumn: 3, gridRow: `${g.first + 2} / ${g.last + 3}` }} />
-                ))}
+                        {spans.map(sp => (
+                            <Draggable
+                                key={sp.stay.id}
+                                id={`stay:${sp.stay.id}`}
+                                data={{ kind: 'stay', id: sp.stay.id, dayIndex: Math.floor(sp.first / 2) }}
+                                label={`Move ${sp.stay.name}`}
+                                className="z-raised my-1 flex"
+                                style={{ gridColumn: 3, gridRow: `${sp.first + 2} / ${sp.last + 3}` }}
+                            >
+                                <StayBar span={sp} brandfetchApiKey={brandfetchApiKey} onClick={() => onEdit(2)} className="w-full" />
+                            </Draggable>
+                        ))}
+                        {gaps.map(g => (
+                            <GapBar key={`${g.first}`} onClick={() => onEdit(2)} className="z-raised my-1" style={{ gridColumn: 3, gridRow: `${g.first + 2} / ${g.last + 3}` }} />
+                        ))}
+                    </div>
+                )}
             </div>
-
-            {/* Phones: one card per day. */}
-            <ol className="flex flex-col gap-3 md:hidden" aria-label="Trip canvas">
-                {days.map((d, i) => {
-                    const stay = stayAfter(i);
-                    const gap = gapAfter(i);
-                    return (
-                        <li key={d.date} className="rounded-rp-tile bg-rp-inset p-3">
-                            <div className="mb-2 flex items-baseline justify-between gap-3">
-                                <h3 className="text-sm font-medium text-rp-ink">{formatDate(d.date, 'long')}</h3>
-                                <span className="text-xs text-rp-muted">{d.number > 0 ? `Day ${d.number}` : 'Outside the trip'}</span>
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                                {transport(d).map(it => <TransportChip key={it.id} item={it} brandfetchApiKey={brandfetchApiKey} onClick={() => onEdit(1)} />)}
-                                {activities(d).map(it => <ActivityChip key={it.id} item={it} onClick={() => onEdit(3)} />)}
-                                {stay ? (
-                                    stay.first === 2 * i + 1 ? <StayBar span={stay} brandfetchApiKey={brandfetchApiKey} onClick={() => onEdit(2)} /> : (
-                                        <p className="flex min-h-11 items-center gap-2 px-1 text-xs text-rp-muted"><Moon size={14} aria-hidden /> Staying at {stay.stay.name}</p>
-                                    )
-                                ) : gap ? <GapBar onClick={() => onEdit(2)} /> : null}
-                            </div>
-                            <div className="mt-1 flex flex-wrap gap-1">
-                                <button type="button" onClick={() => onEdit(1)} className={ADD}><Plus size={14} aria-hidden /> Transport</button>
-                                <button type="button" onClick={() => onEdit(3)} className={ADD}><Plus size={14} aria-hidden /> Activity</button>
-                            </div>
-                        </li>
-                    );
-                })}
-            </ol>
-        </div>
+            <DragOverlay>{overlay}</DragOverlay>
+        </DndContext>
     );
 };

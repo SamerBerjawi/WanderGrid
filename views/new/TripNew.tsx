@@ -2,8 +2,8 @@ import React, { lazy, Suspense, useMemo, useState } from 'react';
 import type { PackingItem, Trip, User } from '../../types';
 import { useTripsData, type TripDraft } from '../../hooks/useTripsData';
 import { bucketOf, canMoveTo, destinationsOf, isTravelling, timingOf, todayISO, tripDays, type TripBucket } from '../../utils/tripsModel';
-import { costSplit, tripStats } from '../../utils/tripItinerary';
-import { formatCurrency, formatDateRange } from '../../utils/formatters';
+import { costSplit, shiftDate, tripStats } from '../../utils/tripItinerary';
+import { formatCurrency, formatDate, formatDateRange } from '../../utils/formatters';
 import { errorMessage, toast } from '../../services/toast';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import { RpEmpty } from '../../components/new/ui';
@@ -148,6 +148,37 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
     const menu = tripMenuItems(trip, bucket, actions).filter(i => i.id !== 'open' || Boolean(onOpenOriginal));
     const edit = (s: EditStep) => setSheet({ kind: 'edit', trip, step: s });
 
+    // Canvas drags: each change is saved at once and can be undone.
+    const moved = (message: string, undoChanges: Partial<Trip>, changes: Partial<Trip>) => attempt(async () => {
+        await data.patch(trip.id, changes);
+        undo.show(message, () => attempt(async () => { await data.patch(trip.id, undoChanges); }));
+    });
+    const moveActivity = (id: string, date: string) => {
+        const list = trip.activities || [];
+        const item = list.find(a => a.id === id);
+        if (!item || item.date === date) return;
+        void moved(`Moved ${item.title} to ${formatDate(date, 'short')}`, { activities: list }, { activities: list.map(a => (a.id === id ? { ...a, date } : a)) });
+    };
+    const moveTransport = (id: string, delta: number) => {
+        const list = trip.transports || [];
+        const item = list.find(t => t.id === id);
+        if (!item || delta === 0) return;
+        void moved(
+            `Moved ${item.origin} to ${item.destination} by ${Math.abs(delta)} ${Math.abs(delta) === 1 ? 'day' : 'days'}`,
+            { transports: list },
+            { transports: list.map(t => (t.id === id ? { ...t, departureDate: shiftDate(t.departureDate, delta), arrivalDate: shiftDate(t.arrivalDate, delta) } : t)) }
+        );
+    };
+    const moveStay = (id: string, delta: number) => {
+        const list = trip.accommodations || [];
+        const item = list.find(a => a.id === id);
+        if (!item || delta === 0) return;
+        void moved(
+            `Moved ${item.name} by ${Math.abs(delta)} ${Math.abs(delta) === 1 ? 'day' : 'days'}`,
+            { accommodations: list },
+            { accommodations: list.map(a => (a.id === id ? { ...a, checkInDate: shiftDate(a.checkInDate, delta), checkOutDate: shiftDate(a.checkOutDate, delta) } : a)) }
+        );
+    };
     const savePacking = (items: PackingItem[]) => attempt(async () => { await data.patch(trip.id, { packingList: items }); });
 
     const tabItems = ([
@@ -270,7 +301,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
 
                 <section aria-label={tabItems.find(t => t.id === tab)?.title}>
                     {tab === 'itinerary' ? <ItineraryPanel trip={trip} brandfetchApiKey={data.brandfetchApiKey} onEdit={edit} /> : null}
-                    {tab === 'canvas' ? <TripCanvas trip={trip} brandfetchApiKey={data.brandfetchApiKey} onEdit={edit} /> : null}
+                    {tab === 'canvas' ? <TripCanvas trip={trip} brandfetchApiKey={data.brandfetchApiKey} onEdit={edit} onMoveActivity={moveActivity} onMoveTransport={moveTransport} onMoveStay={moveStay} /> : null}
                     {tab === 'map' ? (
                         <Suspense fallback={<div className="h-[24rem] animate-pulse rounded-rp-card bg-rp-surface/70 lg:h-[36rem]" aria-busy="true" />}>
                             <TripMapPanel trip={trip} onSaveStops={async locations => { await data.patch(trip.id, { locations }); }} />
