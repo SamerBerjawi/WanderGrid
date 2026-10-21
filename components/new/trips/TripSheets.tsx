@@ -17,7 +17,8 @@ import { RpHugeicon } from '../RpHugeicon';
 import { RpChip, RpIconButton, RpLogo, RpSection, RpSheet, RpToggle } from '../ui';
 import { TripMenu } from './TripMenu';
 import { stayIcon } from './stayIcon';
-import { STAY_ACCENT, TRANSPORT_ACCENT } from './accents';
+import { STAY_ACCENT } from './accents';
+import { MODE_LOOKS, modeLook } from './transportModes';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -35,15 +36,6 @@ const STATUS_CHOICES: { status: Trip['status']; label: string; icon: Icon; on: s
     { status: 'Past', label: 'Past', icon: CheckCircle, on: 'bg-rp-ink text-rp-on-ink hover:bg-rp-ink' },
 ];
 
-const MODES: { mode: TransportMode; label: string; icon: Icon; number: string }[] = [
-    { mode: 'Flight', label: 'Flight', icon: Airplane, number: 'Flight number' },
-    { mode: 'Train', label: 'Train', icon: Train, number: 'Train number' },
-    { mode: 'Bus', label: 'Bus', icon: Bus, number: 'Route number' },
-    { mode: 'Car Rental', label: 'Car rental', icon: Car, number: 'Booking number' },
-    { mode: 'Personal Car', label: 'Own car', icon: CarProfile, number: 'Plate' },
-    { mode: 'Cruise', label: 'Cruise', icon: Boat, number: 'Booking number' },
-    { mode: 'Ferry', label: 'Ferry', icon: Boat, number: 'Booking number' },
-];
 
 const STAY_TYPES: Accommodation['type'][] = ['Hotel', 'Airbnb', 'Resort', 'Villa', 'Apartment', 'Hostel', 'Campground', 'Friends/Family'];
 const ACTIVITY_TYPES = ['Activity', 'Dining', 'Tour', 'Sightseeing', 'Museum', 'Outdoor', 'Entertainment', 'Shopping', 'Wellness', 'Nightlife'];
@@ -313,7 +305,7 @@ const FormActions: React.FC<{ editing: boolean; valid: boolean; addLabel: string
     </div>
 );
 
-const modeOf = (mode?: TransportMode) => MODES.find(m => m.mode === mode) ?? MODES[0];
+const modeOf = modeLook;
 
 /** Replace item `at` (when editing) or append, and give back the new list. */
 const upsert = <T,>(list: T[], at: number | null, item: T): T[] => (at === null ? [...list, item] : list.map((x, i) => (i === at ? item : x)));
@@ -372,7 +364,7 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
                                 <ItemRow
                                     key={t.id || i}
                                     active={editing === i}
-                                    logo={<RpLogo name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={tm.icon} iconClassName={TRANSPORT_ACCENT} />}
+                                    logo={<RpLogo name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={tm.icon} iconClassName={tm.text} />}
                                     title={`${t.origin} → ${t.destination}`}
                                     meta={[t.provider, t.departureDate ? formatDate(t.departureDate, 'short') : '', t.cost != null ? formatCurrency(t.cost) : ''].filter(Boolean).join(' · ') || tm.label}
                                     onEdit={() => edit(i)}
@@ -387,8 +379,10 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
 
             <RpSection title={editing !== null ? 'Edit transport' : list.length ? 'Add another' : 'Add a flight, train or ride'} icon={editing !== null ? Airplane : Plus}>
                 <div role="group" aria-label="Type of transport" className="flex flex-wrap gap-2 py-2">
-                    {MODES.map(o => (
-                        <RpChip key={o.mode} selected={leg.mode === o.mode} onClick={() => patch({ mode: o.mode })}><o.icon size={16} aria-hidden /> {o.label}</RpChip>
+                    {MODE_LOOKS.map(o => (
+                        <RpChip key={o.mode} selected={leg.mode === o.mode} onClick={() => patch({ mode: o.mode })} className={leg.mode === o.mode ? o.fill : undefined}>
+                            <o.icon size={16} className={leg.mode === o.mode ? undefined : o.text} aria-hidden /> {o.label}
+                        </RpChip>
                     ))}
                 </div>
                 <div className="grid gap-x-3 sm:grid-cols-2">
@@ -401,6 +395,7 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
                             mode={places.mode}
                             prefer={places.prefer}
                             format={format}
+                            pillClassName={m.tint}
                             onChange={text => patch({ origin: text, originLat: undefined, originLng: undefined, originGeoKey: undefined })}
                             onPick={(text, c) => patch({ origin: text, originLat: c.lat, originLng: c.lng, originGeoKey: text })}
                         />
@@ -417,6 +412,7 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
                             // Near the trip's destination first, as a leg usually ends there.
                             bias={draft.coordinates ? { lat: draft.coordinates.lat, lon: draft.coordinates.lng } : undefined}
                             format={format}
+                            pillClassName={m.tint}
                             onChange={text => patch({ destination: text, destLat: undefined, destLng: undefined, destGeoKey: undefined })}
                             onPick={(text, c) => patch({ destination: text, destLat: c.lat, destLng: c.lng, destGeoKey: text })}
                         />
@@ -429,7 +425,7 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
                 <RpField label={leg.mode === 'Flight' ? 'Airline' : 'Operator'}>
                     {id => (
                         <div className="flex items-center gap-2">
-                            <RpLogo name={leg.provider} src={leg.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={m.icon} iconClassName={TRANSPORT_ACCENT} />
+                            <RpLogo name={leg.provider} src={leg.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={m.icon} iconClassName={m.text} />
                             <input id={id} value={leg.provider} onChange={e => patch({ provider: e.target.value })} className={RP_FIELD} placeholder={leg.mode === 'Flight' ? 'KLM' : ''} autoComplete="off" />
                         </div>
                     )}

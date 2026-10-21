@@ -7,6 +7,7 @@ import { RpEmpty, RpLogo } from '../ui';
 import { MODE_ICON, money, nights } from '../trips/TripDetailsModal';
 import { stayIcon } from '../trips/stayIcon';
 import { STAY_ACCENT, TRANSPORT_ACCENT } from '../trips/accents';
+import { modeLook } from '../trips/transportModes';
 import type { EditStep } from './TripPanels';
 import { cn } from '../../../utils/cn';
 
@@ -56,7 +57,7 @@ const TransportChip: React.FC<{ item: Extract<DayItem, { kind: 'transport' }>; b
     const arrive = item.part === 'arrive';
     return (
         <button type="button" onClick={onClick} className={CHIP}>
-            <RpLogo size="sm" name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={Mode} iconClassName={TRANSPORT_ACCENT} />
+            <RpLogo size="sm" name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={Mode} iconClassName={modeLook(t.mode).text} />
             <span className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-medium text-rp-ink">{arrive ? `Arrive ${t.destination}` : `${t.origin} → ${t.destination}`}</span>
                 <span className="block truncate text-2xs text-rp-muted">{[item.time, t.provider, t.identifier].filter(Boolean).join(' · ')}</span>

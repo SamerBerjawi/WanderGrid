@@ -10,7 +10,8 @@ import {
 } from '../../ui/hugeicons';
 import { RpLogo, useIsMobile } from '../ui';
 import { stayIcon } from './stayIcon';
-import { STAY_ACCENT, TRANSPORT_ACCENT } from './accents';
+import { STAY_ACCENT } from './accents';
+import { MODE_LOOKS, modeLook } from './transportModes';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -46,7 +47,7 @@ export const SKINS: Record<Look, Skin> = {
 };
 
 export const STEPS = ['Planned', 'Confirmed', 'Travelling', 'Done'] as const;
-export const MODE_ICON: Record<string, Icon> = { Flight: Airplane, Train, Bus, 'Car Rental': Car, 'Personal Car': CarProfile, Cruise: Boat, Ferry: Boat };
+export const MODE_ICON: Record<string, Icon> = Object.fromEntries(MODE_LOOKS.map(m => [m.mode, m.icon]));
 const SHOW = 3;
 
 export const when = (date?: string, time?: string) => (date ? [formatDate(date, 'short'), time].filter(Boolean).join(' ') : '');
@@ -216,7 +217,7 @@ const Body: React.FC<{
                             <Row
                                 key={t.id}
                                 skin={skin}
-                                logo={<RpLogo name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={Mode} iconClassName={TRANSPORT_ACCENT} />}
+                                logo={<RpLogo name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={Mode} iconClassName={modeLook(t.mode).text} />}
                                 title={`${t.origin} → ${t.destination}`}
                                 meta={[t.provider, t.identifier, when(t.departureDate, t.departureTime)].filter(Boolean).join(' · ')}
                                 cost={money(t.cost)}

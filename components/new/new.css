@@ -23,6 +23,10 @@
   --rp-mustard: 240 201 76;
   /* Mustard for icons and small text on light surfaces (3.8:1); plain mustard in dark mode. */
   --rp-ochre: 154 116 10;
+  /* Accents that tell transport modes apart beyond rust, green, ochre and ink (UI_UX_DESIGN_REFERENCE.md decision 50). */
+  --rp-sea: 24 124 146;
+  --rp-navy: 58 84 152;
+  --rp-plum: 126 72 112;
   /* Text on mustard: always dark, in both themes. */
   --rp-on-mustard: 24 26 26;
 
@@ -43,6 +47,9 @@
   --rp-rust: 199 68 30;
   --rp-mustard: 244 211 106;
   --rp-ochre: 244 211 106;
+  --rp-sea: 92 184 206;
+  --rp-navy: 132 160 226;
+  --rp-plum: 200 142 186;
 }
 
 .rp-tabular {

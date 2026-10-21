@@ -10,6 +10,7 @@ import ParticleButton from '../../kokonutui/particle-button';
 import { MODE_ICON, money, nights, when } from '../trips/TripDetailsModal';
 import { stayIcon } from '../trips/stayIcon';
 import { STAY_ACCENT, TRANSPORT_ACCENT } from '../trips/accents';
+import { modeLook } from '../trips/transportModes';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -56,7 +57,7 @@ const itemRow = (d: DayItem, brandfetchApiKey?: string) => {
         const Mode = MODE_ICON[t.mode] || Airplane;
         const arrive = d.part === 'arrive';
         return {
-            logo: <RpLogo name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={Mode} iconClassName={TRANSPORT_ACCENT} />,
+            logo: <RpLogo name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={Mode} iconClassName={modeLook(t.mode).text} />,
             title: arrive ? `Arrive in ${t.destination}` : `${t.origin} → ${t.destination}`,
             meta: [t.provider, t.identifier, arrive ? '' : t.arrivalTime ? `arrives ${t.arrivalTime}` : ''].filter(Boolean).join(' · '),
             cost: arrive ? undefined : money(t.cost),
@@ -136,7 +137,7 @@ const TransportRow: React.FC<{ t: Transport; brandfetchApiKey?: string; onEdit: 
     const Mode = MODE_ICON[t.mode] || Airplane;
     return (
         <li className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto_auto] items-center gap-3 border-t border-rp-line py-3 first:border-t-0">
-            <RpLogo name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={Mode} iconClassName={TRANSPORT_ACCENT} />
+            <RpLogo name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={Mode} iconClassName={modeLook(t.mode).text} />
             <span className="min-w-0">
                 <span className="block truncate text-sm font-medium text-rp-ink">{t.origin} → {t.destination}</span>
                 <span className="block truncate text-xs text-rp-muted">

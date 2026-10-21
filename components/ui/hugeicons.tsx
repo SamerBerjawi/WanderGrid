@@ -36,6 +36,8 @@ import {
   BeerIcon,
   BinocularsIcon,
   BoatIcon,
+  FerryBoatIcon,
+  ShipIcon,
   BookOpen01Icon,
   Briefcase01Icon,
   Briefcase02Icon,
@@ -246,6 +248,8 @@ export const Bank = make(Building03Icon, 'Bank');
 export const Bed = make(BedIcon, 'Bed');
 export const Binoculars = make(BinocularsIcon, 'Binoculars');
 export const Boat = make(BoatIcon, 'Boat');
+export const Ferry = make(FerryBoatIcon, 'Ferry');
+export const Ship = make(ShipIcon, 'Ship');
 export const BookOpen = make(BookOpen01Icon, 'BookOpen');
 export const Broadcast = make(AntennaIcon, 'Broadcast');
 export const Buildings = make(Building06Icon, 'Buildings');

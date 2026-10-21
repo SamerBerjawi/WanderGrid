@@ -36,7 +36,9 @@ export const PlaceField: React.FC<{
     format?: (place: Place) => string;
     /** Which edge the suggestion list lines up with; it is wider than a half-width field. */
     align?: 'start' | 'end';
-}> = ({ id, value, located, placeholder, onChange, onPick, mode = 'auto', prefer, bias, format, align = 'start' }) => {
+    /** Colours of the IATA code pill (an accent, e.g. the transport mode's). */
+    pillClassName?: string;
+}> = ({ id, value, located, placeholder, onChange, onPick, mode = 'auto', prefer, bias, format, align = 'start', pillClassName }) => {
     const [results, setResults] = useState<Place[]>([]);
     const [open, setOpen] = useState(false);
     const [active, setActive] = useState(0);
@@ -138,7 +140,7 @@ export const PlaceField: React.FC<{
                                     <span className="block truncate text-sm font-medium text-rp-ink">{p.name}</span>
                                     <span className="block truncate text-xs text-rp-muted">{[KIND_LABEL[p.kind], p.subtitle || p.country].filter(Boolean).join(' · ')}</span>
                                 </span>
-                                {p.iata ? <span className="rp-tabular shrink-0 rounded-full bg-rp-inset px-2 py-0.5 text-xs font-medium text-rp-ink">{p.iata}</span> : null}
+                                {p.iata ? <span className={cn('rp-tabular shrink-0 rounded-full px-2 py-0.5 text-xs font-medium', pillClassName ?? 'bg-rp-inset text-rp-ink')}>{p.iata}</span> : null}
                             </button>
                         </li>
                     ))}
