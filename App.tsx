@@ -35,8 +35,9 @@ const MapNew = lazy(() => import('./views/new/MapNew').then(m => ({ default: m.M
 const AtlasNew = lazy(() => import('./views/new/AtlasNew').then(m => ({ default: m.AtlasNew })));
 const TripsNew = lazy(() => import('./views/new/TripsNew').then(m => ({ default: m.TripsNew })));
 const TripNew = lazy(() => import('./views/new/TripNew').then(m => ({ default: m.TripNew })));
-type NewPage = 'map' | 'atlas' | 'trips' | 'trip';
-const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips' };
+const AuthNew = lazy(() => import('./views/new/AuthNew').then(m => ({ default: m.AuthNew })));
+type NewPage = 'map' | 'atlas' | 'trips' | 'trip' | 'auth';
+const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips', '/auth-new': 'auth' };
 // One trip's page: /trip-new/:id (the Trips page opens it).
 const NEW_TRIP_PATH = /^\/trip-new\/([^/]+)$/;
 const getNewTripId = (): string | null => {
@@ -385,6 +386,26 @@ export default function App() {
                 <ViewLoader />
             </div>
         </div>
+      );
+  }
+
+  // AuthNew stands alone (no shell): the sign-in page when signed out, a harmless preview when signed in.
+  if (newPage === 'auth') {
+      const leaveAuth = () => {
+          try { window.history.pushState({}, '', '/trips-new'); } catch (e) {}
+          setNewPage(getNewPage());
+      };
+      return (
+        <Suspense fallback={null}>
+          <AuthNew
+            preview={!!currentUser}
+            isDark={theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)}
+            onThemeChange={t => handleThemeChange(t)}
+            onClosePreview={leaveAuth}
+            onLogin={user => { handleLogin(user); leaveAuth(); }}
+          />
+          <Toaster />
+        </Suspense>
       );
   }
 
