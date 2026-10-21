@@ -6,6 +6,7 @@ import { toggleCountryResidenceStatus } from '../../../types';
 import { buildRouteCorridors, getFlagEmoji, getRouteTransportSummary } from '../../../services/routeCorridor';
 import { formatDate } from '../../../utils/formatters';
 import { formatProperLocationName } from '../../../services/geocoding';
+import { WeatherChip } from '../WeatherChip';
 import { Airplane, AirplaneLanding, ArrowRight, Boat, Car, CheckCircle, ClockCounterClockwise, Heart, House, type Icon, Path, Ticket, Train, XCircle } from '../../ui/hugeicons';
 import { RpChip, RpLogo, RpSection, RpSheet } from '../ui';
 import { cn } from '../../../utils/cn';
@@ -165,6 +166,7 @@ export const MapDetailSheet: React.FC<MapDetailSheetProps> = ({
         const routes = model.routes.filter(r => r.origin === p.id || r.destination === p.id).sort((a, b) => b.count - a.count);
         return (
             <RpSheet open onClose={onClose} topOffset={topOffset} title={p.label} subtitle={<span>{p.kind === 'airport' ? 'Airport' : 'Place'} · <NumberFlow value={p.count} /> {p.count === 1 ? 'visit' : 'visits'}</span>}>
+                <div className="px-1 pb-2"><WeatherChip lat={p.coords[1]} lng={p.coords[0]} /></div>
                 <RpSection icon={Path} title="Routes">
                     <ul className="flex flex-col divide-y divide-rp-line">
                         {routes.map(r => {
