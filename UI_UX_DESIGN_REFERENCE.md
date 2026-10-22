@@ -131,18 +131,45 @@ These values come from the video (light) and a derived warm dark theme. Define t
 | `rp-surface` | Cards | `#F4F2EC` | `#211F1C` | `rp-ink` / `rp-paper` |
 | `rp-inset` | Panels inside cards, segmented tracks, kanban column bodies | `#ECEAE3` | `#2A2824` | `rp-ink` / `rp-paper` |
 | `rp-line` | Hairline separators (tables, lists) | `#DEDBD2` | `#34312C` | — |
-| `rp-ink` | Primary text (light), ink fills: dock, dark buttons, toasts, "travelling now" cards | `#181A1A` | `#EDEAE3` (inverted: fills become light) | `rp-paper` on light / `rp-ink-dark` on dark |
-| `rp-paper` | Text on ink and saturated fills; primary text in dark mode | `#FFFFFF` | `#F2EFE8` | — |
+| `rp-ink` | Primary text (light), ink fills: dock, dark buttons, toasts, "travelling now" cards | `#181A1A` | `#EDEAE3` (inverted: fills become light) | `rp-on-ink` |
+| `rp-on-ink` | Text and icons on an `rp-ink` fill (inverts with it) | `#FFFFFF` | `#171614` | — |
+| `rp-paper` | Text on green and rust fills | `#FFFFFF` | `#F2EFE8` | — |
 | `rp-muted` | Labels, meta, axes | `#6E675C` (4.5:1, darkened from the video's `#8F887C`) | `#A39C8F` (6.6:1) | — |
 | `rp-green` | Confirmed / upcoming; positive | `#2C5D4F` | `#3B7464` | `rp-paper` |
 | `rp-rust` | Action needed; negative / overdue | `#C7441E` | `#C7441E` (unchanged: a lighter rust fails 4.5:1 with white text) | `rp-paper` |
-| `rp-mustard` | Draft / planned; highlight chips; Undo | `#F0C94C` | `#F4D36A` | `rp-ink` (always dark text) |
+| `rp-mustard` | Draft / planned; highlight chips; Undo | `#F0C94C` | `#F4D36A` | `rp-on-mustard` |
+| `rp-on-mustard` | Text on mustard: always dark, in both themes | `#181A1A` | `#181A1A` | — |
+| `rp-ochre` | Mustard for icons and small accents on light surfaces (3.8:1) | `#9A740A` | `#F4D36A` | — |
 
 **Elevation tokens** (§1.3 values): `rp-shadow-rest` (cards), `rp-shadow-raised` (coloured cards), `rp-shadow-float` (dragged card, modal, sheet, dock, toast). In dark mode shadows are replaced by a 1px `rp-line` outline plus the lighter surface step, because shadows don't read on a dark canvas.
 
 **Radius tokens:** 28px page cards, 22px deal or trip cards and modals, 16px inset panels, full for pills, chips and icon buttons.
 
 **Near-black exception.** `AGENTS.md` §11.1 forbids near-black surface fills. The video's ink fills (dock, toasts, dark buttons, "travelling now" cards) are a deliberate part of this design, so the New pages allow them **only through the `rp-ink` token**, never `bg-black`, `bg-zinc-900` or a hex value.
+
+### 1.5 Icons and logos (all New pages)
+
+Icons and logos carry a lot of the concept's clarity: every KPI, toolbar button and list row has one. New pages use them consistently.
+
+**Icons (Hugeicons only)**
+- Import icons only from the adapter `components/ui/hugeicons.tsx` (stroke-rounded). If an icon is missing, add a named export there; never import `lucide-react` or another set.
+- **Where icons are required:**
+  - every icon-only button (it also needs an `aria-label`)
+  - toolbar and dock tools
+  - tab and segmented options where they help recognition, such as view modes and settings sections
+  - settings rows and toggles: a leading 18px muted icon, through the `icon` prop of `RpRow` and `RpToggle`
+  - section headings: a 14px icon on `RpSection`
+  - empty states
+  - KPI tiles: an icon in a 40px circle, per §1.2
+- **Sizes:** 14px in section headings and meta lines, 16px in chips and tabs, 18px in rows, 20px in toolbar buttons and the tab bar.
+- **Colour:** icons are `rp-muted` at rest and `rp-ink` (or `rp-on-ink` on ink fills) when active. Icons never carry status colour on their own: status uses the colour tokens and a label.
+- **Compact tabs:** where space is tight (mobile), inactive tabs may show the icon and count only, with the name on the active tab (`hideTitle` on Swipe Tabs). The name stays the accessible label.
+
+**Logos**
+- Show the real logo wherever a carrier, operator, airline, hotel brand or service appears: route and journey rows, operator chips, bookings and integrations.
+- Use `RpLogo` (`components/new/ui.tsx`). It tries `utils/carrierLogo.ts` in order (Brandfetch with the workspace key, then the airline-code image, Clearbit, then the favicon) and falls back to a relevant Hugeicons glyph (the mode icon for transport).
+- Logos sit on a white chip (they are drawn for light backgrounds), with rounded 10px corners, or fully rounded in chips. They are 28px in chips and 36px in rows.
+- A logo never replaces the text name in lists: show both.
 
 ---
 
@@ -422,6 +449,7 @@ Every redesigned page is **built first as a new page named after the existing pa
 - **Names.** The page component is `<Name>New`, exported by name (`export const FlightsNew`), using the user-facing name (Trips, Calendar, Atlas, Member) rather than the code name.
 - **Reaching them (decided: separate URLs).** Each New page has its own `-new` URL beside the original. There is no feature flag. `App.tsx` already maps URL paths to views (see the `/flights-2` aliases), so each `-new` path is added to that mapping. The New pages render inside **ShellNew**, so the new navigation only appears on `-new` URLs. Nothing in the existing UI links to them until they are approved.
 - **Shared pieces.** New components go in `components/new/` (KokonutUI ports in `components/kokonutui/`). New pages may import data hooks and services (`dataService`, `useWanderSync`, `utils/formatters.ts`). They must **not** import UI components from the original pages, and the original pages must never import anything from `views/new/` or `components/new/`.
+- **Links into the map.** Pages that open the map on something use `mapLink()` from `utils/mapLinks.ts` (`?route=JFK-CDG`, `?trip=<id>`, `?focus=lat,lng,zoom`), never hand-built query strings. On migration only `MAP_PATH` changes.
 - **Logic.** Reuse the data and service layer (`dataService`, hooks, formatters, types). Where an original page holds feature logic inline (data loading, handlers), move that logic into `hooks/` or `utils/` and have both pages call it. Never copy JSX, components, layout or styling from the original page.
 
 **Migration once a New page is approved**
@@ -482,6 +510,7 @@ The view inventory below lists which **features** each New page inherits, and su
 [ ] Reversible mutations use Undo Button / undo toast; permanent deletes use Hold Button
 [ ] Empty state uses the shared empty component
 [ ] 44px targets, aria-label on icon-only buttons, prefers-reduced-motion disables morphs
+[ ] Icons per §1.5 (Hugeicons adapter only; rows, sections, tools, tabs) and logos wherever a carrier or brand appears
 [ ] Gesture components have keyboard and plain-tap fallbacks
 [ ] Responsive per §2.4: verified at 375, 768 portrait, 1024 landscape and 1440+, in light and dark
 ```
@@ -539,3 +568,4 @@ The view inventory below lists which **features** each New page inherits, and su
 | 12 | Flight list | **Table / Board toggle.** Board is the Departure Board, restyled in the video's colours and type |
 | 13 | Charts | **BklitUI** |
 | 14 | Using the old pages | **Clean slate.** Map only features (data, actions, backend). Never port design, layout, hero cards, statistics or charts just because they existed (§5.0) |
+| 15 | Chrome colour (MapNew review) | Nav, mobile tab bar and tool dock sit on `rp-surface`: light in light mode, dark in dark mode. Ink is kept for the selected state. The selected view pill takes its view's accent (All ink, Flights rust, Land & sea green, Scratch mustard) |

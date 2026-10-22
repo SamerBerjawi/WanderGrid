@@ -1,3 +1,4 @@
+import { carrierLogoSources } from '../../utils/carrierLogo';
 import React, { useEffect, useState } from 'react';
 import {
   AirplaneTakeoff, Train, Bus, Key, Car, Boat, Buildings, Sparkle, House, ForkKnife, Compass, Ticket, Moon, MapPin, Clock,
@@ -5,7 +6,6 @@ import {
 } from '@/components/ui/hugeicons';
 import { Accommodation, Activity, Carrier, Transport, TransportMode, Trip } from '../../types';
 import { getCoordinates } from '../../services/geocoding';
-import { getMerchantLogoUrl } from '../../utils/brandfetch';
 import { getTransportScheduleEventsForDate, getTransportScheduleLocation, getTransportScheduleTitle } from '../../utils/transportSchedule';
 
 /** Shared logic for the Golden Hour trip page. Copied from views/TripDetail.tsx so the original stays untouched. */
@@ -255,24 +255,7 @@ export const CarrierLogo: React.FC<{ provider?: string; brandfetchApiKey?: strin
   useEffect(() => setAttempt(0), [provider]);
   if (!provider) return <>{fallback}</>;
 
-  const name = provider.trim().toLowerCase();
-  const match = carriers.find(c => c.code?.toLowerCase().trim() === name || c.name?.toLowerCase().trim() === name);
-  const cleaned = name.replace(/[^a-z0-9]/g, '');
-  const domain = match?.domain?.trim() || `${cleaned}.com`;
-  const overrides: Record<string, string> = {};
-  carriers.forEach(c => {
-    if (c.code) overrides[c.code.toLowerCase().trim()] = c.domain;
-    if (c.name) overrides[c.name.toLowerCase().trim()] = c.domain;
-  });
-  const steps: string[] = [];
-  if (brandfetchApiKey) {
-    const bf = getMerchantLogoUrl(provider.trim(), brandfetchApiKey, overrides, { type: 'icon', fallback: '404' });
-    if (bf) steps.push(bf);
-  }
-  const iata = (match?.code || (provider.trim().length === 2 ? provider.trim() : '')).toUpperCase();
-  if (iata.length === 2) steps.push(`https://pics.avs.io/200/200/${iata}.png`);
-  steps.push(`https://logo.clearbit.com/${domain}`, `https://www.google.com/s2/favicons?sz=128&domain=${domain}`);
-
+  const steps = carrierLogoSources(provider, brandfetchApiKey, carriers);
   const src = steps[attempt];
   if (!src) return <>{fallback}</>;
   return <img src={src} alt={provider} className="w-full h-full object-contain" referrerPolicy="no-referrer" onError={() => setAttempt(a => a + 1)} />;

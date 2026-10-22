@@ -22,9 +22,11 @@ import {
   ArrowDown01Icon,
   ArrowDownLeft01Icon,
   ArrowExpand01Icon,
+  ArrowExpandIcon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
   ArrowShrink02Icon,
+  ArrowShrinkIcon,
   ArrowUp01Icon,
   ArrowUpRight01Icon,
   AtomIcon,
@@ -110,7 +112,9 @@ import {
   Logout01Icon,
   Mail01Icon,
   MapsIcon,
+  MapsGlobal01Icon,
   Maximize01Icon,
+  MinusSignIcon,
   Moon02Icon,
   MoreHorizontalCircle01Icon,
   MoreHorizontalIcon,
@@ -137,6 +141,10 @@ import {
   SecurityCheckIcon,
   SentIcon,
   Settings01Icon,
+  Settings04Icon,
+  Airport02Icon,
+  EditRoadIcon,
+  SquaresUniteIcon,
   Share08Icon,
   Shirt01Icon,
   ShoppingBag01Icon,
@@ -229,6 +237,8 @@ export const ArrowsClockwise = make(RefreshIcon, 'ArrowsClockwise');
 export const ArrowsIn = make(ArrowShrink02Icon, 'ArrowsIn');
 export const ArrowsMerge = make(GitMergeIcon, 'ArrowsMerge');
 export const ArrowsOut = make(ArrowExpand01Icon, 'ArrowsOut');
+export const ArrowExpand = make(ArrowExpandIcon, 'ArrowExpand');
+export const ArrowShrink = make(ArrowShrinkIcon, 'ArrowShrink');
 export const Atom = make(AtomIcon, 'Atom');
 export const Backpack = make(BackpackIcon, 'Backpack');
 export const Bank = make(Building03Icon, 'Bank');
@@ -295,6 +305,11 @@ export const ForkKnife = make(Restaurant01Icon, 'ForkKnife');
 export const Funnel = make(FilterIcon, 'Funnel');
 export const GasPump = make(FuelStationIcon, 'GasPump');
 export const Gear = make(Settings01Icon, 'Gear');
+export const Settings04 = make(Settings04Icon, 'Settings04');
+export const MapsGlobal = make(MapsGlobal01Icon, 'MapsGlobal');
+export const Airport = make(Airport02Icon, 'Airport');
+export const EditRoad = make(EditRoadIcon, 'EditRoad');
+export const SquaresUnite = make(SquaresUniteIcon, 'SquaresUnite');
 export const GitFork = make(GitForkIcon, 'GitFork');
 export const Globe = make(GlobalIcon, 'Globe');
 export const GlobeHemisphereWest = make(Globe02Icon, 'GlobeHemisphereWest');
@@ -315,6 +330,7 @@ export const LockOpen = make(SquareUnlock01Icon, 'LockOpen');
 export const MagnifyingGlass = make(Search01Icon, 'MagnifyingGlass');
 export const MapPin = make(Location01Icon, 'MapPin');
 export const MapTrifold = make(MapsIcon, 'MapTrifold');
+export const Minus = make(MinusSignIcon, 'Minus');
 export const Moon = make(Moon02Icon, 'Moon');
 export const Mountains = make(MountainIcon, 'Mountains');
 export const MountainSnow = make(MountainSnowIcon, 'MountainSnow');

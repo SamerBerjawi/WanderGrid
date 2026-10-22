@@ -1,0 +1,110 @@
+/*
+ * Design tokens for the New pages (UI_UX_DESIGN_REFERENCE.md §1.4).
+ * Scoped to .rp-root so the original pages are unaffected. Values are RGB triplets for
+ * Tailwind's `rp-*` colours (tailwind.config.js). Dark mode follows the app's `dark` class on <html>.
+ */
+@import '@fontsource-variable/outfit';
+
+.rp-root {
+  --rp-canvas: 234 232 223;
+  --rp-glow: 238 227 197;
+  --rp-surface: 244 242 236;
+  --rp-inset: 236 234 227;
+  --rp-line: 222 219 210;
+  /* Primary text and ink fills (dock, dark buttons, toasts, "travelling now"). Inverted in dark mode. */
+  --rp-ink: 24 26 26;
+  /* Text and icons on an rp-ink fill. */
+  --rp-on-ink: 255 255 255;
+  /* Text on saturated green and rust fills. */
+  --rp-paper: 255 255 255;
+  --rp-muted: 110 103 92;
+  --rp-green: 44 93 79;
+  --rp-rust: 199 68 30;
+  --rp-mustard: 240 201 76;
+  /* Mustard for icons and small text on light surfaces (3.8:1); plain mustard in dark mode. */
+  --rp-ochre: 154 116 10;
+  /* Text on mustard: always dark, in both themes. */
+  --rp-on-mustard: 24 26 26;
+
+  font-family: 'Outfit Variable', Outfit, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+:root.dark .rp-root {
+  --rp-canvas: 23 22 20;
+  --rp-glow: 42 36 24;
+  --rp-surface: 33 31 28;
+  --rp-inset: 42 40 36;
+  --rp-line: 52 49 44;
+  --rp-ink: 237 234 227;
+  --rp-on-ink: 23 22 20;
+  --rp-paper: 242 239 232;
+  --rp-muted: 163 156 143;
+  --rp-green: 59 116 100;
+  --rp-rust: 199 68 30;
+  --rp-mustard: 244 211 106;
+  --rp-ochre: 244 211 106;
+}
+
+.rp-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Canvas glow: a soft radial wash at the top of the page. */
+.rp-canvas-glow {
+  background-image: radial-gradient(120% 60% at 50% -10%, rgb(var(--rp-glow)) 0%, rgb(var(--rp-glow) / 0) 70%);
+}
+
+/* Elevation. Dark mode swaps shadows for a hairline, because shadows don't read on a dark canvas. */
+.rp-shadow-rest {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.04);
+}
+.rp-shadow-raised {
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.06), 0 12px 28px rgb(0 0 0 / 0.08);
+}
+.rp-shadow-float {
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.18), 0 4px 12px rgb(0 0 0 / 0.08);
+}
+:root.dark .rp-shadow-rest,
+:root.dark .rp-shadow-raised {
+  box-shadow: inset 0 0 0 1px rgb(var(--rp-line));
+}
+:root.dark .rp-shadow-float {
+  box-shadow: inset 0 0 0 1px rgb(var(--rp-line)), 0 24px 60px rgb(0 0 0 / 0.5);
+}
+
+/* Faint stars behind the 3D globe on dark basemaps (the map canvas is transparent around the globe). */
+.rp-stars {
+  background-color: #04060d;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, rgb(255 255 255 / 0.55), transparent 60%),
+    radial-gradient(1px 1px at 78% 12%, rgb(255 255 255 / 0.45), transparent 60%),
+    radial-gradient(1.5px 1.5px at 33% 72%, rgb(255 255 255 / 0.5), transparent 60%),
+    radial-gradient(1px 1px at 88% 64%, rgb(255 255 255 / 0.4), transparent 60%),
+    radial-gradient(1px 1px at 56% 38%, rgb(255 255 255 / 0.35), transparent 60%),
+    radial-gradient(1.5px 1.5px at 8% 86%, rgb(255 255 255 / 0.45), transparent 60%),
+    radial-gradient(1px 1px at 64% 90%, rgb(255 255 255 / 0.4), transparent 60%),
+    radial-gradient(1px 1px at 92% 34%, rgb(255 255 255 / 0.5), transparent 60%);
+  background-size: 260px 260px;
+}
+
+/* Floating chrome over the map (brand, avatar, switches, tab pills): a soft drop shadow in both themes. */
+.rp-shadow-soft {
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 8px 24px rgb(0 0 0 / 0.1);
+}
+:root.dark .rp-shadow-soft {
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
+}
+
+/* Ink surfaces (dock, toasts): a soft drop shadow only, never the dark-mode hairline. */
+.rp-shadow-ink {
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.18), 0 2px 6px rgb(0 0 0 / 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rp-root *,
+  .rp-root *::before,
+  .rp-root *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
