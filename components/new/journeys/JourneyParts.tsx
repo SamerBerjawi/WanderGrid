@@ -56,3 +56,10 @@ export const CarrierCell: React.FC<{ t: Transport; brandfetchApiKey?: string; ca
         </span>
     );
 };
+
+/** Colour of a layover chip: green under 3 hours, yellow from 3 to 5, rust over 5. A stay of a day or more is neutral. */
+export const layoverTone = (minutes: number): string =>
+    minutes > 24 * 60 ? 'bg-rp-inset text-rp-ink'
+        : minutes < 180 ? 'bg-rp-green text-rp-paper'
+        : minutes <= 300 ? 'bg-rp-mustard text-rp-on-mustard'
+        : 'bg-rp-rust text-rp-paper';

@@ -4,7 +4,7 @@ import SmoothDrawer from '../../kokonutui/smooth-drawer';
 import { ArrowUpRight, Check, PencilSimple, Suitcase, X } from '../../ui/hugeicons';
 import { RP_FIELD } from '../fields';
 import { RpSection, RpSheet, useIsMobile } from '../ui';
-import { CarrierCell, DelayChip, STATUS_LOOK, StatusPill } from './JourneyParts';
+import { CarrierCell, DelayChip, STATUS_LOOK, StatusPill, layoverTone } from './JourneyParts';
 import { modeLook } from '../trips/transportModes';
 import { formatDate, formatCurrency } from '../../../utils/formatters';
 import {
@@ -34,7 +34,7 @@ const Gap: React.FC<{ a: JourneyRecord; b: JourneyRecord }> = ({ a, b }) => {
     const place = placeName(a.flight.destination) || placeCode(a.flight.destination);
     return (
         <li aria-hidden={false} className="relative ml-[0.7rem] flex min-h-9 items-center border-l-2 border-dashed border-rp-line pl-6">
-            <span className={cn('rp-tabular inline-flex min-h-6 items-center rounded-full px-2.5 text-2xs font-semibold', stay ? 'bg-rp-mustard text-rp-on-mustard' : 'bg-rp-inset text-rp-muted')}>
+            <span className={cn('rp-tabular inline-flex min-h-6 items-center rounded-full px-2.5 text-2xs font-semibold', layoverTone(mins))}>
                 {stay ? `${Math.round(mins / 1440)} ${Math.round(mins / 1440) === 1 ? 'day' : 'days'} in ${place}` : `Layover ${formatMinutes(mins)} in ${placeCode(a.flight.destination)}`}
             </span>
         </li>
