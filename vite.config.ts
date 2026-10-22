@@ -1,4 +1,5 @@
 import path from 'path';
+import { createRequire } from 'module';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -36,6 +37,22 @@ function viteDevApiPlugin() {
   return {
     name: 'vite-dev-api-plugin',
     configureServer(server: any) {
+      // Flight lookup by number and date: the same module the backend serves, so local mode finds flights too (keyless sources only).
+      server.middlewares.use(async (req: any, res: any, next: any) => {
+        if (!req.url || !req.url.startsWith('/api/flights/lookup')) return next();
+        try {
+          const { resolveFlight } = createRequire(import.meta.url)('./backend_files/flightLookup.js');
+          const q = new URL(req.url, 'http://localhost').searchParams;
+          const result = await resolveFlight(String(q.get('flight') || ''), String(q.get('date') || ''));
+          res.statusCode = result.ok ? 200 : 400;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(result));
+        } catch (err: any) {
+          res.statusCode = 502;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ ok: false, error: 'lookup_failed', message: 'The flight lookup failed. Try again.', candidates: [], attempts: [] }));
+        }
+      });
       server.middlewares.use(async (req: any, res: any, next: any) => {
         // Route proxy handler for overland road tracing in dev mode
         if (req.url && (req.url.startsWith('/api/proxy/route?') || req.url.startsWith('/api/route?'))) {

@@ -2,6 +2,7 @@
 const express = require('express');
 const { Pool } = require('pg');
 const { AviationStackError, normalizeFutureFlight, requestAviationStack } = require('./aviationStack');
+const { resolveFlight } = require('./flightLookup.js');
 const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
@@ -1380,6 +1381,32 @@ const AERODATABOX_ENDPOINTS = {
     }
 };
 
+// ==========================================
+// FLIGHT LOOKUP BY NUMBER AND DATE (flightLookup.js)
+// Keyless sources first (FlightStats, ADSBdb), then the workspace's AeroDataBox / AviationStack keys.
+// Always answers 200 with the candidates found and what each source said.
+// ==========================================
+app.get('/api/flights/lookup', async (req, res) => {
+    const flight = String(req.query.flight || '').trim();
+    const date = String(req.query.date || '').trim();
+    try {
+        const adbKey = await workspaceSecret('aeroDataBoxApiKey') || '';
+        const mode = String(await workspaceSecret('aeroDataBoxEndpoint') || process.env.INTEGRATIONS_AERO_DATA_BOX_ENDPOINT || 'rapidapi').toLowerCase();
+        const cfg = AERODATABOX_ENDPOINTS[mode] || AERODATABOX_ENDPOINTS.rapidapi;
+        const result = await resolveFlight(flight, date, {
+            flightstats: String(process.env.FLIGHT_LOOKUP_FLIGHTSTATS || 'on').toLowerCase() !== 'off',
+            aerodatabox: adbKey ? { key: adbKey, baseUrl: cfg.baseUrl, authHeader: cfg.authHeader, host: mode === 'rapidapi' ? 'aerodatabox.p.rapidapi.com' : '' } : null,
+            aviationstackKey: await workspaceSecret('aviationStackApiKey') || '',
+        });
+        if (!result.ok) return res.status(400).json(result);
+        res.set('Cache-Control', 'private, max-age=15');
+        return res.json(result);
+    } catch (err) {
+        logger.warn('Flight lookup failed', { error: err.message });
+        return res.status(502).json({ ok: false, error: 'lookup_failed', message: 'The flight lookup failed. Try again.', candidates: [], attempts: [] });
+    }
+});
+
 app.get('/api/proxy/aerodatabox/flights/number/:flightNumber', async (req, res) => {
     const rawNumber = String(req.params.flightNumber || '').trim().replace(/\s|-/g, '').toUpperCase();
     if (!rawNumber) {
@@ -1646,6 +1673,54 @@ app.get('/api/proxy/test/:provider', async (req, res) => {
         return res.status(result.success ? 200 : 502).json(result);
     } catch (err) {
         return res.status(400).json({ error: err.message });
+    }
+});
+
+// The route a flight in the air (or just landed) has flown so far. OpenSky serves tracks keyless for the current
+// flight only ("You cannot access historical tracks" otherwise), so this is for saving the route while it is live.
+const trackCache = new BoundedMap(CACHE_MAX_ENTRIES);
+const simplifyPath = (points, max = 80) => {
+    if (points.length <= max) return points;
+    const out = [];
+    for (let i = 0; i < max; i++) out.push(points[Math.round((i * (points.length - 1)) / (max - 1))]);
+    return out;
+};
+app.get('/api/proxy/opensky/track', async (req, res) => {
+    const callsign = req.query.callsign ? (resolveIcaoCallsign(req.query.callsign) || String(req.query.callsign)).trim().toUpperCase() : '';
+    let icao24 = req.query.icao24 ? String(req.query.icao24).toLowerCase() : '';
+    if (!callsign && !icao24) return res.status(400).json({ error: 'Give a callsign or icao24.' });
+    const key = `track_${icao24 || callsign}`;
+    const hit = trackCache.get(key);
+    if (hit && Date.now() < hit.expiresAt) return res.json(hit.data);
+    const get = async (url, ms = 6000) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), ms);
+        try { return await fetch(url, { signal: controller.signal, headers: { 'User-Agent': 'WanderGrid/1.0' } }); } finally { clearTimeout(timer); }
+    };
+    try {
+        if (!icao24) {
+            // The transponder code of the aircraft flying this callsign: adsb.lol answers quickly; OpenSky's full state list is the slow fallback.
+            try {
+                const r = await get(`https://api.adsb.lol/v2/callsign/${encodeURIComponent(callsign)}`, 5000);
+                if (r.ok) icao24 = (((await r.json()).ac || [])[0] || {}).hex || '';
+            } catch { /* fall through */ }
+            if (!icao24) {
+                const states = await get('https://opensky-network.org/api/states/all', 9000);
+                if (!states.ok) return res.status(502).json({ error: `OpenSky returned HTTP ${states.status}` });
+                const found = ((await states.json()).states || []).find(s => (s[1] || '').trim().toUpperCase() === callsign);
+                if (!found) return res.json({ path: [], note: 'No transponder seen for that callsign right now.' });
+                icao24 = found[0];
+            }
+        }
+        const up = await get(`https://opensky-network.org/api/tracks/all?icao24=${encodeURIComponent(icao24)}&time=0`);
+        if (!up.ok) return res.json({ icao24, path: [], note: `OpenSky returned HTTP ${up.status}` });
+        const body = await up.json();
+        const points = (body.path || []).filter(p => p[1] != null && p[2] != null).map(p => [Math.round(p[1] * 100) / 100, Math.round(p[2] * 100) / 100]) // [latitude, longitude];
+        const data = { icao24, callsign: (body.callsign || '').trim(), start: body.startTime || null, end: body.endTime || null, path: simplifyPath(points) };
+        trackCache.set(key, { data, expiresAt: Date.now() + 45000 });
+        return res.json(data);
+    } catch (e) {
+        return res.status(e.name === 'AbortError' ? 504 : 502).json({ error: 'Failed to reach OpenSky Network.' });
     }
 });
 

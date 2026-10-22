@@ -71,6 +71,8 @@ export interface StackPanelProps {
   /** The page the panel starts on. */
   root: string;
   className?: string;
+  /** Hides the header bar while the root page is showing; it appears for nested pages, with Back. */
+  bare?: boolean;
 }
 
 // iOS pushes with a curve close to this; the page settles without bounce.
@@ -289,7 +291,7 @@ function RowView({
  * page from the right while its label flies up to become the title; swipe
  * the page right, or press Back or Escape, to return.
  */
-export function StackPanel({ pages, root, className }: StackPanelProps) {
+export function StackPanel({ pages, root, className, bare }: StackPanelProps) {
   const [stack, setStack] = useState<string[]>([root]);
   const [origin, setOrigin] = useState<Origin | null>(null);
   const [direction, setDirection] = useState<1 | -1>(1);
@@ -403,6 +405,7 @@ export function StackPanel({ pages, root, className }: StackPanelProps) {
         onKeyDown={onKeyDown}
         ref={panelRef}
       >
+        {!(bare && stack.length < 2) && (
         <div className="relative z-raised flex h-12 items-center border-rp-line border-b bg-rp-surface px-2">
           <AnimatePresence initial={false}>
             {parent && (
@@ -432,6 +435,7 @@ export function StackPanel({ pages, root, className }: StackPanelProps) {
             />
           </AnimatePresence>
         </div>
+        )}
 
         <motion.div
           animate={{ height }}

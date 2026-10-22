@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { EntitlementType, Trip, User } from '../types';
 import { dataService } from '../services/mockDb';
 import { affectsCollections } from './useWanderSync';
+import { countryCodeOf } from '../utils/countryCodes';
 import { bucketOf, destinationsOf, tripDays, todayISO, isTravelling, type TripBucket } from '../utils/tripsModel';
 
 /** The signed-in user as the app stored it at sign-in (id and role); never throws. */
@@ -79,27 +80,40 @@ export const useMemberData = (memberId: string) => {
     const stats = useMemo(() => {
         const live = memberTrips.filter(r => r.trip.status !== 'Cancelled');
         const past = live.filter(r => r.bucket === 'past');
-        const lastVisit = new Map<string, string>();
-        past.forEach(({ trip }) => {
-            destinationsOf(trip).forEach(name => {
-                const prev = lastVisit.get(name);
-                const end = trip.endDate || trip.startDate || '';
-                if (!prev || end > prev) lastVisit.set(name, end);
-            });
-        });
-        const lastCountry = new Map<string, string>();
+        type Place = { name: string; date: string; code?: string };
+        const lastCountry = new Map<string, Place>();
+        const lastCity = new Map<string, Place>();
+        const remember = (map: Map<string, Place>, name: string, date: string, code?: string) => {
+            const prev = map.get(name);
+            if (!prev) map.set(name, { name, date, code });
+            else map.set(name, { name, date: date > prev.date ? date : prev.date, code: prev.code || code });
+        };
         past.forEach(({ trip }) => {
             const end = trip.endDate || trip.startDate || '';
-            countriesOf(trip).forEach(name => { if (end > (lastCountry.get(name) || '')) lastCountry.set(name, end); });
+            // Codes from the geocoded places, else from the country's name.
+            const codeByCountry = new Map<string, string | undefined>();
+            [trip.coordinates, ...(trip.locations || []).map(l => l.coordinates)].forEach(c => { if (c?.country) codeByCountry.set(c.country, c.countryCode || countryCodeOf(c.country)); });
+            const countries = countriesOf(trip);
+            countries.forEach(name => remember(lastCountry, name, end, codeByCountry.get(name) || countryCodeOf(name)));
+            const countryKeys = new Set(countries.map(c => c.toLowerCase()));
+            const lone = countries.length === 1 ? (codeByCountry.get(countries[0]) || countryCodeOf(countries[0])) : undefined;
+            destinationsOf(trip).forEach(name => {
+                if (countryKeys.has(name.toLowerCase())) return;
+                const loc = (trip.locations || []).find(l => l.name === name);
+                remember(lastCity, name, end, loc?.coordinates?.countryCode || lone);
+            });
         });
-        const countries = [...lastCountry.entries()].map(([name, date]) => ({ name, date })).sort((a, b) => b.date.localeCompare(a.date));
-        const places = [...lastVisit.entries()].map(([name, date]) => ({ name, date })).sort((a, b) => b.date.localeCompare(a.date));
+        const byDate = (a: Place, b: Place) => b.date.localeCompare(a.date);
+        const countries = [...lastCountry.values()].sort(byDate);
+        const cities = [...lastCity.values()].sort(byDate);
+        const places = [...countries, ...cities];
         return {
             trips: live.length,
             coming: live.filter(r => r.bucket !== 'past').length,
             daysAway: past.reduce((sum, r) => sum + tripDays(r.trip), 0),
             flights: live.reduce((n, r) => n + (r.trip.transports || []).filter(x => x.mode === 'Flight').length, 0),
             places,
+            cities,
             countries,
         };
     }, [memberTrips]);

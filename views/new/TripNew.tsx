@@ -9,6 +9,8 @@ import { errorMessage, toast } from '../../services/toast';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import { RpEmpty } from '../../components/new/ui';
 import NumberFlow from '@number-flow/react';
+import { openNewPage } from '../../components/new/devLinks';
+import { NextFlight } from '../../components/new/journeys/NextFlight';
 import { RpHugeicon } from '../../components/new/RpHugeicon';
 import { useUndoToast } from '../../components/new/UndoToast';
 import { TripMenu } from '../../components/new/trips/TripMenu';
@@ -17,10 +19,8 @@ import { MODE_ICON, SKINS, STEPS, initials, nextMove } from '../../components/ne
 import { DeleteTripSheet, TripSheet, type TripSheetTarget } from '../../components/new/trips/TripSheets';
 import { TripCanvas } from '../../components/new/trip/TripCanvas';
 const TripHeroMap = lazy(() => import('../../components/new/trip/TripMapPanel'));
-import type { RpMapHandle } from '../../components/new/map/RpMapCanvas';
 import { RoutePlanner } from '../../components/new/trip/RoutePlanner';
 import { WeatherChip } from '../../components/new/WeatherChip';
-import { boundsOf } from '../../utils/mapBounds';
 import { BookingsPanel, CostsPanel, GearPanel, ItineraryPanel, NotesPanel, type EditStep } from '../../components/new/trip/TripPanels';
 import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, FileText, Kanban, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket, type Icon } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
@@ -72,7 +72,6 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
     const [sheet, setSheet] = useState<TripSheetTarget | null>(null);
     const [deleting, setDeleting] = useState<Trip | null>(null);
     const trip = useMemo(() => data.trips.find(t => t.id === tripId), [data.trips, tripId]);
-    const mapRef = useRef<RpMapHandle>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const changeTab = (next: TabId) => {
@@ -283,11 +282,13 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
                         </div>
                     </div>
                     <div className="p-3 pt-0 lg:p-3 lg:pl-0">
-                        <Suspense fallback={<div className="h-36 animate-pulse rounded-rp-tile bg-rp-on-ink/10 sm:h-52 lg:h-full lg:min-h-[15rem]" aria-busy="true" />}>
-                            <TripHeroMap trip={trip} mapRef={mapRef} className="h-36 rounded-rp-tile sm:h-52 lg:h-full lg:min-h-[15rem]" />
+                        <Suspense fallback={<div className="h-44 animate-pulse rounded-rp-tile bg-rp-on-ink/10 sm:h-72 lg:h-full lg:min-h-[15rem]" aria-busy="true" />}>
+                            <TripHeroMap trip={trip} className="h-44 rounded-rp-tile sm:h-72 lg:h-full lg:min-h-[15rem]" />
                         </Suspense>
                     </div>
                 </header>
+
+                <NextFlight records={(trip.transports || []).filter(t => t.mode === 'Flight').map(f => ({ flight: f, trip }))} brandfetchApiKey={data.brandfetchApiKey} showTrip={false} onOpen={() => openNewPage('/flights-new')} />
 
                 <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
                     <StatTile
@@ -336,9 +337,8 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
                             trip={trip}
                             onSave={async (transports, locations) => { await data.patch(trip.id, { transports, locations }); }}
                             onFocus={seg => {
-                                const b = boundsOf([[seg.originLng!, seg.originLat!], [seg.destLng!, seg.destLat!]]);
+                                void seg;
                                 scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-                                if (b) mapRef.current?.fitBounds(b);
                             }}
                         />
                     ) : null}

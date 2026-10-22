@@ -36,9 +36,12 @@ const AtlasNew = lazy(() => import('./views/new/AtlasNew').then(m => ({ default:
 const TripsNew = lazy(() => import('./views/new/TripsNew').then(m => ({ default: m.TripsNew })));
 const TripNew = lazy(() => import('./views/new/TripNew').then(m => ({ default: m.TripNew })));
 const DashboardNew = lazy(() => import('./views/new/DashboardNew').then(m => ({ default: m.DashboardNew })));
+const FlightsNew = lazy(() => import('./views/new/FlightsNew').then(m => ({ default: m.FlightsNew })));
+const RoadTripsNew = lazy(() => import('./views/new/RoadTripsNew').then(m => ({ default: m.RoadTripsNew })));
 const MemberNew = lazy(() => import('./views/new/MemberNew').then(m => ({ default: m.MemberNew })));
-type NewPage = 'map' | 'atlas' | 'trips' | 'trip' | 'member' | 'dashboard';
-const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips', '/dashboard-new': 'dashboard' };
+const AuthNew = lazy(() => import('./views/new/AuthNew').then(m => ({ default: m.AuthNew })));
+type NewPage = 'map' | 'atlas' | 'trips' | 'trip' | 'member' | 'auth' | 'flights' | 'roadtrips' | 'dashboard';
+const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips', '/auth-new': 'auth', '/flights-new': 'flights', '/roadtrips-new': 'roadtrips', '/dashboard-new': 'dashboard' };
 // One trip's page: /trip-new/:id (the Trips page opens it).
 const NEW_TRIP_PATH = /^\/trip-new\/([^/]+)$/;
 const getNewTripId = (): string | null => {
@@ -395,6 +398,26 @@ export default function App() {
       );
   }
 
+  // AuthNew stands alone (no shell): the sign-in page when signed out, a harmless preview when signed in.
+  if (newPage === 'auth') {
+      const leaveAuth = () => {
+          try { window.history.pushState({}, '', '/trips-new'); } catch (e) {}
+          setNewPage(getNewPage());
+      };
+      return (
+        <Suspense fallback={null}>
+          <AuthNew
+            preview={!!currentUser}
+            isDark={theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)}
+            onThemeChange={t => handleThemeChange(t)}
+            onClosePreview={leaveAuth}
+            onLogin={user => { handleLogin(user); leaveAuth(); }}
+          />
+          <Toaster />
+        </Suspense>
+      );
+  }
+
   if (!currentUser) {
       return (
         <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-indigo-50/50 via-slate-100/60 to-blue-50/50 dark:from-slate-950 dark:via-slate-900/90 dark:to-indigo-950/95 transition-colors duration-500 text-gray-900 dark:text-gray-100 relative safe-top safe-bottom safe-x">
@@ -440,7 +463,7 @@ export default function App() {
       return (
         <Suspense fallback={null}>
           <ShellNew
-            currentPath={newPage === 'trip' ? '/trips-new' : newPage === 'member' ? '' : window.location.pathname}
+            currentPath={newPage === 'trip' ? '/trips-new' : newPage === 'roadtrips' ? '/flights-new' : newPage === 'member' ? '' : window.location.pathname}
             onNavigate={navigateFromShell}
             user={currentUser}
             isDark={isDarkMode}
@@ -456,6 +479,8 @@ export default function App() {
                 {newPage === 'atlas' ? <AtlasNew onTripClick={openTripNew} /> : null}
                 {newPage === 'trips' ? <TripsNew onTripClick={openTripNew} /> : null}
                 {newPage === 'dashboard' ? <DashboardNew onTripClick={openTripNew} onMemberClick={openMemberNew} /> : null}
+                {newPage === 'flights' ? <FlightsNew onTripClick={openTripNew} /> : null}
+                {newPage === 'roadtrips' ? <RoadTripsNew onTripClick={openTripNew} /> : null}
                 {newPage === 'member' && getNewMemberId() ? (
                   <MemberNew
                     key={getNewMemberId()!}

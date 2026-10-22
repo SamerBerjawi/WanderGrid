@@ -56,12 +56,15 @@ function installHooks() {
     global.fetch = async (input, init) => {
         const url = typeof input === 'string' ? input : input?.url || String(input);
         if (/^https?:\/\/(localhost|127\.0\.0\.1)/.test(url)) return realFetch(input, init);
+        // Manual checks only (devServer.js): TEST_ALLOW_HOSTS="api.adsb.lol,opensky-network.org" lets those hosts through.
+        const allowed = (process.env.TEST_ALLOW_HOSTS || '').split(',').filter(Boolean);
+        if (allowed.some(h => url.startsWith(`https://${h}/`))) return realFetch(input, init);
         throw new TypeError(`test: external network blocked (${url.slice(0, 80)})`);
     };
     return db;
 }
 
-async function startTestServer() {
+async function startTestServer({ port = 0 } = {}) {
     process.env.NODE_ENV = 'production';
     process.env.JWT_SECRET = process.env.JWT_SECRET || 'api_test_secret_not_for_production';
     process.env.DATABASE_URL = 'postgres://test@memory/test';
@@ -70,7 +73,7 @@ async function startTestServer() {
     const mod = require(path.resolve(__dirname, '../../server.js'));
     await mod.ready;
     const snapshot = db.backup();
-    const server = mod.start(0);
+    const server = mod.start(port);
     await new Promise((r) => server.listening ? r() : server.once('listening', r));
     const base = `http://127.0.0.1:${server.address().port}`;
 
