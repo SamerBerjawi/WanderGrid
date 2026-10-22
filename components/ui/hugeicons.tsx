@@ -36,6 +36,8 @@ import {
   BeerIcon,
   BinocularsIcon,
   BoatIcon,
+  FerryBoatIcon,
+  ShipIcon,
   BookOpen01Icon,
   Briefcase01Icon,
   Briefcase02Icon,
@@ -170,6 +172,7 @@ import {
   TrainIcon,
   TreeIcon,
   Upload01Icon,
+  UserAdd01Icon,
   UserCheck01Icon,
   UserCircleIcon,
   UserIcon,
@@ -246,6 +249,8 @@ export const Bank = make(Building03Icon, 'Bank');
 export const Bed = make(BedIcon, 'Bed');
 export const Binoculars = make(BinocularsIcon, 'Binoculars');
 export const Boat = make(BoatIcon, 'Boat');
+export const Ferry = make(FerryBoatIcon, 'Ferry');
+export const Ship = make(ShipIcon, 'Ship');
 export const BookOpen = make(BookOpen01Icon, 'BookOpen');
 export const Broadcast = make(AntennaIcon, 'Broadcast');
 export const Buildings = make(Building06Icon, 'Buildings');
@@ -386,6 +391,7 @@ export const TrendUp = make(ChartIncreaseIcon, 'TrendUp');
 export const Trophy = make(Award01Icon, 'Trophy');
 export const UploadSimple = make(Upload01Icon, 'UploadSimple');
 export const User = make(UserIcon, 'User');
+export const UserAdd = make(UserAdd01Icon, 'UserAdd');
 export const UserCheck = make(UserCheck01Icon, 'UserCheck');
 export const UserCircle = make(UserCircleIcon, 'UserCircle');
 export const Users = make(UserMultipleIcon, 'Users');

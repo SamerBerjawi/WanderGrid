@@ -34,10 +34,17 @@ const ShellNew = lazy(() => import('./components/new/ShellNew').then(m => ({ def
 const MapNew = lazy(() => import('./views/new/MapNew').then(m => ({ default: m.MapNew })));
 const AtlasNew = lazy(() => import('./views/new/AtlasNew').then(m => ({ default: m.AtlasNew })));
 const TripsNew = lazy(() => import('./views/new/TripsNew').then(m => ({ default: m.TripsNew })));
-type NewPage = 'map' | 'atlas' | 'trips';
-const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips' };
+const TripNew = lazy(() => import('./views/new/TripNew').then(m => ({ default: m.TripNew })));
+const AuthNew = lazy(() => import('./views/new/AuthNew').then(m => ({ default: m.AuthNew })));
+type NewPage = 'map' | 'atlas' | 'trips' | 'trip' | 'auth';
+const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips', '/auth-new': 'auth' };
+// One trip's page: /trip-new/:id (the Trips page opens it).
+const NEW_TRIP_PATH = /^\/trip-new\/([^/]+)$/;
+const getNewTripId = (): string | null => {
+    try { const m = window.location.pathname.match(NEW_TRIP_PATH); return m ? safeDecode(m[1]) : null; } catch (e) { return null; }
+};
 const getNewPage = (): NewPage | null => {
-    try { return NEW_PAGES[window.location.pathname] ?? null; } catch (e) { return null; }
+    try { return NEW_PAGES[window.location.pathname] ?? (NEW_TRIP_PATH.test(window.location.pathname) ? 'trip' : null); } catch (e) { return null; }
 };
 
 import { PWAInstallBanner } from './components/PWAInstallBanner';
@@ -93,6 +100,8 @@ export default function App() {
   const initialState = getUrlState();
   const [view, setView] = useState<ViewState>(initialState.view);
   const [newPage, setNewPage] = useState<NewPage | null>(getNewPage);
+  // Re-renders when the New page's path changes without its kind changing (one trip to another).
+  const [, setNewPathTick] = useState(0);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(initialState.userId || null);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(initialState.tripId || null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
@@ -136,6 +145,7 @@ export default function App() {
   useEffect(() => {
       const handlePopState = () => {
           setNewPage(getNewPage());
+          setNewPathTick(t => t + 1);
           const state = getUrlState();
           setView(state.view);
           if (state.userId) setSelectedUserId(state.userId);
@@ -379,6 +389,26 @@ export default function App() {
       );
   }
 
+  // AuthNew stands alone (no shell): the sign-in page when signed out, a harmless preview when signed in.
+  if (newPage === 'auth') {
+      const leaveAuth = () => {
+          try { window.history.pushState({}, '', '/trips-new'); } catch (e) {}
+          setNewPage(getNewPage());
+      };
+      return (
+        <Suspense fallback={null}>
+          <AuthNew
+            preview={!!currentUser}
+            isDark={theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)}
+            onThemeChange={t => handleThemeChange(t)}
+            onClosePreview={leaveAuth}
+            onLogin={user => { handleLogin(user); leaveAuth(); }}
+          />
+          <Toaster />
+        </Suspense>
+      );
+  }
+
   if (!currentUser) {
       return (
         <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-indigo-50/50 via-slate-100/60 to-blue-50/50 dark:from-slate-950 dark:via-slate-900/90 dark:to-indigo-950/95 transition-colors duration-500 text-gray-900 dark:text-gray-100 relative safe-top safe-bottom safe-x">
@@ -403,6 +433,7 @@ export default function App() {
       try { if (window.location.pathname !== path) window.history.pushState({}, '', path); } catch (e) {}
       const next = getNewPage();
       setNewPage(next);
+      setNewPathTick(t => t + 1);
       if (!next) {
           const state = getUrlState();
           setView(state.view);
@@ -411,11 +442,17 @@ export default function App() {
       }
   };
 
+  // Inside the New pages a trip opens on its New page; a flight that belongs to no trip still goes to Flights.
+  const openTripNew = (id: string) => {
+      if (id.startsWith('independent-flight-')) handleTripClick(id);
+      else navigateFromShell(`/trip-new/${encodeURIComponent(id)}`);
+  };
+
   if (newPage) {
       return (
         <Suspense fallback={null}>
           <ShellNew
-            currentPath={window.location.pathname}
+            currentPath={newPage === 'trip' ? '/trips-new' : window.location.pathname}
             onNavigate={navigateFromShell}
             user={currentUser}
             isDark={isDarkMode}
@@ -427,9 +464,12 @@ export default function App() {
           >
             <AppErrorBoundary routeKey={`new-${newPage}`} onResetToDashboard={() => navigate(ViewState.DASHBOARD)}>
               <Suspense fallback={null}>
-                {newPage === 'map' ? <MapNew onTripClick={handleTripClick} isSidebarCollapsed={isSidebarCollapsed} onThemeChange={t => handleThemeChange(t)} /> : null}
-                {newPage === 'atlas' ? <AtlasNew onTripClick={handleTripClick} /> : null}
-                {newPage === 'trips' ? <TripsNew onTripClick={handleTripClick} /> : null}
+                {newPage === 'map' ? <MapNew onTripClick={openTripNew} isSidebarCollapsed={isSidebarCollapsed} onThemeChange={t => handleThemeChange(t)} /> : null}
+                {newPage === 'atlas' ? <AtlasNew onTripClick={openTripNew} /> : null}
+                {newPage === 'trips' ? <TripsNew onTripClick={openTripNew} /> : null}
+                {newPage === 'trip' && getNewTripId() ? (
+                  <TripNew key={getNewTripId()!} tripId={getNewTripId()!} onBack={() => navigateFromShell('/trips-new')} onOpenOriginal={handleTripClick} />
+                ) : null}
               </Suspense>
             </AppErrorBoundary>
           </ShellNew>

@@ -1079,13 +1079,15 @@ class DataService {
       if (updatedTrip.transports) {
           const updatedTransports = await Promise.all(updatedTrip.transports.map(async (t) => {
               const u = { ...t };
-              if (u.origin) {
+              // Coordinates found for this exact text (picked from the place search, or looked up on an earlier
+              // save) are kept: every save used to look up every leg again, and could replace a picked airport.
+              if (u.origin && !(u.originLat != null && u.originLng != null && u.originGeoKey === u.origin)) {
                   const c = await getCoordinates(u.origin);
-                  if (c) { u.originLat = c.lat; u.originLng = c.lng; }
+                  if (c) { u.originLat = c.lat; u.originLng = c.lng; u.originGeoKey = u.origin; }
               }
-              if (u.destination) {
+              if (u.destination && !(u.destLat != null && u.destLng != null && u.destGeoKey === u.destination)) {
                   const c = await getCoordinates(u.destination);
-                  if (c) { u.destLat = c.lat; u.destLng = c.lng; }
+                  if (c) { u.destLat = c.lat; u.destLng = c.lng; u.destGeoKey = u.destination; }
               }
               if (u.waypoints && u.waypoints.length > 0) {
                   const updatedWaypoints = await Promise.all(u.waypoints.map(async (wp) => {

@@ -114,6 +114,9 @@ export interface Transport {
   originLng?: number;
   destLat?: number;
   destLng?: number;
+  /** The origin / destination text the coordinates above were found for; they are looked up again only when the text changes. */
+  originGeoKey?: string;
+  destGeoKey?: string;
   
   // Helper for flight tracking
   providerCode?: string; // IATA code for airline (e.g. AA)
@@ -210,6 +213,8 @@ export interface Trip {
   /** New pages: the name of a Hugeicons free icon (e.g. 'Airplane01Icon') chosen for this trip. Kept apart from `icon`, which older pages render as an emoji. */
   hugeicon?: string;
   privacy?: 'Private' | 'Public'; // New: AirTrail privacy controls
+  /** What the trip is meant to cost, in the workspace currency (New trip page). */
+  targetBudget?: number;
   
   // Basic Leave Request Fields (Legacy/Simple)
   entitlementId?: string; // If null, counts as 'General Event' (no balance impact)

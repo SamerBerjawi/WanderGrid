@@ -86,6 +86,9 @@ export default {
           mustard: 'rgb(var(--rp-mustard) / <alpha-value>)',
           'on-mustard': 'rgb(var(--rp-on-mustard) / <alpha-value>)',
           ochre: 'rgb(var(--rp-ochre) / <alpha-value>)',
+          sea: 'rgb(var(--rp-sea) / <alpha-value>)',
+          navy: 'rgb(var(--rp-navy) / <alpha-value>)',
+          plum: 'rgb(var(--rp-plum) / <alpha-value>)',
         },
         // Golden Hour theme (flag UI_GOLDEN_HOUR)
         sunset: {

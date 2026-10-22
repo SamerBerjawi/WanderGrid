@@ -16,7 +16,10 @@ import { RpHugeicon } from '../RpHugeicon';
 import { RpChip, RpIconButton, RpLogo, RpSection, RpSheet, RpToggle } from '../ui';
 import { TripMenu } from './TripMenu';
 import { stayIcon } from './stayIcon';
-import { STAY_ACCENT, TRANSPORT_ACCENT } from './accents';
+import { STAY_ACCENT } from './accents';
+import { LEG_PLACES, MODE_LOOKS, legText, modeLook } from './transportModes';
+import { LegDetails } from './LegDetails';
+import { calculateDistance } from '../../../services/geocoding';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -25,7 +28,8 @@ import { cn } from '../../../utils/cn';
  * and the delete confirmation.
  */
 
-export type TripSheetTarget = { kind: 'create'; bucket: TripBucket } | { kind: 'edit'; trip: Trip };
+/** `step` opens an edit on a given step: 0 Basics, 1 Transport, 2 Stays, 3 Activities. */
+export type TripSheetTarget = { kind: 'create'; bucket: TripBucket } | { kind: 'edit'; trip: Trip; step?: number };
 
 const STATUS_CHOICES: { status: Trip['status']; label: string; icon: Icon; on: string }[] = [
     { status: 'Planning', label: 'Planned', icon: Clock, on: 'bg-rp-mustard text-rp-on-mustard hover:bg-rp-mustard' },
@@ -33,15 +37,6 @@ const STATUS_CHOICES: { status: Trip['status']; label: string; icon: Icon; on: s
     { status: 'Past', label: 'Past', icon: CheckCircle, on: 'bg-rp-ink text-rp-on-ink hover:bg-rp-ink' },
 ];
 
-const MODES: { mode: TransportMode; label: string; icon: Icon; number: string }[] = [
-    { mode: 'Flight', label: 'Flight', icon: Airplane, number: 'Flight number' },
-    { mode: 'Train', label: 'Train', icon: Train, number: 'Train number' },
-    { mode: 'Bus', label: 'Bus', icon: Bus, number: 'Route number' },
-    { mode: 'Car Rental', label: 'Car rental', icon: Car, number: 'Booking number' },
-    { mode: 'Personal Car', label: 'Own car', icon: CarProfile, number: 'Plate' },
-    { mode: 'Cruise', label: 'Cruise', icon: Boat, number: 'Booking number' },
-    { mode: 'Ferry', label: 'Ferry', icon: Boat, number: 'Booking number' },
-];
 
 const STAY_TYPES: Accommodation['type'][] = ['Hotel', 'Airbnb', 'Resort', 'Villa', 'Apartment', 'Hostel', 'Campground', 'Friends/Family'];
 const ACTIVITY_TYPES = ['Activity', 'Dining', 'Tour', 'Sightseeing', 'Museum', 'Outdoor', 'Entertainment', 'Shopping', 'Wellness', 'Nightlife'];
@@ -311,7 +306,7 @@ const FormActions: React.FC<{ editing: boolean; valid: boolean; addLabel: string
     </div>
 );
 
-const modeOf = (mode?: TransportMode) => MODES.find(m => m.mode === mode) ?? MODES[0];
+const modeOf = modeLook;
 
 /** Replace item `at` (when editing) or append, and give back the new list. */
 const upsert = <T,>(list: T[], at: number | null, item: T): T[] => (at === null ? [...list, item] : list.map((x, i) => (i === at ? item : x)));
@@ -330,17 +325,36 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
     const [editing, setEditing] = useState<number | null>(null);
     const list = draft.transports || [];
     const m = modeOf(leg.mode);
+    const places = LEG_PLACES[leg.mode || 'Flight'];
+    const format = legText(leg.mode);
+    // A leg has a position when it was picked here, or looked up on an earlier save for this same text.
+    const located = (text?: string, lat?: number, key?: string) => Boolean(text && lat != null && (key === undefined || key === text));
     const patch = (p: Partial<Transport>) => setLeg(l => ({ ...l, ...p }));
     const valid = Boolean(leg.origin?.trim() && leg.destination?.trim());
 
     const reset = () => { setLeg(blank()); setCost(''); setEditing(null); };
     const save = () => {
         if (!valid) return;
-        set('transports', upsert(list, editing, { ...leg, origin: leg.origin!.trim(), destination: leg.destination!.trim(), cost: num(cost) }));
+        // Distance is worked out from the two places when it wasn't typed; empty stops are dropped.
+        const distance = leg.distance ?? (leg.originLat != null && leg.originLng != null && leg.destLat != null && leg.destLng != null
+            ? Math.round(calculateDistance(leg.originLat, leg.originLng, leg.destLat, leg.destLng))
+            : undefined);
+        const waypoints = (leg.waypoints || []).filter(w => w.name.trim()).map(w => ({ ...w, name: w.name.trim() }));
+        set('transports', upsert(list, editing, { ...leg, origin: leg.origin!.trim(), destination: leg.destination!.trim(), cost: num(cost), distance, waypoints: waypoints.length ? waypoints : undefined }));
         reset();
     };
     const edit = (i: number) => { setLeg({ ...list[i] }); setCost(costText(list[i].cost)); setEditing(i); };
-    const remove = (i: number) => { set('transports', list.filter((_, j) => j !== i)); if (editing === i) reset(); else if (editing !== null && editing > i) setEditing(editing - 1); };
+    const remove = (i: number) => {
+        const removed = list[i];
+        let next = list.filter((_, j) => j !== i);
+        // A round trip's price may sit on one leg: removing that leg hands it to a remaining leg of the same booking.
+        if (removed?.cost && removed.itineraryId) {
+            const k = next.findIndex(t => t.itineraryId === removed.itineraryId);
+            if (k >= 0) next = next.map((t, j) => (j === k ? { ...t, cost: (t.cost || 0) + removed.cost! } : t));
+        }
+        set('transports', next);
+        if (editing === i) reset(); else if (editing !== null && editing > i) setEditing(editing - 1);
+    };
 
     return (
         <div className="flex flex-col gap-5">
@@ -353,7 +367,7 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
                                 <ItemRow
                                     key={t.id || i}
                                     active={editing === i}
-                                    logo={<RpLogo name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={tm.icon} iconClassName={TRANSPORT_ACCENT} />}
+                                    logo={<RpLogo name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={tm.icon} iconClassName={tm.text} />}
                                     title={`${t.origin} → ${t.destination}`}
                                     meta={[t.provider, t.departureDate ? formatDate(t.departureDate, 'short') : '', t.cost != null ? formatCurrency(t.cost) : ''].filter(Boolean).join(' · ') || tm.label}
                                     onEdit={() => edit(i)}
@@ -368,13 +382,44 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
 
             <RpSection title={editing !== null ? 'Edit transport' : list.length ? 'Add another' : 'Add a flight, train or ride'} icon={editing !== null ? Airplane : Plus}>
                 <div role="group" aria-label="Type of transport" className="flex flex-wrap gap-2 py-2">
-                    {MODES.map(o => (
-                        <RpChip key={o.mode} selected={leg.mode === o.mode} onClick={() => patch({ mode: o.mode })}><o.icon size={16} aria-hidden /> {o.label}</RpChip>
+                    {MODE_LOOKS.map(o => (
+                        <RpChip key={o.mode} selected={leg.mode === o.mode} onClick={() => patch({ mode: o.mode })} className={leg.mode === o.mode ? o.fill : undefined}>
+                            <o.icon size={16} className={leg.mode === o.mode ? undefined : o.text} aria-hidden /> {o.label}
+                        </RpChip>
                     ))}
                 </div>
                 <div className="grid gap-x-3 sm:grid-cols-2">
-                    <RpField label="From">{id => <input id={id} value={leg.origin} onChange={e => patch({ origin: e.target.value })} className={RP_FIELD} placeholder={leg.mode === 'Flight' ? 'AMS' : 'Amsterdam'} autoComplete="off" />}</RpField>
-                    <RpField label="To">{id => <input id={id} value={leg.destination} onChange={e => patch({ destination: e.target.value })} className={RP_FIELD} placeholder={leg.mode === 'Flight' ? 'LIS' : 'Lisbon'} autoComplete="off" />}</RpField>
+                    <RpField label="From">{id => (
+                        <PlaceField
+                            id={id}
+                            value={leg.origin || ''}
+                            located={located(leg.origin, leg.originLat, leg.originGeoKey)}
+                            placeholder={places.hint}
+                            mode={places.mode}
+                            prefer={places.prefer}
+                            format={format}
+                            pillClassName={m.tint}
+                            onChange={text => patch({ origin: text, originLat: undefined, originLng: undefined, originGeoKey: undefined })}
+                            onPick={(text, c) => patch({ origin: text, originLat: c.lat, originLng: c.lng, originGeoKey: text })}
+                        />
+                    )}</RpField>
+                    <RpField label="To">{id => (
+                        <PlaceField
+                            id={id}
+                            value={leg.destination || ''}
+                            located={located(leg.destination, leg.destLat, leg.destGeoKey)}
+                            placeholder={places.hint}
+                            mode={places.mode}
+                            prefer={places.prefer}
+                            align="end"
+                            // Near the trip's destination first, as a leg usually ends there.
+                            bias={draft.coordinates ? { lat: draft.coordinates.lat, lon: draft.coordinates.lng } : undefined}
+                            format={format}
+                            pillClassName={m.tint}
+                            onChange={text => patch({ destination: text, destLat: undefined, destLng: undefined, destGeoKey: undefined })}
+                            onPick={(text, c) => patch({ destination: text, destLat: c.lat, destLng: c.lng, destGeoKey: text })}
+                        />
+                    )}</RpField>
                     <RpField label="Departs">{id => <input id={id} type="date" value={leg.departureDate} onChange={e => patch({ departureDate: e.target.value, arrivalDate: leg.arrivalDate && leg.arrivalDate >= e.target.value ? leg.arrivalDate : e.target.value })} className={DATE} />}</RpField>
                     <RpField label="Departure time">{id => <input id={id} type="time" value={leg.departureTime} onChange={e => patch({ departureTime: e.target.value })} className={DATE} />}</RpField>
                     <RpField label="Arrives">{id => <input id={id} type="date" value={leg.arrivalDate} min={leg.departureDate || undefined} onChange={e => patch({ arrivalDate: e.target.value })} className={DATE} />}</RpField>
@@ -383,7 +428,7 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
                 <RpField label={leg.mode === 'Flight' ? 'Airline' : 'Operator'}>
                     {id => (
                         <div className="flex items-center gap-2">
-                            <RpLogo name={leg.provider} src={leg.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={m.icon} iconClassName={TRANSPORT_ACCENT} />
+                            <RpLogo name={leg.provider} src={leg.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={m.icon} iconClassName={m.text} />
                             <input id={id} value={leg.provider} onChange={e => patch({ provider: e.target.value })} className={RP_FIELD} placeholder={leg.mode === 'Flight' ? 'KLM' : ''} autoComplete="off" />
                         </div>
                     )}
@@ -394,6 +439,7 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
                     <RpField label="Seat">{id => <input id={id} value={leg.seatNumber || ''} onChange={e => patch({ seatNumber: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
                     <RpField label="Cost">{id => <input id={id} inputMode="decimal" value={cost} onChange={e => setCost(e.target.value)} className={cn(RP_FIELD, 'rp-tabular')} placeholder="0" autoComplete="off" />}</RpField>
                 </div>
+                <LegDetails key={editing ?? 'new'} leg={leg} patch={patch} open={editing !== null && Boolean(leg.waypoints?.length)} />
                 <FormActions editing={editing !== null} valid={valid} addLabel="Add transport" onSave={save} onCancel={reset} />
             </RpSection>
         </div>
@@ -591,7 +637,7 @@ export const TripSheet: React.FC<{
     useEffect(() => {
         if (!target) return;
         setTouched(false);
-        setStep(0);
+        setStep(target.kind === 'edit' ? target.step ?? 0 : 0);
         setReached(target.kind === 'edit' ? EDIT_STEPS.length - 1 : 0);
         setDraft(target.kind === 'edit'
             ? draftOf(target.trip)

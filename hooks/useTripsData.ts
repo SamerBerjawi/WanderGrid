@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Accommodation, Activity, EntitlementType, GeoCoordinates, Transport, Trip, TripAllocation, User } from '../types';
 import { dataService } from '../services/mockDb';
+import { syncPitStopsToVisited } from '../services/pitStopSync';
 import { affectsCollections } from './useWanderSync';
 import { BUCKET_STATUS, bucketOf, destinationsOf, todayISO, tripDays, type TripBucket } from '../utils/tripsModel';
 
@@ -31,6 +32,15 @@ export interface TripDraft {
 const uid = () => crypto.randomUUID();
 
 /** A full leg from a form's partial one, keeping everything an existing leg already had. */
+/** Road-trip stops count as visited places; this runs after a save and never blocks or fails it. */
+const syncStops = (trip: Trip, before?: Trip) => {
+    (trip.transports || []).forEach(t => {
+        const old = before?.transports?.find(o => o.id === t.id);
+        // Only legs whose stops are new or changed: a save of anything else must not look every stop up again.
+        if (t.waypoints?.length && JSON.stringify(old?.waypoints) !== JSON.stringify(t.waypoints)) void syncPitStopsToVisited(t.waypoints, { date: t.departureDate, origin: t.origin, destination: t.destination }).catch(() => undefined);
+    });
+};
+
 const toTransport = (t: Partial<Transport>, fallbackDate: string): Transport => ({
     type: 'One-Way',
     mode: 'Flight',
@@ -185,6 +195,7 @@ export const useTripsData = () => {
         };
         const saved = await dataService.addTrip(payload);
         setTrips(prev => [...prev, saved]);
+        syncStops(saved);
         return saved;
     }, []);
 
@@ -220,6 +231,7 @@ export const useTripsData = () => {
         replace(next);
         const saved = await guarded(() => dataService.updateTrip(next));
         replace(saved);
+        syncStops(saved, trip);
         return saved;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [load]);
@@ -250,6 +262,18 @@ export const useTripsData = () => {
         return saved;
     }, []);
 
+    /** Saves a change to part of a trip (packing list, notes, an activity) without touching the rest. */
+    const patch = useCallback(async (id: string, changes: Partial<Trip>): Promise<Trip | undefined> => {
+        const current = tripsRef.current.find(t => t.id === id);
+        if (!current) return undefined;
+        const next = { ...current, ...changes };
+        replace(next);
+        const saved = await guarded(() => dataService.updateTrip(next));
+        replace(saved);
+        return saved;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [load]);
+
     /** Puts a trip in a column by changing its status. Returns the status it had, for undo. */
     const setStatus = useCallback(async (id: string, status: Trip['status']): Promise<Trip['status'] | undefined> => {
         const current = tripsRef.current.find(t => t.id === id);
@@ -276,7 +300,7 @@ export const useTripsData = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [load]);
 
-    return { trips, users, entitlements, brandfetchApiKey, loading, error, reload: load, today, active, archived, cancelled, columns, years, stats, create, update, duplicate, setStatus, moveTo, setArchived, remove };
+    return { trips, users, entitlements, brandfetchApiKey, loading, error, reload: load, today, active, archived, cancelled, columns, years, stats, create, update, patch, duplicate, setStatus, moveTo, setArchived, remove };
 };
 
 export type TripsData = ReturnType<typeof useTripsData>;
