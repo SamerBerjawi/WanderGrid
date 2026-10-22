@@ -172,3 +172,28 @@ describe('totals, breakdowns and lookups from the log', () => {
         expect(placeCode('JFK')).toBe('JFK');
     });
 });
+
+describe('stats: CO₂, most flown route, year change', () => {
+    const a = flight('1', 'AMS', 'JFK', '2025-03-01', '10:00', '2025-03-01', '12:30', { travelClass: 'Economy' });
+    const b = flight('2', 'JFK', 'AMS', '2025-03-10', '18:00', '2025-03-11', '07:00', { travelClass: 'Business' });
+    const c = flight('3', 'AMS', 'LHR', '2026-01-05', '09:00', '2026-01-05', '09:20');
+    const items = [a, b, c].map(f => record(f));
+
+    it('scales CO₂ by cabin', async () => {
+        const { flightCo2, totalCo2 } = await import('../../utils/journeysModel');
+        expect(flightCo2(b)).toBeGreaterThan(flightCo2(a) * 2);
+        expect(totalCo2(items)).toBe(flightCo2(a) + flightCo2(b) + flightCo2(c));
+    });
+    it('counts a pair both ways as one route', async () => {
+        const { mostFlownRoute } = await import('../../utils/journeysModel');
+        const r = mostFlownRoute(items)!;
+        expect([r.from, r.to]).toEqual(['AMS', 'JFK']);
+        expect(r.count).toBe(2);
+    });
+    it('gives the change from the year before, or null', async () => {
+        const { totalsByYear, yearChange } = await import('../../utils/journeysModel');
+        const years = totalsByYear(items);
+        expect(yearChange(years, 'count', '2026')).toBe(-50);
+        expect(yearChange(years, 'count', '2025')).toBeNull();
+    });
+});

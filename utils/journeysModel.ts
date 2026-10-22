@@ -168,7 +168,47 @@ export const journeyTotals = (items: JourneyRecord[], now = Date.now()): Journey
 
 export const yearOf = (r: JourneyRecord): string => (r.flight.departureDate || '').slice(0, 4) || 'Undated';
 
-export interface YearTotals { year: string; count: number; km: number; minutes: number; cost: number }
+export interface YearTotals { year: string; count: number; km: number; minutes: number; cost: number; co2: number }
+
+/** Kilograms of CO₂ per passenger-kilometre by cabin: a rough economy average, scaled up for the room a seat takes. */
+const CO2_PER_KM = 0.15;
+const CABIN_FACTOR: Record<string, number> = { economy: 1, 'premium economy': 1.5, business: 2.9, first: 4 };
+
+/** A rule-of-thumb estimate (kg CO₂ for one passenger) from distance and cabin; not a measured figure. */
+export const flightCo2 = (t: Transport): number => {
+    if (journeyStatus(t).state === 'cancelled') return 0;
+    return Math.round(journeyKm(t) * CO2_PER_KM * (CABIN_FACTOR[(t.travelClass || 'economy').toLowerCase()] ?? 1));
+};
+
+export const totalCo2 = (items: JourneyRecord[]): number => items.reduce((n, r) => n + flightCo2(r.flight), 0);
+
+export interface RouteTally { key: string; from: string; to: string; count: number; km: number }
+
+/** The route flown most often; a pair counts both ways (AMS→JFK and JFK→AMS are one route). */
+export const mostFlownRoute = (items: JourneyRecord[]): RouteTally | null => {
+    const map = new Map<string, RouteTally>();
+    for (const r of items) {
+        const { origin, destination } = r.flight;
+        if (!origin?.trim() || !destination?.trim() || journeyStatus(r.flight).state === 'cancelled') continue;
+        const a = placeCode(origin), b = placeCode(destination);
+        if (a === b) continue;
+        const [from, to] = a < b ? [a, b] : [b, a];
+        const key = `${from}-${to}`;
+        const row = map.get(key) ?? { key, from, to, count: 0, km: 0 };
+        row.count += 1;
+        row.km += journeyKm(r.flight);
+        map.set(key, row);
+    }
+    return [...map.values()].sort((x, y) => y.count - x.count || y.km - x.km)[0] ?? null;
+};
+
+/** Percent change from the previous year to this one; null when there is nothing to compare with. */
+export const yearChange = (years: YearTotals[], key: 'count' | 'km' | 'minutes' | 'cost' | 'co2', year: string): number | null => {
+    const now = years.find(y => y.year === year);
+    const before = years.find(y => y.year === String(Number(year) - 1));
+    if (!now || !before || before[key] <= 0) return null;
+    return Math.round(((now[key] - before[key]) / before[key]) * 100);
+};
 
 /** Flights, kilometres and time per year, oldest first, with the years in between that have none. */
 export const totalsByYear = (items: JourneyRecord[]): YearTotals[] => {
@@ -177,8 +217,9 @@ export const totalsByYear = (items: JourneyRecord[]): YearTotals[] => {
         if (journeyStatus(r.flight).state === 'cancelled') continue;
         const year = yearOf(r);
         if (!/^\d{4}$/.test(year)) continue;
-        const row = map.get(year) ?? { year, count: 0, km: 0, minutes: 0, cost: 0 };
+        const row = map.get(year) ?? { year, count: 0, km: 0, minutes: 0, cost: 0, co2: 0 };
         row.count += 1;
+        row.co2 += flightCo2(r.flight);
         row.km += journeyKm(r.flight);
         row.minutes += journeyMinutes(r.flight);
         row.cost += r.flight.cost || 0;
@@ -187,7 +228,7 @@ export const totalsByYear = (items: JourneyRecord[]): YearTotals[] => {
     const years = [...map.keys()].map(Number).sort((a, b) => a - b);
     if (years.length === 0) return [];
     const out: YearTotals[] = [];
-    for (let y = years[0]; y <= years[years.length - 1]; y++) out.push(map.get(String(y)) ?? { year: String(y), count: 0, km: 0, minutes: 0, cost: 0 });
+    for (let y = years[0]; y <= years[years.length - 1]; y++) out.push(map.get(String(y)) ?? { year: String(y), count: 0, km: 0, minutes: 0, cost: 0, co2: 0 });
     return out;
 };
 
