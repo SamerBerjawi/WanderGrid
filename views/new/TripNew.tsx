@@ -39,6 +39,8 @@ interface TripNewProps {
     onBack: () => void;
     /** Opens the original trip page (kept while TripNew is being built out). */
     onOpenOriginal?: (tripId: string) => void;
+    /** Opens a member's New page. */
+    onOpenMember?: (userId: string) => void;
 }
 
 type TabId = 'itinerary' | 'canvas' | 'map' | 'bookings' | 'costs' | 'gear' | 'notes';
@@ -63,7 +65,7 @@ const currentUserId = (): string | undefined => {
 };
 const SHOW_CITIES = 3;
 
-export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal }) => {
+export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal, onOpenMember }) => {
     const data = useTripsData();
     const undo = useUndoToast();
     const [tab, setTab] = useState<TabId>(readTab);
@@ -265,10 +267,10 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
                         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                                 {members.slice(0, 4).map(u => (
-                                    <span key={u.id} className="flex items-center gap-1.5 text-sm">
+                                    <button key={u.id} type="button" onClick={() => onOpenMember?.(u.id)} disabled={!onOpenMember} aria-label={`Open ${u.name}`} className="flex min-h-11 items-center gap-1.5 rounded-full pr-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-current enabled:hover:underline disabled:cursor-default">
                                         <span className={cn('flex size-7 items-center justify-center rounded-full text-2xs font-semibold', skin.panel)}>{initials(u.name)}</span>
                                         {u.name.split(' ')[0]}
-                                    </span>
+                                    </button>
                                 ))}
                                 {members.length > 4 ? <span className={cn('text-sm', skin.muted)}>+{members.length - 4}</span> : null}
                             </div>

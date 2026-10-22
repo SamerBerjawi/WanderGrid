@@ -180,6 +180,7 @@ import {
   TrainIcon,
   TreeIcon,
   Upload01Icon,
+  UserAdd01Icon,
   UserCheck01Icon,
   UserCircleIcon,
   UserIcon,
@@ -404,6 +405,7 @@ export const TrendUp = make(ChartIncreaseIcon, 'TrendUp');
 export const Trophy = make(Award01Icon, 'Trophy');
 export const UploadSimple = make(Upload01Icon, 'UploadSimple');
 export const User = make(UserIcon, 'User');
+export const UserAdd = make(UserAdd01Icon, 'UserAdd');
 export const UserCheck = make(UserCheck01Icon, 'UserCheck');
 export const UserCircle = make(UserCircleIcon, 'UserCircle');
 export const Users = make(UserMultipleIcon, 'Users');

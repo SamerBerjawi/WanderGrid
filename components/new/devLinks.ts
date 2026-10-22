@@ -10,6 +10,7 @@ export const NEW_PAGE_LINKS = [
     { path: '/trips-new', label: 'Trips (new)', short: 'Trips new', icon: 'luggage' },
     { path: '/flights-new', label: 'Flights (new)', short: 'Flights new', icon: 'flight' },
     { path: '/roadtrips-new', label: 'Road trips (new)', short: 'Road trips new', icon: 'train' },
+    { path: '/auth-new', label: 'Sign in (new)', short: 'Sign in new', icon: 'login' },
 ] as const;
 
 /** Opens a New page in place: App.tsx listens for popstate and renders it inside ShellNew. */

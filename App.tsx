@@ -37,15 +37,22 @@ const TripsNew = lazy(() => import('./views/new/TripsNew').then(m => ({ default:
 const TripNew = lazy(() => import('./views/new/TripNew').then(m => ({ default: m.TripNew })));
 const FlightsNew = lazy(() => import('./views/new/FlightsNew').then(m => ({ default: m.FlightsNew })));
 const RoadTripsNew = lazy(() => import('./views/new/RoadTripsNew').then(m => ({ default: m.RoadTripsNew })));
-type NewPage = 'map' | 'atlas' | 'trips' | 'trip' | 'flights' | 'roadtrips';
-const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips', '/flights-new': 'flights', '/roadtrips-new': 'roadtrips' };
+const MemberNew = lazy(() => import('./views/new/MemberNew').then(m => ({ default: m.MemberNew })));
+const AuthNew = lazy(() => import('./views/new/AuthNew').then(m => ({ default: m.AuthNew })));
+type NewPage = 'map' | 'atlas' | 'trips' | 'trip' | 'member' | 'auth' | 'flights' | 'roadtrips';
+const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips', '/auth-new': 'auth', '/flights-new': 'flights', '/roadtrips-new': 'roadtrips' };
 // One trip's page: /trip-new/:id (the Trips page opens it).
 const NEW_TRIP_PATH = /^\/trip-new\/([^/]+)$/;
 const getNewTripId = (): string | null => {
     try { const m = window.location.pathname.match(NEW_TRIP_PATH); return m ? safeDecode(m[1]) : null; } catch (e) { return null; }
 };
+// One member's page: /member-new/:id.
+const NEW_MEMBER_PATH = /^\/member-new\/([^/]+)$/;
+const getNewMemberId = (): string | null => {
+    try { const m = window.location.pathname.match(NEW_MEMBER_PATH); return m ? safeDecode(m[1]) : null; } catch (e) { return null; }
+};
 const getNewPage = (): NewPage | null => {
-    try { return NEW_PAGES[window.location.pathname] ?? (NEW_TRIP_PATH.test(window.location.pathname) ? 'trip' : null); } catch (e) { return null; }
+    try { return NEW_PAGES[window.location.pathname] ?? (NEW_TRIP_PATH.test(window.location.pathname) ? 'trip' : NEW_MEMBER_PATH.test(window.location.pathname) ? 'member' : null); } catch (e) { return null; }
 };
 
 import { PWAInstallBanner } from './components/PWAInstallBanner';
@@ -390,6 +397,26 @@ export default function App() {
       );
   }
 
+  // AuthNew stands alone (no shell): the sign-in page when signed out, a harmless preview when signed in.
+  if (newPage === 'auth') {
+      const leaveAuth = () => {
+          try { window.history.pushState({}, '', '/trips-new'); } catch (e) {}
+          setNewPage(getNewPage());
+      };
+      return (
+        <Suspense fallback={null}>
+          <AuthNew
+            preview={!!currentUser}
+            isDark={theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)}
+            onThemeChange={t => handleThemeChange(t)}
+            onClosePreview={leaveAuth}
+            onLogin={user => { handleLogin(user); leaveAuth(); }}
+          />
+          <Toaster />
+        </Suspense>
+      );
+  }
+
   if (!currentUser) {
       return (
         <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-indigo-50/50 via-slate-100/60 to-blue-50/50 dark:from-slate-950 dark:via-slate-900/90 dark:to-indigo-950/95 transition-colors duration-500 text-gray-900 dark:text-gray-100 relative safe-top safe-bottom safe-x">
@@ -429,11 +456,13 @@ export default function App() {
       else navigateFromShell(`/trip-new/${encodeURIComponent(id)}`);
   };
 
+  const openMemberNew = (id: string) => navigateFromShell(`/member-new/${encodeURIComponent(id)}`);
+
   if (newPage) {
       return (
         <Suspense fallback={null}>
           <ShellNew
-            currentPath={newPage === 'trip' ? '/trips-new' : newPage === 'roadtrips' ? '/flights-new' : window.location.pathname}
+            currentPath={newPage === 'trip' ? '/trips-new' : newPage === 'roadtrips' ? '/flights-new' : newPage === 'member' ? '' : window.location.pathname}
             onNavigate={navigateFromShell}
             user={currentUser}
             isDark={isDarkMode}
@@ -450,8 +479,17 @@ export default function App() {
                 {newPage === 'trips' ? <TripsNew onTripClick={openTripNew} /> : null}
                 {newPage === 'flights' ? <FlightsNew onTripClick={openTripNew} /> : null}
                 {newPage === 'roadtrips' ? <RoadTripsNew onTripClick={openTripNew} /> : null}
+                {newPage === 'member' && getNewMemberId() ? (
+                  <MemberNew
+                    key={getNewMemberId()!}
+                    memberId={getNewMemberId()!}
+                    onBack={() => (window.history.length > 1 ? window.history.back() : navigateFromShell('/trips-new'))}
+                    onOpenTrip={openTripNew}
+                    onLogout={() => handleLogout()}
+                  />
+                ) : null}
                 {newPage === 'trip' && getNewTripId() ? (
-                  <TripNew key={getNewTripId()!} tripId={getNewTripId()!} onBack={() => navigateFromShell('/trips-new')} onOpenOriginal={handleTripClick} />
+                  <TripNew key={getNewTripId()!} tripId={getNewTripId()!} onOpenMember={openMemberNew} onBack={() => navigateFromShell('/trips-new')} onOpenOriginal={handleTripClick} />
                 ) : null}
               </Suspense>
             </AppErrorBoundary>
