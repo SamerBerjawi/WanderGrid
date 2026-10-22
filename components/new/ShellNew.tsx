@@ -93,7 +93,7 @@ const AccountButton: React.FC<{ user: User | null; onNavigate: (p: string) => vo
                                 <UserCircle size={18} /> My profile
                             </button>
                         ) : null}
-                        <button role="menuitem" type="button" onClick={() => { setOpen(false); onNavigate('/settings'); }} className="flex min-h-11 w-full items-center gap-3 rounded-[14px] px-3 text-sm text-rp-ink hover:bg-rp-inset">
+                        <button role="menuitem" type="button" onClick={() => { setOpen(false); onNavigate('/settings-new'); }} className="flex min-h-11 w-full items-center gap-3 rounded-[14px] px-3 text-sm text-rp-ink hover:bg-rp-inset">
                             <Gear size={18} /> Settings
                         </button>
                         <button role="menuitem" type="button" onClick={() => { setOpen(false); onLogout(); }} className="flex min-h-11 w-full items-center gap-3 rounded-[14px] px-3 text-sm text-rp-ink hover:bg-rp-inset">
@@ -192,7 +192,7 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
                             <UserCircle size={20} /> My profile
                         </button>
                     ) : null}
-                    <button type="button" onClick={() => go('/settings')} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
+                    <button type="button" onClick={() => go('/settings-new')} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
                         <Gear size={20} /> Settings
                     </button>
                     <button type="button" onClick={() => { setSheet(null); onLogout(); }} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
