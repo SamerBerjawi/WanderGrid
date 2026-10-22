@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { MorphicNavbar } from '../kokonutui/split-nav';
 import SwitchButton from '../kokonutui/switch-button';
 import {
-    Airplane, CalendarBlank, DotsThreeOutline, Gear, Globe, House, MapTrifold, Plus, SignOut, Suitcase, type Icon,
+    Airplane, CalendarBlank, DotsThreeOutline, Gear, Globe, House, MapTrifold, Plus, SignOut, Suitcase, UserCircle, type Icon,
 } from '../ui/hugeicons';
 import type { User } from '../../types';
 import { RpSheet } from './ui';
@@ -88,6 +88,11 @@ const AccountButton: React.FC<{ user: User | null; onNavigate: (p: string) => vo
                             <p className="truncate text-sm font-medium text-rp-ink">{user?.name}</p>
                             <p className="truncate text-xs text-rp-muted">{user?.email}</p>
                         </div>
+                        {user?.id ? (
+                            <button role="menuitem" type="button" onClick={() => { setOpen(false); onNavigate(`/member-new/${encodeURIComponent(user.id)}`); }} className="flex min-h-11 w-full items-center gap-3 rounded-[14px] px-3 text-sm text-rp-ink hover:bg-rp-inset">
+                                <UserCircle size={18} /> My profile
+                            </button>
+                        ) : null}
                         <button role="menuitem" type="button" onClick={() => { setOpen(false); onNavigate('/settings'); }} className="flex min-h-11 w-full items-center gap-3 rounded-[14px] px-3 text-sm text-rp-ink hover:bg-rp-inset">
                             <Gear size={18} /> Settings
                         </button>
@@ -182,6 +187,11 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
                             <i.icon size={20} /> {i.label}
                         </button>
                     ))}
+                    {user?.id ? (
+                        <button type="button" onClick={() => go(`/member-new/${encodeURIComponent(user.id)}`)} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
+                            <UserCircle size={20} /> My profile
+                        </button>
+                    ) : null}
                     <button type="button" onClick={() => go('/settings')} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
                         <Gear size={20} /> Settings
                     </button>
