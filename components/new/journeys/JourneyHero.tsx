@@ -120,8 +120,8 @@ export const JourneyHero: React.FC<{ items: JourneyRecord[]; kind?: 'flight' | '
                 <Total
                     tone="rust" icon={CurrencyDollar} label="Spend" selected={metric === 'cost'} onSelect={() => change('cost')}
                     value={totals.cost} unit="" money
-                    sub={totals.count > 0 && totals.cost > 0 ? `${formatCurrency(Math.round(totals.cost / totals.count))} a flight` : 'No costs logged'}
-                    subShort={totals.count > 0 && totals.cost > 0 ? `${formatCurrency(Math.round(totals.cost / totals.count))} a flight` : 'No costs'}
+                    sub={totals.count > 0 && totals.cost > 0 ? `${formatCurrency(Math.round(totals.cost / totals.count))} a ${land ? 'journey' : 'flight'}` : 'No costs logged'}
+                    subShort={totals.count > 0 && totals.cost > 0 ? `${formatCurrency(Math.round(totals.cost / totals.count))} a ${land ? 'journey' : 'flight'}` : 'No costs'}
                 />
             </div>
 
@@ -130,7 +130,7 @@ export const JourneyHero: React.FC<{ items: JourneyRecord[]; kind?: 'flight' | '
                     <p className="text-sm text-rp-muted"><span className="rp-tabular font-medium text-rp-ink">{routes.length}</span> {routes.length === 1 ? 'route' : 'routes'} between {land ? plural(totals.airports, 'place', 'places') : plural(totals.airports, 'airport', 'airports')}</p>
                     {routes.length > 0
                         ? <RoutesMap routes={routes} className="h-48 sm:h-60 lg:h-full lg:min-h-64" label={`Map of ${routes.length} routes between ${totals.airports} places`} />
-                        : <p className="py-10 text-center text-sm text-rp-muted">No flights with known airports to draw.</p>}
+                        : <p className="py-10 text-center text-sm text-rp-muted">{land ? 'No journeys with known places to draw.' : 'No flights with known airports to draw.'}</p>}
                 </div>
                 <div className="flex min-w-0 flex-col gap-2 px-1">
                     <p className="text-sm text-rp-muted"><span className="font-medium text-rp-ink">{titles[metric]}</span>{best && years.length > 1 ? ` · most in ${best.year}` : ''}</p>
