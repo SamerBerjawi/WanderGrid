@@ -20,6 +20,7 @@ import {
   type ComponentProps,
   type KeyboardEvent,
   type PointerEvent,
+  type ReactNode,
   useCallback,
   useEffect,
   useId,
@@ -64,6 +65,8 @@ export interface MetricPeriod {
 
 export interface MetricCardProps {
   label: string;
+  /** Replaces the label at the start of the header, e.g. a metric switch. The label stays the accessible name. */
+  headerStart?: ReactNode;
   /** Names of the parts that add up to the metric. */
   segments: string[];
   /** Daily values, oldest first. Needs twice the longest period, so each period has one to compare with. */
@@ -82,6 +85,8 @@ export interface MetricCardProps {
   smoothing?: (periodDays: number) => number;
   /** The one accent of the line. */
   accent?: "ink" | "green" | "rust" | "mustard";
+  /** Columns of the breakdown rows. Two keeps a tall card shorter. */
+  breakdownColumns?: 1 | 2;
   className?: string;
 }
 
@@ -119,15 +124,18 @@ function smooth(values: number[], window: number) {
     return values;
   }
   const half = Math.floor(window / 2);
-  return values.map((_, i) => {
-    let total = 0;
-    let n = 0;
-    for (let j = Math.max(0, i - half); j <= Math.min(values.length - 1, i + half); j++) {
-      total += values[j];
-      n++;
-    }
-    return total / n;
-  });
+  const pass = (list: number[]) =>
+    list.map((_, i) => {
+      let total = 0;
+      let n = 0;
+      for (let j = Math.max(0, i - half); j <= Math.min(list.length - 1, i + half); j++) {
+        total += list[j];
+        n++;
+      }
+      return total / n;
+    });
+  // Two passes make a triangular kernel: a spike becomes a hill, not a plateau.
+  return pass(pass(values));
 }
 
 const yOf = (height: number) => PAD_Y + (1 - height) * (H - PAD_Y * 2);
@@ -270,6 +278,7 @@ function Breakdown({
   focus,
   label,
   format,
+  columns,
   onChoose,
 }: {
   segments: string[];
@@ -277,6 +286,7 @@ function Breakdown({
   focus: number | null;
   label: string;
   format: (value: number) => string;
+  columns: 1 | 2;
   onChoose: (index: number) => void;
 }) {
   const partsTotal = sum(parts);
@@ -296,7 +306,7 @@ function Breakdown({
           />
         ))}
       </div>
-      <ul className="-mx-2 mt-2.5">
+      <ul className={cn("-mx-2 mt-2", columns === 2 && "grid grid-cols-2 gap-x-2")}>
         {segments.map((name, i) => {
           const share = partsTotal ? (parts[i] / partsTotal) * 100 : 0;
           return (
@@ -363,6 +373,7 @@ const DOT_FILL: Record<NonNullable<MetricCardProps["accent"]>, string> = {
 
 export function MetricCard({
   label,
+  headerStart,
   segments,
   data,
   events = [],
@@ -373,6 +384,7 @@ export function MetricCard({
   formatValue,
   smoothing,
   accent = "ink",
+  breakdownColumns = 1,
   className,
 }: MetricCardProps) {
   const clipId = `${useId().replace(/:/g, "")}-lit`;
@@ -555,11 +567,13 @@ export function MetricCard({
 
   return (
     <div className={cn("flex w-full select-none flex-col", className)}>
-      <div className="flex items-center justify-between gap-4">
-        <p className="truncate text-sm text-rp-muted">
-          {label}
-          {focus !== null && <span className="text-rp-ink"> · {segments[focus]}</span>}
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        {headerStart ?? (
+          <p className="truncate text-sm text-rp-muted">
+            {label}
+            {focus !== null && <span className="text-rp-ink"> · {segments[focus]}</span>}
+          </p>
+        )}
         <div className="relative flex shrink-0 rounded-full bg-rp-inset p-0.5 text-xs">
           {/* One pill slides between the periods. */}
           <span
@@ -584,7 +598,7 @@ export function MetricCard({
         </div>
       </div>
 
-      <p className="mt-2 font-semibold text-4xl tracking-tight text-rp-ink">
+      <p className="mt-3 font-semibold text-4xl tracking-tight text-rp-ink">
         <span className="sr-only">{formatted}</span>
         <NumberFlow aria-hidden className="rp-tabular" format={valueFormat} suffix={suffix} value={value} />
       </p>
@@ -615,7 +629,7 @@ export function MetricCard({
         aria-valuemin={1}
         aria-valuenow={span ? span.hi + 1 : info.current.length}
         aria-valuetext={valueText}
-        className="relative mt-4 h-32 cursor-crosshair touch-pan-y rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-rp-muted focus-visible:ring-offset-4 focus-visible:ring-offset-rp-surface"
+        className="relative mt-4 h-32 min-h-24 flex-1 cursor-crosshair touch-pan-y rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-rp-muted focus-visible:ring-offset-4 focus-visible:ring-offset-rp-surface"
         onBlur={() => setCursor(null)}
         onKeyDown={handleKeyDown}
         onLostPointerCapture={release}
@@ -750,6 +764,7 @@ export function MetricCard({
 
       <Breakdown
         focus={focus}
+        columns={breakdownColumns}
         format={formatValue}
         label={label}
         onChoose={chooseSegment}
