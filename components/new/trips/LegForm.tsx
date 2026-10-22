@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { GeoCoordinates, Transport, TransportMode } from '../../../types';
 import { fetchAirlineSuggestions } from '../../../hooks/useFlightLog';
 import { RP_FIELD, RpField } from '../fields';
+import { BookingTicket, Seat } from '../../ui/hugeicons';
 import { PlaceField } from '../PlaceField';
 import { RpChip, RpLogo } from '../ui';
 import { LegDetails } from './LegDetails';
@@ -124,8 +125,8 @@ export const LegForm: React.FC<{
             </RpField>
             <div className="grid gap-x-3 sm:grid-cols-2">
                 {noNumber ? null : <RpField label={m.number}>{id => <input id={id} value={leg.identifier || ''} onChange={e => patch({ identifier: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>}
-                <RpField label="Confirmation">{id => <input id={id} value={leg.confirmationCode || ''} onChange={e => patch({ confirmationCode: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
-                <RpField label="Seat">{id => <input id={id} value={leg.seatNumber || ''} onChange={e => patch({ seatNumber: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
+                <RpField label="Confirmation" icon={BookingTicket}>{id => <input id={id} value={leg.confirmationCode || ''} onChange={e => patch({ confirmationCode: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
+                <RpField label="Seat" icon={Seat}>{id => <input id={id} value={leg.seatNumber || ''} onChange={e => patch({ seatNumber: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
                 <RpField label="Cost">{id => <input id={id} inputMode="decimal" value={cost} onChange={e => onCost(e.target.value)} className={cn(RP_FIELD, 'rp-tabular')} placeholder="0" autoComplete="off" />}</RpField>
             </div>
             <LegDetails key={detailsKey ?? 'new'} leg={leg} patch={patch} open={detailsOpen} />

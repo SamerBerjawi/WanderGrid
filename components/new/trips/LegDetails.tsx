@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { RoadTripWaypoint, Transport } from '../../../types';
-import { ArrowDown, ArrowUp, CaretDown, Plus, Trash } from '../../ui/hugeicons';
+import { Airport, ArrowDown, ArrowUp, CaretDown, DoorOpen, Plus, Trash } from '../../ui/hugeicons';
 import { RP_FIELD, RpField } from '../fields';
 import { PlaceField } from '../PlaceField';
 import { RpChip, RpToggle } from '../ui';
@@ -131,10 +131,10 @@ export const LegDetails: React.FC<{ leg: Partial<Transport>; patch: Patch; open?
                     {flight ? (
                         <Group title="Terminals and gates">
                             <div className="grid gap-x-3 sm:grid-cols-2">
-                                <RpField label="Departure terminal">{text(leg.departureTerminal, v => patch({ departureTerminal: v }))}</RpField>
-                                <RpField label="Departure gate">{text(leg.departureGate, v => patch({ departureGate: v }))}</RpField>
-                                <RpField label="Arrival terminal">{text(leg.arrivalTerminal, v => patch({ arrivalTerminal: v }))}</RpField>
-                                <RpField label="Arrival gate">{text(leg.arrivalGate, v => patch({ arrivalGate: v }))}</RpField>
+                                <RpField label="Departure terminal" icon={Airport}>{text(leg.departureTerminal, v => patch({ departureTerminal: v }))}</RpField>
+                                <RpField label="Departure gate" icon={DoorOpen}>{text(leg.departureGate, v => patch({ departureGate: v }))}</RpField>
+                                <RpField label="Arrival terminal" icon={Airport}>{text(leg.arrivalTerminal, v => patch({ arrivalTerminal: v }))}</RpField>
+                                <RpField label="Arrival gate" icon={DoorOpen}>{text(leg.arrivalGate, v => patch({ arrivalGate: v }))}</RpField>
                                 <RpField label="Aircraft registration">{text(leg.tailNumber, v => patch({ tailNumber: v }), 'PH-BXA')}</RpField>
                             </div>
                         </Group>

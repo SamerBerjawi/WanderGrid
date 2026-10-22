@@ -5,6 +5,7 @@ import { CarrierCell, DelayChip, STATUS_LOOK, StatusPill } from './JourneyParts'
 import { modeLook } from '../trips/transportModes';
 import { formatDate, formatCurrency } from '../../../utils/formatters';
 import { formatMinutes, journeyMinutes, journeyStatus, placeCode, placeName } from '../../../utils/journeysModel';
+import { Airport, BookingTicket, DoorOpen, Seat, type Icon } from '../../ui/hugeicons';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -13,14 +14,20 @@ import { cn } from '../../../utils/cn';
  * seat, class, terminals and gates, aircraft or vehicle, and cost.
  */
 
-const Field: React.FC<{ label: string; value?: string; onFill?: boolean; className?: string }> = ({ label, value, onFill, className }) => (
+const Field: React.FC<{ label: string; value?: React.ReactNode; icon?: Icon; onFill?: boolean; className?: string }> = ({ label, value, icon: IconC, onFill, className }) => (
     <div className={cn('flex min-w-0 flex-col', className)}>
-        <dt className={cn('text-2xs', onFill ? 'opacity-70' : 'text-rp-muted')}>{label}</dt>
+        <dt className={cn('flex items-center gap-1 text-2xs', onFill ? 'opacity-70' : 'text-rp-muted')}>{IconC ? <IconC size={12} aria-hidden /> : null}{label}</dt>
         <dd className="rp-tabular truncate text-sm font-medium">{value || '—'}</dd>
     </div>
 );
 
-const gate = (terminal?: string, g?: string) => [terminal && `T${terminal}`, g && `Gate ${g}`].filter(Boolean).join(' · ');
+/** Terminal and gate, each with its icon. */
+const gate = (terminal?: string, g?: string): React.ReactNode => (terminal || g ? (
+    <span className="inline-flex items-center gap-2">
+        {terminal ? <span className="inline-flex items-center gap-1"><Airport size={13} aria-hidden /><span className="sr-only">Terminal </span>{terminal}</span> : null}
+        {g ? <span className="inline-flex items-center gap-1"><DoorOpen size={13} aria-hidden /><span className="sr-only">Gate </span>{g}</span> : null}
+    </span>
+) : undefined);
 
 export const BoardingPass: React.FC<{ t: Transport; brandfetchApiKey?: string; carriers?: Carrier[]; className?: string }> = ({ t, brandfetchApiKey, carriers, className }) => {
     const look = modeLook(t.mode);
@@ -63,9 +70,9 @@ export const BoardingPass: React.FC<{ t: Transport; brandfetchApiKey?: string; c
         </div>
     );
 
-    const details: [string, string | undefined][] = [
-        ['Confirmation', t.confirmationCode],
-        ['Seat', [t.seatNumber, t.seatType && t.seatType.toLowerCase()].filter(Boolean).join(' · ')],
+    const details: [string, React.ReactNode, Icon?][] = [
+        ['Confirmation', t.confirmationCode, BookingTicket],
+        ['Seat', [t.seatNumber, t.seatType && t.seatType.toLowerCase()].filter(Boolean).join(' · '), Seat],
         ['Class', t.travelClass],
         ['Departure', gate(t.departureTerminal, t.departureGate)],
         ['Arrival', gate(t.arrivalTerminal, t.arrivalGate)],
@@ -82,7 +89,7 @@ export const BoardingPass: React.FC<{ t: Transport; brandfetchApiKey?: string; c
             </div>
             {shown.length ? (
                 <dl className="grid grid-cols-3 gap-x-3 gap-y-3">
-                    {shown.map(([label, value]) => <Field key={label} label={label} value={value} className={label === 'Confirmation' ? 'col-span-2' : undefined} />)}
+                    {shown.map(([label, value, icon]) => <Field key={label} label={label} value={value} icon={icon} className={label === 'Confirmation' ? 'col-span-2' : undefined} />)}
                 </dl>
             ) : (
                 <p className="my-auto text-center text-sm text-rp-muted">No booking details yet. Edit the flight to add them.</p>

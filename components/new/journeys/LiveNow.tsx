@@ -6,6 +6,7 @@ import { FlightProgress } from './FlightProgress';
 import { formatDate } from '../../../utils/formatters';
 import { isLiveWindow, journeyStatus, type JourneyRecord } from '../../../utils/journeysModel';
 import { getFlightDepartureUtcDate } from '../../../utils/flightData';
+import { Airport, DoorOpen } from '../../ui/hugeicons';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -23,7 +24,14 @@ export const LiveNow: React.FC<{ items: JourneyRecord[]; onOpen: (r: JourneyReco
     if (!rec) return null;
     const t = rec.flight;
     const status = journeyStatus(t);
-    const gate = [data?.departure.terminal && `Terminal ${data.departure.terminal}`, data?.departure.gate && `Gate ${data.departure.gate}`].filter(Boolean).join(' · ');
+    const terminal = data?.departure.terminal;
+    const door = data?.departure.gate;
+    const gate = terminal || door ? (
+        <span className="inline-flex items-center gap-3">
+            {terminal ? <span className="inline-flex items-center gap-1"><Airport size={14} aria-hidden /><span className="sr-only">Terminal </span>{terminal}</span> : null}
+            {door ? <span className="inline-flex items-center gap-1"><DoorOpen size={14} aria-hidden /><span className="sr-only">Gate </span>{door}</span> : null}
+        </span>
+    ) : null;
     return (
         <button
             type="button"
@@ -43,7 +51,7 @@ export const LiveNow: React.FC<{ items: JourneyRecord[]; onOpen: (r: JourneyReco
                 </span>
             </span>
             <FlightProgress flight={t} tone="onInk" />
-            <span className="rp-tabular text-center text-xs text-rp-on-ink/70 sm:hidden">{formatDate(t.departureDate, 'short')}{gate ? ` · ${gate}` : ''}</span>
+            <span className="rp-tabular text-center text-xs text-rp-on-ink/70 sm:hidden">{formatDate(t.departureDate, 'short')}{gate ? <> · {gate}</> : null}</span>
         </button>
     );
 };

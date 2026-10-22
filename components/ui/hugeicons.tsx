@@ -143,6 +143,9 @@ import {
   SaturnIcon,
   Search01Icon,
   AirplaneSeatIcon,
+  BriefcaseConveyorBeltIcon,
+  DoorOpenIcon,
+  TicketsPlaneIcon,
   SecurityCheckIcon,
   SentIcon,
   Settings01Icon,
@@ -362,6 +365,9 @@ export const Receipt = make(Invoice01Icon, 'Receipt');
 export const RoadHorizon = make(RoadIcon, 'RoadHorizon');
 export const RocketLaunch = make(Rocket01Icon, 'RocketLaunch');
 export const Seat = make(AirplaneSeatIcon, 'Seat');
+export const BaggageClaim = make(BriefcaseConveyorBeltIcon, 'BaggageClaim');
+export const DoorOpen = make(DoorOpenIcon, 'DoorOpen');
+export const BookingTicket = make(TicketsPlaneIcon, 'BookingTicket');
 export const ShieldCheck = make(SecurityCheckIcon, 'ShieldCheck');
 export const ShoppingBag = make(ShoppingBag01Icon, 'ShoppingBag');
 export const SidebarSimple = make(SidebarLeftIcon, 'SidebarSimple');

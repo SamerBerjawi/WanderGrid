@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { Transport } from '../../../types';
 import { useLiveFlight } from '../../../hooks/useLiveFlight';
 import ParticleButton from '../../kokonutui/particle-button';
-import { Broadcast, Check } from '../../ui/hugeicons';
+import { Airport, BaggageClaim, Broadcast, Check, DoorOpen, type Icon } from '../../ui/hugeicons';
 import { RpSection } from '../ui';
 import { RoutesMap } from './RoutesMap';
 import { FlightProgress } from './FlightProgress';
@@ -32,12 +32,20 @@ const STATE: Record<string, { label: string; tone: string }> = {
     diverted: { label: 'Diverted', tone: 'bg-rp-mustard text-rp-on-mustard' },
 };
 
-const Row: React.FC<{ label: string; value?: string }> = ({ label, value }) => (
+const Row: React.FC<{ label: string; value?: React.ReactNode; icon?: Icon }> = ({ label, value, icon: IconC }) => (
     <div className="flex min-h-9 items-center justify-between gap-3 text-sm">
-        <span className="text-rp-muted">{label}</span>
+        <span className="flex items-center gap-1.5 text-rp-muted">{IconC ? <IconC size={14} aria-hidden /> : null}{label}</span>
         <span className="rp-tabular text-right font-medium text-rp-ink">{value || '—'}</span>
     </div>
 );
+
+/** Terminal and gate on one line, each with its icon. */
+const terminalGate = (terminal?: string, gate?: string): React.ReactNode => (terminal || gate ? (
+    <span className="inline-flex items-center gap-3">
+        {terminal ? <span className="inline-flex items-center gap-1"><Airport size={14} aria-hidden /><span className="sr-only">Terminal </span>{terminal}</span> : null}
+        {gate ? <span className="inline-flex items-center gap-1"><DoorOpen size={14} aria-hidden /><span className="sr-only">Gate </span>{gate}</span> : null}
+    </span>
+) : undefined);
 
 export const TrackPanel: React.FC<{
     flight: Transport;
@@ -101,12 +109,12 @@ export const TrackPanel: React.FC<{
                         ) : null}
                         <div className="py-1">
                             <Row label="Departs" value={[clock(data.departure.scheduled), depActual && depActual !== clock(data.departure.scheduled) ? `now ${depActual}` : ''].filter(Boolean).join(' · ')} />
-                            <Row label="Terminal and gate" value={[data.departure.terminal && `T${data.departure.terminal}`, data.departure.gate && `Gate ${data.departure.gate}`].filter(Boolean).join(' · ')} />
+                            <Row label="Terminal and gate" icon={Airport} value={terminalGate(data.departure.terminal, data.departure.gate)} />
                         </div>
                         <div className="py-1">
                             <Row label="Arrives" value={[clock(data.arrival.scheduled), arrActual && arrActual !== clock(data.arrival.scheduled) ? `now ${arrActual}` : ''].filter(Boolean).join(' · ')} />
-                            <Row label="Terminal and gate" value={[data.arrival.terminal && `T${data.arrival.terminal}`, data.arrival.gate && `Gate ${data.arrival.gate}`].filter(Boolean).join(' · ')} />
-                            {data.arrival.baggage ? <Row label="Baggage belt" value={data.arrival.baggage} /> : null}
+                            <Row label="Terminal and gate" icon={Airport} value={terminalGate(data.arrival.terminal, data.arrival.gate)} />
+                            {data.arrival.baggage ? <Row label="Baggage claim" icon={BaggageClaim} value={data.arrival.baggage} /> : null}
                         </div>
                         {data.aircraft?.registration || data.aircraft?.model ? (
                             <div className="py-1"><Row label="Aircraft" value={[data.aircraft.model, data.aircraft.registration].filter(Boolean).join(' · ')} /></div>
