@@ -26,7 +26,7 @@ export const SHELL_NAV: ShellNavItem[] = [
     { path: '/dashboard-new', label: 'Dashboard', icon: House },
     { path: '/trips-new', label: 'Trips', icon: Suitcase },
     { path: '/flights-new', label: 'Flights', icon: Airplane },
-    { path: '/calendar', label: 'Calendar', icon: CalendarBlank },
+    { path: '/calendar-new', label: 'Calendar', icon: CalendarBlank },
     { path: '/atlas-new', label: 'Atlas', icon: Globe },
     { path: '/map-new', label: 'Map', icon: MapTrifold },
 ];
@@ -54,10 +54,27 @@ const initials = (name?: string) =>
 const AccountButton: React.FC<{ user: User | null; onNavigate: (p: string) => void; onLogout: () => void }> = ({ user, onNavigate, onLogout }) => {
     const [open, setOpen] = useState(false);
     const rootRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const close = (returnFocus = true) => {
+        setOpen(false);
+        if (returnFocus) triggerRef.current?.focus();
+    };
+    // A menu button's contract: focus moves to the first item, arrows move between items, Escape closes and
+    // returns focus to the button, Tab or a click outside closes it.
     useEffect(() => {
         if (!open) return;
-        const onDown = (e: PointerEvent) => { if (!rootRef.current?.contains(e.target as Node)) setOpen(false); };
-        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+        const items = () => Array.from(rootRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+        requestAnimationFrame(() => items()[0]?.focus());
+        const onDown = (e: PointerEvent) => { if (!rootRef.current?.contains(e.target as Node)) close(false); };
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+            if (e.key === 'Tab') { close(false); return; }
+            if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+            e.preventDefault();
+            const els = items();
+            const at = els.indexOf(document.activeElement as HTMLElement);
+            els[(at + (e.key === 'ArrowDown' ? 1 : -1) + els.length) % els.length]?.focus();
+        };
         document.addEventListener('pointerdown', onDown);
         window.addEventListener('keydown', onKey);
         return () => { document.removeEventListener('pointerdown', onDown); window.removeEventListener('keydown', onKey); };
@@ -65,6 +82,7 @@ const AccountButton: React.FC<{ user: User | null; onNavigate: (p: string) => vo
     return (
         <div ref={rootRef} className="relative">
             <button
+                ref={triggerRef}
                 type="button"
                 aria-label="Account"
                 aria-haspopup="menu"
@@ -180,7 +198,7 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
                 </div>
             </nav>
 
-            <RpSheet open={sheet === 'more'} onClose={() => setSheet(null)} title="More">
+            <RpSheet modal open={sheet === 'more'} onClose={() => setSheet(null)} title="More">
                 <div className="flex flex-col gap-1">
                     {SHELL_NAV.filter(i => !MOBILE_TABS.includes(i.path)).map(i => (
                         <button key={i.path} type="button" onClick={() => go(i.path)} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
@@ -200,7 +218,7 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
                     </button>
                 </div>
             </RpSheet>
-            <RpSheet open={sheet === 'add'} onClose={() => setSheet(null)} title="Quick actions">
+            <RpSheet modal open={sheet === 'add'} onClose={() => setSheet(null)} title="Quick actions">
                 <div className="flex flex-col gap-1">
                     <button type="button" onClick={() => (currentPath === '/trips-new' ? (setSheet(null), window.dispatchEvent(new Event('rp:new-trip'))) : go('/trips-new?new=1'))} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
                         <Suitcase size={20} /> New trip

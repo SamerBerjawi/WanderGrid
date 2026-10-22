@@ -38,11 +38,12 @@ const TripNew = lazy(() => import('./views/new/TripNew').then(m => ({ default: m
 const DashboardNew = lazy(() => import('./views/new/DashboardNew').then(m => ({ default: m.DashboardNew })));
 const FlightsNew = lazy(() => import('./views/new/FlightsNew').then(m => ({ default: m.FlightsNew })));
 const RoadTripsNew = lazy(() => import('./views/new/RoadTripsNew').then(m => ({ default: m.RoadTripsNew })));
+const CalendarNew = lazy(() => import('./views/new/CalendarNew').then(m => ({ default: m.CalendarNew })));
 const MemberNew = lazy(() => import('./views/new/MemberNew').then(m => ({ default: m.MemberNew })));
 const SettingsNew = lazy(() => import('./views/new/SettingsNew').then(m => ({ default: m.SettingsNew })));
 const AuthNew = lazy(() => import('./views/new/AuthNew').then(m => ({ default: m.AuthNew })));
-type NewPage = 'map' | 'atlas' | 'trips' | 'trip' | 'member' | 'auth' | 'flights' | 'roadtrips' | 'dashboard' | 'settings';
-const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips', '/auth-new': 'auth', '/flights-new': 'flights', '/roadtrips-new': 'roadtrips', '/dashboard-new': 'dashboard', '/settings-new': 'settings' };
+type NewPage = 'map' | 'atlas' | 'trips' | 'trip' | 'member' | 'auth' | 'flights' | 'roadtrips' | 'dashboard' | 'settings' | 'calendar';
+const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips', '/auth-new': 'auth', '/flights-new': 'flights', '/roadtrips-new': 'roadtrips', '/dashboard-new': 'dashboard', '/settings-new': 'settings', '/calendar-new': 'calendar' };
 // One trip's page: /trip-new/:id (the Trips page opens it).
 const NEW_TRIP_PATH = /^\/trip-new\/([^/]+)$/;
 const getNewTripId = (): string | null => {
@@ -98,9 +99,9 @@ const getUrlState = () => {
 
 import ViewSkeleton from './components/skeletons/ViewSkeleton';
 
-// Content-shaped Liquid Glass skeleton fallback for lazy components
-const ViewLoader: React.FC<{ view?: ViewState | string }> = ({ view = 'dashboard' }) => (
-    <ViewSkeleton view={view} />
+// Content-shaped New-style skeleton fallback for lazy components
+const ViewLoader: React.FC<{ view?: ViewState | string; fullScreen?: boolean }> = ({ view = 'dashboard', fullScreen }) => (
+    <ViewSkeleton view={view} fullScreen={fullScreen} />
 );
 
 import { AmbientBackground } from './components/AmbientBackground';
@@ -304,6 +305,7 @@ export default function App() {
 
   useEffect(() => {
     const handleUnauthorized = () => {
+        toast.info('Your session ended. Sign in again to continue.', { key: 'session-ended' });
         handleLogout({ keepLocation: true });
     };
     window.addEventListener('wandergrid-unauthorized', handleUnauthorized);
@@ -432,6 +434,7 @@ export default function App() {
                     <Auth onLogin={handleLogin} />
                 </Suspense>
             </div>
+            <Toaster />
         </div>
       );
   }
@@ -462,7 +465,7 @@ export default function App() {
 
   if (newPage) {
       return (
-        <Suspense fallback={null}>
+        <Suspense fallback={<ViewLoader view={newPage} fullScreen />}>
           <ShellNew
             currentPath={newPage === 'trip' ? '/trips-new' : newPage === 'roadtrips' ? '/flights-new' : newPage === 'member' || newPage === 'settings' ? '' : window.location.pathname}
             onNavigate={navigateFromShell}
@@ -475,7 +478,7 @@ export default function App() {
             hideBrandOnMobile={newPage === 'map'}
           >
             <AppErrorBoundary routeKey={`new-${newPage}`} onResetToDashboard={() => navigate(ViewState.DASHBOARD)}>
-              <Suspense fallback={null}>
+              <Suspense fallback={<ViewLoader view={newPage} />}>
                 {newPage === 'map' ? <MapNew onTripClick={openTripNew} isSidebarCollapsed={isSidebarCollapsed} onThemeChange={t => handleThemeChange(t)} /> : null}
                 {newPage === 'atlas' ? <AtlasNew onTripClick={openTripNew} /> : null}
                 {newPage === 'trips' ? <TripsNew onTripClick={openTripNew} /> : null}
@@ -483,6 +486,7 @@ export default function App() {
                 {newPage === 'flights' ? <FlightsNew onTripClick={openTripNew} /> : null}
                 {newPage === 'roadtrips' ? <RoadTripsNew onTripClick={openTripNew} /> : null}
                 {newPage === 'settings' ? <SettingsNew theme={theme} isDark={isDarkMode} onThemeChange={t => handleThemeChange(t)} onOpenMember={openMemberNew} onNavigate={navigateFromShell} /> : null}
+                {newPage === 'calendar' ? <CalendarNew onTripClick={openTripNew} onMemberClick={openMemberNew} /> : null}
                 {newPage === 'member' && getNewMemberId() ? (
                   <MemberNew
                     key={getNewMemberId()!}
@@ -498,6 +502,7 @@ export default function App() {
               </Suspense>
             </AppErrorBoundary>
           </ShellNew>
+          <PWAInstallBanner />
           <Toaster />
           <ConfirmHost />
         </Suspense>
@@ -550,8 +555,8 @@ export default function App() {
         <Toaster />
         <ConfirmHost />
         {!dataService.isDatabaseMode() && (
-          <div className="fixed top-safe-offset right-3 z-toast px-3 py-1.5 rounded-full bg-amber-500 text-black text-xs font-bold shadow-lg pointer-events-none" role="status">
-            Local mode · data stays in this browser
+          <div className="rp-root fixed top-safe-offset right-3 z-sticky pointer-events-none" role="status">
+            <span className="inline-flex min-h-8 items-center rounded-full bg-rp-mustard px-3 text-xs font-medium text-rp-on-mustard rp-shadow-soft">Local mode · data stays in this browser</span>
           </div>
         )}
       </div>

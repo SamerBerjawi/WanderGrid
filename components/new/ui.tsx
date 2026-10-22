@@ -5,6 +5,7 @@ import { X, type Icon } from '../ui/hugeicons';
 import type { Carrier } from '../../types';
 import { carrierLogoSources } from '../../utils/carrierLogo';
 import { cn } from '../../utils/cn';
+import { useSheetFlag } from '../../hooks/useOverlayA11y';
 
 /**
  * Small building blocks shared by the New pages (UI_UX_DESIGN_REFERENCE.md §1–§3). KokonutUI
@@ -195,6 +196,11 @@ export interface RpSheetProps {
     width?: number;
     /** Distance from the top on desktop, to clear a header. */
     topOffset?: number;
+    /**
+     * Phone only: trap focus, lock page scroll and blur the page behind (Vaul's modal mode). Off by default,
+     * so a map stays explorable behind a settings sheet; the shell's More and Quick actions sheets turn it on.
+     */
+    modal?: boolean;
 }
 
 /**
@@ -202,12 +208,25 @@ export interface RpSheetProps {
  * (non-modal, so the map can still be explored while it is open). Mobile: a Vaul bottom sheet with
  * snap points. Escape closes both; focus moves into the panel and returns to the trigger.
  */
-export const RpSheet: React.FC<RpSheetProps> = ({ open, onClose, title, subtitle, children, footer, width = 400, topOffset = 12 }) => {
+export const RpSheet: React.FC<RpSheetProps> = ({ open, onClose, title, subtitle, children, footer, width = 400, topOffset = 12, modal = false }) => {
     const mobile = useIsMobile();
     const reduce = useReducedMotion();
     const panelRef = useRef<HTMLDivElement>(null);
     const returnFocus = useRef<HTMLElement | null>(null);
     const titleId = useId();
+    useSheetFlag(open && mobile);
+    const drawerRef = useRef<HTMLDivElement>(null);
+    // Vaul's modal mode traps focus but leaves it on the trigger until the first Tab; start inside the sheet and return to the trigger on close.
+    useEffect(() => {
+        if (!open || !mobile || !modal) return;
+        const trigger = document.activeElement as HTMLElement | null;
+        const id = requestAnimationFrame(() => drawerRef.current?.focus({ preventScroll: true }));
+        return () => {
+            cancelAnimationFrame(id);
+            // There is no Vaul trigger to return to (the sheet is opened from outside): give focus back by hand.
+            requestAnimationFrame(() => { if (trigger?.isConnected) trigger.focus({ preventScroll: true }); });
+        };
+    }, [open, mobile, modal]);
 
     useEffect(() => {
         if (!open || mobile) return;
@@ -229,9 +248,11 @@ export const RpSheet: React.FC<RpSheetProps> = ({ open, onClose, title, subtitle
 
     if (mobile) {
         return (
-            <Drawer.Root open={open} onOpenChange={o => { if (!o) onClose(); }} modal={false}>
+            <Drawer.Root open={open} onOpenChange={o => { if (!o) onClose(); }} modal={modal}>
                 <Drawer.Portal>
+                    {modal ? <Drawer.Overlay className="rp-root fixed inset-0 z-modal-backdrop bg-rp-canvas/50 backdrop-blur-xl" /> : null}
                     <Drawer.Content
+                        ref={drawerRef}
                         className="rp-root fixed inset-x-0 bottom-0 z-modal flex max-h-[92dvh] flex-col rounded-t-rp-card bg-rp-surface rp-shadow-float outline-none"
                         aria-describedby={undefined}
                     >
