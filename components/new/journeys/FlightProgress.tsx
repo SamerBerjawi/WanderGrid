@@ -22,7 +22,7 @@ export const FlightProgress: React.FC<{ flight: Transport; live?: FlightStatusRe
     return (
         <div className={cn('flex flex-col gap-1.5', className)}>
             <div className="flex items-center gap-3">
-                <span className="rp-tabular text-sm font-semibold">{placeCode(flight.origin)}</span>
+                <span className="rp-tabular text-sm font-semibold">{placeCode(flight.origin, flight.mode)}</span>
                 <div className={cn('relative h-1.5 flex-1 rounded-full', onInk ? 'bg-rp-on-ink/20' : 'bg-rp-line')} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)} aria-label="Progress">
                     <div className={cn('absolute inset-y-0 left-0 rounded-full', onInk ? 'bg-rp-mustard' : 'bg-rp-green')} style={{ width: `${progress * 100}%` }} />
                     <span
@@ -33,7 +33,7 @@ export const FlightProgress: React.FC<{ flight: Transport; live?: FlightStatusRe
                         <Airplane size={14} />
                     </span>
                 </div>
-                <span className="rp-tabular text-sm font-semibold">{placeCode(flight.destination)}</span>
+                <span className="rp-tabular text-sm font-semibold">{placeCode(flight.destination, flight.mode)}</span>
             </div>
             <p className={cn('rp-tabular text-center text-xs', onInk ? 'text-rp-on-ink/70' : 'text-rp-muted')}>{text}</p>
         </div>

@@ -34,6 +34,8 @@ export const BoardingPass: React.FC<{ t: Transport; brandfetchApiKey?: string; c
     const status = journeyStatus(t);
     const fill = STATUS_LOOK[status.state];
     const minutes = journeyMinutes(t);
+    // Airport codes are big; the names of land and sea places are set smaller so they fit.
+    const big = t.mode === 'Flight';
     const crossesDay = Boolean(t.arrivalDate && t.departureDate && t.arrivalDate > t.departureDate);
 
     const front = (
@@ -47,7 +49,7 @@ export const BoardingPass: React.FC<{ t: Transport; brandfetchApiKey?: string; c
             </div>
             <div className="mt-auto flex items-center gap-3">
                 <span className="flex flex-col">
-                    <span className="rp-tabular text-[2rem] font-medium leading-none">{placeCode(t.origin)}</span>
+                    <span className={cn('rp-tabular max-w-[7.5rem] truncate font-medium leading-none', big ? 'text-[2rem]' : 'text-xl')}>{placeCode(t.origin, t.mode)}</span>
                     <span className="mt-1 max-w-[6.5rem] truncate text-2xs opacity-70">{placeName(t.origin)}</span>
                 </span>
                 <span className="flex min-w-6 flex-1 items-center gap-1 opacity-80" aria-hidden>
@@ -56,7 +58,7 @@ export const BoardingPass: React.FC<{ t: Transport; brandfetchApiKey?: string; c
                     <span className="h-px flex-1 border-t-2 border-dotted border-current" />
                 </span>
                 <span className="flex flex-col items-end text-right">
-                    <span className="rp-tabular text-[2rem] font-medium leading-none">{placeCode(t.destination)}</span>
+                    <span className={cn('rp-tabular max-w-[7.5rem] truncate font-medium leading-none', big ? 'text-[2rem]' : 'text-xl')}>{placeCode(t.destination, t.mode)}</span>
                     <span className="mt-1 max-w-[6.5rem] truncate text-2xs opacity-70">{placeName(t.destination)}</span>
                 </span>
             </div>
@@ -85,7 +87,7 @@ export const BoardingPass: React.FC<{ t: Transport; brandfetchApiKey?: string; c
         <div className="flex h-full flex-col gap-3 p-4">
             <div className="flex items-center justify-between gap-2">
                 <span className="text-2xs font-semibold uppercase tracking-[0.14em] text-rp-muted">Booking</span>
-                <span className="rp-tabular text-xs text-rp-muted">{placeCode(t.origin)} → {placeCode(t.destination)}</span>
+                <span className="rp-tabular text-xs text-rp-muted">{placeCode(t.origin, t.mode)} → {placeCode(t.destination, t.mode)}</span>
             </div>
             {shown.length ? (
                 <dl className="grid grid-cols-3 gap-x-3 gap-y-3">

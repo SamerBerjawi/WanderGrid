@@ -31,11 +31,11 @@ const Gap: React.FC<{ a: JourneyRecord; b: JourneyRecord }> = ({ a, b }) => {
     const mins = layoverMinutes(a.flight, b.flight);
     if (mins <= 0) return null;
     const stay = mins >= 24 * 60;
-    const place = placeName(a.flight.destination) || placeCode(a.flight.destination);
+    const place = placeName(a.flight.destination) || placeCode(a.flight.destination, a.flight.mode);
     return (
         <li aria-hidden={false} className="relative ml-[0.7rem] flex min-h-9 items-center border-l-2 border-dashed border-rp-line pl-6">
             <span className={cn('rp-tabular inline-flex min-h-6 items-center rounded-full px-2.5 text-2xs font-semibold', layoverTone(mins))}>
-                {stay ? `${Math.round(mins / 1440)} ${Math.round(mins / 1440) === 1 ? 'day' : 'days'} in ${place}` : `Layover ${formatMinutes(mins)} in ${placeCode(a.flight.destination)}`}
+                {stay ? `${Math.round(mins / 1440)} ${Math.round(mins / 1440) === 1 ? 'day' : 'days'} in ${place}` : `Layover ${formatMinutes(mins)} in ${placeCode(a.flight.destination, a.flight.mode)}`}
             </span>
         </li>
     );
@@ -61,7 +61,7 @@ const Leg: React.FC<{ rec: JourneyRecord; last: boolean; onOpen: (r: JourneyReco
                 </span>
                 <span className="flex items-center gap-3">
                     <span className="flex flex-col">
-                        <span className="rp-tabular text-xl font-semibold leading-none text-rp-ink">{placeCode(t.origin)}</span>
+                        <span className="rp-tabular text-xl font-semibold leading-none text-rp-ink">{placeCode(t.origin, t.mode)}</span>
                         <span className="rp-tabular mt-1 text-xs text-rp-muted">{t.departureTime || '--:--'}</span>
                     </span>
                     <span className="flex min-w-6 flex-1 items-center gap-1 text-rp-muted" aria-hidden>
@@ -70,7 +70,7 @@ const Leg: React.FC<{ rec: JourneyRecord; last: boolean; onOpen: (r: JourneyReco
                         <span className="h-px flex-1 border-t-2 border-dotted border-rp-line" />
                     </span>
                     <span className="flex flex-col items-end">
-                        <span className="rp-tabular text-xl font-semibold leading-none text-rp-ink">{placeCode(t.destination)}</span>
+                        <span className="rp-tabular text-xl font-semibold leading-none text-rp-ink">{placeCode(t.destination, t.mode)}</span>
                         <span className="rp-tabular mt-1 text-xs text-rp-muted">{t.arrivalTime || '--:--'}{t.arrivalDate && t.departureDate && t.arrivalDate > t.departureDate ? ' +1' : ''}</span>
                     </span>
                 </span>

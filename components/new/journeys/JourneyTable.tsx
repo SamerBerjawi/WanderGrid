@@ -111,9 +111,9 @@ const Row: React.FC<RowProps> = ({ rec, now, selectedId, onOpen, menu, selecting
                 </div>
                 <div className="flex items-center justify-between gap-3">
                     <span className="flex items-center gap-2">
-                        <span className="rp-tabular text-base font-semibold text-rp-ink">{placeCode(t.origin)}</span>
+                        <span className="rp-tabular text-base font-semibold text-rp-ink">{placeCode(t.origin, t.mode)}</span>
                         <ArrowRight size={14} className={look.text} aria-hidden />
-                        <span className="rp-tabular text-base font-semibold text-rp-ink">{placeCode(t.destination)}</span>
+                        <span className="rp-tabular text-base font-semibold text-rp-ink">{placeCode(t.destination, t.mode)}</span>
                     </span>
                     <span className="rp-tabular truncate text-xs text-rp-muted">
                         {formatDate(t.departureDate, 'short')} · {t.departureTime || '--:--'}{journeyMinutes(t) ? ` · ${formatMinutes(journeyMinutes(t))}` : ''}
@@ -129,9 +129,9 @@ const Row: React.FC<RowProps> = ({ rec, now, selectedId, onOpen, menu, selecting
             </div>
             <div role="cell" className="hidden min-w-0 flex-col gap-0.5 md:flex">
                 <span className="flex items-center gap-2">
-                    <span className="rp-tabular text-base font-semibold text-rp-ink">{placeCode(t.origin)}</span>
+                    <span className="rp-tabular text-base font-semibold text-rp-ink">{placeCode(t.origin, t.mode)}</span>
                     <ArrowRight size={14} className={look.text} aria-hidden />
-                    <span className="rp-tabular text-base font-semibold text-rp-ink">{placeCode(t.destination)}</span>
+                    <span className="rp-tabular text-base font-semibold text-rp-ink">{placeCode(t.destination, t.mode)}</span>
                 </span>
                 <span className="truncate text-xs text-rp-muted">{placeName(t.origin)} to {placeName(t.destination)}</span>
             </div>
@@ -165,11 +165,11 @@ const GapRow: React.FC<{ a: JourneyRecord; b: JourneyRecord }> = ({ a, b }) => {
     if (mins <= 0) return null;
     const stay = mins > 24 * 60;
     const days = Math.round(mins / 1440);
-    const place = placeName(a.flight.destination) || placeCode(a.flight.destination);
+    const place = placeName(a.flight.destination) || placeCode(a.flight.destination, a.flight.mode);
     return (
         <div role="row" className="ml-3 flex min-h-9 items-center border-l-2 border-dashed border-rp-line pl-3 sm:ml-5">
             <span role="cell" className={cn('rp-tabular inline-flex min-h-6 items-center rounded-full px-2.5 text-2xs font-semibold', layoverTone(mins))}>
-                {stay ? `${days} ${days === 1 ? 'day' : 'days'} in ${place}` : `Layover ${formatMinutes(mins)} in ${placeCode(a.flight.destination)}`}
+                {stay ? `${days} ${days === 1 ? 'day' : 'days'} in ${place}` : `Layover ${formatMinutes(mins)} in ${placeCode(a.flight.destination, a.flight.mode)}`}
             </span>
         </div>
     );

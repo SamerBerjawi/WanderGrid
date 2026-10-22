@@ -17,6 +17,7 @@ import { openNewPage } from '../../components/new/devLinks';
 import { useUndoToast } from '../../components/new/UndoToast';
 import { TripMenu, type TripMenuItem } from '../../components/new/trips/TripMenu';
 import { JourneyTable, type JourneyGrouping } from '../../components/new/journeys/JourneyTable';
+import { JourneySwitch } from '../../components/new/journeys/JourneySwitch';
 import { JourneyHero } from '../../components/new/journeys/JourneyHero';
 import { JourneyTimeline } from '../../components/new/journeys/JourneyTimeline';
 import { LiveNow } from '../../components/new/journeys/LiveNow';
@@ -232,6 +233,7 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
     return (
         <div className="custom-scrollbar h-full overflow-y-auto px-3 pt-2 pb-32 sm:px-6 md:pb-16">
             <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6">
+                <JourneySwitch current="flights" />
                 <div className="flex flex-wrap items-center justify-between gap-x-3">
                     <h1 className="text-[2.25rem] font-medium leading-[1.05] tracking-tight text-rp-ink sm:text-[2.5rem]">Flights</h1>
                     <RpPageToolbar

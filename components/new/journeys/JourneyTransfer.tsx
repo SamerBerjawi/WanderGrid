@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { Transport, Trip } from '../../../types';
+import type { Transport, TransportMode, Trip } from '../../../types';
 import { dataService } from '../../../services/mockDb';
 import { flightImporter } from '../../../services/flightImportExport';
 import ParticleButton from '../../kokonutui/particle-button';
@@ -23,7 +23,7 @@ import { cn } from '../../../utils/cn';
 const newId = () => Math.random().toString(36).slice(2, 11);
 const key = (t: Transport) => [t.origin, t.destination, t.departureDate, t.identifier].map(v => String(v || '').trim().toUpperCase()).join('|');
 
-type FieldKey = 'from' | 'to' | 'date' | 'depTime' | 'depDateTime' | 'arrDate' | 'arrTime' | 'arrDateTime' | 'airline' | 'flight' | 'pnr' | 'seat' | 'cabin' | 'cost' | 'aircraft';
+type FieldKey = 'from' | 'to' | 'date' | 'depTime' | 'depDateTime' | 'arrDate' | 'arrTime' | 'arrDateTime' | 'airline' | 'flight' | 'pnr' | 'seat' | 'cabin' | 'cost' | 'aircraft' | 'mode';
 interface FieldDef { key: FieldKey; label: string; match: RegExp }
 
 /** The flight fields a spreadsheet column can fill, with the header names that usually mean them (first match wins). */
@@ -42,6 +42,7 @@ const FIELDS: FieldDef[] = [
     { key: 'seat', label: 'Seat', match: /^(seat|seat number|seat no)$/ },
     { key: 'cabin', label: 'Class', match: /^(cabin|class|cabin class|travel class)$/ },
     { key: 'cost', label: 'Cost', match: /^(cost|price|fare|amount|total)$/ },
+    { key: 'mode', label: 'Mode', match: /^(mode|type|transport|transport type|vehicle type)$/ },
     { key: 'aircraft', label: 'Aircraft', match: /^(aircraft|aircraft type|aircraft type name|plane|aircraft model)$/ },
 ];
 const REQUIRED: FieldKey[] = ['from', 'to'];
@@ -98,7 +99,20 @@ const cabinOf = (v: unknown): Transport['travelClass'] | undefined => {
 };
 
 /** Turns spreadsheet rows into flights using the column mapping. Rows without both places and a date are left out. */
-const build = (rows: Row[], map: Mapping, dayFirst: boolean): Transport[] => {
+/** The transport mode a cell names ("Train", "coach", "Rental car", "ferry"), or the fallback. */
+const modeOf = (v: unknown, fallback: TransportMode): TransportMode => {
+    const t = String(v ?? '').toLowerCase();
+    if (/train|rail/.test(t)) return 'Train';
+    if (/bus|coach/.test(t)) return 'Bus';
+    if (/rental|hire/.test(t)) return 'Car Rental';
+    if (/cruise/.test(t)) return 'Cruise';
+    if (/ferry|boat/.test(t)) return 'Ferry';
+    if (/car|drive|road/.test(t)) return 'Personal Car';
+    if (/flight|plane|air/.test(t)) return 'Flight';
+    return fallback;
+};
+
+const build = (rows: Row[], map: Mapping, dayFirst: boolean, modes: TransportMode[] = ['Flight']): Transport[] => {
     const cell = (r: Row, k: FieldKey) => (map[k] ? r[map[k]!] : undefined);
     const out: Transport[] = [];
     for (const r of rows) {
@@ -109,7 +123,7 @@ const build = (rows: Row[], map: Mapping, dayFirst: boolean): Transport[] => {
         const arr = map.arrDateTime ? splitStamp(cell(r, 'arrDateTime'), dayFirst) : { date: splitStamp(cell(r, 'arrDate'), dayFirst).date, time: timeOf(cell(r, 'arrTime')) };
         const cost = parseFloat(String(cell(r, 'cost') ?? '').replace(/[^\d.\-]/g, ''));
         out.push({
-            id: newId(), itineraryId: newId(), type: 'One-Way', mode: 'Flight',
+            id: newId(), itineraryId: newId(), type: 'One-Way', mode: map.mode && modes.length > 1 ? modeOf(cell(r, 'mode'), modes[0]) : modes[0],
             provider: String(cell(r, 'airline') ?? '').trim(), identifier: String(cell(r, 'flight') ?? '').trim().toUpperCase(),
             confirmationCode: String(cell(r, 'pnr') ?? '').trim().toUpperCase(), origin: origin.toUpperCase(), destination: destination.toUpperCase(),
             departureDate: dep.date, departureTime: dep.time || '12:00', arrivalDate: arr.date || dep.date, arrivalTime: arr.time || '',
@@ -161,7 +175,11 @@ export const ImportSheet: React.FC<{
     onClose: () => void;
     onImported: (count: number) => void;
     brandfetchApiKey?: string;
-}> = ({ open, existing, trips = [], onClose, onImported, brandfetchApiKey }) => {
+    /** Kinds of transport this import creates (flights by default); with several, a "Mode" column can pick per row. */
+    modes?: TransportMode[];
+    noun?: { one: string; many: string };
+}> = ({ open, existing, trips = [], onClose, onImported, brandfetchApiKey, modes = ['Flight'], noun = { one: 'flight', many: 'flights' } }) => {
+    const fields = useMemo(() => FIELDS.filter(f => f.key !== 'mode' || modes.length > 1).map(f => (modes[0] === 'Flight' ? f : f.key === 'airline' ? { ...f, label: 'Operator' } : f.key === 'flight' ? { ...f, label: 'Service number' } : f.key === 'aircraft' ? { ...f, label: 'Vehicle' } : f.key === 'cabin' ? { ...f, label: 'Class' } : f)), [modes]);
     const input = useRef<HTMLInputElement>(null);
     const book = useRef<{ sheets: Record<string, Raw> } | null>(null);
     const [step, setStep] = useState<Step>(0);
@@ -198,7 +216,7 @@ export const ImportSheet: React.FC<{
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [raw, hasHeader]);
 
-    const built = useMemo(() => (raw ? build(rows, mapping, dayFirst) : folded || []), [raw, rows, mapping, dayFirst, folded]);
+    const built = useMemo(() => (raw ? build(rows, mapping, dayFirst, modes) : folded || []), [raw, rows, mapping, dayFirst, folded]);
     const have = useMemo(() => new Set(existing.map(r => key(r.flight))), [existing]);
     const flags = useMemo(() => built.map(t => have.has(key(t))), [built, have]);
     const duplicateCount = flags.filter(Boolean).length;
@@ -216,8 +234,8 @@ export const ImportSheet: React.FC<{
         try {
             const lower = file.name.toLowerCase();
             if (lower.endsWith('.json')) {
-                const list = flightImporter.parseTransportsJson(await readText(file)).filter(t => !t.mode || t.mode === 'Flight').map(t => ({ ...t, mode: 'Flight' as const }));
-                if (list.length === 0) throw new Error('No flights were found in that file.');
+                const list = flightImporter.parseTransportsJson(await readText(file)).filter(t => modes.includes(t.mode || 'Flight')).map(t => ({ ...t, mode: t.mode || modes[0] }));
+                if (list.length === 0) throw new Error(`No ${noun.many} were found in that file.`);
                 setFolded(list); setSheetNames([]);
                 setStep(2);
             } else if (lower.endsWith('.csv') || lower.endsWith('.xlsx') || lower.endsWith('.xls') || lower.endsWith('.tsv') || lower.endsWith('.txt')) {
@@ -273,7 +291,7 @@ export const ImportSheet: React.FC<{
         <RpSheet
             open={open}
             onClose={close}
-            title="Import flights"
+            title={`Import ${noun.many}`}
             subtitle={name || undefined}
             width={480}
             footer={
@@ -283,7 +301,7 @@ export const ImportSheet: React.FC<{
                     ) : <button type="button" onClick={close} className="inline-flex min-h-11 items-center rounded-full bg-rp-inset px-5 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted">Cancel</button>}
                     {last ? (
                         <ParticleButton onClick={run} disabled={chosen.length === 0} pendingLabel="Importing" successLabel="Imported" errorLabel="Couldn't import">
-                            {chosen.length ? `Import ${chosen.length} ${chosen.length === 1 ? 'flight' : 'flights'}` : 'Import'}
+                            {chosen.length ? `Import ${chosen.length} ${chosen.length === 1 ? noun.one : noun.many}` : 'Import'}
                         </ParticleButton>
                     ) : (
                         <button type="button" disabled={!canNext} onClick={() => setStep(s => (s + 1) as Step)} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-ink px-5 text-sm font-medium text-rp-on-ink outline-none hover:bg-rp-ink/90 focus-visible:ring-2 focus-visible:ring-rp-muted disabled:opacity-40">Next <ArrowRight size={16} aria-hidden /></button>
@@ -299,7 +317,7 @@ export const ImportSheet: React.FC<{
                         </li>
                     ))}
                 </ol>
-                <input ref={input} type="file" accept=".csv,.tsv,.txt,.xlsx,.xls,.json" className="sr-only" tabIndex={-1} aria-label="Flight file" onChange={e => { const f = e.target.files?.[0]; if (f) void pick(f); e.target.value = ''; }} />
+                <input ref={input} type="file" accept=".csv,.tsv,.txt,.xlsx,.xls,.json" className="sr-only" tabIndex={-1} aria-label="File to import" onChange={e => { const f = e.target.files?.[0]; if (f) void pick(f); e.target.value = ''; }} />
                 {error ? <p role="alert" className="text-sm text-rp-rust">{error}</p> : null}
 
                 {step === 0 ? (
@@ -333,10 +351,10 @@ export const ImportSheet: React.FC<{
 
                 {step === 1 ? (
                     <>
-                        {missing.length || noDate ? <p role="alert" className="text-sm text-rp-rust">Choose the column for {[...missing.map(k => FIELDS.find(f => f.key === k)!.label), ...(noDate ? ['the date'] : [])].join(' and ')}.</p> : <p className="text-sm text-rp-muted">{Object.keys(mapping).length} of {headers.length} columns matched. Change any that are wrong.</p>}
+                        {missing.length || noDate ? <p role="alert" className="text-sm text-rp-rust">Choose the column for {[...missing.map(k => fields.find(f => f.key === k)!.label), ...(noDate ? ['the date'] : [])].join(' and ')}.</p> : <p className="text-sm text-rp-muted">{Object.keys(mapping).length} of {headers.length} columns matched. Change any that are wrong.</p>}
                         <RpSection title="Match columns" icon={Columns} action={<button type="button" onClick={() => setMapping(detect(headers))} className="inline-flex min-h-11 items-center rounded-full px-3 text-xs font-medium text-rp-muted outline-none hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted">Detect again</button>}>
                             <div className="flex flex-col py-1">
-                                {FIELDS.map(f => (
+                                {fields.map(f => (
                                     <div key={f.key} className="flex min-h-14 items-center justify-between gap-3 border-t border-rp-line first:border-t-0">
                                         <span className="flex min-w-0 flex-col">
                                             <span className="text-sm text-rp-ink">{f.label}{REQUIRED.includes(f.key) ? <span className="text-rp-rust"> *</span> : null}</span>
@@ -359,7 +377,7 @@ export const ImportSheet: React.FC<{
                 {step === 2 ? (
                     <>
                         <p className="text-sm text-rp-ink">
-                            <span className="rp-tabular font-medium">{chosen.length}</span> {chosen.length === 1 ? 'flight' : 'flights'} to import
+                            <span className="rp-tabular font-medium">{chosen.length}</span> {chosen.length === 1 ? noun.one : noun.many} to import
                             {duplicateCount ? <span className="text-rp-muted"> · {duplicateCount} already in your log</span> : null}
                             {raw && built.length < rows.length ? <span className="text-rp-muted"> · {rows.length - built.length} rows left out (no places or date)</span> : null}
                         </p>
@@ -372,7 +390,7 @@ export const ImportSheet: React.FC<{
                         {trips.length > 0 ? (
                             <RpSection title="Add to a trip" icon={Suitcase}>
                                 <div className="flex min-h-11 items-center justify-between gap-3 py-1">
-                                    <span className="min-w-0 truncate text-sm text-rp-ink">{tripName || 'Keep them as independent flights'}</span>
+                                    <span className="min-w-0 truncate text-sm text-rp-ink">{tripName || `Keep them as independent ${noun.many}`}</span>
                                     <TripMenu label="Choose a trip" pill={{ label: tripName ? 'Change' : 'Add to trip', icon: Suitcase }} items={[{ id: '', label: 'No trip', icon: X, selected: !tripId, onSelect: () => setTripId('') }, ...trips.slice(0, 40).map(t => ({ id: t.id, label: t.name, icon: Suitcase, selected: t.id === tripId, onSelect: () => setTripId(t.id) }))]} />
                                 </div>
                             </RpSection>
@@ -388,7 +406,7 @@ export const ImportSheet: React.FC<{
                                             <span className={`flex min-w-0 flex-1 items-center justify-between gap-3 ${off ? 'opacity-50' : ''}`}>
                                                 <CarrierCell t={t} size="sm" brandfetchApiKey={brandfetchApiKey} className="min-w-0" />
                                                 <span className="flex shrink-0 flex-col items-end">
-                                                    <span className="rp-tabular flex items-center gap-1.5 text-sm font-semibold text-rp-ink">{placeCode(t.origin)} <ArrowRight size={12} className="text-rp-rust" aria-hidden /> {placeCode(t.destination)}</span>
+                                                    <span className="rp-tabular flex items-center gap-1.5 text-sm font-semibold text-rp-ink">{placeCode(t.origin, t.mode)} <ArrowRight size={12} className="text-rp-rust" aria-hidden /> {placeCode(t.destination, t.mode)}</span>
                                                     <span className="rp-tabular text-xs text-rp-muted">{formatDate(t.departureDate, 'short-with-year')}{dup ? ' · in your log' : ''}</span>
                                                 </span>
                                             </span>
@@ -420,6 +438,8 @@ const download = (blob: Blob, name: string) => {
 
 /** Writes the given journeys to a file in the chosen format and downloads it. */
 export const exportJourneys = async (records: JourneyRecord[], format: ExportFormat, base = 'wandergrid-flights'): Promise<void> => {
+    // Land and sea journeys have their own columns (the flight formats only carry flights).
+    if (records.some(r => r.flight.mode !== 'Flight')) return exportLandJourneys(records, format === 'airtrail' ? 'json' : format, base === 'wandergrid-flights' ? 'wandergrid-journeys' : base);
     const bundle = [{
         id: 'export', name: 'Flights', location: '', startDate: '', endDate: '', status: 'Past' as const, participants: [],
         transports: records.map(r => r.flight),
@@ -429,4 +449,27 @@ export const exportJourneys = async (records: JourneyRecord[], format: ExportFor
     else if (format === 'json') download(new Blob([flightImporter.exportJson(bundle as any)], { type: 'application/json' }), `${base}-${stamp}.json`);
     else if (format === 'airtrail') download(new Blob([flightImporter.exportAirTrailJson(bundle as any)], { type: 'application/json' }), `${base}-airtrail-${stamp}.json`);
     else download(new Blob([await flightImporter.exportXlsx(bundle as any)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `${base}-${stamp}.xlsx`);
+};
+
+const LAND_COLUMNS: [string, (t: Transport) => string | number | undefined][] = [
+    ['Date', t => t.departureDate], ['Mode', t => t.mode], ['Operator', t => t.provider], ['Number', t => t.identifier], ['From', t => t.origin], ['To', t => t.destination],
+    ['Departure time', t => t.departureTime], ['Arrival date', t => t.arrivalDate], ['Arrival time', t => t.arrivalTime], ['Distance km', t => t.distance], ['Cost', t => t.cost],
+    ['Confirmation', t => t.confirmationCode], ['Stops', t => (t.waypoints || []).map(w => w.name).join(' > ')], ['Notes', t => t.notes],
+];
+
+/** Writes land and sea journeys as CSV, Excel or JSON. */
+export const exportLandJourneys = async (records: JourneyRecord[], format: 'csv' | 'xlsx' | 'json', base = 'wandergrid-journeys'): Promise<void> => {
+    const stamp = new Date().toISOString().slice(0, 10);
+    const rows = records.map(r => Object.fromEntries(LAND_COLUMNS.map(([h, get]) => [h, get(r.flight) ?? ''])));
+    if (format === 'json') { download(new Blob([JSON.stringify(records.map(r => r.flight), null, 2)], { type: 'application/json' }), `${base}-${stamp}.json`); return; }
+    if (format === 'csv') {
+        const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+        const csv = [LAND_COLUMNS.map(([h]) => esc(h)).join(','), ...rows.map(r => LAND_COLUMNS.map(([h]) => esc(r[h])).join(','))].join('\n');
+        download(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `${base}-${stamp}.csv`);
+        return;
+    }
+    const XLSX = await import('xlsx');
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Journeys');
+    download(new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `${base}-${stamp}.xlsx`);
 };

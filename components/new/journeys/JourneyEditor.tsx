@@ -11,7 +11,8 @@ import { RpSection, RpSheet } from '../ui';
 import { TripMenu } from '../trips/TripMenu';
 import { LEG_DATE, LegForm } from '../trips/LegForm';
 import { extractIata } from '../../../hooks/useFlightLog';
-import { estimateMinutes, fromLog, isIndependent, journeyKm, localArrival, type JourneyRecord } from '../../../utils/journeysModel';
+import { MODE_SPEED_KMH, estimateMinutes, estimateMinutesFor, fromLog, isIndependent, journeyKm, localArrival, type JourneyRecord } from '../../../utils/journeysModel';
+import { toast } from '../../../services/toast';
 import { errorMessage } from '../../../services/toast';
 import { cn } from '../../../utils/cn';
 
@@ -112,6 +113,9 @@ export const JourneyEditor: React.FC<{
             const destination = flight ? extractIata(leg.destination).toUpperCase() || leg.destination.trim() : leg.destination.trim();
             const arrivalDate = leg.arrivalDate || leg.departureDate;
             const minutes = flight ? calculateDurationMinutes(origin, destination, leg.departureDate, leg.departureTime || '00:00', arrivalDate, leg.arrivalTime || '00:00') : 0;
+            // Land and sea: the time is the wall-clock gap (no airport zones), the distance the one given, else the time at the mode's average speed, else the straight line.
+            const wall = flight ? 0 : Math.max(0, Math.round((Date.parse(`${arrivalDate}T${leg.arrivalTime || '00:00'}:00Z`) - Date.parse(`${leg.departureDate}T${leg.departureTime || '00:00'}:00Z`)) / 60000));
+            const landKm = flight ? undefined : leg.distance || (wall ? Math.round((wall / 60) * (MODE_SPEED_KMH[leg.mode || ''] || 80)) : journeyKm({ origin, destination, originLat: leg.originLat, originLng: leg.originLng, destLat: leg.destLat, destLng: leg.destLng } as Transport)) || undefined;
             const payload: Transport = {
                 ...(editing?.flight ?? {}),
                 ...(leg as Transport),
@@ -128,7 +132,8 @@ export const JourneyEditor: React.FC<{
                 arrivalDate,
                 arrivalTime: leg.arrivalTime || '00:00',
                 cost: num(cost),
-                duration: minutes || leg.duration,
+                duration: flight ? minutes || leg.duration : wall || leg.duration,
+                ...(flight ? {} : { distance: landKm }),
                 actualDepartureTime: leg.actualDepartureTime || undefined,
                 actualArrivalTime: leg.actualArrivalTime || undefined,
             };
@@ -138,6 +143,43 @@ export const JourneyEditor: React.FC<{
             const msg = errorMessage(e, "That didn't save. Try again.");
             setError(msg);
             throw e;
+        }
+    };
+
+    // Land and sea: the road distance and time from the routing service (cars, coaches), or an estimate from the places at the mode's average speed.
+    const [routing, setRouting] = useState(false);
+    const canRoute = !flight && Boolean(leg.origin?.trim() && leg.destination?.trim());
+    const calcRoute = async () => {
+        setError('');
+        setRouting(true);
+        try {
+            const [{ getCoordinates }, { fetchRoute }] = await Promise.all([import('../../../services/geocoding'), import('../../../services/multiModalRouting')]);
+            const [a, b] = await Promise.all([getCoordinates(leg.origin!.trim()), getCoordinates(leg.destination!.trim())]);
+            if (!a || !b) throw new Error('Could not find both places on the map.');
+            const coords: [number, number][] = [[a.lng, a.lat]];
+            for (const w of leg.waypoints || []) {
+                if (w.coordinates) coords.push([w.coordinates.lng, w.coordinates.lat]);
+                else if (w.name) { const c = await getCoordinates(w.name); if (c) coords.push([c.lng, c.lat]); }
+            }
+            coords.push([b.lng, b.lat]);
+            const byRoad = leg.mode === 'Car Rental' || leg.mode === 'Personal Car' || leg.mode === 'Bus';
+            const route = byRoad ? await fetchRoute('car', coords) : null;
+            const km = route && route.distanceKm > 0 ? route.distanceKm : journeyKm({ origin: leg.origin!, destination: leg.destination!, originLat: a.lat, originLng: a.lng, destLat: b.lat, destLng: b.lng } as Transport);
+            const minutes = route && route.durationMin > 0 ? Math.round(route.durationMin) : estimateMinutesFor(leg.mode, km);
+            const patchBody: Partial<Transport> = { distance: Math.round(km), originLat: a.lat, originLng: a.lng, originGeoKey: leg.origin!.trim(), destLat: b.lat, destLng: b.lng, destGeoKey: leg.destination!.trim() };
+            if (leg.departureDate && leg.departureTime && minutes > 0) {
+                const dep = new Date(`${leg.departureDate}T${leg.departureTime}:00`);
+                const arr = new Date(dep.getTime() + minutes * 60000);
+                const pad = (n: number) => String(n).padStart(2, '0');
+                patchBody.arrivalDate = `${arr.getFullYear()}-${pad(arr.getMonth() + 1)}-${pad(arr.getDate())}`;
+                patchBody.arrivalTime = `${pad(arr.getHours())}:${pad(arr.getMinutes())}`;
+            }
+            patch(patchBody);
+            if (!route && byRoad) toast.info('Routing is unavailable, so the distance is a straight-line estimate.');
+        } catch (e) {
+            setError(errorMessage(e, "Couldn't work out the route."));
+        } finally {
+            setRouting(false);
         }
     };
 
@@ -222,6 +264,9 @@ export const JourneyEditor: React.FC<{
                             </div>
                         ) : undefined}
                     />
+                    {canRoute ? (
+                        <button type="button" onClick={() => void calcRoute()} disabled={routing} className="mt-1 inline-flex min-h-11 items-center gap-2 self-start rounded-full bg-rp-inset px-4 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted disabled:opacity-50">{routing ? 'Working it out' : leg.mode === 'Car Rental' || leg.mode === 'Personal Car' || leg.mode === 'Bus' ? 'Calculate route' : 'Estimate distance and time'}</button>
+                    ) : null}
                     {canEstimate ? (
                         <button type="button" onClick={estimate} className="mt-1 inline-flex min-h-11 items-center gap-2 self-start rounded-full bg-rp-inset px-4 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted">Estimate arrival time</button>
                     ) : null}

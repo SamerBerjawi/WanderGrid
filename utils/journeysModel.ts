@@ -12,10 +12,18 @@ export type JourneyRecord = { flight: Transport; trip: Trip };
 
 export const isIndependent = (tripId: string) => tripId === 'unassigned' || tripId.startsWith('unassigned');
 
-/** IATA-style code when the value is short, otherwise the start of the place name. */
-export const placeCode = (value: string): string => {
+/**
+ * IATA-style code when the value is short, otherwise the start of the place name. For a land or sea journey
+ * (`mode` other than Flight) there are no codes: the label is the place's own name up to the first comma
+ * ("Amsterdam", "Gare du Nord"), shortened with an ellipsis when it is long.
+ */
+export const placeCode = (value: string, mode?: string): string => {
     const v = (value || '').trim();
     if (!v) return '—';
+    if (mode && mode !== 'Flight') {
+        const name = v.split(/[,(]/)[0].trim() || v;
+        return name.length <= 16 ? name : `${name.slice(0, 15)}…`;
+    }
     if (/^[A-Za-z]{3,4}$/.test(v)) return v.toUpperCase();
     const head = v.split(/[,(\-–]/)[0].trim();
     return (head.length <= 4 ? head : head.slice(0, 3)).toUpperCase();
@@ -110,7 +118,7 @@ export const sortJourneys = (items: JourneyRecord[], key: JourneySortKey, asc: b
         const t = r.flight;
         switch (key) {
             case 'journey': return `${carrierLabel(t).toLowerCase()} ${t.identifier || ''}`;
-            case 'route': return `${placeCode(t.origin)} ${placeCode(t.destination)}`;
+            case 'route': return `${placeCode(t.origin, t.mode)} ${placeCode(t.destination, t.mode)}`;
             case 'duration': return journeyMinutes(t);
             case 'distance': return journeyKm(t);
             case 'cost': return t.cost || 0;
@@ -153,7 +161,7 @@ export const journeyTotals = (items: JourneyRecord[], now = Date.now()): Journey
         km += journeyKm(t);
         minutes += journeyMinutes(t);
         cost += t.cost || 0;
-        [t.origin, t.destination].forEach(p => { if (p?.trim()) places.add(placeCode(p)); });
+        [t.origin, t.destination].forEach(p => { if (p?.trim()) places.add(placeCode(p, t.mode)); });
         if (t.provider?.trim()) carriers.add(carrierLabel(t).toLowerCase());
         const a = pointOf(t.origin, t.originLat, t.originLng);
         const b = pointOf(t.destination, t.destLat, t.destLng);
@@ -236,7 +244,7 @@ export type JourneyUnit = { kind: 'single'; rec: JourneyRecord } | { kind: 'jour
 /** The longest wait that still counts as a connection, and the longest stay between legs of one multi-city or return journey. */
 const CONNECTION_MS = 24 * 3_600_000;
 const STAY_MS = 21 * 86_400_000;
-const SAME = (a: string, b: string) => placeCode(a) === placeCode(b);
+const SAME = (a: string, b: string, mode?: string) => placeCode(a, mode).toLowerCase() === placeCode(b, mode).toLowerCase();
 
 /**
  * Finds the journeys among flights that are on no trip and share no booking. Starting from the earliest
@@ -252,7 +260,7 @@ const detect = (flights: JourneyRecord[]): JourneyRecord[][] => {
     const nextLeg = (last: JourneyRecord, maxGap: number): JourneyRecord | undefined =>
         left.find(c => {
             if (used.has(c.flight.id) || c.flight.id === last.flight.id) return false;
-            if (!SAME(c.flight.origin, last.flight.destination)) return false;
+            if (!SAME(c.flight.origin, last.flight.destination, c.flight.mode)) return false;
             const gap = depMs(c.flight) - arrMs(last.flight);
             return gap >= 0 && gap <= maxGap;
         });
@@ -268,10 +276,10 @@ const detect = (flights: JourneyRecord[]): JourneyRecord[][] => {
             if (!n) break;
             chain.push(n);
             used.add(n.flight.id);
-            if (SAME(n.flight.destination, first.flight.origin)) break;
+            if (SAME(n.flight.destination, first.flight.origin, n.flight.mode)) break;
         }
         chain.forEach(r => used.delete(r.flight.id));
-        const home = chain.length > 1 && SAME(chain[chain.length - 1].flight.destination, first.flight.origin);
+        const home = chain.length > 1 && SAME(chain[chain.length - 1].flight.destination, first.flight.origin, chain[chain.length - 1].flight.mode);
         if (home) { take(chain); continue; }
         // No way home: only the connections stay together.
         const conn = [first];
@@ -291,16 +299,16 @@ const detect = (flights: JourneyRecord[]): JourneyRecord[][] => {
 /** Shape and stop count of a chronological set of legs. */
 const describe = (legs: JourneyRecord[]): { shape: JourneyShape; stops: number; outbound: JourneyRecord[]; returns: JourneyRecord[] } => {
     const s = splitLegs(legs);
-    const home = legs.length > 1 && SAME(legs[legs.length - 1].flight.destination, legs[0].flight.origin);
+    const home = legs.length > 1 && SAME(legs[legs.length - 1].flight.destination, legs[0].flight.origin, legs[legs.length - 1].flight.mode);
     let stops = 0;
-    legs.forEach((r, i) => { if (i > 0 && SAME(r.flight.origin, legs[i - 1].flight.destination) && depMs(r.flight) - arrMs(legs[i - 1].flight) <= CONNECTION_MS) stops += 1; });
+    legs.forEach((r, i) => { if (i > 0 && SAME(r.flight.origin, legs[i - 1].flight.destination, r.flight.mode) && depMs(r.flight) - arrMs(legs[i - 1].flight) <= CONNECTION_MS) stops += 1; });
     // Where the person stayed: a leg's destination when the next leg leaves later than a connection (or there is no next leg).
     const stays = new Set<string>();
     legs.forEach((r, i) => {
         const next = legs[i + 1];
-        const connects = next && SAME(next.flight.origin, r.flight.destination) && depMs(next.flight) - arrMs(r.flight) <= CONNECTION_MS;
-        const end = placeCode(r.flight.destination);
-        if (!connects && end !== placeCode(legs[0].flight.origin)) stays.add(end);
+        const connects = next && SAME(next.flight.origin, r.flight.destination, next.flight.mode) && depMs(next.flight) - arrMs(r.flight) <= CONNECTION_MS;
+        const end = placeCode(r.flight.destination, r.flight.mode);
+        if (!connects && end !== placeCode(legs[0].flight.origin, legs[0].flight.mode)) stays.add(end);
     });
     const shape: JourneyShape = stays.size >= 2 ? 'multi-city' : home && s.returns.length ? 'round-trip' : 'connection';
     return { shape, stops, outbound: s.outbound, returns: s.returns };
@@ -357,9 +365,9 @@ export const groupJourneys = (items: JourneyRecord[]): JourneyUnit[] => {
 export const journeyRoute = (legs: JourneyRecord[]): string[] => {
     const out: string[] = [];
     legs.forEach((r, i) => {
-        if (i === 0) out.push(placeCode(r.flight.origin));
-        else if (placeCode(legs[i - 1].flight.destination) !== placeCode(r.flight.origin)) out.push(placeCode(r.flight.origin));
-        out.push(placeCode(r.flight.destination));
+        if (i === 0) out.push(placeCode(r.flight.origin, r.flight.mode));
+        else if (placeCode(legs[i - 1].flight.destination, legs[i - 1].flight.mode) !== placeCode(r.flight.origin, r.flight.mode)) out.push(placeCode(r.flight.origin, r.flight.mode));
+        out.push(placeCode(r.flight.destination, r.flight.mode));
     });
     return out;
 };
@@ -380,7 +388,7 @@ export const routeLines = (items: JourneyRecord[]): RouteLine[] => {
         if (journeyStatus(r.flight).state === 'cancelled') continue;
         const ends = journeyEnds(r.flight);
         if (!ends) continue;
-        const a = placeCode(r.flight.origin), b = placeCode(r.flight.destination);
+        const a = placeCode(r.flight.origin, r.flight.mode), b = placeCode(r.flight.destination, r.flight.mode);
         const key = [a, b].sort().join('-');
         const row = map.get(key);
         if (row) row.count += 1; else map.set(key, { ...ends, count: 1, label: `${a} to ${b}` });
@@ -431,7 +439,7 @@ export const byCarrier = (items: JourneyRecord[]): Tally[] =>
 
 /** Visits per airport (each end of a flight counts), most visited first. */
 export const byAirport = (items: JourneyRecord[]): Tally[] =>
-    tally(items, r => [r.flight.origin, r.flight.destination].filter(p => p?.trim()).map(p => ({ key: placeCode(p), label: `${placeCode(p)} ${placeName(p)}`.trim() })));
+    tally(items, r => [r.flight.origin, r.flight.destination].filter(p => p?.trim()).map(p => ({ key: placeCode(p, r.flight.mode), label: r.flight.mode && r.flight.mode !== 'Flight' ? placeName(p) : `${placeCode(p)} ${placeName(p)}`.trim() })));
 
 /** Flights per cabin class. */
 export const byClass = (items: JourneyRecord[]): Tally[] =>
@@ -469,3 +477,22 @@ export const localArrival = (origin: string, destination: string, date: string, 
     const get = (t: string) => parts.find(p => p.type === t)?.value || '';
     return { date: `${get('year')}-${get('month')}-${get('day')}`, time: `${get('hour')}:${get('minute')}` };
 };
+
+/* ------------------------------------------------------------------ */
+/* Land and sea (Road trips)                                            */
+/* ------------------------------------------------------------------ */
+
+/** Average speeds in km/h the old Road trips page used to guess a distance or a time. */
+export const MODE_SPEED_KMH: Record<string, number> = { Train: 120, Bus: 70, 'Car Rental': 90, 'Personal Car': 95, Cruise: 30, Ferry: 40, Flight: 800 };
+
+/** A guess of how long a land or sea journey takes from its distance: the distance at the mode's average speed. */
+export const estimateMinutesFor = (mode: string | undefined, km: number): number =>
+    km > 0 ? Math.round((km / (MODE_SPEED_KMH[mode || ''] || 80)) * 60) : 0;
+
+/** Kilograms of CO2 per km by mode (rail lowest): the footprint figures the old Road trips page showed. */
+export const MODE_CO2_G_PER_KM: Record<string, number> = { Train: 14, Bus: 28, 'Car Rental': 120, 'Personal Car': 125, Cruise: 120, Ferry: 120, Flight: 150 };
+export const journeyCo2Kg = (t: Transport): number => Math.round((journeyKm(t) * (MODE_CO2_G_PER_KM[t.mode] ?? 100)) / 1000);
+
+/** Journeys per mode, most used first. */
+export const byMode = (items: JourneyRecord[]): Tally[] =>
+    tally(items, r => [{ key: r.flight.mode, label: r.flight.mode }]);

@@ -52,7 +52,7 @@ export const JourneySheet: React.FC<{
     const t = shown.flight;
     const independent = isIndependent(shown.trip.id);
     const status = journeyStatus(t);
-    const title = `${placeCode(t.origin)} → ${placeCode(t.destination)}`;
+    const title = `${placeCode(t.origin, t.mode)} → ${placeCode(t.destination, t.mode)}`;
     const subtitle = [carrierLabel(t), t.identifier].filter(Boolean).join(' ') + ` · ${formatDate(t.departureDate, 'short-with-year')}`;
 
     const tripItems = [
@@ -103,7 +103,7 @@ export const JourneySheet: React.FC<{
                     </span>
                 </div>
             </RpSection>
-            {t.seatNumber && /\d+\s*[A-Za-z]/.test(t.seatNumber) ? (
+            {t.mode === 'Flight' && t.seatNumber && /\d+\s*[A-Za-z]/.test(t.seatNumber) ? (
                 <RpSection title="Seat" icon={Seat}><SeatMap t={t} /></RpSection>
             ) : null}
             {t.mode === 'Flight' && status.state !== 'cancelled' ? (
