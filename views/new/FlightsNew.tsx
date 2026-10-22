@@ -4,10 +4,9 @@ import { useFlightLog } from '../../hooks/useFlightLog';
 import { errorMessage, toast } from '../../services/toast';
 import { mapLink } from '../../utils/mapLinks';
 import {
-    SORT_LABEL, aroundTheWorld, groupJourneys, isIndependent, journeyStatus, journeyTotals, sortJourneys,
+    SORT_LABEL, groupJourneys, isIndependent, journeyStatus, sortJourneys,
     type JourneyGroup, type JourneyRecord, type JourneySortKey, type JourneyState,
 } from '../../utils/journeysModel';
-import NumberFlow from '@number-flow/react';
 import type { DockTool } from '../../components/kokonutui/tool-dock';
 import HoldButton from '../../components/kokonutui/hold-button';
 import { RpChip, RpEmpty, RpSheet, useIsMobile } from '../../components/new/ui';
@@ -73,30 +72,6 @@ const SORTS: { key: JourneySortKey; asc: boolean; label: string; short: string }
     { key: 'cost', asc: false, label: 'Most expensive', short: 'Priciest' },
 ];
 
-/** The tiles are filled with their accent: ink, green and mustard, each with its own readable text. */
-const TILE_TONE = {
-    ink: { card: 'bg-rp-ink text-rp-on-ink', muted: 'text-rp-on-ink/70', circle: 'bg-rp-on-ink/15' },
-    green: { card: 'bg-rp-green text-rp-paper', muted: 'text-rp-paper/80', circle: 'bg-rp-paper/20' },
-    mustard: { card: 'bg-rp-mustard text-rp-on-mustard', muted: 'text-rp-on-mustard/70', circle: 'bg-rp-on-mustard/10' },
-} as const;
-
-/** One tile of the totals: a rolling figure with its unit, and one line of detail. */
-const StatTile: React.FC<{ icon: Icon; tone: keyof typeof TILE_TONE; value: number; unit: string; sub: string; subShort: string }> = ({ icon: IconC, tone, value, unit, sub, subShort }) => {
-    const t = TILE_TONE[tone];
-    return (
-        <div className={cn('flex min-w-0 items-center gap-3 rounded-rp-tile p-3 rp-shadow-rest sm:p-4', t.card)}>
-            <span className={cn('hidden size-10 shrink-0 items-center justify-center rounded-full sm:flex', t.circle)}><IconC size={18} aria-hidden /></span>
-            <span className="min-w-0">
-                <span className="flex flex-wrap items-baseline gap-x-1.5">
-                    <NumberFlow value={value} format={{ maximumFractionDigits: 0 }} className="rp-tabular text-xl leading-tight font-semibold" />
-                    <span className={cn('text-sm', t.muted)}>{unit}</span>
-                </span>
-                <span className={cn('block truncate text-xs leading-snug', t.muted)}><span className="sm:hidden">{subShort}</span><span className="hidden sm:inline">{sub}</span></span>
-            </span>
-        </div>
-    );
-};
-
 const EmptyCard: React.FC<{ children: React.ReactNode }> = ({ children }) => <div className="rounded-rp-card bg-rp-surface rp-shadow-rest">{children}</div>;
 
 export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
@@ -150,7 +125,6 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
         return sortJourneys(list, sortKey, sortAsc);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [log.filteredFlights, statusFilter, noTrip, sortKey, sortAsc]);
-    const totals = useMemo(() => journeyTotals(shown), [shown]);
     const filtering = Boolean(log.searchQuery.trim()) || log.timeFilter !== 'all' || log.yearFilter !== 'all' || log.classFilter !== 'all' || statusFilter !== 'all' || noTrip;
     const independentCount = useMemo(() => log.flights.filter(r => isIndependent(r.trip.id)).length, [log.flights]);
 
@@ -226,7 +200,6 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
     const brandfetchApiKey = log.workspaceSettings?.brandfetchApiKey || undefined;
     const years = log.uniqueYears;
     const sortLabel = (SORTS.find(s => s.key === sortKey && s.asc === sortAsc) ?? SORTS[0]).short;
-    const earth = aroundTheWorld(totals.km);
     const tickets = shown.filter(r => selected.has(r.flight.id));
 
     const clearFilters = () => { log.resetFilters(); setStatusFilter('all'); setNoTrip(false); };
@@ -260,33 +233,6 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                         </RpEmpty>
                     </EmptyCard>
                 ) : null}
-
-                <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
-                    <StatTile
-                        tone="ink"
-                        icon={Airplane}
-                        value={totals.count}
-                        unit={totals.count === 1 ? 'flight' : 'flights'}
-                        sub={[totals.upcoming > 0 ? `${totals.upcoming} upcoming` : '', `${totals.carriers} ${totals.carriers === 1 ? 'airline' : 'airlines'}`].filter(Boolean).join(' · ')}
-                        subShort={totals.upcoming > 0 ? `${totals.upcoming} upcoming` : `${totals.carriers} airlines`}
-                    />
-                    <StatTile
-                        tone="green"
-                        icon={Globe}
-                        value={totals.km}
-                        unit="km"
-                        sub={[`${totals.airports} ${totals.airports === 1 ? 'airport' : 'airports'}`, earth >= 0.1 ? `${earth.toFixed(1)}× the Earth` : ''].filter(Boolean).join(' · ')}
-                        subShort={`${totals.airports} ${totals.airports === 1 ? 'airport' : 'airports'}`}
-                    />
-                    <StatTile
-                        tone="mustard"
-                        icon={Clock}
-                        value={Math.round(totals.minutes / 60)}
-                        unit="hours"
-                        sub={`${totals.countries} ${totals.countries === 1 ? 'country' : 'countries'}`}
-                        subShort={`${totals.countries} ${totals.countries === 1 ? 'country' : 'countries'}`}
-                    />
-                </div>
 
                 {log.loaded ? <LiveNow items={log.flights} onOpen={open} brandfetchApiKey={brandfetchApiKey} /> : null}
 
