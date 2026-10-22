@@ -304,20 +304,36 @@ export const RpLogo: React.FC<{
     name?: string;
     brandfetchApiKey?: string;
     carriers?: Carrier[];
+    /** A logo URL saved with the record; tried first. */
+    src?: string;
+    /** Shown when no logo is found: the mode or type icon. */
     fallback: Icon;
+    /** Colour of that icon (default muted), e.g. an accent for transport or stays. */
+    iconClassName?: string;
     size?: 'sm' | 'md';
     className?: string;
-}> = ({ name, brandfetchApiKey, carriers, fallback: Fallback, size = 'md', className }) => {
-    const sources = React.useMemo(() => carrierLogoSources(name, brandfetchApiKey, carriers), [name, brandfetchApiKey, carriers]);
+}> = ({ name, brandfetchApiKey, carriers, src: saved, fallback: Fallback, iconClassName, size = 'md', className }) => {
+    const sources = React.useMemo(
+        () => [...(saved ? [saved] : []), ...carrierLogoSources(name, brandfetchApiKey, carriers)],
+        [saved, name, brandfetchApiKey, carriers]
+    );
     const [attempt, setAttempt] = useState(0);
     useEffect(() => setAttempt(0), [sources]);
     const src = sources[attempt];
     return (
         <span className={cn('flex shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-white', size === 'sm' ? 'size-7' : 'size-9', className)}>
             {src ? (
-                <img src={src} alt={name ? `${name} logo` : ''} className="h-full w-full object-contain" referrerPolicy="no-referrer" onError={() => setAttempt(a => a + 1)} />
+                <img
+                    src={src}
+                    alt={name ? `${name} logo` : ''}
+                    className="h-full w-full object-contain"
+                    referrerPolicy="no-referrer"
+                    onError={() => setAttempt(a => a + 1)}
+                    // The favicon service answers an unknown site with a 16px globe: that is "no logo", so use the icon.
+                    onLoad={e => { if (src.includes('google.com/s2/favicons') && e.currentTarget.naturalWidth <= 32) setAttempt(a => a + 1); }}
+                />
             ) : (
-                <Fallback size={size === 'sm' ? 14 : 16} className="text-rp-muted" aria-hidden />
+                <Fallback size={size === 'sm' ? 14 : 16} className={cn('text-rp-muted', iconClassName)} aria-hidden />
             )}
         </span>
     );

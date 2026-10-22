@@ -207,6 +207,8 @@ export interface Trip {
   status: 'Planning' | 'Upcoming' | 'Past' | 'Cancelled';
   participants: string[];
   icon?: string;
+  /** New pages: the name of a Hugeicons free icon (e.g. 'Airplane01Icon') chosen for this trip. Kept apart from `icon`, which older pages render as an emoji. */
+  hugeicon?: string;
   privacy?: 'Private' | 'Public'; // New: AirTrail privacy controls
   
   // Basic Leave Request Fields (Legacy/Simple)

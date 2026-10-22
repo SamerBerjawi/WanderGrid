@@ -496,6 +496,13 @@ export default defineConfig(({ mode }) => {
         chunkSizeWarningLimit: 1200,
         rollupOptions: {
           output: {
+            // The Hugeicons set behind the icon finder is one lazy chunk, named so the app-shell precache glob
+            // (`assets/index-*`) does not pick it up; it is cached at runtime on first use.
+            chunkFileNames: chunkInfo => (
+              chunkInfo.facadeModuleId?.includes('@hugeicons/core-free-icons')
+                ? 'assets/hugeicons-all-[hash].js'
+                : 'assets/[name]-[hash].js'
+            ),
             manualChunks(id) {
               // Vite's dynamic-import preload helper is used by every lazy view; left to Rollup it landed in
               // vendor-deckgl, making the login page download the whole map stack (PERF-001).
