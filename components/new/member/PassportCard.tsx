@@ -97,3 +97,49 @@ export const PassportCard: React.FC<{
         </div>
     );
 };
+
+const DAY = 86_400_000;
+
+/** How long a passport has left: a filled tile in the status colour, a figure that rolls, and a bar of the validity used. */
+export const PassportValidity: React.FC<{ issued?: string; expires: string; today: string }> = ({ issued, expires, today }) => {
+    const end = Date.parse(expires);
+    const now = Date.parse(today);
+    if (Number.isNaN(end) || Number.isNaN(now)) return null;
+    const days = Math.round((end - now) / DAY);
+    const start = issued ? Date.parse(issued) : NaN;
+    const used = !Number.isNaN(start) && end > start ? Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100)) : null;
+    const expired = days < 0;
+    const soon = !expired && days < 183;
+    const tone = expired ? 'bg-rp-rust text-rp-paper' : soon ? 'bg-rp-mustard text-rp-on-mustard' : 'bg-rp-green text-rp-paper';
+    const muted = expired ? 'text-rp-paper/80' : soon ? 'text-rp-on-mustard/70' : 'text-rp-paper/80';
+    const track = expired ? 'bg-rp-paper/25' : soon ? 'bg-rp-on-mustard/15' : 'bg-rp-paper/25';
+    const bar = expired ? 'bg-rp-paper' : soon ? 'bg-rp-on-mustard' : 'bg-rp-paper';
+    const months = Math.floor(Math.abs(days) / 30.44);
+    const big = Math.abs(days) >= 90 ? months : Math.abs(days);
+    const unit = Math.abs(days) >= 90 ? (months === 1 ? 'month' : 'months') : (Math.abs(days) === 1 ? 'day' : 'days');
+    return (
+        <div className={cn('flex flex-col justify-between gap-6 rounded-rp-card p-5 rp-shadow-rest', tone)} role="group" aria-label="Passport validity">
+            <div>
+                <p className={cn('text-xs', muted)}>{expired ? 'Expired' : 'Valid until'}</p>
+                <p className="text-lg font-medium">{formatDate(expires, 'long')}</p>
+            </div>
+            <div>
+                <p className="flex items-baseline gap-2">
+                    <span className="rp-tabular text-5xl leading-none font-semibold">{big}</span>
+                    <span className={cn('text-base', muted)}>{unit} {expired ? 'ago' : 'left'}</span>
+                </p>
+                {used !== null ? (
+                    <div className="mt-4">
+                        <div className={cn('h-1.5 overflow-hidden rounded-full', track)} role="progressbar" aria-label="Validity used" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(used)}>
+                            <div className={cn('h-full rounded-full', bar)} style={{ width: `${used}%` }} />
+                        </div>
+                        <p className={cn('rp-tabular mt-1.5 flex justify-between text-xs', muted)}>
+                            <span>{formatDate(issued!, 'month-year')}</span>
+                            <span>{formatDate(expires, 'month-year')}</span>
+                        </p>
+                    </div>
+                ) : null}
+            </div>
+        </div>
+    );
+};

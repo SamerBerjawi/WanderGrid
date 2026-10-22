@@ -11,7 +11,7 @@ import { StackPanel, type StackPage } from '../../components/kokonutui/stack-pan
 import { RpChip, RpEmpty, useIsMobile } from '../../components/new/ui';
 import { RpHugeicon } from '../../components/new/RpHugeicon';
 import { Avatar } from '../../components/new/member/Avatar';
-import { PassportCard } from '../../components/new/member/PassportCard';
+import { PassportCard, PassportValidity } from '../../components/new/member/PassportCard';
 import { MemberRing, leaveColor, type RingSegment } from '../../components/new/member/MemberRing';
 import { MemberSheet, RemoveMemberSheet, type MemberTopic } from '../../components/new/member/MemberSheets';
 import { ArrowLeft, CalendarBlank, Envelope, Eye, EyeSlash, Globe, IdentificationCard, Lock, MapPin, PencilSimple, Plus, SignOut, SunHorizon, Suitcase, Trash, User as UserIcon, UserCircle, type Icon } from '../../components/ui/hugeicons';
@@ -429,18 +429,23 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                     ) : null}
 
                     {activeTab === 'documents' ? (
-                        <div className={cn(card, 'p-2 sm:p-3 lg:max-w-xl')}>
-                            {hasPassport ? (
-                                <StackPanel pages={documentPages} root="documents" />
-                            ) : (
+                        hasPassport ? (
+                            <div className={cn('grid gap-3 lg:gap-4', member.passportExpiryDate && 'lg:grid-cols-2')}>
+                                <div className={cn(card, 'p-2 sm:p-3')}>
+                                    <StackPanel pages={documentPages} root="documents" />
+                                </div>
+                                {member.passportExpiryDate ? <PassportValidity issued={member.passportIssueDate} expires={member.passportExpiryDate} today={data.today} /> : null}
+                            </div>
+                        ) : (
+                            <div className={card}>
                                 <RpEmpty
                                     title="No passport details"
                                     action={data.canEdit ? <button type="button" onClick={() => setTopic('passport')} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-ink px-5 text-sm font-medium text-rp-on-ink"><Plus size={16} aria-hidden /> Add details</button> : undefined}
                                 >
                                     {data.canEdit ? 'Number, nationality and dates.' : undefined}
                                 </RpEmpty>
-                            )}
-                        </div>
+                            </div>
+                        )
                     ) : null}
 
                     {activeTab === 'settings' && data.canEdit ? (
