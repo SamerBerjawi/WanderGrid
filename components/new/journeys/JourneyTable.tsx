@@ -195,7 +195,7 @@ const JourneyHeader: React.FC<{ group: JourneyGroup; open: boolean; onToggle: ()
                     <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-rp-ink text-rp-on-ink"><Stack size={16} aria-hidden /></span>
                     <span className="flex min-w-0 flex-col">
                         <span className="rp-tabular truncate text-sm font-semibold text-rp-ink">{route}</span>
-                        <span className="truncate text-xs text-rp-muted">{kind}{layover} · {group.legs.length} flights · {name}</span>
+                        <span className="truncate text-xs text-rp-muted">{kind}{layover} · {group.legs.length} {group.legs[0].flight.mode === 'Flight' ? 'flights' : 'journeys'} · {name}</span>
                     </span>
                     <CaretDown size={16} className={cn('shrink-0 text-rp-muted transition-transform duration-150', open && 'rotate-180')} aria-hidden />
                 </button>

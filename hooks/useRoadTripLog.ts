@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Transport, TransportMode, Trip, User, WorkspaceSettings } from '../types';
 import { dataService } from '../services/mockDb';
 import { syncPitStopsToVisited } from '../services/pitStopSync';
-import { getCityName, getFlightDepartureUtcDate } from '../utils/flightData';
+import { getFlightDepartureUtcDate } from '../utils/flightData';
 import { isIndependent, type JourneyRecord } from '../utils/journeysModel';
 
 /**
@@ -144,6 +144,18 @@ export const useRoadTripLog = () => {
         refreshData();
     };
 
+    /** Adds several new journeys to a trip (or to "no trip") in one write. */
+    const addJourneys = async (list: Transport[], tripId: string): Promise<void> => {
+        if (list.length === 0) return;
+        if (tripId === 'unassigned') { for (const t of list) await dataService.addFlight(t); }
+        else {
+            const target = trips.find(t => t.id === tripId);
+            if (!target) throw new Error('That trip no longer exists.');
+            await dataService.updateTrip({ ...target, transports: [...(target.transports || []), ...list] });
+        }
+        refreshData();
+    };
+
     /** Moves journeys to a trip, or to "no trip" (`'unassigned'`), in one transaction. */
     const assignJourneys = async (list: RoadRecord[], tripId: string): Promise<void> => {
         const target = tripId !== 'unassigned' ? trips.find(t => t.id === tripId) : undefined;
@@ -188,7 +200,7 @@ export const useRoadTripLog = () => {
         const sorted = [...list].sort((a, b) => getFlightDepartureUtcDate(a.flight).getTime() - getFlightDepartureUtcDate(b.flight).getTime());
         const home = sorted[0].flight.origin.trim().toLowerCase();
         const away = sorted.find(r => r.flight.destination.trim().toLowerCase() !== home)?.flight.destination || sorted[0].flight.destination;
-        const city = (getCityName(away) || away).split(',')[0].trim();
+        const city = away.split(/[,(]/)[0].trim() || away;
         const start = sorted.map(r => r.flight.departureDate).filter(Boolean).sort()[0] || today();
         const end = sorted.map(r => r.flight.arrivalDate || r.flight.departureDate).filter(Boolean).sort().slice(-1)[0] || start;
         const id = `trip-${Math.random().toString(36).slice(2, 11)}`;
@@ -219,6 +231,6 @@ export const useRoadTripLog = () => {
         trips, users, currentUser, records, loaded, loadError, workspaceSettings, refreshData,
         searchQuery, setSearchQuery, timeFilter, setTimeFilter, yearFilter, setYearFilter, resetFilters,
         filtered, uniqueYears,
-        saveJourney, assignJourneys, deleteJourneys, createTripFromJourneys, newId,
+        saveJourney, addJourneys, assignJourneys, deleteJourneys, createTripFromJourneys, newId,
     };
 };

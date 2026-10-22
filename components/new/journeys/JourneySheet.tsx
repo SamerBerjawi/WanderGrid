@@ -56,7 +56,7 @@ export const JourneySheet: React.FC<{
     const subtitle = [carrierLabel(t), t.identifier].filter(Boolean).join(' ') + ` · ${formatDate(t.departureDate, 'short-with-year')}`;
 
     const tripItems = [
-        ...(independent && onCreateTrip ? [{ id: 'new', label: 'New trip from this flight', icon: Plus, selected: undefined as boolean | undefined, onSelect: () => onCreateTrip(shown) }] : []),
+        ...(independent && onCreateTrip ? [{ id: 'new', label: `New trip from this ${noun}`, icon: Plus, selected: undefined as boolean | undefined, onSelect: () => onCreateTrip(shown) }] : []),
         { id: 'unassigned', label: 'No trip', icon: X, selected: independent, onSelect: () => onAssign(shown, 'unassigned') },
         ...trips.map(tr => ({ id: tr.id, label: tr.name, icon: Suitcase, selected: tr.id === shown.trip.id, onSelect: () => onAssign(shown, tr.id) })),
     ];

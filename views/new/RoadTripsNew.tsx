@@ -460,7 +460,7 @@ export const RoadTripsNew: React.FC<RoadTripsNewProps> = ({ onTripClick }) => {
                 newId={log.newId}
                 onClose={() => setRouteOpen(false)}
                 onSave={async (items, tid) => {
-                    for (const t of items) await log.saveJourney(t, tid);
+                    await log.addJourneys(items, tid);
                     toast.success(`Added ${items.length} ${items.length === 1 ? 'journey' : 'journeys'}`);
                 }}
             />

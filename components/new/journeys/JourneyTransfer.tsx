@@ -116,8 +116,10 @@ const build = (rows: Row[], map: Mapping, dayFirst: boolean, modes: TransportMod
     const cell = (r: Row, k: FieldKey) => (map[k] ? r[map[k]!] : undefined);
     const out: Transport[] = [];
     for (const r of rows) {
-        const origin = extractIata(String(cell(r, 'from') ?? '')).trim();
-        const destination = extractIata(String(cell(r, 'to') ?? '')).trim();
+        const land = modes[0] !== 'Flight';
+        const place = (v: unknown) => (land ? String(v ?? '').trim() : extractIata(String(v ?? '')).trim());
+        const origin = place(cell(r, 'from'));
+        const destination = place(cell(r, 'to'));
         const dep = map.depDateTime ? splitStamp(cell(r, 'depDateTime'), dayFirst) : { date: splitStamp(cell(r, 'date'), dayFirst).date, time: timeOf(cell(r, 'depTime')) };
         if (!origin || !destination || !dep.date) continue;
         const arr = map.arrDateTime ? splitStamp(cell(r, 'arrDateTime'), dayFirst) : { date: splitStamp(cell(r, 'arrDate'), dayFirst).date, time: timeOf(cell(r, 'arrTime')) };
@@ -125,7 +127,7 @@ const build = (rows: Row[], map: Mapping, dayFirst: boolean, modes: TransportMod
         out.push({
             id: newId(), itineraryId: newId(), type: 'One-Way', mode: map.mode && modes.length > 1 ? modeOf(cell(r, 'mode'), modes[0]) : modes[0],
             provider: String(cell(r, 'airline') ?? '').trim(), identifier: String(cell(r, 'flight') ?? '').trim().toUpperCase(),
-            confirmationCode: String(cell(r, 'pnr') ?? '').trim().toUpperCase(), origin: origin.toUpperCase(), destination: destination.toUpperCase(),
+            confirmationCode: String(cell(r, 'pnr') ?? '').trim().toUpperCase(), origin: land ? origin : origin.toUpperCase(), destination: land ? destination : destination.toUpperCase(),
             departureDate: dep.date, departureTime: dep.time || '12:00', arrivalDate: arr.date || dep.date, arrivalTime: arr.time || '',
             seatNumber: String(cell(r, 'seat') ?? '').trim() || undefined, travelClass: cabinOf(cell(r, 'cabin')),
             vehicleModel: String(cell(r, 'aircraft') ?? '').trim() || undefined, cost: Number.isFinite(cost) ? cost : undefined,

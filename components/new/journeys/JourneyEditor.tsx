@@ -219,7 +219,7 @@ export const JourneyEditor: React.FC<{
                 <>
                     <button type="button" onClick={onClose} className="inline-flex min-h-11 items-center rounded-full bg-rp-inset px-5 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted">Cancel</button>
                     <span className="flex flex-wrap items-center justify-end gap-2">
-                        {!editing && flight && onNextLeg ? (
+                        {!editing && onNextLeg ? (
                             <ParticleButton onClick={() => save(true)} variant="inset" pendingLabel="Saving" successLabel="Saved" errorLabel="Check the details">Save and add next leg</ParticleButton>
                         ) : null}
                         <ParticleButton onClick={() => save(false)} pendingLabel="Saving" successLabel="Saved" errorLabel="Check the details">{editing ? 'Save changes' : `Add ${noun}`}</ParticleButton>

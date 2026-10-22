@@ -66,11 +66,11 @@ export const RouteImportSheet: React.FC<{
             onClose={onClose}
             title="From a trip's route"
             subtitle="One journey between each pair of stops"
-            footer={
+            footer={withRoute.length === 0 ? null : (
                 <button type="button" disabled={chosen.length === 0 || busy} onClick={() => void save()} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-ink px-5 text-sm font-medium text-rp-on-ink outline-none hover:bg-rp-ink/90 focus-visible:ring-2 focus-visible:ring-rp-muted disabled:opacity-40">
                     <Plus size={16} aria-hidden /> {chosen.length ? `Add ${chosen.length} ${chosen.length === 1 ? 'journey' : 'journeys'}` : 'Add journeys'}
                 </button>
-            }
+            )}
         >
             {withRoute.length === 0 ? (
                 <p className="text-sm text-rp-muted">None of your trips has a route yet. Add at least two stops to a trip's route first.</p>

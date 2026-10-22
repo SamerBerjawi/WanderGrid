@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { MorphicNavbar } from '../kokonutui/split-nav';
 import SwitchButton from '../kokonutui/switch-button';
 import {
-    Airplane, CalendarBlank, DotsThreeOutline, Gear, Globe, House, MapTrifold, Plus, SignOut, Suitcase, type Icon,
+    Airplane, CalendarBlank, DotsThreeOutline, Gear, Globe, House, MapTrifold, Plus, SignOut, Suitcase, Train, type Icon,
 } from '../ui/hugeicons';
 import type { User } from '../../types';
 import { RpSheet } from './ui';
@@ -195,8 +195,11 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
                     <button type="button" onClick={() => (currentPath === '/trips-new' ? (setSheet(null), window.dispatchEvent(new Event('rp:new-trip'))) : go('/trips-new?new=1'))} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
                         <Suitcase size={20} /> New trip
                     </button>
-                    <button type="button" onClick={() => (currentPath === '/flights-new' ? (setSheet(null), window.dispatchEvent(new Event('rp:new-flight'))) : go('/flights-new?new=1'))} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
+                    <button type="button" onClick={() => (window.location.pathname === '/flights-new' ? (setSheet(null), window.dispatchEvent(new Event('rp:new-flight'))) : go('/flights-new?new=1'))} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
                         <Airplane size={20} /> Log a flight
+                    </button>
+                    <button type="button" onClick={() => (window.location.pathname === '/roadtrips-new' ? (setSheet(null), window.dispatchEvent(new Event('rp:new-roadtrip'))) : go('/roadtrips-new?new=1'))} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
+                        <Train size={20} /> Log a road trip
                     </button>
                 </div>
             </RpSheet>

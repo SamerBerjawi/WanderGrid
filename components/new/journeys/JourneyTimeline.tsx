@@ -35,7 +35,7 @@ const Gap: React.FC<{ a: JourneyRecord; b: JourneyRecord }> = ({ a, b }) => {
     return (
         <li aria-hidden={false} className="relative ml-[0.7rem] flex min-h-9 items-center border-l-2 border-dashed border-rp-line pl-6">
             <span className={cn('rp-tabular inline-flex min-h-6 items-center rounded-full px-2.5 text-2xs font-semibold', layoverTone(mins))}>
-                {stay ? `${Math.round(mins / 1440)} ${Math.round(mins / 1440) === 1 ? 'day' : 'days'} in ${place}` : `Layover ${formatMinutes(mins)} in ${placeCode(a.flight.destination, a.flight.mode)}`}
+                {stay ? `${Math.round(mins / 1440)} ${Math.round(mins / 1440) === 1 ? 'day' : 'days'} in ${place}` : `${a.flight.mode === 'Flight' ? 'Layover' : 'Change'} ${formatMinutes(mins)} in ${placeCode(a.flight.destination, a.flight.mode)}`}
             </span>
         </li>
     );
@@ -132,18 +132,18 @@ export const JourneyTimeline: React.FC<{
     const title = journeyRoute(g.legs).join(' → ');
     const first = g.legs[0].flight;
     const last = g.legs[g.legs.length - 1].flight;
-    const subtitle = `${formatDate(first.departureDate, 'short')}${last.departureDate !== first.departureDate ? ` – ${formatDate(last.departureDate, 'short-with-year')}` : `, ${new Date(first.departureDate).getFullYear()}`} · ${g.legs.length} flights · ${g.shape === 'round-trip' ? 'round trip' : g.shape === 'multi-city' ? 'multi-city' : g.stops > 0 ? `${g.stops} ${g.stops === 1 ? 'stop' : 'stops'}` : 'connection'}`;
+    const subtitle = `${formatDate(first.departureDate, 'short')}${last.departureDate !== first.departureDate ? ` – ${formatDate(last.departureDate, 'short-with-year')}` : `, ${new Date(first.departureDate).getFullYear()}`} · ${g.legs.length} ${first.mode === 'Flight' ? 'flights' : 'journeys'} · ${g.shape === 'round-trip' ? 'round trip' : g.shape === 'multi-city' ? 'multi-city' : g.stops > 0 ? `${g.stops} ${g.stops === 1 ? 'stop' : 'stops'}` : 'connection'}`;
     const turn = g.outbound.length && g.returns.length ? layoverMinutes(g.outbound[g.outbound.length - 1].flight, g.returns[0].flight) : 0;
 
     const body = (
         <div className="flex flex-col gap-5">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <Stat label="Flights" value={String(g.legs.length)} />
+                <Stat label={g.legs[0].flight.mode === 'Flight' ? 'Flights' : 'Journeys'} value={String(g.legs.length)} />
                 <Stat label="Time" value={formatMinutes(minutes)} />
                 <Stat label="Distance" value={km ? `${km.toLocaleString('en-US')} km` : '—'} />
                 <Stat label="Cost" value={cost ? formatCurrency(cost) : '—'} />
             </div>
-            <Section title={g.returns.length ? 'Way out' : 'Flights'} legs={g.outbound} onOpen={onOpenLeg} onRemove={remove} brandfetchApiKey={brandfetchApiKey} carriers={carriers} />
+            <Section title={g.returns.length ? 'Way out' : g.legs[0].flight.mode === 'Flight' ? 'Flights' : 'Journeys'} legs={g.outbound} onOpen={onOpenLeg} onRemove={remove} brandfetchApiKey={brandfetchApiKey} carriers={carriers} />
             {g.returns.length ? (
                 <>
                     {turn > 0 ? <p className="rp-tabular -my-2 text-center text-xs text-rp-muted">{Math.round(turn / 1440) >= 1 ? `${Math.round(turn / 1440)} ${Math.round(turn / 1440) === 1 ? 'day' : 'days'} away` : `${formatMinutes(turn)} before the way back`}</p> : null}
