@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { Carrier, Transport, Trip } from '../../../types';
 import SmoothDrawer from '../../kokonutui/smooth-drawer';
 import HoldButton from '../../kokonutui/hold-button';
-import { ArrowUpRight, MapTrifold, PencilSimple, Seat, Suitcase, Trash, X } from '../../ui/hugeicons';
+import { ArrowUpRight, MapTrifold, PencilSimple, Plus, Seat, Suitcase, Trash, X } from '../../ui/hugeicons';
 import { RpSection, RpSheet, useIsMobile } from '../ui';
 import { TripMenu } from '../trips/TripMenu';
 import { BoardingPass } from './BoardingPass';
@@ -36,12 +36,13 @@ export const JourneySheet: React.FC<{
     onEdit: (record: JourneyRecord) => void;
     onDelete: (record: JourneyRecord) => Promise<void> | void;
     onAssign: (record: JourneyRecord, tripId: string) => void;
+    onCreateTrip?: (record: JourneyRecord) => void;
     onOpenTrip?: (tripId: string) => void;
     onShowOnMap?: (record: JourneyRecord) => void;
     onSaveDetails?: (record: JourneyRecord, patch: Partial<Transport>) => Promise<void>;
     brandfetchApiKey?: string;
     carriers?: Carrier[];
-}> = ({ record, trips, noun, onClose, onEdit, onDelete, onAssign, onOpenTrip, onShowOnMap, onSaveDetails, brandfetchApiKey, carriers }) => {
+}> = ({ record, trips, noun, onClose, onEdit, onDelete, onAssign, onCreateTrip, onOpenTrip, onShowOnMap, onSaveDetails, brandfetchApiKey, carriers }) => {
     const mobile = useIsMobile();
     const shown = useLast(record);
     const [confirming, setConfirming] = useState(false);
@@ -55,6 +56,7 @@ export const JourneySheet: React.FC<{
     const subtitle = [carrierLabel(t), t.identifier].filter(Boolean).join(' ') + ` · ${formatDate(t.departureDate, 'short-with-year')}`;
 
     const tripItems = [
+        ...(independent && onCreateTrip ? [{ id: 'new', label: 'New trip from this flight', icon: Plus, selected: undefined as boolean | undefined, onSelect: () => onCreateTrip(shown) }] : []),
         { id: 'unassigned', label: 'No trip', icon: X, selected: independent, onSelect: () => onAssign(shown, 'unassigned') },
         ...trips.map(tr => ({ id: tr.id, label: tr.name, icon: Suitcase, selected: tr.id === shown.trip.id, onSelect: () => onAssign(shown, tr.id) })),
     ];

@@ -19,6 +19,7 @@ import { stayIcon } from './stayIcon';
 import { STAY_ACCENT } from './accents';
 import { modeLook } from './transportModes';
 import { LegForm } from './LegForm';
+import { LoggedFlights } from './LoggedFlights';
 import { calculateDistance } from '../../../services/geocoding';
 import { cn } from '../../../utils/cn';
 
@@ -182,7 +183,8 @@ const Basics: React.FC<{
     entitlements: EntitlementType[];
     showErrors: boolean;
     autoFocus: boolean;
-}> = ({ draft, set, users, entitlements, showErrors, autoFocus }) => {
+    brandfetchApiKey?: string;
+}> = ({ draft, set, users, entitlements, showErrors, autoFocus, brandfetchApiKey }) => {
     const [pickingIcon, setPickingIcon] = useState(false);
     const nameError = showErrors && !draft.name.trim() ? 'Give the trip a name.' : undefined;
     const startError = showErrors && !draft.startDate ? 'Pick a start date.' : undefined;
@@ -227,6 +229,7 @@ const Basics: React.FC<{
                     </RpField>
                 </div>
             </RpSection>
+            <LoggedFlights draft={draft} set={set} brandfetchApiKey={brandfetchApiKey} />
 
             <RpSection title="Icon" icon={Palette}>
                 <div className="flex items-center gap-3 py-2">
@@ -354,6 +357,7 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
 
     return (
         <div className="flex flex-col gap-5">
+            <LoggedFlights draft={draft} set={set} brandfetchApiKey={brandfetchApiKey} />
             {list.length > 0 ? (
                 <RpSection title={`Added (${list.length})`} icon={Airplane}>
                     <ul className="flex flex-col gap-2 py-2">
@@ -621,6 +625,7 @@ export const TripSheet: React.FC<{
                     entitlements={entitlements}
                     showErrors={touched}
                     autoFocus={!editing}
+                    brandfetchApiKey={brandfetchApiKey}
                 />
             ) : null}
             {step === 1 ? <TransportStep draft={draft} set={set} brandfetchApiKey={brandfetchApiKey} /> : null}

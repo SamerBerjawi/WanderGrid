@@ -27,6 +27,8 @@ export interface TripDraft {
     transports?: Partial<Transport>[];
     stays?: Partial<Accommodation>[];
     activities?: Partial<Activity>[];
+    /** Flights taken from the independent flight list onto this trip; they leave that list when the trip is saved. */
+    adoptedFlightIds?: string[];
 }
 
 const uid = () => crypto.randomUUID();
@@ -39,6 +41,13 @@ const syncStops = (trip: Trip, before?: Trip) => {
         // Only legs whose stops are new or changed: a save of anything else must not look every stop up again.
         if (t.waypoints?.length && JSON.stringify(old?.waypoints) !== JSON.stringify(t.waypoints)) void syncPitStopsToVisited(t.waypoints, { date: t.departureDate, origin: t.origin, destination: t.destination }).catch(() => undefined);
     });
+};
+
+/** Flights adopted from the Flights log now live on the trip, so they leave the independent list (only those still on it). */
+const releaseAdopted = async (draft: TripDraft, saved: Trip) => {
+    const onTrip = new Set((saved.transports || []).map(t => t.id));
+    const ids = (draft.adoptedFlightIds || []).filter(id => onTrip.has(id));
+    if (ids.length) await dataService.applyBatch({ deleteFlights: ids });
 };
 
 const toTransport = (t: Partial<Transport>, fallbackDate: string): Transport => ({
@@ -194,6 +203,7 @@ export const useTripsData = () => {
             activities: (draft.activities || []).map(a => toActivity(a, start)),
         };
         const saved = await dataService.addTrip(payload);
+        await releaseAdopted(draft, saved);
         setTrips(prev => [...prev, saved]);
         syncStops(saved);
         return saved;
@@ -231,6 +241,7 @@ export const useTripsData = () => {
         replace(next);
         const saved = await guarded(() => dataService.updateTrip(next));
         replace(saved);
+        await releaseAdopted(draft, saved);
         syncStops(saved, trip);
         return saved;
         // eslint-disable-next-line react-hooks/exhaustive-deps

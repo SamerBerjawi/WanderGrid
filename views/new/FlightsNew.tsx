@@ -9,6 +9,7 @@ import {
 } from '../../utils/journeysModel';
 import type { DockTool } from '../../components/kokonutui/tool-dock';
 import HoldButton from '../../components/kokonutui/hold-button';
+import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import { RpChip, RpEmpty, RpSheet, useIsMobile } from '../../components/new/ui';
 import { RpPageToolbar } from '../../components/new/PageToolbar';
 import { openNewPage } from '../../components/new/devLinks';
@@ -18,12 +19,11 @@ import { JourneyTable, type JourneyGrouping } from '../../components/new/journey
 import { JourneyHero } from '../../components/new/journeys/JourneyHero';
 import { JourneyTimeline } from '../../components/new/journeys/JourneyTimeline';
 import { LiveNow } from '../../components/new/journeys/LiveNow';
-import { JourneyBoard } from '../../components/new/journeys/JourneyBoard';
 import { JourneySheet } from '../../components/new/journeys/JourneySheet';
 import { JourneyEditor, type JourneyEditorTarget } from '../../components/new/journeys/JourneyEditor';
 import { ImportSheet, exportJourneys, type ExportFormat } from '../../components/new/journeys/JourneyTransfer';
 import {
-    Airplane, AirplaneTakeoff, ArrowDown, Stack, type Icon, CalendarBlank, CheckSquare, Clock, DownloadSimple, Funnel, Globe, MagnifyingGlass, PencilSimple, Plus, Suitcase, Table, Trash, UploadSimple, X, XCircle,
+    Airplane, ArrowDown, ChartBar, Stack, type Icon, CalendarBlank, CheckSquare, Clock, DownloadSimple, Funnel, Globe, MagnifyingGlass, PencilSimple, Plus, Suitcase, Trash, UploadSimple, X, XCircle,
 } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
@@ -39,14 +39,14 @@ interface FlightsNewProps {
     onTripClick?: (tripId: string) => void;
 }
 
-type View = 'table' | 'board';
 const GROUP_KEY = 'wandergrid_flights_new_group';
-const VIEW_KEY = 'wandergrid_flights_new_view';
+const TAB_KEY = 'wandergrid_flights_new_tab';
+type Tab = 'stats' | 'flights';
+const readTab = (): Tab => { try { return localStorage.getItem(TAB_KEY) === 'stats' ? 'stats' : 'flights'; } catch { return 'flights'; } };
 const SORT_KEY = 'wandergrid_flights_new_sort';
 const NEW_FLIGHT_EVENT = 'rp:new-flight';
 const NOUN = { one: 'Flight', many: 'flights' };
 
-const readView = (): View => { try { return localStorage.getItem(VIEW_KEY) === 'board' ? 'board' : 'table'; } catch { return 'table'; } };
 const readGroup = (): JourneyGrouping => { try { const v = localStorage.getItem(GROUP_KEY); return v === 'year' || v === 'journey' ? v : 'none'; } catch { return 'none'; } };
 const readSort = (): { key: JourneySortKey; asc: boolean } => {
     try {
@@ -78,7 +78,8 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
     const log = useFlightLog();
     const undo = useUndoToast();
     const mobile = useIsMobile();
-    const [view, setView] = useState<View>(readView);
+    const [tab, setTab] = useState<Tab>(readTab);
+    const changeTab = (t: Tab) => { setTab(t); try { localStorage.setItem(TAB_KEY, t); } catch { /* storage unavailable */ } };
     const [{ key: sortKey, asc: sortAsc }, setSort] = useState(readSort);
     const [grouping, setGrouping] = useState<JourneyGrouping>(readGroup);
     const changeGrouping = (g: JourneyGrouping) => { setGrouping(g); setExpanded(false); try { localStorage.setItem(GROUP_KEY, g); } catch { /* storage unavailable */ } };
@@ -94,7 +95,6 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [deleting, setDeleting] = useState<JourneyRecord[] | null>(null);
 
-    const changeView = (next: View) => { setView(next); try { localStorage.setItem(VIEW_KEY, next); } catch { /* storage unavailable */ } };
     const changeSort = (key: JourneySortKey, asc: boolean) => { setSort({ key, asc }); try { localStorage.setItem(SORT_KEY, `${key}:${asc ? 'asc' : 'desc'}`); } catch { /* storage unavailable */ } };
     const headerSort = (key: JourneySortKey) => changeSort(key, key === sortKey ? !sortAsc : key === 'date' || key === 'duration' || key === 'distance' || key === 'cost' ? false : true);
 
@@ -177,6 +177,11 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
         setSelecting(false);
     }, "That didn't delete. Nothing was changed.");
 
+    const makeTrip = (records: JourneyRecord[]) => attempt(async () => {
+        const made = await log.createTripFromFlights(records);
+        undo.show(`Created ${made.name}`, () => attempt(() => made.undo()));
+    }, "The trip wasn't created. Nothing was changed.");
+
     const exportAs = (format: ExportFormat) => attempt(async () => {
         await exportJourneys(shown, format);
         toast.success(`Exported ${shown.length} ${shown.length === 1 ? 'flight' : 'flights'}`);
@@ -185,14 +190,13 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
     const rowMenu = useCallback((rec: JourneyRecord): TripMenuItem[] => [
         { id: 'open', label: 'Details', icon: Airplane, onSelect: () => setDetailId(rec.flight.id) },
         { id: 'edit', label: 'Edit', icon: PencilSimple, onSelect: () => setEditor({ kind: 'edit', record: rec }) },
+        ...(isIndependent(rec.trip.id) ? [{ id: 'trip', label: 'Create trip', icon: Suitcase, onSelect: () => void makeTrip([rec]) }] : []),
         { id: 'map', label: 'Show on map', icon: Globe, onSelect: () => openNewPage(mapLink({ route: [rec.flight.origin, rec.flight.destination] })) },
         { id: 'delete', label: 'Delete', icon: Trash, tone: 'danger', separated: true, onSelect: () => setDeleting([rec]) },
-    ], []);
+    ], [log.createTripFromFlights]);
 
     const tools: DockTool[] = [
-        { id: 'table', label: 'Table', icon: Table as any },
-        { id: 'board', label: 'Board', icon: AirplaneTakeoff as any },
-        { id: 'search', label: 'Search flights', icon: MagnifyingGlass as any, action: () => setSearchOpen(o => !o), dividerBefore: true },
+        { id: 'search', label: 'Search flights', icon: MagnifyingGlass as any, action: () => setSearchOpen(o => !o) },
         { id: 'import', label: 'Import flights', icon: UploadSimple as any, action: () => setImportOpen(true) },
         { id: 'new', label: 'New flight', icon: Plus as any, action: () => setEditor({ kind: 'create' }) },
     ];
@@ -211,8 +215,6 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                     <h1 className="text-[2.25rem] font-medium leading-[1.05] tracking-tight text-rp-ink sm:text-[2.5rem]">Flights</h1>
                     <RpPageToolbar
                         tools={tools}
-                        value={view}
-                        onValueChange={id => changeView(id as View)}
                         ariaLabel="Flight tools"
                         search={{
                             open: searchOpen || Boolean(log.searchQuery),
@@ -236,8 +238,28 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
 
                 {log.loaded ? <LiveNow items={log.flights} onOpen={open} brandfetchApiKey={brandfetchApiKey} /> : null}
 
-                {log.loaded && log.flights.length > 0 ? <JourneyHero items={shown} /> : null}
+                {mobile && log.loaded && log.flights.length > 0 ? (
+                    <div className="-m-3 overflow-x-auto p-3 [scrollbar-width:none]">
+                        <SwipeTabs
+                            items={[
+                                { id: 'flights', title: 'Flights', icon: Airplane as any, badge: <span className="rp-tabular text-sm font-semibold">{shown.length}</span> },
+                                { id: 'stats', title: 'Stats', icon: ChartBar as any },
+                            ]}
+                            value={tab}
+                            onChange={id => changeTab(id as Tab)}
+                            panels={false}
+                            label="Flights page"
+                            className="w-full"
+                            stretch
+                            compact
+                            listClassName="bg-rp-surface rp-shadow-soft"
+                        />
+                    </div>
+                ) : null}
 
+                {log.loaded && log.flights.length > 0 && (!mobile || tab === 'stats') ? <JourneyHero items={shown} /> : null}
+
+                {!(mobile && tab === 'stats' && log.flights.length > 0) ? (
                 <section aria-label="Your flights" className="flex flex-col gap-4">
                     <div className="-m-3 overflow-x-auto p-3 [scrollbar-width:none] sm:m-0 sm:overflow-visible sm:p-0">
                         <div className="flex items-center gap-2 sm:flex-wrap" role="group" aria-label="Filters">
@@ -259,8 +281,7 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                                     pill={{ label: statusFilter === 'all' ? 'Status' : STATES.find(s => s.id === statusFilter)!.label, icon: Clock }}
                                     items={[{ id: 'all', label: 'Any status', icon: X, selected: statusFilter === 'all', onSelect: () => setStatusFilter('all') }, ...STATES.map(s => ({ id: s.id, label: s.label, icon: s.id === 'cancelled' ? XCircle : Clock, selected: statusFilter === s.id, onSelect: () => setStatusFilter(s.id) }))]}
                                 />
-                                {view === 'table' ? (
-                                    <TripMenu
+                                                                    <TripMenu
                                         label="Group flights"
                                         pill={{ label: grouping === 'none' ? 'Group' : grouping === 'year' ? 'By year' : 'Journeys', icon: Stack }}
                                         items={[
@@ -269,14 +290,11 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                                             { id: 'journey', label: 'Journeys', icon: Stack, selected: grouping === 'journey', onSelect: () => changeGrouping('journey') },
                                         ]}
                                     />
-                                ) : null}
-                                {view === 'table' ? (
-                                    <TripMenu
+                                                                    <TripMenu
                                         label="Sort flights"
                                         pill={{ label: `Sort: ${sortLabel}`, icon: ArrowDown }}
                                         items={SORTS.map(s => ({ id: `${s.key}-${s.asc}`, label: s.label, icon: CalendarBlank, selected: s.key === sortKey && s.asc === sortAsc, onSelect: () => changeSort(s.key, s.asc) }))}
                                     />
-                                ) : null}
                                 <TripMenu
                                     label="Export flights"
                                     pill={{ label: 'Export', icon: DownloadSimple }}
@@ -313,8 +331,6 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                                 Try another search or filter.
                             </RpEmpty>
                         </EmptyCard>
-                    ) : view === 'board' ? (
-                        <JourneyBoard items={shown} onOpen={open} brandfetchApiKey={brandfetchApiKey} expanded={expanded} onExpandedChange={setExpanded} filtering={filtering} noun={NOUN} />
                     ) : (
                         <JourneyTable
                             items={shown}
@@ -336,6 +352,7 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                         />
                     )}
                 </section>
+                ) : null}
             </div>
 
             {selecting ? (
@@ -350,7 +367,8 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                             pill={{ label: 'Add to trip', icon: Suitcase }}
                             triggerClassName="!bg-rp-mustard !text-rp-on-mustard hover:!bg-rp-mustard/90"
                             items={[
-                                { id: 'unassigned', label: 'No trip', icon: X, onSelect: () => void assign(tickets, 'unassigned').then(() => setSelected(new Set())) },
+                                { id: 'new', label: 'New trip from these', icon: Plus, onSelect: () => void makeTrip(tickets).then(() => setSelected(new Set())) },
+                                { id: 'unassigned', label: 'No trip', icon: X, separated: true, onSelect: () => void assign(tickets, 'unassigned').then(() => setSelected(new Set())) },
                                 ...tripChoices.slice(0, 30).map(t => ({ id: t.id, label: t.name, icon: Suitcase, onSelect: () => void assign(tickets, t.id).then(() => setSelected(new Set())) })),
                             ]}
                         />
@@ -369,6 +387,7 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                 onEdit={rec => { setDetailId(null); setEditor({ kind: 'edit', record: rec }); }}
                 onDelete={rec => remove([rec])}
                 onAssign={(rec, tripId) => void assign([rec], tripId)}
+                onCreateTrip={rec => { setDetailId(null); void makeTrip([rec]); }}
                 onOpenTrip={onTripClick ? id => { setDetailId(null); onTripClick(id); } : undefined}
                 onShowOnMap={rec => openNewPage(mapLink({ route: [rec.flight.origin, rec.flight.destination] }))}
                 onSaveDetails={saveDetails}
