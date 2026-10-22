@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, Check, Columns, FileText, Suitcase, UploadSimple
 import { RpChip, RpSection, RpSheet, RpToggle } from '../ui';
 import { TripMenu, type TripMenuItem } from '../trips/TripMenu';
 import { extractIata } from '../../../hooks/useFlightLog';
+import { flightsToIcs } from '../../../utils/flightShare';
 import { CarrierCell } from './JourneyParts';
 import { formatDate } from '../../../utils/formatters';
 import { journeyKm, placeCode, type JourneyRecord } from '../../../utils/journeysModel';
@@ -415,7 +416,7 @@ export const ImportSheet: React.FC<{
     );
 };
 
-export type ExportFormat = 'csv' | 'xlsx' | 'json' | 'airtrail';
+export type ExportFormat = 'csv' | 'xlsx' | 'json' | 'airtrail' | 'ics';
 
 const download = (blob: Blob, name: string) => {
     const url = URL.createObjectURL(blob);
@@ -435,7 +436,8 @@ export const exportJourneys = async (records: JourneyRecord[], format: ExportFor
         transports: records.map(r => r.flight),
     }];
     const stamp = new Date().toISOString().slice(0, 10);
-    if (format === 'csv') download(new Blob([flightImporter.exportCsv(bundle as any)], { type: 'text/csv;charset=utf-8' }), `${base}-${stamp}.csv`);
+    if (format === 'ics') download(new Blob([flightsToIcs(records)], { type: 'text/calendar;charset=utf-8' }), `${base}-${stamp}.ics`);
+    else if (format === 'csv') download(new Blob([flightImporter.exportCsv(bundle as any)], { type: 'text/csv;charset=utf-8' }), `${base}-${stamp}.csv`);
     else if (format === 'json') download(new Blob([flightImporter.exportJson(bundle as any)], { type: 'application/json' }), `${base}-${stamp}.json`);
     else if (format === 'airtrail') download(new Blob([flightImporter.exportAirTrailJson(bundle as any)], { type: 'application/json' }), `${base}-airtrail-${stamp}.json`);
     else download(new Blob([await flightImporter.exportXlsx(bundle as any)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `${base}-${stamp}.xlsx`);

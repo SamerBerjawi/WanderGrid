@@ -3,6 +3,7 @@ import type { Carrier } from '../../../types';
 import SmoothDrawer from '../../kokonutui/smooth-drawer';
 import { ArrowUpRight, Check, PencilSimple, Suitcase, X } from '../../ui/hugeicons';
 import { RP_FIELD } from '../fields';
+import { ShareMenu } from './ShareMenu';
 import { RpSection, RpSheet, useIsMobile } from '../ui';
 import { CarrierCell, DelayChip, STATUS_LOOK, StatusPill, layoverTone } from './JourneyParts';
 import { modeLook } from '../trips/transportModes';
@@ -158,6 +159,7 @@ export const JourneyTimeline: React.FC<{
                     </div>
                 </RpSection>
             ) : null}
+            <div className="flex justify-end"><ShareMenu records={g.legs} name="journey" /></div>
             {onTrip ? (
                 <RpSection title="Trip" icon={Suitcase}>
                     {editingName ? (

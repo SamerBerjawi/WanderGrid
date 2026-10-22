@@ -338,6 +338,8 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                                         { id: 'csv', label: 'CSV', icon: DownloadSimple, onSelect: () => void exportAs('csv') },
                                         { id: 'xlsx', label: 'Excel', icon: DownloadSimple, onSelect: () => void exportAs('xlsx') },
                                         { id: 'json', label: 'JSON', icon: DownloadSimple, onSelect: () => void exportAs('json') },
+                                        { id: 'ics', label: 'Calendar (.ics)', icon: CalendarBlank, onSelect: () => void exportAs('ics') },
+                                        { id: 'ics', label: 'Calendar (.ics)', icon: CalendarBlank, onSelect: () => void exportAs('ics') },
                                         { id: 'airtrail', label: 'AirTrail JSON', icon: DownloadSimple, onSelect: () => void exportAs('airtrail') },
                                     ]}
                                 />

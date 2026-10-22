@@ -8,6 +8,7 @@ import { TripMenu } from '../trips/TripMenu';
 import { BoardingPass } from './BoardingPass';
 import { DelayChip, StatusPill } from './JourneyParts';
 import { TrackPanel } from './TrackPanel';
+import { ShareMenu } from './ShareMenu';
 import { SeatMap } from './SeatMap';
 import { formatDate } from '../../../utils/formatters';
 import { carrierLabel, isIndependent, journeyStatus, placeCode, type JourneyRecord } from '../../../utils/journeysModel';
@@ -67,6 +68,7 @@ export const JourneySheet: React.FC<{
                 <Trash size={16} aria-hidden /> Delete
             </button>
             <span className="flex flex-wrap items-center justify-end gap-2">
+                <ShareMenu records={[shown]} name={`${t.origin}-${t.destination}`.toLowerCase()} />
                 {onShowOnMap ? (
                     <button type="button" onClick={() => onShowOnMap(shown)} className={cn(GHOST, 'bg-rp-inset text-rp-ink hover:bg-rp-line')}>
                         <MapTrifold size={16} aria-hidden /> Map
