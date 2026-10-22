@@ -54,7 +54,14 @@ const authHeaders = (): Record<string, string> => {
 
 /** Looks a flight up. Never throws for "not found": check `candidates`. Throws for a network failure. */
 export const lookupFlight = async (flight: string, date: string, signal?: AbortSignal): Promise<LookupResult> => {
-    const res = await fetch(`/api/flights/lookup?flight=${encodeURIComponent(flight)}&date=${encodeURIComponent(date)}`, { headers: authHeaders(), signal });
+    let res: Response;
+    try {
+        res = await fetch(`/api/flights/lookup?flight=${encodeURIComponent(flight)}&date=${encodeURIComponent(date)}`, { headers: authHeaders(), signal });
+    } catch (e) {
+        if ((e as Error)?.name === 'AbortError') throw e;
+        // The browser could not reach the app's own server: it is stopped, restarted, or older than this route.
+        throw new Error("Can't reach the WanderGrid server. If you run the dev server or the container, restart it so it has the flight lookup.");
+    }
     const body = await res.json().catch(() => null);
     if (!body || typeof body !== 'object' || !Array.isArray(body.candidates)) throw new Error(`The flight lookup returned HTTP ${res.status}.`);
     return body as LookupResult;
