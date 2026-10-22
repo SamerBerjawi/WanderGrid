@@ -1,6 +1,6 @@
 import type { Transport, Trip } from '../types';
 import { calculateDistance, getCoordinatesSync } from '../services/geocoding';
-import { getCarrierName, getCityName, getFlightArrivalUtcDate, getFlightDepartureUtcDate, getFlightStatusTags } from './flightData';
+import { getAirportTimezone, getCarrierName, getCityName, getFlightArrivalUtcDate, getFlightDepartureUtcDate, getFlightStatusTags, parseLocalDateInTimezone } from './flightData';
 
 /**
  * What the Flights and Road trips pages (and their sheet, table and board) need to know about one
@@ -56,11 +56,18 @@ const pointOf = (text: string, lat?: number, lng?: number): Point | undefined =>
 };
 
 /** Great-circle distance in km from the two places (saved distance first); 0 when a place can't be found. */
+const kmCache = new Map<string, number>();
 export const journeyKm = (t: Transport): number => {
     if (t.distance && t.distance > 0) return t.distance;
+    // Looking two places up for every row on every render is slow for a long log: remember the answer.
+    const key = `${t.origin}|${t.destination}|${t.originLat}|${t.originLng}|${t.destLat}|${t.destLng}`;
+    const hit = kmCache.get(key);
+    if (hit !== undefined) return hit;
     const a = pointOf(t.origin, t.originLat, t.originLng);
     const b = pointOf(t.destination, t.destLat, t.destLng);
-    return a && b ? calculateDistance(a.lat, a.lng, b.lat, b.lng) : 0;
+    const km = a && b ? calculateDistance(a.lat, a.lng, b.lat, b.lng) : 0;
+    if (km > 0) kmCache.set(key, km);
+    return km;
 };
 
 export type JourneyState = 'scheduled' | 'travelling' | 'done' | 'cancelled';
@@ -127,6 +134,7 @@ export interface JourneyTotals {
     airports: number;
     carriers: number;
     countries: number;
+    cost: number;
 }
 
 const EARTH_KM = 40075;
@@ -137,20 +145,21 @@ export const journeyTotals = (items: JourneyRecord[], now = Date.now()): Journey
     const places = new Set<string>();
     const carriers = new Set<string>();
     const countries = new Set<string>();
-    let km = 0, minutes = 0, upcoming = 0;
+    let km = 0, minutes = 0, upcoming = 0, cost = 0;
     for (const { flight: t } of items) {
         const cancelled = journeyStatus(t, now).state === 'cancelled';
         if (depMs(t) >= now && !cancelled) upcoming += 1;
         if (cancelled) continue;
         km += journeyKm(t);
         minutes += journeyMinutes(t);
+        cost += t.cost || 0;
         [t.origin, t.destination].forEach(p => { if (p?.trim()) places.add(placeCode(p)); });
         if (t.provider?.trim()) carriers.add(carrierLabel(t).toLowerCase());
         const a = pointOf(t.origin, t.originLat, t.originLng);
         const b = pointOf(t.destination, t.destLat, t.destLng);
         [a, b].forEach(p => { if (p?.countryCode) countries.add(p.countryCode.toUpperCase()); });
     }
-    return { count: items.length, upcoming, km, minutes, airports: places.size, carriers: carriers.size, countries: countries.size };
+    return { count: items.length, upcoming, km, minutes, airports: places.size, carriers: carriers.size, countries: countries.size, cost };
 };
 
 /* ------------------------------------------------------------------ */
@@ -159,7 +168,7 @@ export const journeyTotals = (items: JourneyRecord[], now = Date.now()): Journey
 
 export const yearOf = (r: JourneyRecord): string => (r.flight.departureDate || '').slice(0, 4) || 'Undated';
 
-export interface YearTotals { year: string; count: number; km: number; minutes: number }
+export interface YearTotals { year: string; count: number; km: number; minutes: number; cost: number }
 
 /** Flights, kilometres and time per year, oldest first, with the years in between that have none. */
 export const totalsByYear = (items: JourneyRecord[]): YearTotals[] => {
@@ -168,16 +177,17 @@ export const totalsByYear = (items: JourneyRecord[]): YearTotals[] => {
         if (journeyStatus(r.flight).state === 'cancelled') continue;
         const year = yearOf(r);
         if (!/^\d{4}$/.test(year)) continue;
-        const row = map.get(year) ?? { year, count: 0, km: 0, minutes: 0 };
+        const row = map.get(year) ?? { year, count: 0, km: 0, minutes: 0, cost: 0 };
         row.count += 1;
         row.km += journeyKm(r.flight);
         row.minutes += journeyMinutes(r.flight);
+        row.cost += r.flight.cost || 0;
         map.set(year, row);
     }
     const years = [...map.keys()].map(Number).sort((a, b) => a - b);
     if (years.length === 0) return [];
     const out: YearTotals[] = [];
-    for (let y = years[0]; y <= years[years.length - 1]; y++) out.push(map.get(String(y)) ?? { year: String(y), count: 0, km: 0, minutes: 0 });
+    for (let y = years[0]; y <= years[years.length - 1]; y++) out.push(map.get(String(y)) ?? { year: String(y), count: 0, km: 0, minutes: 0, cost: 0 });
     return out;
 };
 
@@ -285,4 +295,72 @@ export const isLiveWindow = (t: Transport, hours = 3, now = Date.now()): boolean
     if (journeyStatus(t, now).state === 'cancelled') return false;
     const dep = depMs(t), arr = arrMs(t);
     return now >= dep - hours * 3_600_000 && now <= arr + 3_600_000;
+};
+
+
+/* ------------------------------------------------------------------ */
+/* Breakdowns, filters and estimates                                    */
+/* ------------------------------------------------------------------ */
+
+export interface Tally { label: string; count: number; km: number; cost: number; key: string }
+
+const tally = (items: JourneyRecord[], keysOf: (r: JourneyRecord) => { key: string; label: string }[]): Tally[] => {
+    const map = new Map<string, Tally>();
+    for (const r of items) {
+        if (journeyStatus(r.flight).state === 'cancelled') continue;
+        for (const { key, label } of keysOf(r)) {
+            if (!key) continue;
+            const row = map.get(key) ?? { key, label, count: 0, km: 0, cost: 0 };
+            row.count += 1;
+            row.km += journeyKm(r.flight);
+            row.cost += r.flight.cost || 0;
+            map.set(key, row);
+        }
+    }
+    return [...map.values()].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+};
+
+/** Flights per airline, most flown first. */
+export const byCarrier = (items: JourneyRecord[]): Tally[] =>
+    tally(items, r => { const name = carrierLabel(r.flight).trim(); return name ? [{ key: name.toLowerCase(), label: name }] : []; });
+
+/** Visits per airport (each end of a flight counts), most visited first. */
+export const byAirport = (items: JourneyRecord[]): Tally[] =>
+    tally(items, r => [r.flight.origin, r.flight.destination].filter(p => p?.trim()).map(p => ({ key: placeCode(p), label: `${placeCode(p)} ${placeName(p)}`.trim() })));
+
+/** Flights per cabin class. */
+export const byClass = (items: JourneyRecord[]): Tally[] =>
+    tally(items, r => [{ key: r.flight.travelClass || 'Unknown', label: r.flight.travelClass || 'No class' }]);
+
+/** Great-circle estimate of how long a flight takes: 30 minutes on the ground plus the distance at 800 km/h. */
+export const estimateMinutes = (km: number): number => (km > 0 ? Math.round(30 + (km / 800) * 60) : 0);
+
+/**
+ * The same flight number logged before: its times are the best guess for another day (airlines keep a flight's
+ * schedule for a season). Gives the newest earlier entry with times, or null.
+ */
+export const fromLog = (items: JourneyRecord[], flightNumber: string): Transport | null => {
+    const want = flightNumber.replace(/\s|-/g, '').toUpperCase();
+    if (!want) return null;
+    const same = items
+        .map(r => r.flight)
+        .filter(t => (t.identifier || '').replace(/\s|-/g, '').toUpperCase() === want && t.departureTime && t.arrivalTime && t.origin && t.destination)
+        .sort((a, b) => (b.departureDate || '').localeCompare(a.departureDate || ''));
+    return same[0] ?? null;
+};
+
+const zoneOf = (iata: string): string | undefined => getAirportTimezone(iata.trim().toUpperCase()) || getCoordinatesSync(iata)?.tz;
+
+/**
+ * Local arrival date and time at the destination for a flight that leaves at a local time and takes
+ * `minutes`, using each airport's own time zone. Null when a time zone can't be found.
+ */
+export const localArrival = (origin: string, destination: string, date: string, time: string, minutes: number): { date: string; time: string } | null => {
+    const from = zoneOf(origin), to = zoneOf(destination);
+    if (!from || !to || !date || !time) return null;
+    const leaves = parseLocalDateInTimezone(date, time, from).getTime();
+    if (!Number.isFinite(leaves)) return null;
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: to, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(leaves + minutes * 60000));
+    const get = (t: string) => parts.find(p => p.type === t)?.value || '';
+    return { date: `${get('year')}-${get('month')}-${get('day')}`, time: `${get('hour')}:${get('minute')}` };
 };

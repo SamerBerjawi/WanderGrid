@@ -11,7 +11,7 @@ import { RpSection, RpSheet } from '../ui';
 import { TripMenu } from '../trips/TripMenu';
 import { LEG_DATE, LegForm } from '../trips/LegForm';
 import { extractIata } from '../../../hooks/useFlightLog';
-import { isIndependent, type JourneyRecord } from '../../../utils/journeysModel';
+import { estimateMinutes, fromLog, isIndependent, journeyKm, localArrival, type JourneyRecord } from '../../../utils/journeysModel';
 import { errorMessage } from '../../../services/toast';
 import { cn } from '../../../utils/cn';
 
@@ -21,7 +21,8 @@ import { cn } from '../../../utils/cn';
  * flown, and "Fill from flight number" for flights. Saving keeps every field the form doesn't show.
  */
 
-export type JourneyEditorTarget = { kind: 'create' } | { kind: 'edit'; record: JourneyRecord };
+/** `seed` starts a new flight from another (a copy, the way back, the next leg); `tripId` keeps it on the same trip. */
+export type JourneyEditorTarget = { kind: 'create'; seed?: Partial<Transport>; tripId?: string } | { kind: 'edit'; record: JourneyRecord };
 
 const newId = () => Math.random().toString(36).slice(2, 11);
 const today = () => new Date().toISOString().slice(0, 10);
@@ -36,7 +37,11 @@ export const JourneyEditor: React.FC<{
     brandfetchApiKey?: string;
     onClose: () => void;
     onSave: (leg: Transport, tripId: string, original?: { flight: Transport; tripId: string }) => Promise<void>;
-}> = ({ target, trips, modes, noun, settings, brandfetchApiKey, onClose, onSave }) => {
+    /** The flights already logged: "the same flight number as before" offers its times. */
+    history?: JourneyRecord[];
+    /** After "Save and add the next leg": the saved flight, so the page can open a connecting one. */
+    onNextLeg?: (saved: Transport, tripId: string) => void;
+}> = ({ target, trips, modes, noun, settings, brandfetchApiKey, onClose, onSave, history = [], onNextLeg }) => {
     const open = Boolean(target);
     const editing = target?.kind === 'edit' ? target.record : null;
     const blank = (): Partial<Transport> => ({
@@ -58,9 +63,10 @@ export const JourneyEditor: React.FC<{
             setCost(f.cost != null ? String(f.cost) : '');
             setTripId(isIndependent(target.record.trip.id) ? 'unassigned' : target.record.trip.id);
         } else {
-            setLeg(blank());
-            setCost('');
-            setTripId('unassigned');
+            const seed = target.seed;
+            setLeg({ ...blank(), ...(seed ? { ...seed, id: undefined, version: undefined } as Partial<Transport> : {}) });
+            setCost(seed?.cost != null ? String(seed.cost) : '');
+            setTripId(target.tripId && trips.some(t => t.id === target.tripId) ? target.tripId : 'unassigned');
         }
         setError('');
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -94,7 +100,7 @@ export const JourneyEditor: React.FC<{
     }, [lookup.status, lookup.key, lookup.result]);
     useEffect(() => { setApplied(null); lastSig.current = ''; }, [target]);
 
-    const save = async () => {
+    const save = async (next = false) => {
         setError('');
         if (!leg.origin?.trim() || !leg.destination?.trim() || !leg.departureDate) {
             const msg = 'Add where from, where to and the departure date.';
@@ -127,12 +133,32 @@ export const JourneyEditor: React.FC<{
                 actualArrivalTime: leg.actualArrivalTime || undefined,
             };
             await onSave(payload, tripId, editing ? { flight: editing.flight, tripId: isIndependent(editing.trip.id) ? 'unassigned' : editing.trip.id } : undefined);
-            onClose();
+            if (next && onNextLeg) onNextLeg(payload, tripId); else onClose();
         } catch (e) {
             const msg = errorMessage(e, "That didn't save. Try again.");
             setError(msg);
             throw e;
         }
+    };
+
+    // A guess at the arrival from the distance, for a flight whose schedule can't be looked up.
+    const canEstimate = flight && /^[A-Za-z]{3}$/.test((leg.origin || '').trim()) && /^[A-Za-z]{3}$/.test((leg.destination || '').trim()) && Boolean(leg.departureDate && leg.departureTime);
+    const estimate = () => {
+        const km = journeyKm({ origin: leg.origin || '', destination: leg.destination || '', originLat: leg.originLat, originLng: leg.originLng, destLat: leg.destLat, destLng: leg.destLng } as Transport);
+        const minutes = estimateMinutes(km);
+        if (!minutes) { setError("Couldn't work out the distance. Enter the arrival time."); return; }
+        setError('');
+        const arr = localArrival(leg.origin!, leg.destination!, leg.departureDate!, leg.departureTime!, minutes);
+        if (!arr) { setError("Couldn't find the time zones. Enter the arrival time."); return; }
+        patch({ arrivalDate: arr.date, arrivalTime: arr.time, duration: minutes });
+    };
+    // The same flight number logged before gives its times for another day.
+    const logged = useMemo(() => (flight && !editing && lookup.status === 'done' && !(lookup.result?.candidates || []).some(c => c.confidence === 'schedule') ? fromLog(history, leg.identifier || '') : null), [flight, editing, lookup.status, lookup.result, history, leg.identifier]);
+    const useLogged = () => {
+        if (!logged) return;
+        const dayShift = Math.round((Date.parse(`${logged.arrivalDate || logged.departureDate}T12:00:00Z`) - Date.parse(`${logged.departureDate}T12:00:00Z`)) / 86400000);
+        const arrival = new Date(`${leg.departureDate}T12:00:00Z`); arrival.setUTCDate(arrival.getUTCDate() + Math.max(0, dayShift));
+        patch({ origin: logged.origin, destination: logged.destination, provider: logged.provider || leg.provider, departureTime: logged.departureTime, arrivalTime: logged.arrivalTime, arrivalDate: arrival.toISOString().slice(0, 10), duration: logged.duration, originLat: undefined, originLng: undefined, originGeoKey: undefined, destLat: undefined, destLng: undefined, destGeoKey: undefined });
     };
 
     const tripItems = useMemo(() => [
@@ -150,7 +176,12 @@ export const JourneyEditor: React.FC<{
             footer={
                 <>
                     <button type="button" onClick={onClose} className="inline-flex min-h-11 items-center rounded-full bg-rp-inset px-5 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted">Cancel</button>
-                    <ParticleButton onClick={save} pendingLabel="Saving" successLabel="Saved" errorLabel="Check the details">{editing ? 'Save changes' : `Add ${noun}`}</ParticleButton>
+                    <span className="flex flex-wrap items-center justify-end gap-2">
+                        {!editing && flight && onNextLeg ? (
+                            <ParticleButton onClick={() => save(true)} variant="inset" pendingLabel="Saving" successLabel="Saved" errorLabel="Check the details">Save and add next leg</ParticleButton>
+                        ) : null}
+                        <ParticleButton onClick={() => save(false)} pendingLabel="Saving" successLabel="Saved" errorLabel="Check the details">{editing ? 'Save changes' : `Add ${noun}`}</ParticleButton>
+                    </span>
                 </>
             }
         >
@@ -182,9 +213,18 @@ export const JourneyEditor: React.FC<{
                                     onRun={editing ? () => void lookup.run() : undefined}
                                     brandfetchApiKey={brandfetchApiKey}
                                 />
+                                {logged ? (
+                                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-rp-inset bg-rp-surface p-3">
+                                        <p className="text-sm text-rp-ink">You logged {logged.identifier} before: <span className="rp-tabular font-medium">{logged.origin} {logged.departureTime} → {logged.destination} {logged.arrivalTime}</span></p>
+                                        <button type="button" onClick={useLogged} className="inline-flex min-h-11 items-center rounded-full bg-rp-ink px-4 text-sm font-medium text-rp-on-ink outline-none hover:bg-rp-ink/90 focus-visible:ring-2 focus-visible:ring-rp-muted">Use these times</button>
+                                    </div>
+                                ) : null}
                             </div>
                         ) : undefined}
                     />
+                    {canEstimate ? (
+                        <button type="button" onClick={estimate} className="mt-1 inline-flex min-h-11 items-center gap-2 self-start rounded-full bg-rp-inset px-4 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted">Estimate arrival time</button>
+                    ) : null}
                 </RpSection>
 
                 {flight && editing ? (

@@ -1,10 +1,10 @@
-import React, { useMemo, useRef, useState } from 'react';
-import type { Transport } from '../../../types';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { Transport, Trip } from '../../../types';
 import { dataService } from '../../../services/mockDb';
 import { flightImporter } from '../../../services/flightImportExport';
 import ParticleButton from '../../kokonutui/particle-button';
-import { ArrowRight, Columns, FileText, UploadSimple, X } from '../../ui/hugeicons';
-import { RpChip, RpSection, RpSheet } from '../ui';
+import { ArrowLeft, ArrowRight, Check, Columns, FileText, Suitcase, UploadSimple, X } from '../../ui/hugeicons';
+import { RpChip, RpSection, RpSheet, RpToggle } from '../ui';
 import { TripMenu, type TripMenuItem } from '../trips/TripMenu';
 import { extractIata } from '../../../hooks/useFlightLog';
 import { CarrierCell } from './JourneyParts';
@@ -133,69 +133,108 @@ const readText = (file: File) => new Promise<string>((resolve, reject) => {
     reader.readAsText(file);
 });
 
+type Step = 0 | 1 | 2;
+const STEPS = ['File', 'Columns', 'Review'];
+type Raw = unknown[][];
+
+/** Header names from the first row (or "Column A…" when the file has none), and the rest as objects keyed by them. */
+const shape = (raw: Raw, hasHeader: boolean): { headers: string[]; rows: Row[] } => {
+    const width = Math.max(0, ...raw.map(r => r.length));
+    const letter = (i: number) => (i >= 26 ? String.fromCharCode(64 + Math.floor(i / 26)) : '') + String.fromCharCode(65 + (i % 26));
+    const first = raw[0] || [];
+    const used = new Set<string>();
+    const headers = Array.from({ length: width }, (_, i) => {
+        let h = hasHeader ? String(first[i] ?? '').trim() : '';
+        if (!h) h = `Column ${letter(i)}`;
+        while (used.has(h)) h = `${h} (${i + 1})`;
+        used.add(h);
+        return h;
+    });
+    const body = (hasHeader ? raw.slice(1) : raw).filter(r => r.some(c => String(c ?? '').trim() !== ''));
+    return { headers, rows: body.map(r => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? '']))) };
+};
+
 export const ImportSheet: React.FC<{
     open: boolean;
     existing: JourneyRecord[];
+    trips?: Trip[];
     onClose: () => void;
     onImported: (count: number) => void;
     brandfetchApiKey?: string;
-}> = ({ open, existing, onClose, onImported, brandfetchApiKey }) => {
+}> = ({ open, existing, trips = [], onClose, onImported, brandfetchApiKey }) => {
     const input = useRef<HTMLInputElement>(null);
+    const book = useRef<{ sheets: Record<string, Raw> } | null>(null);
+    const [step, setStep] = useState<Step>(0);
     const [name, setName] = useState('');
-    const [rows, setRows] = useState<Row[] | null>(null);
-    const [headers, setHeaders] = useState<string[]>([]);
+    const [sheetNames, setSheetNames] = useState<string[]>([]);
+    const [sheet, setSheet] = useState('');
+    const [hasHeader, setHasHeader] = useState(true);
+    const [raw, setRaw] = useState<Raw | null>(null);
     const [mapping, setMapping] = useState<Mapping>({});
     const [dayFirst, setDayFirst] = useState(false);
     const [folded, setFolded] = useState<Transport[] | null>(null);
-    const [showColumns, setShowColumns] = useState(false);
+    const [dupes, setDupes] = useState<'skip' | 'import'>('skip');
+    const [excluded, setExcluded] = useState<Set<number>>(new Set());
+    const [tripId, setTripId] = useState('');
     const [error, setError] = useState('');
     const [busy, setBusy] = useState(false);
 
-    const reset = () => { setName(''); setRows(null); setHeaders([]); setMapping({}); setFolded(null); setShowColumns(false); setError(''); setDayFirst(false); };
+    const reset = () => { book.current = null; setStep(0); setName(''); setSheetNames([]); setSheet(''); setHasHeader(true); setRaw(null); setMapping({}); setDayFirst(false); setFolded(null); setDupes('skip'); setExcluded(new Set()); setTripId(''); setError(''); };
     const close = () => { reset(); onClose(); };
 
-    const found = useMemo(() => (rows ? build(rows, mapping, dayFirst) : folded), [rows, mapping, dayFirst, folded]);
+    const { headers, rows } = useMemo(() => (raw ? shape(raw, hasHeader) : { headers: [] as string[], rows: [] as Row[] }), [raw, hasHeader]);
+    // A new file, sheet or header choice starts the column match over.
+    useEffect(() => {
+        if (!raw) return;
+        const auto = detect(headers);
+        setMapping(auto);
+        const dateCols = [auto.date, auto.depDateTime, auto.arrDate, auto.arrDateTime].filter(Boolean) as string[];
+        let dayFirstSeen = false, monthFirstSeen = false;
+        for (const r of rows) for (const c of dateCols) {
+            const m = String(r[c] ?? '').match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-]\d{2,4}/);
+            if (m) { if (+m[1] > 12) dayFirstSeen = true; if (+m[2] > 12) monthFirstSeen = true; }
+        }
+        setDayFirst(dayFirstSeen && !monthFirstSeen);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [raw, hasHeader]);
+
+    const built = useMemo(() => (raw ? build(rows, mapping, dayFirst) : folded || []), [raw, rows, mapping, dayFirst, folded]);
     const have = useMemo(() => new Set(existing.map(r => key(r.flight))), [existing]);
-    const fresh = (found || []).filter(t => !have.has(key(t)));
-    const skipped = (found?.length || 0) - fresh.length;
-    const missing = REQUIRED.filter(k => !mapping[k]);
+    const flags = useMemo(() => built.map(t => have.has(key(t))), [built, have]);
+    const duplicateCount = flags.filter(Boolean).length;
+    useEffect(() => { setExcluded(new Set()); }, [built.length, dupes]);
+    const chosen = built.filter((_, i) => !excluded.has(i) && (dupes === 'import' || !flags[i]));
+    const missing = raw ? REQUIRED.filter(k => !mapping[k]) : [];
+    const noDate = raw ? !(mapping.date || mapping.depDateTime) : false;
     const dateColumns = [mapping.date, mapping.depDateTime, mapping.arrDate, mapping.arrDateTime].filter(Boolean) as string[];
-    const ambiguous = Boolean(rows?.some(r => dateColumns.some(c => /^\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}/.test(String(r[c] ?? '')))));
+    const ambiguous = Boolean(raw && rows.some(r => dateColumns.some(c => /^\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}/.test(String(r[c] ?? '')))));
+
+    const pickSheet = (n: string) => { setSheet(n); setRaw(book.current?.sheets[n] ?? null); };
 
     const pick = async (file: File) => {
-        setBusy(true);
-        setError('');
-        setName(file.name);
-        setRows(null);
-        setFolded(null);
+        setBusy(true); setError(''); setName(file.name); setRaw(null); setFolded(null); setStep(0);
         try {
             const lower = file.name.toLowerCase();
             if (lower.endsWith('.json')) {
                 const list = flightImporter.parseTransportsJson(await readText(file)).filter(t => !t.mode || t.mode === 'Flight').map(t => ({ ...t, mode: 'Flight' as const }));
                 if (list.length === 0) throw new Error('No flights were found in that file.');
-                setFolded(list);
-            } else if (lower.endsWith('.csv') || lower.endsWith('.xlsx') || lower.endsWith('.xls')) {
+                setFolded(list); setSheetNames([]);
+                setStep(2);
+            } else if (lower.endsWith('.csv') || lower.endsWith('.xlsx') || lower.endsWith('.xls') || lower.endsWith('.tsv') || lower.endsWith('.txt')) {
                 const XLSX = await import('xlsx');
-                const wb = XLSX.read(await readBuffer(file), { type: 'array' });
-                const sheet = wb.Sheets[wb.SheetNames[0]];
-                const data = XLSX.utils.sheet_to_json<Row>(sheet, { defval: '', raw: true });
-                if (data.length === 0) throw new Error('That file has no rows.');
-                const cols = Object.keys(data[0]);
-                const auto = detect(cols);
-                setHeaders(cols);
-                setMapping(auto);
-                setRows(data);
-                // A date like 20/03/2026 can only be day first; 03/20/2026 only month first.
-                const dateCols = [auto.date, auto.depDateTime, auto.arrDate, auto.arrDateTime].filter(Boolean) as string[];
-                let dayFirstSeen = false, monthFirstSeen = false;
-                for (const r of data) for (const c of dateCols) {
-                    const m = String(r[c] ?? '').match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-]\d{2,4}/);
-                    if (m) { if (+m[1] > 12) dayFirstSeen = true; if (+m[2] > 12) monthFirstSeen = true; }
-                }
-                setDayFirst(dayFirstSeen && !monthFirstSeen);
-                setShowColumns(REQUIRED.some(k => !auto[k]) || !(auto.date || auto.depDateTime));
+                // A text file keeps its cells as text: otherwise "05/03/2026" would be turned into a date the wrong way round.
+                const isText = /\.(csv|tsv|txt)$/.test(lower);
+                const wb = XLSX.read(await readBuffer(file), { type: 'array', ...(isText ? { raw: true, codepage: 65001 } : {}) });
+                const sheets: Record<string, Raw> = {};
+                for (const n of wb.SheetNames) sheets[n] = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[n], { header: 1, defval: '', raw: true, blankrows: false });
+                const usable = wb.SheetNames.filter(n => sheets[n].length > 1);
+                if (usable.length === 0) throw new Error('That file has no rows.');
+                book.current = { sheets };
+                setSheetNames(usable);
+                setSheet(usable[0]);
+                setRaw(sheets[usable[0]]);
             } else {
-                throw new Error('Use a CSV, Excel or JSON file.');
+                throw new Error('Use a CSV or Excel file (or a JSON export).');
             }
         } catch (e) {
             setError(errorMessage(e, "That file couldn't be read."));
@@ -205,10 +244,13 @@ export const ImportSheet: React.FC<{
     };
 
     const run = async () => {
-        if (fresh.length === 0) throw new Error('Nothing new to import.');
+        if (chosen.length === 0) throw new Error('Nothing to import.');
         try {
-            await dataService.addFlights(fresh.map(t => ({ ...t, id: newId(), itineraryId: newId() })));
-            onImported(fresh.length);
+            const list = chosen.map(t => ({ ...t, id: newId(), itineraryId: newId() }));
+            const trip = trips.find(t => t.id === tripId);
+            if (trip) await dataService.updateTrip({ ...trip, transports: [...(trip.transports || []), ...list.map(t => ({ ...t, itineraryId: `itinerary-${trip.id}` }))] });
+            else await dataService.addFlights(list);
+            onImported(list.length);
             reset();
             onClose();
         } catch (e) {
@@ -221,96 +263,142 @@ export const ImportSheet: React.FC<{
         { id: '', label: 'Not used', icon: X, selected: !mapping[field.key], onSelect: () => setMapping(m => { const n = { ...m }; delete n[field.key]; return n; }) },
         ...headers.map(h => ({ id: h, label: h, icon: Columns, selected: mapping[field.key] === h, onSelect: () => setMapping(m => ({ ...m, [field.key]: h })) })),
     ];
+    const sample = (field: FieldDef) => { const h = mapping[field.key]; const v = h ? rows.find(r => String(r[h] ?? '').trim() !== '')?.[h] : undefined; return v == null ? '' : String(v).slice(0, 24); };
+
+    const canNext = step === 0 ? Boolean(raw || folded) : step === 1 ? missing.length === 0 && !noDate && built.length > 0 : false;
+    const last = step === 2;
+    const tripName = trips.find(t => t.id === tripId)?.name;
 
     return (
         <RpSheet
             open={open}
             onClose={close}
             title="Import flights"
-            width={460}
+            subtitle={name || undefined}
+            width={480}
             footer={
                 <>
-                    <button type="button" onClick={close} className="inline-flex min-h-11 items-center rounded-full bg-rp-inset px-5 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted">Cancel</button>
-                    <ParticleButton onClick={run} disabled={fresh.length === 0} pendingLabel="Importing" successLabel="Imported" errorLabel="Couldn't import">
-                        {fresh.length ? `Import ${fresh.length} ${fresh.length === 1 ? 'flight' : 'flights'}` : 'Import'}
-                    </ParticleButton>
+                    {step > 0 && !(folded && step === 2) ? (
+                        <button type="button" onClick={() => setStep(s => (s - 1) as Step)} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-inset px-5 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted"><ArrowLeft size={16} aria-hidden /> Back</button>
+                    ) : <button type="button" onClick={close} className="inline-flex min-h-11 items-center rounded-full bg-rp-inset px-5 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted">Cancel</button>}
+                    {last ? (
+                        <ParticleButton onClick={run} disabled={chosen.length === 0} pendingLabel="Importing" successLabel="Imported" errorLabel="Couldn't import">
+                            {chosen.length ? `Import ${chosen.length} ${chosen.length === 1 ? 'flight' : 'flights'}` : 'Import'}
+                        </ParticleButton>
+                    ) : (
+                        <button type="button" disabled={!canNext} onClick={() => setStep(s => (s + 1) as Step)} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-ink px-5 text-sm font-medium text-rp-on-ink outline-none hover:bg-rp-ink/90 focus-visible:ring-2 focus-visible:ring-rp-muted disabled:opacity-40">Next <ArrowRight size={16} aria-hidden /></button>
+                    )}
                 </>
             }
         >
             <div className="flex flex-col gap-4">
-                <input
-                    ref={input}
-                    type="file"
-                    accept=".csv,.xlsx,.xls,.json"
-                    className="sr-only"
-                    tabIndex={-1}
-                    aria-label="Flight file"
-                    onChange={e => { const f = e.target.files?.[0]; if (f) void pick(f); e.target.value = ''; }}
-                />
-                <button
-                    type="button"
-                    onClick={() => input.current?.click()}
-                    disabled={busy}
-                    className="flex min-h-28 w-full flex-col items-center justify-center gap-2 rounded-rp-tile border-2 border-dashed border-rp-line bg-rp-inset/60 px-4 py-6 text-center outline-none transition-colors duration-150 hover:bg-rp-inset focus-visible:ring-2 focus-visible:ring-rp-muted disabled:opacity-60"
-                >
-                    {name ? <FileText size={22} className="text-rp-muted" aria-hidden /> : <UploadSimple size={22} className="text-rp-muted" aria-hidden />}
-                    <span className="text-sm font-medium text-rp-ink">{name || 'Choose a file'}</span>
-                    <span className="text-xs text-rp-muted">{name ? 'Choose another file' : 'CSV, Excel or JSON'}</span>
-                </button>
+                <ol className="flex items-center gap-2" aria-label="Steps">
+                    {STEPS.map((label, i) => (
+                        <li key={label} aria-current={i === step ? 'step' : undefined} className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium ${i === step ? 'bg-rp-ink text-rp-on-ink' : i < step ? 'bg-rp-green/15 text-rp-green' : 'bg-rp-inset text-rp-muted'}`}>
+                            <span className="rp-tabular text-xs">{i < step ? <Check size={14} aria-hidden /> : i + 1}</span> {label}
+                        </li>
+                    ))}
+                </ol>
+                <input ref={input} type="file" accept=".csv,.tsv,.txt,.xlsx,.xls,.json" className="sr-only" tabIndex={-1} aria-label="Flight file" onChange={e => { const f = e.target.files?.[0]; if (f) void pick(f); e.target.value = ''; }} />
                 {error ? <p role="alert" className="text-sm text-rp-rust">{error}</p> : null}
 
-                {rows ? (
-                    <RpSection
-                        title="Columns"
-                        icon={Columns}
-                        action={
-                            <button type="button" aria-expanded={showColumns} onClick={() => setShowColumns(v => !v)} className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-xs font-medium text-rp-muted outline-none hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted">
-                                {showColumns ? 'Hide' : 'Change'}
-                            </button>
-                        }
-                    >
-                        {missing.length ? <p role="alert" className="py-2 text-sm text-rp-rust">Choose the column for {missing.map(k => FIELDS.find(f => f.key === k)!.label).join(' and ')}.</p> : null}
-                        {showColumns ? (
+                {step === 0 ? (
+                    <>
+                        <button type="button" onClick={() => input.current?.click()} disabled={busy} className="flex min-h-28 w-full flex-col items-center justify-center gap-2 rounded-rp-tile border-2 border-dashed border-rp-line bg-rp-inset/60 px-4 py-6 text-center outline-none transition-colors duration-150 hover:bg-rp-inset focus-visible:ring-2 focus-visible:ring-rp-muted disabled:opacity-60">
+                            {name ? <FileText size={22} className="text-rp-muted" aria-hidden /> : <UploadSimple size={22} className="text-rp-muted" aria-hidden />}
+                            <span className="text-sm font-medium text-rp-ink">{name || 'Choose a file'}</span>
+                            <span className="text-xs text-rp-muted">{name ? 'Choose another file' : 'CSV or Excel'}</span>
+                        </button>
+                        {sheetNames.length > 1 ? (
+                            <div role="group" aria-label="Worksheet" className="flex flex-wrap gap-2">
+                                {sheetNames.map(n => <RpChip key={n} selected={sheet === n} onClick={() => pickSheet(n)}>{n}</RpChip>)}
+                            </div>
+                        ) : null}
+                        {raw ? (
+                            <>
+                                <RpToggle label="First row has the column names" checked={hasHeader} onChange={setHasHeader} />
+                                <div className="flex flex-col gap-1">
+                                    <p className="px-1 text-xs font-medium text-rp-muted">{rows.length} {rows.length === 1 ? 'row' : 'rows'}, {headers.length} columns</p>
+                                    <div className="custom-scrollbar overflow-x-auto rounded-rp-inset bg-rp-inset/60">
+                                        <table className="min-w-full text-left text-xs">
+                                            <thead><tr>{headers.slice(0, 8).map(h => <th key={h} className="whitespace-nowrap px-3 py-2 font-medium text-rp-muted">{h}</th>)}</tr></thead>
+                                            <tbody>{rows.slice(0, 4).map((r, i) => <tr key={i} className="border-t border-rp-line">{headers.slice(0, 8).map(h => <td key={h} className="rp-tabular max-w-[9rem] truncate whitespace-nowrap px-3 py-2 text-rp-ink">{String(r[h] ?? '')}</td>)}</tr>)}</tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </>
+                        ) : null}
+                    </>
+                ) : null}
+
+                {step === 1 ? (
+                    <>
+                        {missing.length || noDate ? <p role="alert" className="text-sm text-rp-rust">Choose the column for {[...missing.map(k => FIELDS.find(f => f.key === k)!.label), ...(noDate ? ['the date'] : [])].join(' and ')}.</p> : <p className="text-sm text-rp-muted">{Object.keys(mapping).length} of {headers.length} columns matched. Change any that are wrong.</p>}
+                        <RpSection title="Match columns" icon={Columns} action={<button type="button" onClick={() => setMapping(detect(headers))} className="inline-flex min-h-11 items-center rounded-full px-3 text-xs font-medium text-rp-muted outline-none hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted">Detect again</button>}>
                             <div className="flex flex-col py-1">
                                 {FIELDS.map(f => (
-                                    <div key={f.key} className="flex min-h-11 items-center justify-between gap-3 border-t border-rp-line first:border-t-0">
-                                        <span className="text-sm text-rp-ink">{f.label}{REQUIRED.includes(f.key) ? <span className="text-rp-rust"> *</span> : null}</span>
+                                    <div key={f.key} className="flex min-h-14 items-center justify-between gap-3 border-t border-rp-line first:border-t-0">
+                                        <span className="flex min-w-0 flex-col">
+                                            <span className="text-sm text-rp-ink">{f.label}{REQUIRED.includes(f.key) ? <span className="text-rp-rust"> *</span> : null}</span>
+                                            {sample(f) ? <span className="rp-tabular truncate text-xs text-rp-muted">{sample(f)}</span> : null}
+                                        </span>
                                         <TripMenu label={`Column for ${f.label}`} pill={{ label: mapping[f.key] || 'Not used', icon: Columns }} items={columnItems(f)} />
                                     </div>
                                 ))}
                             </div>
-                        ) : (
-                            <p className="py-2 text-sm text-rp-muted">{Object.keys(mapping).length} of {headers.length} columns matched.</p>
-                        )}
+                        </RpSection>
                         {ambiguous ? (
-                            <div role="group" aria-label="Date order" className="flex flex-wrap gap-2 py-2">
+                            <div role="group" aria-label="Date order" className="flex flex-wrap gap-2">
                                 <RpChip selected={!dayFirst} onClick={() => setDayFirst(false)}>Month first (3/9/2026 is 9 March)</RpChip>
                                 <RpChip selected={dayFirst} onClick={() => setDayFirst(true)}>Day first (3/9/2026 is 3 September)</RpChip>
                             </div>
                         ) : null}
-                    </RpSection>
+                    </>
                 ) : null}
 
-                {found ? (
-                    <div className="flex flex-col gap-2">
+                {step === 2 ? (
+                    <>
                         <p className="text-sm text-rp-ink">
-                            <span className="rp-tabular font-medium">{fresh.length}</span> new {fresh.length === 1 ? 'flight' : 'flights'}
-                            {skipped ? <span className="text-rp-muted"> · {skipped} already in your log</span> : null}
-                            {rows && found.length < rows.length ? <span className="text-rp-muted"> · {rows.length - found.length} rows left out (no places or date)</span> : null}
+                            <span className="rp-tabular font-medium">{chosen.length}</span> {chosen.length === 1 ? 'flight' : 'flights'} to import
+                            {duplicateCount ? <span className="text-rp-muted"> · {duplicateCount} already in your log</span> : null}
+                            {raw && built.length < rows.length ? <span className="text-rp-muted"> · {rows.length - built.length} rows left out (no places or date)</span> : null}
                         </p>
+                        {duplicateCount ? (
+                            <div role="group" aria-label="Duplicates" className="flex flex-wrap gap-2">
+                                <RpChip selected={dupes === 'skip'} onClick={() => setDupes('skip')}>Skip duplicates</RpChip>
+                                <RpChip selected={dupes === 'import'} onClick={() => setDupes('import')}>Import them too</RpChip>
+                            </div>
+                        ) : null}
+                        {trips.length > 0 ? (
+                            <RpSection title="Add to a trip" icon={Suitcase}>
+                                <div className="flex min-h-11 items-center justify-between gap-3 py-1">
+                                    <span className="min-w-0 truncate text-sm text-rp-ink">{tripName || 'Keep them as independent flights'}</span>
+                                    <TripMenu label="Choose a trip" pill={{ label: tripName ? 'Change' : 'Add to trip', icon: Suitcase }} items={[{ id: '', label: 'No trip', icon: X, selected: !tripId, onSelect: () => setTripId('') }, ...trips.slice(0, 40).map(t => ({ id: t.id, label: t.name, icon: Suitcase, selected: t.id === tripId, onSelect: () => setTripId(t.id) }))]} />
+                                </div>
+                            </RpSection>
+                        ) : null}
                         <ul className="flex flex-col rounded-rp-inset bg-rp-inset/60 px-3 py-1">
-                            {fresh.slice(0, 3).map((t, i) => (
-                                <li key={i} className="flex min-h-14 items-center justify-between gap-3 border-t border-rp-line py-2 first:border-t-0">
-                                    <CarrierCell t={t} size="sm" brandfetchApiKey={brandfetchApiKey} className="min-w-0" />
-                                    <span className="flex shrink-0 flex-col items-end">
-                                        <span className="rp-tabular flex items-center gap-1.5 text-sm font-semibold text-rp-ink">{placeCode(t.origin)} <ArrowRight size={12} className="text-rp-rust" aria-hidden /> {placeCode(t.destination)}</span>
-                                        <span className="rp-tabular text-xs text-rp-muted">{formatDate(t.departureDate, 'short-with-year')}{journeyKm(t) ? ` · ${journeyKm(t).toLocaleString('en-US')} km` : ''}</span>
-                                    </span>
-                                </li>
-                            ))}
-                            {fresh.length > 3 ? <li className="rp-tabular py-2 text-center text-xs text-rp-muted">+{fresh.length - 3} more</li> : null}
+                            {built.slice(0, 40).map((t, i) => {
+                                const dup = flags[i];
+                                const off = excluded.has(i) || (dup && dupes === 'skip');
+                                return (
+                                    <li key={i} className="border-t border-rp-line first:border-t-0">
+                                        <label className="flex min-h-14 cursor-pointer items-center gap-3 py-2">
+                                            <input type="checkbox" checked={!off} disabled={dup && dupes === 'skip'} onChange={() => setExcluded(ex => { const n = new Set(ex); if (n.has(i)) n.delete(i); else n.add(i); return n; })} className="size-5 shrink-0 accent-rp-ink" aria-label={`Include ${t.origin} to ${t.destination} on ${t.departureDate}`} />
+                                            <span className={`flex min-w-0 flex-1 items-center justify-between gap-3 ${off ? 'opacity-50' : ''}`}>
+                                                <CarrierCell t={t} size="sm" brandfetchApiKey={brandfetchApiKey} className="min-w-0" />
+                                                <span className="flex shrink-0 flex-col items-end">
+                                                    <span className="rp-tabular flex items-center gap-1.5 text-sm font-semibold text-rp-ink">{placeCode(t.origin)} <ArrowRight size={12} className="text-rp-rust" aria-hidden /> {placeCode(t.destination)}</span>
+                                                    <span className="rp-tabular text-xs text-rp-muted">{formatDate(t.departureDate, 'short-with-year')}{dup ? ' · in your log' : ''}</span>
+                                                </span>
+                                            </span>
+                                        </label>
+                                    </li>
+                                );
+                            })}
+                            {built.length > 40 ? <li className="rp-tabular py-2 text-center text-xs text-rp-muted">+{built.length - 40} more, imported with the rest</li> : null}
                         </ul>
-                    </div>
+                    </>
                 ) : null}
             </div>
         </RpSheet>

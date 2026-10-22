@@ -3,8 +3,9 @@ import { cn } from '../../../utils/cn';
 import NumberFlow from '@number-flow/react';
 import { BarChart } from '../../bklit/bar-chart';
 import { RoutesMap } from './RoutesMap';
-import { Airplane, Clock, Globe, type Icon } from '../../ui/hugeicons';
-import { aroundTheWorld, journeyTotals, routeLines, totalsByYear, type JourneyRecord } from '../../../utils/journeysModel';
+import { Airplane, Buildings, Clock, CurrencyDollar, Globe, Seat, type Icon } from '../../ui/hugeicons';
+import { getActiveCurrency, formatCurrency } from '../../../utils/formatters';
+import { aroundTheWorld, byAirport, byCarrier, byClass, journeyTotals, routeLines, totalsByYear, type JourneyRecord, type Tally } from '../../../utils/journeysModel';
 
 /**
  * The hero card of the Flights page, holding every number: three totals (flights, kilometres, hours in
@@ -13,18 +14,19 @@ import { aroundTheWorld, journeyTotals, routeLines, totalsByYear, type JourneyRe
  * under the map. Everything follows the page's filters.
  */
 
-type Metric = 'count' | 'km' | 'minutes';
+type Metric = 'count' | 'km' | 'minutes' | 'cost';
 const KEY = 'wandergrid_flights_new_hero_metric';
-const read = (): Metric => { try { const v = localStorage.getItem(KEY); return v === 'km' || v === 'minutes' ? v : 'count'; } catch { return 'count'; } };
+const read = (): Metric => { try { const v = localStorage.getItem(KEY); return v === 'km' || v === 'minutes' || v === 'cost' ? v : 'count'; } catch { return 'count'; } };
 
 /** The totals are filled with their accent: ink, green and mustard, each with its own readable text. */
 const TONE = {
     ink: { card: 'bg-rp-ink text-rp-on-ink', muted: 'text-rp-on-ink/70', circle: 'bg-rp-on-ink/15', ring: 'ring-rp-ink' },
     green: { card: 'bg-rp-green text-rp-paper', muted: 'text-rp-paper/80', circle: 'bg-rp-paper/20', ring: 'ring-rp-green' },
     mustard: { card: 'bg-rp-mustard text-rp-on-mustard', muted: 'text-rp-on-mustard/70', circle: 'bg-rp-on-mustard/10', ring: 'ring-rp-mustard' },
+    rust: { card: 'bg-rp-rust text-rp-paper', muted: 'text-rp-paper/80', circle: 'bg-rp-paper/20', ring: 'ring-rp-rust' },
 } as const;
 
-const Total: React.FC<{ icon: Icon; tone: keyof typeof TONE; value: number; unit: string; sub: string; subShort: string; selected: boolean; onSelect: () => void; label: string }> = ({ icon: IconC, tone, value, unit, sub, subShort, selected, onSelect, label }) => {
+const Total: React.FC<{ icon: Icon; tone: keyof typeof TONE; value: number; unit: string; money?: boolean; sub: string; subShort: string; selected: boolean; onSelect: () => void; label: string }> = ({ icon: IconC, tone, value, unit, money, sub, subShort, selected, onSelect, label }) => {
     const t = TONE[tone];
     return (
         <button
@@ -42,8 +44,8 @@ const Total: React.FC<{ icon: Icon; tone: keyof typeof TONE; value: number; unit
             <span className={cn('hidden size-10 shrink-0 items-center justify-center rounded-full sm:flex', t.circle)}><IconC size={18} aria-hidden /></span>
             <span className="min-w-0">
                 <span className="flex flex-wrap items-baseline gap-x-1.5">
-                    <NumberFlow value={value} format={{ maximumFractionDigits: 0 }} className="rp-tabular text-xl leading-tight font-semibold" />
-                    <span className={cn('text-sm', t.muted)}>{unit}</span>
+                    <NumberFlow value={value} format={money ? { style: 'currency', currency: getActiveCurrency(), maximumFractionDigits: 0 } : { maximumFractionDigits: 0 }} className="rp-tabular text-xl leading-tight font-semibold" />
+                    {unit ? <span className={cn('text-sm', t.muted)}>{unit}</span> : null}
                 </span>
                 <span className={cn('block truncate text-xs leading-snug', t.muted)}><span className="sm:hidden">{subShort}</span><span className="hidden sm:inline">{sub}</span></span>
             </span>
@@ -51,7 +53,29 @@ const Total: React.FC<{ icon: Icon; tone: keyof typeof TONE; value: number; unit
     );
 };
 
-const TITLE: Record<Metric, string> = { count: 'Flights per year', km: 'Kilometres per year', minutes: 'Hours in the air per year' };
+const TITLE: Record<Metric, string> = { count: 'Flights per year', km: 'Kilometres per year', minutes: 'Hours in the air per year', cost: 'Spend per year' };
+
+/** Top few with a bar for how many, then "+N more". */
+const Breakdown: React.FC<{ title: string; icon: Icon; rows: Tally[]; unit: string }> = ({ title, icon: IconC, rows, unit }) => {
+    const top = rows.slice(0, 3);
+    const max = Math.max(1, ...top.map(r => r.count));
+    return (
+        <div className="flex min-w-0 flex-col gap-2 rounded-rp-inset bg-rp-inset/60 p-3">
+            <p className="flex items-center gap-1.5 text-xs font-medium text-rp-muted"><IconC size={14} className="text-rp-ochre" aria-hidden /> {title}</p>
+            {top.length === 0 ? <p className="text-sm text-rp-muted">None yet</p> : (
+                <ul className="flex flex-col gap-2">
+                    {top.map(r => (
+                        <li key={r.key} className="flex flex-col gap-1">
+                            <span className="flex items-baseline justify-between gap-2 text-sm"><span className="truncate text-rp-ink">{r.label}</span><span className="rp-tabular shrink-0 font-medium text-rp-ink">{r.count}<span className="font-normal text-rp-muted"> {unit}</span></span></span>
+                            <span className="h-1.5 rounded-full bg-rp-line"><span className="block h-full rounded-full bg-rp-ink" style={{ width: `${(r.count / max) * 100}%` }} /></span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+            {rows.length > top.length ? <p className="rp-tabular text-xs text-rp-muted">+{rows.length - top.length} more</p> : null}
+        </div>
+    );
+};
 
 export const JourneyHero: React.FC<{ items: JourneyRecord[] }> = ({ items }) => {
     const [metric, setMetric] = useState<Metric>(read);
@@ -61,12 +85,15 @@ export const JourneyHero: React.FC<{ items: JourneyRecord[] }> = ({ items }) => 
     const totals = useMemo(() => journeyTotals(items), [items]);
     const best = years.reduce((a, b) => (b[metric] > a[metric] ? b : a), years[0]);
     const earth = aroundTheWorld(totals.km);
+    const carriers = useMemo(() => byCarrier(items), [items]);
+    const airports = useMemo(() => byAirport(items), [items]);
+    const classes = useMemo(() => byClass(items).filter(c => c.key !== 'Unknown'), [items]);
     const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
     const hours = (v: number) => Math.round(v / 60);
 
     return (
         <section aria-label="Flight statistics" className="flex flex-col gap-4 rounded-rp-card bg-rp-surface p-3 rp-shadow-rest sm:p-5 lg:gap-5 lg:p-6">
-            <div role="group" aria-label="Totals. Choose one to chart it per year" className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
+            <div role="group" aria-label="Totals. Choose one to chart it per year" className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 lg:gap-4">
                 <Total
                     tone="ink" icon={Airplane} label="Flights" selected={metric === 'count'} onSelect={() => change('count')}
                     value={totals.count} unit={totals.count === 1 ? 'flight' : 'flights'}
@@ -84,6 +111,12 @@ export const JourneyHero: React.FC<{ items: JourneyRecord[] }> = ({ items }) => 
                     value={hours(totals.minutes)} unit="hours"
                     sub={plural(totals.countries, 'country', 'countries')} subShort={plural(totals.countries, 'country', 'countries')}
                 />
+                <Total
+                    tone="rust" icon={CurrencyDollar} label="Spend" selected={metric === 'cost'} onSelect={() => change('cost')}
+                    value={totals.cost} unit="" money
+                    sub={totals.count > 0 && totals.cost > 0 ? `${formatCurrency(Math.round(totals.cost / totals.count))} a flight` : 'No costs logged'}
+                    subShort={totals.count > 0 && totals.cost > 0 ? `${formatCurrency(Math.round(totals.cost / totals.count))} a flight` : 'No costs'}
+                />
             </div>
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:gap-6">
@@ -97,12 +130,18 @@ export const JourneyHero: React.FC<{ items: JourneyRecord[] }> = ({ items }) => 
                     <p className="text-sm text-rp-muted"><span className="font-medium text-rp-ink">{TITLE[metric]}</span>{best && years.length > 1 ? ` · most in ${best.year}` : ''}</p>
                     <BarChart
                         className="h-48 lg:h-full lg:min-h-48"
-                        color={metric === 'count' ? 'rust' : metric === 'km' ? 'green' : 'mustard'}
+                        color={metric === 'count' ? 'ink' : metric === 'km' ? 'green' : metric === 'minutes' ? 'mustard' : 'rust'}
                         label={TITLE[metric]}
-                        format={metric === 'km' ? (v => (v >= 10000 ? `${Math.round(v / 1000)}k` : v.toLocaleString('en-US'))) : undefined}
+                        format={metric === 'km' || metric === 'cost' ? (v => (v >= 10000 ? `${Math.round(v / 1000)}k` : v.toLocaleString('en-US'))) : undefined}
                         data={years.map(y => ({ label: y.year, value: metric === 'minutes' ? hours(y.minutes) : y[metric] }))}
                     />
                 </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
+                <Breakdown title="Airlines" icon={Buildings} rows={carriers} unit="flights" />
+                <Breakdown title="Airports" icon={Airplane} rows={airports} unit="visits" />
+                <Breakdown title="Cabin class" icon={Seat} rows={classes} unit="flights" />
             </div>
         </section>
     );

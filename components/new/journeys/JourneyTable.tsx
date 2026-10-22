@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { Carrier } from '../../../types';
 import { ArrowRight, ArrowUp, Check, CaretDown, Path, Stack } from '../../ui/hugeicons';
 import { TripMenu, type TripMenuItem } from '../trips/TripMenu';
@@ -40,6 +40,24 @@ const HeadButton: React.FC<{ label: string; sortKey: JourneySortKey; sort: Journ
     );
 };
 
+/** How many rows render at once once the whole log is shown; more load as you scroll, so a log of thousands stays quick. */
+const CHUNK = 60;
+
+/** A growing limit: starts at CHUNK, grows by CHUNK when the returned sentinel scrolls into view, resets when `reset` changes. */
+const useChunk = (total: number, reset: unknown) => {
+    const [limit, setLimit] = useState(CHUNK);
+    const sentinel = useRef<HTMLDivElement>(null);
+    useEffect(() => { setLimit(CHUNK); }, [reset]);
+    useEffect(() => {
+        const el = sentinel.current;
+        if (!el || limit >= total || typeof IntersectionObserver === 'undefined') return;
+        const io = new IntersectionObserver(entries => { if (entries.some(e => e.isIntersecting)) setLimit(l => l + CHUNK); }, { rootMargin: '600px' });
+        io.observe(el);
+        return () => io.disconnect();
+    }, [limit, total]);
+    return { limit, sentinel, more: limit < total };
+};
+
 export type JourneyGrouping = 'none' | 'year' | 'journey';
 
 interface RowProps {
@@ -68,7 +86,7 @@ const Row: React.FC<RowProps> = ({ rec, now, selectedId, onOpen, menu, selecting
             role="row"
             aria-selected={selecting ? Boolean(ticked) : selectedId === t.id}
             className={cn(
-                'group/row relative flex items-center gap-3 rounded-rp-inset border-t border-rp-line px-3 py-2.5 first:border-t-0 md:py-1',
+                'group/row relative flex items-center gap-3 rounded-rp-inset border-t border-rp-line px-3 py-2.5 first:border-t-0 md:py-1 [content-visibility:auto] [contain-intrinsic-size:auto_72px]',
                 GRID_MD, GRID_LG, 'transition-colors duration-150 hover:bg-rp-inset',
                 nested && 'ml-3 border-l-2 border-l-rp-line pl-3 sm:ml-5',
                 (selectedId === t.id || ticked) && 'bg-rp-inset'
@@ -221,6 +239,7 @@ export const JourneyTable: React.FC<{
     const [journeyToggled, setJourneyToggled] = useState<Record<string, boolean>>({});
 
     const units = useMemo(() => (grouping === 'journey' ? groupJourneys(items) : []), [grouping, items]);
+    const chunk = useChunk(grouping === 'journey' ? units.length : items.length, `${grouping}:${items.length}`);
     const count = grouping === 'journey' ? units.length : items.length;
     const overCap = grouping !== 'year' && count > TABLE_CAP;
     const capped = overCap && !expanded && !filtering;
@@ -246,7 +265,7 @@ export const JourneyTable: React.FC<{
             );
         });
     } else if (grouping === 'journey') {
-        const shownUnits = capped ? units.slice(0, TABLE_CAP) : units;
+        const shownUnits = capped ? units.slice(0, TABLE_CAP) : units.slice(0, chunk.limit);
         body = shownUnits.map(u => {
             if (u.kind === 'single') return <Row key={u.rec.flight.id} rec={u.rec} {...rowProps} />;
             const open = journeyToggled[u.group.id] ?? false;
@@ -258,7 +277,7 @@ export const JourneyTable: React.FC<{
             );
         });
     } else {
-        body = (capped ? items.slice(0, TABLE_CAP) : items).map(rec => <Row key={rec.flight.id} rec={rec} {...rowProps} />);
+        body = (capped ? items.slice(0, TABLE_CAP) : items.slice(0, chunk.limit)).map(rec => <Row key={rec.flight.id} rec={rec} {...rowProps} />);
     }
 
     return (
@@ -274,6 +293,7 @@ export const JourneyTable: React.FC<{
             </div>
 
             <div className={cn('flex flex-col', capped && '[mask-image:linear-gradient(to_bottom,black_68%,transparent)]')} role="rowgroup">{body}</div>
+            {grouping !== 'year' && !capped && chunk.more ? <div ref={chunk.sentinel} className="h-10" aria-hidden /> : null}
 
             {overCap && !filtering ? (
                 <button

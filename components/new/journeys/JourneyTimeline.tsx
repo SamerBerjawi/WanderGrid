@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Carrier } from '../../../types';
 import SmoothDrawer from '../../kokonutui/smooth-drawer';
-import { ArrowUpRight, Suitcase } from '../../ui/hugeicons';
+import { ArrowUpRight, Check, PencilSimple, Suitcase, X } from '../../ui/hugeicons';
+import { RP_FIELD } from '../fields';
 import { RpSection, RpSheet, useIsMobile } from '../ui';
 import { CarrierCell, DelayChip, STATUS_LOOK, StatusPill } from './JourneyParts';
 import { modeLook } from '../trips/transportModes';
@@ -40,7 +41,7 @@ const Gap: React.FC<{ a: JourneyRecord; b: JourneyRecord }> = ({ a, b }) => {
     );
 };
 
-const Leg: React.FC<{ rec: JourneyRecord; last: boolean; onOpen: (r: JourneyRecord) => void; brandfetchApiKey?: string; carriers?: Carrier[] }> = ({ rec, last, onOpen, brandfetchApiKey, carriers }) => {
+const Leg: React.FC<{ rec: JourneyRecord; last: boolean; onOpen: (r: JourneyRecord) => void; onRemove?: (r: JourneyRecord) => void; brandfetchApiKey?: string; carriers?: Carrier[] }> = ({ rec, last, onOpen, onRemove, brandfetchApiKey, carriers }) => {
     const t = rec.flight;
     const look = modeLook(t.mode);
     const status = journeyStatus(t);
@@ -78,16 +79,21 @@ const Leg: React.FC<{ rec: JourneyRecord; last: boolean; onOpen: (r: JourneyReco
                     <span className="rp-tabular shrink-0 text-xs text-rp-muted">{formatMinutes(journeyMinutes(t))}{journeyKm(t) ? ` · ${journeyKm(t).toLocaleString('en-US')} km` : ''}</span>
                 </span>
             </button>
+            {onRemove ? (
+                <button type="button" onClick={() => onRemove(rec)} className="-mt-1 mb-2 inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-rp-muted outline-none hover:bg-rp-inset hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted">
+                    <X size={14} aria-hidden /> Take off trip
+                </button>
+            ) : null}
         </li>
     );
 };
 
-const Section: React.FC<{ title: string; legs: JourneyRecord[]; after?: boolean; onOpen: (r: JourneyRecord) => void; brandfetchApiKey?: string; carriers?: Carrier[] }> = ({ title, legs, onOpen, brandfetchApiKey, carriers }) => (
+const Section: React.FC<{ title: string; legs: JourneyRecord[]; onOpen: (r: JourneyRecord) => void; onRemove?: (r: JourneyRecord) => void; brandfetchApiKey?: string; carriers?: Carrier[] }> = ({ title, legs, onOpen, onRemove, brandfetchApiKey, carriers }) => (
     <RpSection title={title}>
         <ol className="flex flex-col py-2">
             {legs.map((r, i) => (
                 <React.Fragment key={r.flight.id}>
-                    <Leg rec={r} last={i === legs.length - 1} onOpen={onOpen} brandfetchApiKey={brandfetchApiKey} carriers={carriers} />
+                    <Leg rec={r} last={i === legs.length - 1} onOpen={onOpen} onRemove={onRemove} brandfetchApiKey={brandfetchApiKey} carriers={carriers} />
                     {i < legs.length - 1 ? <Gap a={r} b={legs[i + 1]} /> : null}
                 </React.Fragment>
             ))}
@@ -100,14 +106,23 @@ export const JourneyTimeline: React.FC<{
     onClose: () => void;
     onOpenLeg: (record: JourneyRecord) => void;
     onOpenTrip?: (tripId: string) => void;
+    /** Rename the trip these flights are on. */
+    onRenameTrip?: (tripId: string, name: string) => Promise<void> | void;
+    /** Take one flight off its trip (it stays in the log). */
+    onTakeOff?: (record: JourneyRecord) => void;
     brandfetchApiKey?: string;
     carriers?: Carrier[];
-}> = ({ group, onClose, onOpenLeg, onOpenTrip, brandfetchApiKey, carriers }) => {
+}> = ({ group, onClose, onOpenLeg, onOpenTrip, onRenameTrip, onTakeOff, brandfetchApiKey, carriers }) => {
     const mobile = useIsMobile();
     const kept = React.useRef(group);
     if (group) kept.current = group;
     const g = group ?? kept.current;
+    const [editingName, setEditingName] = useState(false);
+    const [name, setName] = useState('');
+    useEffect(() => { setEditingName(false); setName(g?.trip.name || ''); }, [g?.id, g?.trip.name]);
     if (!g) return null;
+    const onTrip = !isIndependent(g.trip.id);
+    const remove = onTrip && onTakeOff && g.legs.length > 1 ? onTakeOff : undefined;
 
     const minutes = g.legs.reduce((n, r) => n + journeyMinutes(r.flight), 0);
     const km = g.legs.reduce((n, r) => n + journeyKm(r.flight), 0);
@@ -126,21 +141,36 @@ export const JourneyTimeline: React.FC<{
                 <Stat label="Distance" value={km ? `${km.toLocaleString('en-US')} km` : '—'} />
                 <Stat label="Cost" value={cost ? formatCurrency(cost) : '—'} />
             </div>
-            <Section title={g.returns.length ? 'Way out' : 'Flights'} legs={g.outbound} onOpen={onOpenLeg} brandfetchApiKey={brandfetchApiKey} carriers={carriers} />
+            <Section title={g.returns.length ? 'Way out' : 'Flights'} legs={g.outbound} onOpen={onOpenLeg} onRemove={remove} brandfetchApiKey={brandfetchApiKey} carriers={carriers} />
             {g.returns.length ? (
                 <>
                     {turn > 0 ? <p className="rp-tabular -my-2 text-center text-xs text-rp-muted">{Math.round(turn / 1440) >= 1 ? `${Math.round(turn / 1440)} ${Math.round(turn / 1440) === 1 ? 'day' : 'days'} away` : `${formatMinutes(turn)} before the way back`}</p> : null}
-                    <Section title="Way back" legs={g.returns} onOpen={onOpenLeg} brandfetchApiKey={brandfetchApiKey} carriers={carriers} />
+                    <Section title="Way back" legs={g.returns} onOpen={onOpenLeg} onRemove={remove} brandfetchApiKey={brandfetchApiKey} carriers={carriers} />
                 </>
             ) : null}
-            {!isIndependent(g.trip.id) ? (
+            {onTrip ? (
                 <RpSection title="Trip" icon={Suitcase}>
-                    <div className="flex min-h-11 items-center justify-between gap-3 py-1">
-                        <span className="min-w-0 truncate text-sm text-rp-ink">{g.trip.name}</span>
-                        {onOpenTrip ? (
-                            <button type="button" aria-label={`Open ${g.trip.name}`} onClick={() => onOpenTrip(g.trip.id)} className="inline-flex size-11 items-center justify-center rounded-full text-rp-muted outline-none hover:bg-rp-line hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted"><ArrowUpRight size={18} /></button>
-                        ) : null}
-                    </div>
+                    {editingName ? (
+                        <form
+                            className="flex items-center gap-2 py-1"
+                            onSubmit={e => { e.preventDefault(); const next = name.trim(); if (next && next !== g.trip.name) void onRenameTrip?.(g.trip.id, next); setEditingName(false); }}
+                        >
+                            <input autoFocus aria-label="Trip name" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setEditingName(false); } }} className={RP_FIELD} />
+                            <button type="submit" aria-label="Save name" className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-rp-ink text-rp-on-ink outline-none hover:bg-rp-ink/90 focus-visible:ring-2 focus-visible:ring-rp-muted"><Check size={18} /></button>
+                        </form>
+                    ) : (
+                        <div className="flex min-h-11 items-center justify-between gap-3 py-1">
+                            <span className="min-w-0 truncate text-sm text-rp-ink">{g.trip.name}</span>
+                            <span className="flex shrink-0 items-center">
+                                {onRenameTrip ? (
+                                    <button type="button" aria-label="Rename trip" onClick={() => setEditingName(true)} className="inline-flex size-11 items-center justify-center rounded-full text-rp-muted outline-none hover:bg-rp-line hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted"><PencilSimple size={18} /></button>
+                                ) : null}
+                                {onOpenTrip ? (
+                                    <button type="button" aria-label={`Open ${g.trip.name}`} onClick={() => onOpenTrip(g.trip.id)} className="inline-flex size-11 items-center justify-center rounded-full text-rp-muted outline-none hover:bg-rp-line hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted"><ArrowUpRight size={18} /></button>
+                                ) : null}
+                            </span>
+                        </div>
+                    )}
                 </RpSection>
             ) : null}
         </div>

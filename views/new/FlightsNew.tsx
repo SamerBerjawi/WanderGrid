@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Transport, Trip } from '../../types';
+import { dataService } from '../../services/mockDb';
 import { useFlightLog } from '../../hooks/useFlightLog';
 import { errorMessage, toast } from '../../services/toast';
 import { mapLink } from '../../utils/mapLinks';
 import {
-    SORT_LABEL, groupJourneys, isIndependent, journeyStatus, sortJourneys,
+    SORT_LABEL, byAirport, byCarrier, carrierLabel, groupJourneys, placeCode, isIndependent, journeyStatus, sortJourneys,
     type JourneyGroup, type JourneyRecord, type JourneySortKey, type JourneyState,
 } from '../../utils/journeysModel';
 import type { DockTool } from '../../components/kokonutui/tool-dock';
@@ -23,7 +24,7 @@ import { JourneySheet } from '../../components/new/journeys/JourneySheet';
 import { JourneyEditor, type JourneyEditorTarget } from '../../components/new/journeys/JourneyEditor';
 import { ImportSheet, exportJourneys, type ExportFormat } from '../../components/new/journeys/JourneyTransfer';
 import {
-    Airplane, ArrowDown, ChartBar, LinkSquare, Stack, type Icon, CalendarBlank, CheckSquare, Clock, DownloadSimple, Funnel, Globe, MagnifyingGlass, PencilSimple, Plus, Suitcase, Trash, UploadSimple, X, XCircle,
+    Airplane, ArrowDown, ArrowsClockwise, ChartBar, Copy, LinkSquare, Stack, type Icon, CalendarBlank, CheckSquare, Clock, DownloadSimple, Funnel, Globe, MagnifyingGlass, PencilSimple, Plus, Suitcase, Trash, UploadSimple, X, XCircle,
 } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
@@ -72,6 +73,16 @@ const SORTS: { key: JourneySortKey; asc: boolean; label: string; short: string }
     { key: 'cost', asc: false, label: 'Most expensive', short: 'Priciest' },
 ];
 
+/** The way back for a flight: the places swapped, a week later, the airline kept and everything personal to that flight cleared. */
+const returnSeed = (f: Transport): Partial<Transport> => {
+    const week = (d: string) => { const x = new Date(`${d || new Date().toISOString().slice(0, 10)}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + 7); return x.toISOString().slice(0, 10); };
+    return {
+        mode: f.mode, provider: f.provider, providerCode: f.providerCode, origin: f.destination, destination: f.origin,
+        departureDate: week(f.arrivalDate || f.departureDate), arrivalDate: week(f.arrivalDate || f.departureDate), travelClass: f.travelClass,
+        confirmationCode: f.confirmationCode, departureTime: '10:00', arrivalTime: '14:00',
+    };
+};
+
 const EmptyCard: React.FC<{ children: React.ReactNode }> = ({ children }) => <div className="rounded-rp-card bg-rp-surface rp-shadow-rest">{children}</div>;
 
 export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
@@ -87,6 +98,8 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
     const [searchOpen, setSearchOpen] = useState(false);
     const [statusFilter, setStatusFilter] = useState<JourneyState | 'all'>('all');
     const [noTrip, setNoTrip] = useState(false);
+    const [airline, setAirline] = useState('all');
+    const [airport, setAirport] = useState('all');
     const [expanded, setExpanded] = useState(false);
     const [detailId, setDetailId] = useState<string | null>(null);
     const [editor, setEditor] = useState<JourneyEditorTarget | null>(null);
@@ -121,11 +134,15 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
     const now = Date.now();
     const shown = useMemo(() => {
         const list = log.filteredFlights.filter(r =>
-            (statusFilter === 'all' || journeyStatus(r.flight, now).state === statusFilter) && (!noTrip || isIndependent(r.trip.id)));
+            (statusFilter === 'all' || journeyStatus(r.flight, now).state === statusFilter) && (!noTrip || isIndependent(r.trip.id))
+            && (airline === 'all' || carrierLabel(r.flight).trim().toLowerCase() === airline)
+            && (airport === 'all' || placeCode(r.flight.origin) === airport || placeCode(r.flight.destination) === airport));
         return sortJourneys(list, sortKey, sortAsc);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [log.filteredFlights, statusFilter, noTrip, sortKey, sortAsc]);
-    const filtering = Boolean(log.searchQuery.trim()) || log.timeFilter !== 'all' || log.yearFilter !== 'all' || log.classFilter !== 'all' || statusFilter !== 'all' || noTrip;
+    }, [log.filteredFlights, statusFilter, noTrip, airline, airport, sortKey, sortAsc]);
+    const airlineOptions = useMemo(() => byCarrier(log.flights), [log.flights]);
+    const airportOptions = useMemo(() => byAirport(log.flights), [log.flights]);
+    const filtering = Boolean(log.searchQuery.trim()) || log.timeFilter !== 'all' || log.yearFilter !== 'all' || log.classFilter !== 'all' || statusFilter !== 'all' || noTrip || airline !== 'all' || airport !== 'all';
     const independentCount = useMemo(() => log.flights.filter(r => isIndependent(r.trip.id)).length, [log.flights]);
 
     const tripChoices = useMemo<Trip[]>(() =>
@@ -193,6 +210,8 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
         { id: 'open', label: 'Details', icon: Airplane, onSelect: () => setDetailId(rec.flight.id) },
         { id: 'edit', label: 'Edit', icon: PencilSimple, onSelect: () => setEditor({ kind: 'edit', record: rec }) },
         ...(isIndependent(rec.trip.id) ? [{ id: 'trip', label: 'Create trip', icon: Suitcase, onSelect: () => void makeTrip([rec]) }] : []),
+        { id: 'copy', label: 'Duplicate', icon: Copy, onSelect: () => setEditor({ kind: 'create', seed: { ...rec.flight, actualDepartureTime: undefined, actualArrivalTime: undefined }, tripId: isIndependent(rec.trip.id) ? undefined : rec.trip.id }) },
+        { id: 'return', label: 'Add return flight', icon: ArrowsClockwise, onSelect: () => setEditor({ kind: 'create', seed: returnSeed(rec.flight), tripId: isIndependent(rec.trip.id) ? undefined : rec.trip.id }) },
         { id: 'map', label: 'Show on map', icon: Globe, onSelect: () => openNewPage(mapLink({ route: [rec.flight.origin, rec.flight.destination] })) },
         { id: 'delete', label: 'Delete', icon: Trash, tone: 'danger', separated: true, onSelect: () => setDeleting([rec]) },
     ], [log.createTripFromFlights]);
@@ -208,7 +227,7 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
     const sortLabel = (SORTS.find(s => s.key === sortKey && s.asc === sortAsc) ?? SORTS[0]).short;
     const tickets = shown.filter(r => selected.has(r.flight.id));
 
-    const clearFilters = () => { log.resetFilters(); setStatusFilter('all'); setNoTrip(false); };
+    const clearFilters = () => { log.resetFilters(); setStatusFilter('all'); setNoTrip(false); setAirline('all'); setAirport('all'); };
 
     return (
         <div className="custom-scrollbar h-full overflow-y-auto px-3 pt-2 pb-32 sm:px-6 md:pb-16">
@@ -284,6 +303,16 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                                     items={[{ id: 'all', label: 'Any status', icon: X, selected: statusFilter === 'all', onSelect: () => setStatusFilter('all') }, ...STATES.map(s => ({ id: s.id, label: s.label, icon: s.id === 'cancelled' ? XCircle : Clock, selected: statusFilter === s.id, onSelect: () => setStatusFilter(s.id) }))]}
                                 />
                                                                     <TripMenu
+                                    label="Filter by airline"
+                                    pill={{ label: airline === 'all' ? 'Airline' : airlineOptions.find(o => o.key === airline)?.label || 'Airline', icon: Airplane }}
+                                    items={[{ id: 'all', label: 'Any airline', icon: X, selected: airline === 'all', onSelect: () => setAirline('all') }, ...airlineOptions.slice(0, 40).map(o => ({ id: o.key, label: `${o.label} (${o.count})`, icon: Airplane, selected: airline === o.key, onSelect: () => setAirline(o.key) }))]}
+                                />
+                                <TripMenu
+                                    label="Filter by airport"
+                                    pill={{ label: airport === 'all' ? 'Airport' : airport, icon: Globe }}
+                                    items={[{ id: 'all', label: 'Any airport', icon: X, selected: airport === 'all', onSelect: () => setAirport('all') }, ...airportOptions.slice(0, 40).map(o => ({ id: o.key, label: `${o.label} (${o.count})`, icon: Globe, selected: airport === o.key, onSelect: () => setAirport(o.key) }))]}
+                                />
+                                <TripMenu
                                         label="Group flights"
                                         pill={{ label: grouping === 'none' ? 'Group' : grouping === 'year' ? 'By year' : 'Journeys', icon: Stack }}
                                         items={[
@@ -400,6 +429,8 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                 onClose={() => setTimelineId(null)}
                 onOpenLeg={rec => { setTimelineId(null); setDetailId(rec.flight.id); }}
                 onOpenTrip={onTripClick ? id => { setTimelineId(null); onTripClick(id); } : undefined}
+                onRenameTrip={(tripId, name) => attempt(async () => { const t = log.trips.find(x => x.id === tripId); if (t) await dataService.updateTrip({ ...t, name }); })}
+                onTakeOff={rec => void assign([rec], 'unassigned')}
                 brandfetchApiKey={brandfetchApiKey}
             />
             <JourneyEditor
@@ -411,10 +442,13 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                 brandfetchApiKey={brandfetchApiKey}
                 onClose={() => setEditor(null)}
                 onSave={log.saveJourney}
+                history={log.flights}
+                onNextLeg={(saved, tid) => setEditor({ kind: 'create', tripId: tid === 'unassigned' ? undefined : tid, seed: { mode: saved.mode, origin: saved.destination, departureDate: saved.arrivalDate || saved.departureDate, arrivalDate: saved.arrivalDate || saved.departureDate, confirmationCode: saved.confirmationCode, departureTime: '', arrivalTime: '' } })}
             />
             <ImportSheet
                 open={importOpen}
                 existing={log.flights}
+                trips={tripChoices}
                 onClose={() => setImportOpen(false)}
                 onImported={n => { toast.success(`Imported ${n} ${n === 1 ? 'flight' : 'flights'}`); log.refreshData(); }}
                 brandfetchApiKey={brandfetchApiKey}
