@@ -23,7 +23,7 @@ import { JourneySheet } from '../../components/new/journeys/JourneySheet';
 import { JourneyEditor, type JourneyEditorTarget } from '../../components/new/journeys/JourneyEditor';
 import { ImportSheet, exportJourneys, type ExportFormat } from '../../components/new/journeys/JourneyTransfer';
 import {
-    Airplane, ArrowDown, ChartBar, Stack, type Icon, CalendarBlank, CheckSquare, Clock, DownloadSimple, Funnel, Globe, MagnifyingGlass, PencilSimple, Plus, Suitcase, Trash, UploadSimple, X, XCircle,
+    Airplane, ArrowDown, ChartBar, LinkSquare, Stack, type Icon, CalendarBlank, CheckSquare, Clock, DownloadSimple, Funnel, Globe, MagnifyingGlass, PencilSimple, Plus, Suitcase, Trash, UploadSimple, X, XCircle,
 } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
@@ -179,7 +179,9 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
 
     const makeTrip = (records: JourneyRecord[]) => attempt(async () => {
         const made = await log.createTripFromFlights(records);
-        undo.show(`Created ${made.name}`, () => attempt(() => made.undo()));
+        undo.show(`Created ${made.name}`, () => attempt(() => made.undo()), {
+            action: onTripClick ? { label: 'Open', icon: LinkSquare, onClick: () => onTripClick(made.tripId) } : undefined,
+        });
     }, "The trip wasn't created. Nothing was changed.");
 
     const exportAs = (format: ExportFormat) => attempt(async () => {
