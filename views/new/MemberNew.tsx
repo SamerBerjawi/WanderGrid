@@ -187,10 +187,10 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
 
     const settingsPages: Record<string, StackPage> = {
         settings: {
-            title: 'Settings',
+            title: 'Profile',
             sections: [
                 {
-                    title: 'Profile',
+                    title: 'Details',
                     rows: [
                         { id: 'name', icon: UserIcon, label: 'Name', detail: member.name, onSelect: () => setTopic('profile') },
                         { id: 'email', icon: Envelope, label: 'Email', detail: member.email || 'None' },
@@ -202,14 +202,6 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                     rows: [
                         { id: 'weekend', icon: CalendarBlank, label: 'Weekend holidays', detail: WEEKEND_LABEL[weekendRule], to: 'weekend' },
                         ...(data.isAdmin ? [{ id: 'allowance', icon: SunHorizon, label: 'Leave allowance', detail: `${leave.allowance} days a year`, onSelect: () => setTopic('leave' as MemberTopic) }] : []),
-                    ],
-                },
-                {
-                    title: 'Account',
-                    rows: [
-                        { id: 'password', icon: Lock, label: 'Password', detail: 'Change', onSelect: () => setTopic('account') },
-                        ...(data.isSelf && onLogout ? [{ id: 'sign-out', icon: SignOut, label: 'Sign out', tone: 'danger' as const, onSelect: onLogout }] : []),
-                        ...(data.canRemove ? [{ id: 'remove', icon: Trash, label: 'Remove member', tone: 'danger' as const, onSelect: () => setRemoving(member) }] : []),
                     ],
                 },
             ],
@@ -229,6 +221,26 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
             ],
         },
     };
+
+    const accountPages: Record<string, StackPage> = {
+        account: {
+            title: 'Account',
+            sections: [
+                {
+                    rows: [
+                        { id: 'password', icon: Lock, label: 'Password', detail: 'Change', onSelect: () => setTopic('account') },
+                    ],
+                },
+                {
+                    rows: [
+                        ...(data.isSelf && onLogout ? [{ id: 'sign-out', icon: SignOut, label: 'Sign out', tone: 'danger' as const, onSelect: onLogout }] : []),
+                        ...(data.canRemove ? [{ id: 'remove', icon: Trash, label: 'Remove member', tone: 'danger' as const, onSelect: () => setRemoving(member) }] : []),
+                    ],
+                },
+            ],
+        },
+    };
+    if (accountPages.account.sections[1].rows.length === 0) accountPages.account.sections.pop();
 
     const visibleTrips: MemberTrip[] = showAllTrips ? data.memberTrips : data.memberTrips.slice(0, TRIPS_SHOWN);
     const visiblePlaces = showAllPlaces ? data.stats.places : data.stats.places.slice(0, PLACES_SHOWN);
@@ -449,8 +461,13 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                     ) : null}
 
                     {activeTab === 'settings' && data.canEdit ? (
-                        <div className={cn(card, 'p-2 sm:p-3 lg:max-w-xl')}>
-                            <StackPanel pages={settingsPages} root="settings" />
+                        <div className="grid items-start gap-3 lg:grid-cols-2 lg:gap-4">
+                            <div className={cn(card, 'p-2 sm:p-3')}>
+                                <StackPanel pages={settingsPages} root="settings" />
+                            </div>
+                            <div className={cn(card, 'p-2 sm:p-3')}>
+                                <StackPanel pages={accountPages} root="account" />
+                            </div>
                         </div>
                     ) : null}
                 </section>
