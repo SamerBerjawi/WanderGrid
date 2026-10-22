@@ -1,6 +1,7 @@
 import type { Transport, Trip } from '../types';
 import { calculateDistance, getCoordinatesSync } from '../services/geocoding';
 import { knownZone } from '../services/timezone';
+import { footprintKg } from './footprint';
 import { getAirportTimezone, getCarrierName, getCityName, getFlightArrivalUtcDate, getFlightDepartureUtcDate, getFlightStatusTags, parseLocalDateInTimezone } from './flightData';
 
 /**
@@ -180,7 +181,43 @@ export const journeyTotals = (items: JourneyRecord[], now = Date.now()): Journey
 
 export const yearOf = (r: JourneyRecord): string => (r.flight.departureDate || '').slice(0, 4) || 'Undated';
 
-export interface YearTotals { year: string; count: number; km: number; minutes: number; cost: number }
+export interface YearTotals { year: string; count: number; km: number; minutes: number; cost: number; co2: number }
+
+/** A rule-of-thumb estimate (kg CO₂ for one passenger) from distance and cabin; not a measured figure. */
+export const flightCo2 = (t: Transport): number => {
+    if (journeyStatus(t).state === 'cancelled') return 0;
+    return Math.round(footprintKg(t));
+};
+
+export const totalCo2 = (items: JourneyRecord[]): number => items.reduce((n, r) => n + flightCo2(r.flight), 0);
+
+export interface RouteTally { key: string; from: string; to: string; count: number; km: number }
+
+/** The route flown most often; a pair counts both ways (AMS→JFK and JFK→AMS are one route). */
+export const mostFlownRoute = (items: JourneyRecord[]): RouteTally | null => {
+    const map = new Map<string, RouteTally>();
+    for (const r of items) {
+        const { origin, destination } = r.flight;
+        if (!origin?.trim() || !destination?.trim() || journeyStatus(r.flight).state === 'cancelled') continue;
+        const a = placeCode(origin), b = placeCode(destination);
+        if (a === b) continue;
+        const [from, to] = a < b ? [a, b] : [b, a];
+        const key = `${from}-${to}`;
+        const row = map.get(key) ?? { key, from, to, count: 0, km: 0 };
+        row.count += 1;
+        row.km += journeyKm(r.flight);
+        map.set(key, row);
+    }
+    return [...map.values()].sort((x, y) => y.count - x.count || y.km - x.km)[0] ?? null;
+};
+
+/** Percent change from the previous year to this one; null when there is nothing to compare with. */
+export const yearChange = (years: YearTotals[], key: 'count' | 'km' | 'minutes' | 'cost' | 'co2', year: string): number | null => {
+    const now = years.find(y => y.year === year);
+    const before = years.find(y => y.year === String(Number(year) - 1));
+    if (!now || !before || before[key] <= 0) return null;
+    return Math.round(((now[key] - before[key]) / before[key]) * 100);
+};
 
 /** Flights, kilometres and time per year, oldest first, with the years in between that have none. */
 export const totalsByYear = (items: JourneyRecord[]): YearTotals[] => {
@@ -189,8 +226,9 @@ export const totalsByYear = (items: JourneyRecord[]): YearTotals[] => {
         if (journeyStatus(r.flight).state === 'cancelled') continue;
         const year = yearOf(r);
         if (!/^\d{4}$/.test(year)) continue;
-        const row = map.get(year) ?? { year, count: 0, km: 0, minutes: 0, cost: 0 };
+        const row = map.get(year) ?? { year, count: 0, km: 0, minutes: 0, cost: 0, co2: 0 };
         row.count += 1;
+        row.co2 += flightCo2(r.flight);
         row.km += journeyKm(r.flight);
         row.minutes += journeyMinutes(r.flight);
         row.cost += r.flight.cost || 0;
@@ -199,7 +237,7 @@ export const totalsByYear = (items: JourneyRecord[]): YearTotals[] => {
     const years = [...map.keys()].map(Number).sort((a, b) => a - b);
     if (years.length === 0) return [];
     const out: YearTotals[] = [];
-    for (let y = years[0]; y <= years[years.length - 1]; y++) out.push(map.get(String(y)) ?? { year: String(y), count: 0, km: 0, minutes: 0, cost: 0 });
+    for (let y = years[0]; y <= years[years.length - 1]; y++) out.push(map.get(String(y)) ?? { year: String(y), count: 0, km: 0, minutes: 0, cost: 0, co2: 0 });
     return out;
 };
 
@@ -240,7 +278,7 @@ export interface JourneyGroup {
     /** Changes of plane inside a leg of the journey (connections of 24 hours or less). */
     stops: number;
     /** Where the group came from: a trip, a shared booking or itinerary, or found by matching the flights up. */
-    source: 'trip' | 'booking' | 'detected';
+    source: 'trip' | 'booking' | 'detected' | 'manual';
 }
 
 export type JourneyUnit = { kind: 'single'; rec: JourneyRecord } | { kind: 'journey'; group: JourneyGroup };
@@ -331,8 +369,14 @@ export const groupJourneys = (items: JourneyRecord[]): JourneyUnit[] => {
         if (r.flight.itineraryId) return { key: `it:${r.flight.itineraryId}`, source: 'booking' };
         return null;
     };
+    // Choices made by hand come first: "alone" legs stay single, and legs sharing a `j:` key form one journey.
+    const manual = new Map<string, JourneyRecord[]>();
+    for (const r of items) { const k = r.flight.journeyKey; if (k?.startsWith('j:')) manual.set(k, [...(manual.get(k) || []), r]); }
+    const joined = new Set<string>();
+    for (const list of manual.values()) if (list.length >= 2) list.forEach(r => joined.add(r.flight.id));
+    const pool = items.filter(r => r.flight.journeyKey !== 'alone' && !joined.has(r.flight.id));
     const buckets = new Map<string, { list: JourneyRecord[]; source: JourneyGroup['source'] }>();
-    for (const r of items) {
+    for (const r of pool) {
         const k = keyOf(r);
         if (k) { const b = buckets.get(k.key) ?? { list: [], source: k.source }; b.list.push(r); buckets.set(k.key, b); }
     }
@@ -344,7 +388,12 @@ export const groupJourneys = (items: JourneyRecord[]): JourneyUnit[] => {
         b.list.forEach(r => placed.add(r.flight.id));
         groups.push({ id, list: b.list, source: b.source, trip: b.list[0].trip });
     }
-    const loose = items.filter(r => isIndependent(r.trip.id) && !placed.has(r.flight.id));
+    for (const [id, list] of manual) {
+        if (list.length < 2) continue;
+        list.forEach(r => placed.add(r.flight.id));
+        groups.push({ id, list, source: 'manual', trip: list[0].trip });
+    }
+    const loose = pool.filter(r => isIndependent(r.trip.id) && !placed.has(r.flight.id));
     for (const list of detect(loose)) {
         const sorted = [...list].sort((a, b) => depMs(a.flight) - depMs(b.flight));
         list.forEach(r => placed.add(r.flight.id));
@@ -449,12 +498,45 @@ export const byCarrier = (items: JourneyRecord[]): Tally[] =>
 export const byAirport = (items: JourneyRecord[]): Tally[] =>
     tally(items, r => [r.flight.origin, r.flight.destination].filter(p => p?.trim()).map(p => ({ key: placeCode(p, r.flight.mode), label: r.flight.mode && r.flight.mode !== 'Flight' ? placeName(p) : `${placeCode(p)} ${placeName(p)}`.trim() })));
 
+/** Who flew a leg: the people marked on it, else everyone on its trip. */
+export const passengersOf = (r: JourneyRecord): string[] =>
+    r.flight.passengers ?? (isIndependent(r.trip.id) ? [] : r.trip.participants || []);
+
+/** Flights per person, most flown first; empty when fewer than two people appear anywhere. */
+export const byPassenger = (items: JourneyRecord[]): Tally[] => {
+    const rows = tally(items, r => passengersOf(r).filter(n => n?.trim()).map(n => ({ key: n.trim().toLowerCase(), label: n.trim() })));
+    return rows.length >= 2 ? rows : [];
+};
+
 /** Flights per cabin class. */
 export const byClass = (items: JourneyRecord[]): Tally[] =>
     tally(items, r => [{ key: r.flight.travelClass || 'Unknown', label: r.flight.travelClass || 'No class' }]);
 
-/** Great-circle estimate of how long a flight takes: 30 minutes on the ground plus the distance at 800 km/h. */
-export const estimateMinutes = (km: number): number => (km > 0 ? Math.round(30 + (km / 800) * 60) : 0);
+/**
+ * An estimate of how long a flight takes (block time, gate to gate). The average speed rises with distance
+ * because short hops spend most of the time climbing and descending: about 500 km/h over 100 km, 830 km/h
+ * from roughly 2,700 km, plus 30 minutes of taxi and approach. Over 3,000 km the jet stream adds up to 7%
+ * westbound and takes up to 7% off eastbound: `eastward` is the east-west share of the heading (+1 due east,
+ * -1 due west). Checked against real schedules, it lands within about 10%.
+ */
+export const estimateMinutes = (km: number, eastward = 0): number => {
+    if (!(km > 0)) return 0;
+    const speed = Math.min(830, 500 + km * 0.12);
+    const wind = 1 - 0.07 * Math.max(-1, Math.min(1, eastward)) * Math.min(1, Math.max(0, (km - 3000) / 3000));
+    return Math.round(30 + (km / speed) * 60 * wind);
+};
+
+/** The east-west share of the initial heading from one place to another: +1 due east, -1 due west, 0 when unknown. */
+export const eastwardShare = (t: Pick<Transport, 'origin' | 'destination' | 'originLat' | 'originLng' | 'destLat' | 'destLng'>): number => {
+    const a = pointOf(t.origin, t.originLat, t.originLng);
+    const b = pointOf(t.destination, t.destLat, t.destLng);
+    if (!a || !b) return 0;
+    const rad = Math.PI / 180;
+    let dLon = (b.lng - a.lng) * rad;
+    if (dLon > Math.PI) dLon -= 2 * Math.PI;
+    if (dLon < -Math.PI) dLon += 2 * Math.PI;
+    return Math.sin(Math.atan2(Math.sin(dLon) * Math.cos(b.lat * rad), Math.cos(a.lat * rad) * Math.sin(b.lat * rad) - Math.sin(a.lat * rad) * Math.cos(b.lat * rad) * Math.cos(dLon)));
+};
 
 /**
  * The same flight number logged before: its times are the best guess for another day (airlines keep a flight's
@@ -517,3 +599,63 @@ export const estimateMinutesFor = (mode: string | undefined, km: number): number
 /** Journeys per mode, most used first. */
 export const byMode = (items: JourneyRecord[]): Tally[] =>
     tally(items, r => [{ key: r.flight.mode, label: r.flight.mode }]);
+
+/* ------------------------------------------------------------------ */
+/* Progress of a journey under way, from real data when there is any    */
+/* ------------------------------------------------------------------ */
+
+export interface LiveInput {
+    /** Where the aircraft or vehicle is now. */
+    position?: { lat: number; lng: number } | null;
+    /** Estimated (or actual) departure and arrival from a live source, as UTC ISO strings. */
+    departureUtc?: string | null;
+    arrivalUtc?: string | null;
+}
+
+export interface LiveProgress {
+    /** 0 to 1 along the route. */
+    progress: number;
+    /** Estimated arrival, epoch ms. */
+    etaMs: number | null;
+    /** Minutes later (positive) or earlier than scheduled; 0 when unknown. */
+    delayMin: number;
+    /** What the progress came from. */
+    basis: 'position' | 'times' | 'clock';
+}
+
+const haversine = (a: [number, number], b: [number, number]) => calculateDistance(a[1], a[0], b[1], b[0]);
+
+/**
+ * How far along a journey is and when it will arrive. The best answer is the real position (how far the
+ * aircraft is along the great circle between its two airports); next the live estimated times; last the
+ * schedule. A late flight shows its real ETA and delay instead of the schedule's.
+ */
+export const liveProgress = (t: Transport, live: LiveInput | undefined, now = Date.now()): LiveProgress => {
+    const schedDep = depMs(t), schedArr = arrMs(t);
+    const dep = live?.departureUtc ? Date.parse(live.departureUtc) : schedDep;
+    const arr = live?.arrivalUtc ? Date.parse(live.arrivalUtc) : schedArr;
+    const etaMs = Number.isFinite(arr) ? arr : null;
+    const delayMin = etaMs != null && Number.isFinite(schedArr) ? Math.round((etaMs - schedArr) / 60000) : 0;
+    const clamp = (n: number) => Math.min(1, Math.max(0, n));
+
+    const ends = journeyEnds(t);
+    if (live?.position && ends) {
+        const pos: [number, number] = [live.position.lng, live.position.lat];
+        const done = haversine(ends.from, pos);
+        const left = haversine(pos, ends.to);
+        if (done + left > 0) return { progress: clamp(done / (done + left)), etaMs, delayMin, basis: 'position' };
+    }
+    const span = (Number.isFinite(dep) && Number.isFinite(arr)) ? arr - dep : 0;
+    const progress = span > 0 ? clamp((now - dep) / span) : now >= arr ? 1 : 0;
+    return { progress, etaMs, delayMin, basis: live?.departureUtc || live?.arrivalUtc ? 'times' : 'clock' };
+};
+
+/** Minutes a flight takes from its local departure and arrival times, using each airport's own time zone; null when a zone is unknown. */
+export const durationBetween = (origin: string, destination: string, depDate: string, depTime: string, arrDate: string, arrTime: string): number | null => {
+    const from = zoneOf(origin), to = zoneOf(destination);
+    if (!from || !to) return null;
+    const dep = parseLocalDateInTimezone(depDate, depTime || '00:00', from).getTime();
+    const arr = parseLocalDateInTimezone(arrDate || depDate, arrTime || '00:00', to).getTime();
+    const mins = Math.round((arr - dep) / 60000);
+    return Number.isFinite(mins) && mins > 0 ? mins : null;
+};

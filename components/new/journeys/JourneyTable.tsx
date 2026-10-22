@@ -184,7 +184,7 @@ const JourneyHeader: React.FC<{ group: JourneyGroup; open: boolean; onToggle: ()
     const states = group.legs.map(r => journeyStatus(r.flight, now));
     const state = states.some(s => s.state === 'travelling') ? states.find(s => s.state === 'travelling')! : states.find(s => s.state === 'scheduled') ?? states[states.length - 1];
     const route = journeyRoute(group.legs).join(' → ');
-    const name = group.source === 'trip' ? group.trip.name : group.source === 'booking' ? 'One booking' : 'Found by matching';
+    const name = group.source === 'trip' ? group.trip.name : group.source === 'booking' ? 'One booking' : group.source === 'manual' ? 'Joined by you' : 'Found by matching';
     const waits = group.legs.slice(1).map((r, i) => layoverMinutes(group.legs[i].flight, r.flight)).filter(m => m > 0 && m <= 24 * 60);
     const kind = group.shape === 'round-trip' ? 'Round trip' : group.shape === 'multi-city' ? 'Multi-city' : group.stops > 0 ? `${group.stops} ${group.stops === 1 ? 'stop' : 'stops'}` : 'Connection';
     const layover = waits.length ? ` · ${formatMinutes(waits.reduce((n, m) => n + m, 0))} layover` : '';

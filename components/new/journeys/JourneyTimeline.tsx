@@ -3,6 +3,7 @@ import type { Carrier } from '../../../types';
 import SmoothDrawer from '../../kokonutui/smooth-drawer';
 import { ArrowUpRight, Check, PencilSimple, Suitcase, X } from '../../ui/hugeicons';
 import { RP_FIELD } from '../fields';
+import { ShareMenu } from './ShareMenu';
 import { RpSection, RpSheet, useIsMobile } from '../ui';
 import { CarrierCell, DelayChip, STATUS_LOOK, StatusPill, layoverTone } from './JourneyParts';
 import { modeLook } from '../trips/transportModes';
@@ -112,9 +113,13 @@ export const JourneyTimeline: React.FC<{
     onTakeOff?: (record: JourneyRecord) => void;
     /** Make a trip of flights that are on no trip yet. */
     onCreateTrip?: (group: JourneyGroup) => void;
+    /** Say these flights are not one journey (each goes back to being on its own). */
+    onSeparate?: (group: JourneyGroup) => void;
+    /** Hand the grouping back to automatic detection. */
+    onAuto?: (group: JourneyGroup) => void;
     brandfetchApiKey?: string;
     carriers?: Carrier[];
-}> = ({ group, onClose, onOpenLeg, onOpenTrip, onRenameTrip, onTakeOff, onCreateTrip, brandfetchApiKey, carriers }) => {
+}> = ({ group, onClose, onOpenLeg, onOpenTrip, onRenameTrip, onTakeOff, onCreateTrip, onSeparate, onAuto, brandfetchApiKey, carriers }) => {
     const mobile = useIsMobile();
     const kept = React.useRef(group);
     if (group) kept.current = group;
@@ -153,11 +158,16 @@ export const JourneyTimeline: React.FC<{
             {!onTrip && onCreateTrip ? (
                 <RpSection title="Trip" icon={Suitcase}>
                     <div className="flex min-h-11 items-center justify-between gap-3 py-1">
-                        <span className="min-w-0 truncate text-sm text-rp-muted">{g.source === 'detected' ? 'Matched by airports and dates' : 'Not on a trip'}</span>
+                        <span className="min-w-0 truncate text-sm text-rp-muted">{g.source === 'detected' ? 'Matched by airports and dates' : g.source === 'manual' ? 'Joined by you' : 'Not on a trip'}</span>
                         <button type="button" onClick={() => onCreateTrip(g)} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-rp-ink px-4 text-sm font-medium text-rp-on-ink outline-none hover:bg-rp-ink/90 focus-visible:ring-2 focus-visible:ring-rp-muted"><Suitcase size={16} aria-hidden /> Create trip</button>
                     </div>
                 </RpSection>
             ) : null}
+            <div className="flex flex-wrap items-center justify-end gap-2">
+                {g.source === 'manual' && onAuto ? <button type="button" onClick={() => onAuto(g)} className="inline-flex min-h-11 items-center rounded-full bg-rp-inset px-4 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted">Group automatically</button> : null}
+                {onSeparate ? <button type="button" onClick={() => onSeparate(g)} className="inline-flex min-h-11 items-center rounded-full bg-rp-inset px-4 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted">Not one journey</button> : null}
+                <ShareMenu records={g.legs} name="journey" />
+            </div>
             {onTrip ? (
                 <RpSection title="Trip" icon={Suitcase}>
                     {editingName ? (

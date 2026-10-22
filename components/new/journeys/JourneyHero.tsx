@@ -3,10 +3,10 @@ import { cn } from '../../../utils/cn';
 import NumberFlow from '@number-flow/react';
 import { BarChart } from '../../bklit/bar-chart';
 import { RoutesMap } from './RoutesMap';
-import { Airplane, Buildings, Clock, CurrencyDollar, Globe, Leaf, Seat, type Icon } from '../../ui/hugeicons';
+import { Airplane, ArrowUpRight, Buildings, Clock, CurrencyDollar, Globe, Leaf, Seat, Tree, Users, type Icon } from '../../ui/hugeicons';
 import { getActiveCurrency, formatCurrency } from '../../../utils/formatters';
+import { aroundTheWorld, byAirport, byCarrier, byClass, byMode, byPassenger, journeyTotals, mostFlownRoute, routeLines, totalCo2, totalsByYear, yearChange, type JourneyRecord, type Tally } from '../../../utils/journeysModel';
 import { footprintOf, formatKg, treeYears } from '../../../utils/footprint';
-import { aroundTheWorld, byAirport, byCarrier, byClass, byMode, journeyTotals, routeLines, totalsByYear, type JourneyRecord, type Tally } from '../../../utils/journeysModel';
 
 /**
  * The hero card of the Flights page, holding every number: three totals (flights, kilometres, hours in
@@ -108,6 +108,15 @@ const FootprintStrip: React.FC<{ items: JourneyRecord[]; land: boolean }> = ({ i
     );
 };
 
+/** One plain fact with a small label above it. */
+const Fact: React.FC<{ icon: Icon; label: string; value: string; note?: string }> = ({ icon: IconC, label, value, note }) => (
+    <div className="flex min-w-0 flex-col gap-0.5 rounded-rp-inset bg-rp-inset/60 p-3">
+        <p className="flex items-center gap-1.5 text-xs font-medium text-rp-muted"><IconC size={14} className="text-rp-ochre" aria-hidden /> {label}</p>
+        <p className="rp-tabular truncate text-base font-semibold text-rp-ink">{value}</p>
+        {note ? <p className="truncate text-xs text-rp-muted">{note}</p> : null}
+    </div>
+);
+
 /** `kind` = 'land' words and breakdowns it for land and sea journeys (Road trips); flights by default. */
 export const JourneyHero: React.FC<{ items: JourneyRecord[]; kind?: 'flight' | 'land' }> = ({ items, kind = 'flight' }) => {
     const land = kind === 'land';
@@ -144,8 +153,18 @@ export const JourneyHero: React.FC<{ items: JourneyRecord[]; kind?: 'flight' | '
     const earth = aroundTheWorld(totals.km);
     const carriers = useMemo(() => byCarrier(items), [items]);
     const airports = useMemo(() => byAirport(items), [items]);
+    const people = useMemo(() => byPassenger(items), [items]);
     const classes = useMemo(() => byClass(items).filter(c => c.key !== 'Unknown'), [items]);
     const modes = useMemo(() => byMode(items), [items]);
+    const topRoute = useMemo(() => mostFlownRoute(items), [items]);
+    const co2 = useMemo(() => (land ? 0 : totalCo2(items)), [items, land]);
+    const thisYear = String(new Date().getFullYear());
+    const yoy = useMemo(() => {
+        const last = years.length ? years[years.length - 1].year : '';
+        const y = years.find(r => r.year === thisYear) ? thisYear : last;
+        return { year: y, pct: yearChange(years, metric === 'minutes' ? 'minutes' : metric, y) };
+    }, [years, metric, thisYear]);
+    const tonnes = (kg: number) => (kg >= 1000 ? `${(kg / 1000).toFixed(1)} t` : `${kg} kg`);
     const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
     const hours = (v: number) => Math.round(v / 60);
 
@@ -196,12 +215,34 @@ export const JourneyHero: React.FC<{ items: JourneyRecord[]; kind?: 'flight' | '
                 </div>
             </div>
 
+            {land ? null : (
+            <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
+                <Fact
+                    icon={ArrowUpRight} label={`${yoy.year || 'This year'} vs the year before`}
+                    value={yoy.pct === null ? 'Nothing to compare' : `${yoy.pct > 0 ? '+' : ''}${yoy.pct}%`}
+                    note={yoy.pct === null ? 'Needs flights in two years in a row' : `${metric === 'count' ? 'flights' : metric === 'km' ? 'kilometres' : metric === 'minutes' ? 'time in the air' : 'spend'}`}
+                />
+                <Fact
+                    icon={Airplane} label="Most flown route"
+                    value={topRoute ? `${topRoute.from} ⇄ ${topRoute.to}` : 'None yet'}
+                    note={topRoute ? `${plural(topRoute.count, 'flight', 'flights')} · ${topRoute.km.toLocaleString('en-US')} km` : undefined}
+                />
+                <Fact
+                    icon={Tree} label="Estimated CO₂"
+                    value={co2 > 0 ? tonnes(co2) : 'None yet'}
+                    note={co2 > 0 && totals.count > 0 ? `${tonnes(Math.round(co2 / totals.count))} a flight · ${tonnes(Math.round(co2 / Math.max(1, years.filter(y => y.count > 0).length)))} a year` : undefined}
+                />
+            </div>
+            )}
+
+            {!land && people.length > 0 ? <Breakdown title="Who flew" icon={Users} rows={people} unit="flights" /> : null}
+
             <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
                 <Breakdown title={land ? 'Operators' : 'Airlines'} icon={Buildings} rows={carriers} unit={land ? 'journeys' : 'flights'} />
                 <Breakdown title={land ? 'Places' : 'Airports'} icon={Airplane} rows={airports} unit="visits" />
                 {land ? <Breakdown title="Mode" icon={Airplane} rows={modes} unit="journeys" /> : <Breakdown title="Cabin class" icon={Seat} rows={classes} unit="flights" />}
             </div>
-            <FootprintStrip items={items} land={land} />
+            {land ? <FootprintStrip items={items} land /> : null}
         </section>
     );
 };

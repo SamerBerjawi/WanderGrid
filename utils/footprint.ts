@@ -1,5 +1,5 @@
 import type { Transport } from '../types';
-import { journeyKm, type JourneyRecord } from './journeysModel';
+import { journeyKm, journeyStatus, type JourneyRecord } from './journeysModel';
 
 /**
  * Carbon footprint of a journey, one traveller, in kilograms of CO2e. One place for flights and for land
@@ -51,6 +51,7 @@ export const footprintOf = (items: JourneyRecord[], by: 'mode' | 'cabin'): Footp
     let total = 0;
     let saved = 0;
     for (const { flight: t } of items) {
+        if (journeyStatus(t).state === 'cancelled') continue;
         const kg = footprintKg(t);
         if (kg <= 0) continue;
         total += kg;

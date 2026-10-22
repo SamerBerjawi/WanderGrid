@@ -5,15 +5,14 @@ import { candidateToLeg, type FlightCandidate } from '../../../services/flightLo
 import { useFlightLookup } from '../../../hooks/useFlightLookup';
 import { FlightFinder } from './FlightFinder';
 import { calculateDurationMinutes } from '../../../services/geocoding';
-import { Broadcast, Suitcase, X } from '../../ui/hugeicons';
+import { Broadcast, Suitcase, Users, X } from '../../ui/hugeicons';
 import { RP_FIELD, RpField } from '../fields';
-import { RpSection, RpSheet } from '../ui';
+import { RpChip, RpSection, RpSheet } from '../ui';
 import { TripMenu } from '../trips/TripMenu';
 import { LEG_DATE, LegForm } from '../trips/LegForm';
 import { extractIata } from '../../../hooks/useFlightLog';
-import { MODE_SPEED_KMH, elapsedMinutes, estimateMinutes, fromLog, isIndependent, journeyKm, localArrival, type JourneyRecord } from '../../../utils/journeysModel';
-import { toast } from '../../../services/toast';
-import { errorMessage } from '../../../services/toast';
+import { MODE_SPEED_KMH, durationBetween, eastwardShare, elapsedMinutes, estimateMinutes, fromLog, isIndependent, journeyKm, localArrival, type JourneyRecord } from '../../../utils/journeysModel';
+import { errorMessage, toast } from '../../../services/toast';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -112,7 +111,7 @@ export const JourneyEditor: React.FC<{
             const origin = flight ? extractIata(leg.origin).toUpperCase() || leg.origin.trim() : leg.origin.trim();
             const destination = flight ? extractIata(leg.destination).toUpperCase() || leg.destination.trim() : leg.destination.trim();
             const arrivalDate = leg.arrivalDate || leg.departureDate;
-            const minutes = flight ? calculateDurationMinutes(origin, destination, leg.departureDate, leg.departureTime || '00:00', arrivalDate, leg.arrivalTime || '00:00') : 0;
+            const minutes = flight ? (durationBetween(origin, destination, leg.departureDate, leg.departureTime || '00:00', arrivalDate, leg.arrivalTime || '00:00') ?? calculateDurationMinutes(origin, destination, leg.departureDate, leg.departureTime || '00:00', arrivalDate, leg.arrivalTime || '00:00')) : 0;
             // Land and sea: the time is the wall-clock gap (no airport zones), the distance the one given, else the time at the mode's average speed, else the straight line.
             if (!flight) {
                 // Zones for both ends (cached after the first time), so a crossing of a zone line is counted.
@@ -148,6 +147,7 @@ export const JourneyEditor: React.FC<{
                 ...(flight ? {} : { distance: landKm }),
                 actualDepartureTime: leg.actualDepartureTime || undefined,
                 actualArrivalTime: leg.actualArrivalTime || undefined,
+                passengers: trip && trip.participants.length > 1 ? leg.passengers : undefined,
             };
             await onSave(payload, tripId, editing ? { flight: editing.flight, tripId: isIndependent(editing.trip.id) ? 'unassigned' : editing.trip.id } : undefined);
             if (next && onNextLeg) onNextLeg(payload, tripId); else onClose();
@@ -204,8 +204,9 @@ export const JourneyEditor: React.FC<{
     // A guess at the arrival from the distance, for a flight whose schedule can't be looked up.
     const canEstimate = flight && /^[A-Za-z]{3}$/.test((leg.origin || '').trim()) && /^[A-Za-z]{3}$/.test((leg.destination || '').trim()) && Boolean(leg.departureDate && leg.departureTime);
     const estimate = () => {
-        const km = journeyKm({ origin: leg.origin || '', destination: leg.destination || '', originLat: leg.originLat, originLng: leg.originLng, destLat: leg.destLat, destLng: leg.destLng } as Transport);
-        const minutes = estimateMinutes(km);
+        const ends = { origin: leg.origin || '', destination: leg.destination || '', originLat: leg.originLat, originLng: leg.originLng, destLat: leg.destLat, destLng: leg.destLng };
+        const km = journeyKm(ends as Transport);
+        const minutes = estimateMinutes(km, eastwardShare(ends));
         if (!minutes) { setError("Couldn't work out the distance. Enter the arrival time."); return; }
         setError('');
         const arr = localArrival(leg.origin!, leg.destination!, leg.departureDate!, leg.departureTime!, minutes);
@@ -219,6 +220,14 @@ export const JourneyEditor: React.FC<{
         const dayShift = Math.round((Date.parse(`${logged.arrivalDate || logged.departureDate}T12:00:00Z`) - Date.parse(`${logged.departureDate}T12:00:00Z`)) / 86400000);
         const arrival = new Date(`${leg.departureDate}T12:00:00Z`); arrival.setUTCDate(arrival.getUTCDate() + Math.max(0, dayShift));
         patch({ origin: logged.origin, destination: logged.destination, provider: logged.provider || leg.provider, departureTime: logged.departureTime, arrivalTime: logged.arrivalTime, arrivalDate: arrival.toISOString().slice(0, 10), duration: logged.duration, originLat: undefined, originLng: undefined, originGeoKey: undefined, destLat: undefined, destLng: undefined, destGeoKey: undefined });
+    };
+
+    // Several people on the trip: mark who flew this leg. Everyone ticked is stored as "no list" (everyone).
+    const people = trip?.participants ?? [];
+    const flew = leg.passengers ?? people;
+    const togglePerson = (name: string) => {
+        const next = flew.includes(name) ? flew.filter(n => n !== name) : people.filter(n => n === name || flew.includes(n));
+        patch({ passengers: next.length === people.length ? undefined : next });
     };
 
     const tripItems = useMemo(() => [
@@ -306,6 +315,17 @@ export const JourneyEditor: React.FC<{
                         <TripMenu label="Choose a trip" pill={{ label: trip ? 'Change' : 'Add to trip', icon: Suitcase }} items={tripItems} />
                     </div>
                 </RpSection>
+
+                {people.length > 1 ? (
+                    <RpSection title="Who flew" icon={Users}>
+                        <div role="group" aria-label="Who flew this leg" className="flex flex-wrap gap-2 py-2">
+                            {people.map(n => (
+                                <RpChip key={n} selected={flew.includes(n)} onClick={() => togglePerson(n)}>{n}</RpChip>
+                            ))}
+                        </div>
+                        <p className="text-xs text-rp-muted">Everyone on the trip by default. Untick whoever stayed behind.</p>
+                    </RpSection>
+                ) : null}
 
                 {error ? <p role="alert" className="text-sm text-rp-rust">{error}</p> : null}
             </div>

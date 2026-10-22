@@ -676,6 +676,25 @@ export const useFlightLog = () => {
     refreshData();
   };
 
+  /** Sets or clears how flights are grouped by hand: `alone`, a shared `j:` key, or undefined for automatic. */
+  const setJourneyKey = async (records: FlightRecord[], key: string | undefined): Promise<void> => {
+    const ids = new Set(records.map(r => r.flight.id));
+    const upsertFlights: Transport[] = [];
+    const touched = new Map<string, Trip>();
+    for (const r of records) {
+      const next = { ...r.flight, journeyKey: key };
+      if (key === undefined) delete next.journeyKey;
+      if (isUnassigned(r.trip.id)) upsertFlights.push(next);
+      else {
+        const t = touched.get(r.trip.id) ?? (() => { const f = trips.find(x => x.id === r.trip.id); return f ? { ...f, transports: [...(f.transports || [])] } : undefined; })();
+        if (t) { t.transports = (t.transports || []).map(x => (x.id === next.id ? next : x)); touched.set(t.id, t); }
+      }
+    }
+    if (ids.size === 0) return;
+    await dataService.applyBatch({ upsertTrips: Array.from(touched.values()), upsertFlights });
+    refreshData();
+  };
+
   /**
    * Makes a trip from flights: named for where the first leg goes, spanning their dates, holding them. They
    * leave the independent list (or the trip they were on). Gives back the trip and a function that undoes it.
@@ -684,8 +703,14 @@ export const useFlightLog = () => {
     if (records.length === 0) throw new Error('Choose at least one flight.');
     const sorted = [...records].sort((a, b) => getFlightDepartureUtcDate(a.flight).getTime() - getFlightDepartureUtcDate(b.flight).getTime());
     const home = sorted[0].flight.origin;
-    // Where the trip goes: the first place reached that is not where it started.
-    const away = sorted.find(r => r.flight.destination !== home)?.flight.destination || sorted[0].flight.destination;
+    // Where the trip goes: the first place stayed at (a leg ends there and the next leaves more than a day later,
+    // or it is the last leg), not a connection and not where it started.
+    const stay = sorted.find((r, i) => {
+      const next = sorted[i + 1];
+      const connects = next && next.flight.origin === r.flight.destination && getFlightDepartureUtcDate(next.flight).getTime() - getFlightArrivalUtcDate(r.flight).getTime() <= 24 * 3_600_000;
+      return !connects && r.flight.destination !== home;
+    });
+    const away = stay?.flight.destination || sorted.find(r => r.flight.destination !== home)?.flight.destination || sorted[0].flight.destination;
     const city = getCityName(away) || away;
     const start = sorted.map(r => r.flight.departureDate).filter(Boolean).sort()[0] || today();
     const end = sorted.map(r => r.flight.arrivalDate || r.flight.departureDate).filter(Boolean).sort().slice(-1)[0] || start;
@@ -887,7 +912,7 @@ export const useFlightLog = () => {
     isEditing, setIsEditing, editingFlight, form, patchForm, openFlightForm, saveFlight, saveDraft, flightFormError, isSavingFlight,
     showManualFields, setShowManualFields, searchedFlights, setSearchedFlights, isRouteSearching, routeSearchError, searchRouteFlights, selectRouteFlight,
     // whole-record writes
-    saveJourney, assignJourneys, deleteJourneys, createTripFromFlights,
+    saveJourney, assignJourneys, setJourneyKey, deleteJourneys, createTripFromFlights,
     // derived
     filteredFlights, groupedFlights, groupedByYear, nextUpcomingFlight, metrics, uniqueYears, monthlyData,
   };

@@ -4,9 +4,9 @@ import { useLiveFlight } from '../../../hooks/useLiveFlight';
 import { CarrierCell, StatusPill } from './JourneyParts';
 import { FlightProgress } from './FlightProgress';
 import { formatDate } from '../../../utils/formatters';
-import { isLiveWindow, journeyStatus, type JourneyRecord } from '../../../utils/journeysModel';
+import { isIndependent, isLiveWindow, journeyStatus, type JourneyRecord } from '../../../utils/journeysModel';
 import { getFlightDepartureUtcDate } from '../../../utils/flightData';
-import { Airport, DoorOpen } from '../../ui/hugeicons';
+import { Airport, DoorOpen, Suitcase } from '../../ui/hugeicons';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -20,7 +20,7 @@ export const LiveNow: React.FC<{ items: JourneyRecord[]; onOpen: (r: JourneyReco
         const near = items.filter(r => r.flight.mode === 'Flight' && isLiveWindow(r.flight, 3, now) && journeyStatus(r.flight, now).state !== 'done');
         return near.sort((a, b) => getFlightDepartureUtcDate(a.flight).getTime() - getFlightDepartureUtcDate(b.flight).getTime())[0] ?? null;
     }, [items]);
-    const { data } = useLiveFlight(rec?.flight ?? null, Boolean(rec));
+    const { data, candidate } = useLiveFlight(rec?.flight ?? null, Boolean(rec));
     if (!rec) return null;
     const t = rec.flight;
     const status = journeyStatus(t);
@@ -50,7 +50,10 @@ export const LiveNow: React.FC<{ items: JourneyRecord[]; onOpen: (r: JourneyReco
                     <StatusPill status={status} mode={t.mode} className="bg-rp-surface text-rp-ink" />
                 </span>
             </span>
-            <FlightProgress flight={t} tone="onInk" />
+            <FlightProgress flight={t} candidate={candidate} tone="onInk" />
+            {!isIndependent(rec.trip.id) ? (
+                <span className="inline-flex items-center justify-center gap-1.5 text-xs text-rp-on-ink/70"><Suitcase size={14} aria-hidden /> {rec.trip.name}{rec.trip.startDate ? ` · ${formatDate(rec.trip.startDate, 'short')} – ${formatDate(rec.trip.endDate || rec.trip.startDate, 'short')}` : ''}</span>
+            ) : null}
             <span className="rp-tabular text-center text-xs text-rp-on-ink/70 sm:hidden">{formatDate(t.departureDate, 'short')}{gate ? <> · {gate}</> : null}</span>
         </button>
     );

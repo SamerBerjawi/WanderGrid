@@ -18,6 +18,7 @@ const pick = (list: FlightCandidate[], t: Transport): FlightCandidate | null => 
 
 export const useLiveFlight = (flight: Transport | null, auto: boolean, intervalMs = 60_000) => {
     const [data, setData] = useState<FlightStatusResponse | null>(null);
+    const [candidate, setCandidate] = useState<FlightCandidate | null>(null);
     const [source, setSource] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -42,10 +43,12 @@ export const useLiveFlight = (flight: Transport | null, auto: boolean, intervalM
             const c = pick(r.candidates.filter(x => x.confidence === 'schedule'), f);
             if (!c) throw new Error(r.candidates.length ? "Live status isn't available for this date yet." : whyNotFound(r, f.departureDate));
             setData(candidateToStatus(c));
+            setCandidate(c);
             setSource(c.alsoFrom?.length ? `${c.sourceLabel} + ${c.alsoFrom.join(', ')}` : c.sourceLabel);
             setUpdatedAt(Date.now());
         } catch (e) {
             setData(null);
+            setCandidate(null);
             setError(errorMessage(e, "Couldn't reach the flight data. Try again."));
             throw e;
         } finally {
@@ -55,7 +58,7 @@ export const useLiveFlight = (flight: Transport | null, auto: boolean, intervalM
     }, []);
 
     // A different flight starts clean.
-    useEffect(() => { setData(null); setError(''); setUpdatedAt(null); setSource(''); }, [id]);
+    useEffect(() => { setData(null); setCandidate(null); setError(''); setUpdatedAt(null); setSource(''); }, [id]);
 
     // Follow it: now, then every interval while the page is visible.
     useEffect(() => {
@@ -67,5 +70,5 @@ export const useLiveFlight = (flight: Transport | null, auto: boolean, intervalM
         return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', run); };
     }, [auto, id, intervalMs, refresh]);
 
-    return { data, source, error, loading, updatedAt, refresh };
+    return { data, candidate, source, error, loading, updatedAt, refresh };
 };

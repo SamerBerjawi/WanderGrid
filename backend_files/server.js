@@ -1676,6 +1676,54 @@ app.get('/api/proxy/test/:provider', async (req, res) => {
     }
 });
 
+// The route a flight in the air (or just landed) has flown so far. OpenSky serves tracks keyless for the current
+// flight only ("You cannot access historical tracks" otherwise), so this is for saving the route while it is live.
+const trackCache = new BoundedMap(CACHE_MAX_ENTRIES);
+const simplifyPath = (points, max = 80) => {
+    if (points.length <= max) return points;
+    const out = [];
+    for (let i = 0; i < max; i++) out.push(points[Math.round((i * (points.length - 1)) / (max - 1))]);
+    return out;
+};
+app.get('/api/proxy/opensky/track', async (req, res) => {
+    const callsign = req.query.callsign ? (resolveIcaoCallsign(req.query.callsign) || String(req.query.callsign)).trim().toUpperCase() : '';
+    let icao24 = req.query.icao24 ? String(req.query.icao24).toLowerCase() : '';
+    if (!callsign && !icao24) return res.status(400).json({ error: 'Give a callsign or icao24.' });
+    const key = `track_${icao24 || callsign}`;
+    const hit = trackCache.get(key);
+    if (hit && Date.now() < hit.expiresAt) return res.json(hit.data);
+    const get = async (url, ms = 6000) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), ms);
+        try { return await fetch(url, { signal: controller.signal, headers: { 'User-Agent': 'WanderGrid/1.0' } }); } finally { clearTimeout(timer); }
+    };
+    try {
+        if (!icao24) {
+            // The transponder code of the aircraft flying this callsign: adsb.lol answers quickly; OpenSky's full state list is the slow fallback.
+            try {
+                const r = await get(`https://api.adsb.lol/v2/callsign/${encodeURIComponent(callsign)}`, 5000);
+                if (r.ok) icao24 = (((await r.json()).ac || [])[0] || {}).hex || '';
+            } catch { /* fall through */ }
+            if (!icao24) {
+                const states = await get('https://opensky-network.org/api/states/all', 9000);
+                if (!states.ok) return res.status(502).json({ error: `OpenSky returned HTTP ${states.status}` });
+                const found = ((await states.json()).states || []).find(s => (s[1] || '').trim().toUpperCase() === callsign);
+                if (!found) return res.json({ path: [], note: 'No transponder seen for that callsign right now.' });
+                icao24 = found[0];
+            }
+        }
+        const up = await get(`https://opensky-network.org/api/tracks/all?icao24=${encodeURIComponent(icao24)}&time=0`);
+        if (!up.ok) return res.json({ icao24, path: [], note: `OpenSky returned HTTP ${up.status}` });
+        const body = await up.json();
+        const points = (body.path || []).filter(p => p[1] != null && p[2] != null).map(p => [Math.round(p[1] * 100) / 100, Math.round(p[2] * 100) / 100]) // [latitude, longitude];
+        const data = { icao24, callsign: (body.callsign || '').trim(), start: body.startTime || null, end: body.endTime || null, path: simplifyPath(points) };
+        trackCache.set(key, { data, expiresAt: Date.now() + 45000 });
+        return res.json(data);
+    } catch (e) {
+        return res.status(e.name === 'AbortError' ? 504 : 502).json({ error: 'Failed to reach OpenSky Network.' });
+    }
+});
+
 // ==========================================
 // OPENSKY NETWORK LIVE TELEMETRY PROXY (FREE / KEYLESS)
 
