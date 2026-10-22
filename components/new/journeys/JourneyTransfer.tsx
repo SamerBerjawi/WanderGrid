@@ -24,10 +24,10 @@ const newId = () => Math.random().toString(36).slice(2, 11);
 const key = (t: Transport) => [t.origin, t.destination, t.departureDate, t.identifier].map(v => String(v || '').trim().toUpperCase()).join('|');
 
 type FieldKey = 'from' | 'to' | 'date' | 'depTime' | 'depDateTime' | 'arrDate' | 'arrTime' | 'arrDateTime' | 'airline' | 'flight' | 'pnr' | 'seat' | 'cabin' | 'cost' | 'aircraft';
-interface FieldDef { key: FieldKey; label: string; match: RegExp }
+export interface FieldDef { key: FieldKey; label: string; match: RegExp }
 
 /** The flight fields a spreadsheet column can fill, with the header names that usually mean them (first match wins). */
-const FIELDS: FieldDef[] = [
+export const FIELDS: FieldDef[] = [
     { key: 'from', label: 'From', match: /^(from|origin|departure airport|dep airport|orig|departure iata|from airport|leaving|departing|depart|leaving from|from city)$/ },
     { key: 'to', label: 'To', match: /^(to|destination|arrival airport|arr airport|dest|arrival iata|to airport|arriving|arrive|going to|to city|arriving at)$/ },
     { key: 'depDateTime', label: 'Departure (date and time)', match: /gate departure \(scheduled\)|scheduled departure|departure (date ?time|datetime)|departure scheduled|^dep(arture)? at$/ },
@@ -48,7 +48,7 @@ const REQUIRED: FieldKey[] = ['from', 'to'];
 type Mapping = Partial<Record<FieldKey, string>>;
 type Row = Record<string, unknown>;
 
-const detect = (headers: string[]): Mapping => {
+export const detect = (headers: string[]): Mapping => {
     const out: Mapping = {};
     const used = new Set<string>();
     for (const f of FIELDS) {
@@ -60,7 +60,7 @@ const detect = (headers: string[]): Mapping => {
 
 const pad = (n: number) => String(n).padStart(2, '0');
 /** A spreadsheet cell as date and time: Excel serial numbers, ISO text, or "d/m/y" text (day first or month first). */
-const splitStamp = (v: unknown, dayFirst: boolean): { date: string; time: string } => {
+export const splitStamp = (v: unknown, dayFirst: boolean): { date: string; time: string } => {
     if (v == null || v === '') return { date: '', time: '' };
     if (typeof v === 'number' && Number.isFinite(v)) {
         const ms = Math.round((v - 25569) * 86400000);
@@ -87,7 +87,7 @@ const timeOf = (v: unknown): string => {
     if (typeof v === 'number' && Number.isFinite(v)) { const f = v % 1; return `${pad(Math.floor(f * 24))}:${pad(Math.round((f * 24 * 60) % 60))}`; }
     return splitStamp(v, false).time;
 };
-const cabinOf = (v: unknown): Transport['travelClass'] | undefined => {
+export const cabinOf = (v: unknown): Transport['travelClass'] | undefined => {
     const t = String(v || '').toLowerCase();
     if (!t) return undefined;
     if (t.includes('first') || t === 'f') return 'First';
@@ -98,7 +98,17 @@ const cabinOf = (v: unknown): Transport['travelClass'] | undefined => {
 };
 
 /** Turns spreadsheet rows into flights using the column mapping. Rows without both places and a date are left out. */
-const build = (rows: Row[], map: Mapping, dayFirst: boolean): Transport[] => {
+/** "89", "€89,50", "1,234.50", "1.234,50": the last separator with one or two digits after it is the decimal point. */
+export const parseMoney = (v: unknown): number => {
+    if (typeof v === 'number') return v;
+    const text = String(v ?? '').replace(/[^\d.,\-]/g, '');
+    if (!text) return NaN;
+    const last = Math.max(text.lastIndexOf('.'), text.lastIndexOf(','));
+    if (last >= 0 && text.length - last - 1 <= 2) return parseFloat(`${text.slice(0, last).replace(/[.,]/g, '')}.${text.slice(last + 1)}`);
+    return parseFloat(text.replace(/[.,]/g, ''));
+};
+
+export const build = (rows: Row[], map: Mapping, dayFirst: boolean): Transport[] => {
     const cell = (r: Row, k: FieldKey) => (map[k] ? r[map[k]!] : undefined);
     const out: Transport[] = [];
     for (const r of rows) {
@@ -107,7 +117,7 @@ const build = (rows: Row[], map: Mapping, dayFirst: boolean): Transport[] => {
         const dep = map.depDateTime ? splitStamp(cell(r, 'depDateTime'), dayFirst) : { date: splitStamp(cell(r, 'date'), dayFirst).date, time: timeOf(cell(r, 'depTime')) };
         if (!origin || !destination || !dep.date) continue;
         const arr = map.arrDateTime ? splitStamp(cell(r, 'arrDateTime'), dayFirst) : { date: splitStamp(cell(r, 'arrDate'), dayFirst).date, time: timeOf(cell(r, 'arrTime')) };
-        const cost = parseFloat(String(cell(r, 'cost') ?? '').replace(/[^\d.\-]/g, ''));
+        const cost = parseMoney(cell(r, 'cost'));
         out.push({
             id: newId(), itineraryId: newId(), type: 'One-Way', mode: 'Flight',
             provider: String(cell(r, 'airline') ?? '').trim(), identifier: String(cell(r, 'flight') ?? '').trim().toUpperCase(),
@@ -138,7 +148,7 @@ const STEPS = ['File', 'Columns', 'Review'];
 type Raw = unknown[][];
 
 /** Header names from the first row (or "Column A…" when the file has none), and the rest as objects keyed by them. */
-const shape = (raw: Raw, hasHeader: boolean): { headers: string[]; rows: Row[] } => {
+export const shape = (raw: Raw, hasHeader: boolean): { headers: string[]; rows: Row[] } => {
     const width = Math.max(0, ...raw.map(r => r.length));
     const letter = (i: number) => (i >= 26 ? String.fromCharCode(64 + Math.floor(i / 26)) : '') + String.fromCharCode(65 + (i % 26));
     const first = raw[0] || [];
