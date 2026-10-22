@@ -11,9 +11,10 @@ import { StackPanel, type StackPage } from '../../components/kokonutui/stack-pan
 import { RpChip, RpEmpty, useIsMobile } from '../../components/new/ui';
 import { RpHugeicon } from '../../components/new/RpHugeicon';
 import { Avatar } from '../../components/new/member/Avatar';
+import { PassportCard } from '../../components/new/member/PassportCard';
 import { MemberRing, leaveColor, type RingSegment } from '../../components/new/member/MemberRing';
 import { MemberSheet, RemoveMemberSheet, type MemberTopic } from '../../components/new/member/MemberSheets';
-import { ArrowLeft, CalendarBlank, Envelope, Eye, EyeSlash, Globe, IdentificationCard, Lock, MapPin, PencilSimple, Plus, SignOut, SunHorizon, Suitcase, Trash, User as UserIcon, type Icon } from '../../components/ui/hugeicons';
+import { ArrowLeft, CalendarBlank, Envelope, Eye, EyeSlash, Globe, IdentificationCard, Lock, MapPin, PencilSimple, Plus, SignOut, SunHorizon, Suitcase, Trash, User as UserIcon, UserCircle, type Icon } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -33,9 +34,10 @@ interface MemberNewProps {
     onRemoved?: () => void;
 }
 
-type TabId = 'leave' | 'trips' | 'places' | 'documents' | 'settings';
+type TabId = 'overview' | 'leave' | 'trips' | 'places' | 'documents' | 'settings';
 const TAB_KEY = 'wandergrid_member_new_tab';
 const TAB_PILL: Record<TabId, { bg: string; text: string; icon: string }> = {
+    overview: { bg: 'bg-rp-navy', text: 'text-rp-paper dark:text-rp-on-ink', icon: 'text-rp-navy' },
     leave: { bg: 'bg-rp-mustard', text: 'text-rp-on-mustard', icon: 'text-rp-ochre' },
     trips: { bg: 'bg-rp-ink', text: 'text-rp-on-ink', icon: 'text-rp-ink' },
     places: { bg: 'bg-rp-green', text: 'text-rp-paper', icon: 'text-rp-green' },
@@ -45,8 +47,8 @@ const TAB_PILL: Record<TabId, { bg: string; text: string; icon: string }> = {
 const readTab = (): TabId => {
     try {
         const v = localStorage.getItem(TAB_KEY);
-        return v === 'trips' || v === 'places' || v === 'documents' || v === 'settings' ? v : 'leave';
-    } catch { return 'leave'; }
+        return v === 'leave' || v === 'trips' || v === 'places' || v === 'documents' || v === 'settings' ? v : 'overview';
+    } catch { return 'overview'; }
 };
 
 const ROLE_CHIP: Record<User['role'], string> = {
@@ -127,13 +129,14 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
     const firstName = member.name.split(' ')[0];
 
     const tabItems = ([
+        { id: 'overview', title: 'Overview', icon: UserCircle },
         { id: 'leave', title: 'Leave', icon: SunHorizon },
         { id: 'trips', title: 'Trips', icon: Suitcase, badge: data.memberTrips.length || undefined },
         { id: 'places', title: 'Places', icon: Globe, badge: data.stats.places.length || undefined },
         { id: 'documents', title: 'Documents', icon: IdentificationCard },
         ...(data.canEdit ? [{ id: 'settings', title: 'Settings', icon: UserIcon }] : []),
     ] as const);
-    const activeTab: TabId = tabItems.some(t => t.id === tab) ? tab : 'leave';
+    const activeTab: TabId = tabItems.some(t => t.id === tab) ? tab : 'overview';
     // On phones only the selected tab shows its name (§1.5); the rest keep their icon and count.
     const tabs = tabItems.map(t => ({ ...t, hideTitle: mobile && t.id !== activeTab, iconClassName: activeTab === t.id ? undefined : TAB_PILL[t.id as TabId].icon }));
 
@@ -280,6 +283,17 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                 </div>
 
                 <section aria-label={tabItems.find(t => t.id === activeTab)?.title}>
+                    {activeTab === 'overview' ? (
+                        <PassportCard
+                            member={member}
+                            places={data.stats.places}
+                            status={passport}
+                            reveal={reveal}
+                            onToggleReveal={() => setReveal(v => !v)}
+                            onEdit={data.canEdit ? () => setTopic('passport') : undefined}
+                        />
+                    ) : null}
+
                     {activeTab === 'leave' ? (
                         <div className="flex flex-col gap-3">
                             {years.length > 1 ? (
