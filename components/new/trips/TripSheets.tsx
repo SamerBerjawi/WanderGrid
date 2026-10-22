@@ -79,11 +79,18 @@ type SetDraft = <K extends keyof TripDraft>(key: K, value: TripDraft[K]) => void
 
 const yearOf = (d: string) => Number(d.slice(0, 4)) || undefined;
 
-/** The leave a trip counts against: one type, or its days split across types (and years). */
-const LeaveSection: React.FC<{ draft: TripDraft; set: SetDraft; entitlements: EntitlementType[] }> = ({ draft, set, entitlements }) => {
+/** The fields of a draft that the leave section reads and writes (the calendar's leave sheet reuses it). */
+export type LeaveDraft = Pick<TripDraft, 'entitlementId' | 'allocations' | 'startDate' | 'endDate'>;
+type SetLeave = <K extends 'entitlementId' | 'allocations'>(key: K, value: TripDraft[K]) => void;
+
+/**
+ * The leave a trip counts against: one type, or its days split across types (and years). `length` is the
+ * number of days to assign when it is not the trip's calendar length (the calendar counts working days).
+ */
+export const LeaveSection: React.FC<{ draft: LeaveDraft; set: SetLeave; entitlements: EntitlementType[]; length?: number }> = ({ draft, set, entitlements, length: countedLength }) => {
     const allocations = draft.allocations || [];
     const split = allocations.length > 0;
-    const length = tripDays({ startDate: draft.startDate, endDate: draft.endDate || draft.startDate } as Trip);
+    const length = countedLength ?? tripDays({ startDate: draft.startDate, endDate: draft.endDate || draft.startDate } as Trip);
     const assigned = allocations.reduce((sum, a) => sum + (Number(a.days) || 0), 0);
     const startYear = yearOf(draft.startDate);
     const endYear = yearOf(draft.endDate || draft.startDate);
