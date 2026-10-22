@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { AdaptivePanel as GlassPanel } from './golden/GoldenDialog';
+import './new/new.css';
 
 export const intFmt = new Intl.NumberFormat('en-US').format;
 
@@ -18,13 +18,9 @@ export interface TooltipContentProps {
 
 export function TooltipContent({ title, rows, children }: TooltipContentProps) {
   return (
-    <GlassPanel
-      className="wg-glass-card shadow-2xl min-w-[160px] max-w-xs animate-airtrail-pop"
-      overrides={{ borderRadius: 18 }}
-      padding="10px 14px"
-    >
+    <div className="rp-root min-w-[160px] max-w-xs animate-airtrail-pop rounded-rp-inset bg-rp-surface px-3.5 py-2.5 text-left text-rp-ink rp-shadow-float">
       {title && (
-        <div className="mb-2 text-left font-bold text-light-text dark:text-dark-text text-xs tracking-tight">
+        <div className="mb-2 text-xs font-medium">
           {title}
         </div>
       )}
@@ -36,14 +32,14 @@ export function TooltipContent({ title, rows, children }: TooltipContentProps) {
           >
             <div className="flex items-center gap-2">
               <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full shadow-sm"
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ backgroundColor: row.color }}
               />
-              <span className="text-light-text-secondary dark:text-dark-text-secondary text-xs font-semibold">
+              <span className="text-xs text-rp-muted">
                 {row.label}
               </span>
             </div>
-            <span className="font-bold text-light-text dark:text-dark-text text-xs tabular-nums">
+            <span className="rp-tabular text-xs font-medium">
               {typeof row.value === 'number' ? intFmt(row.value) : row.value}
             </span>
           </div>
@@ -55,7 +51,7 @@ export function TooltipContent({ title, rows, children }: TooltipContentProps) {
           {children}
         </div>
       )}
-    </GlassPanel>
+    </div>
   );
 }
 
