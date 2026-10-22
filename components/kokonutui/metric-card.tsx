@@ -118,7 +118,7 @@ function resample(values: number[], count: number) {
   return out;
 }
 
-/** A centred moving average of the given window, in days. */
+/** A centred, repeatedly averaged (near-Gaussian) smoothing of the given window, in days. */
 function smooth(values: number[], window: number) {
   if (window <= 1) {
     return values;
@@ -134,8 +134,8 @@ function smooth(values: number[], window: number) {
       }
       return total / n;
     });
-  // Two passes make a triangular kernel: a spike becomes a hill, not a plateau.
-  return pass(pass(values));
+  // Three passes make a near-Gaussian kernel: a spike becomes a round hill, not a point or a plateau.
+  return pass(pass(pass(values)));
 }
 
 const yOf = (height: number) => PAD_Y + (1 - height) * (H - PAD_Y * 2);
@@ -665,6 +665,8 @@ export function MetricCard({
             d={info.paths.previous}
             ref={previousRef}
             strokeDasharray="3 4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
             strokeWidth={1.25}
             vectorEffect="non-scaling-stroke"
           />
@@ -675,6 +677,7 @@ export function MetricCard({
             d={info.paths.current}
             ref={currentDimRef}
             strokeLinecap="round"
+            strokeLinejoin="round"
             strokeWidth={2}
             vectorEffect="non-scaling-stroke"
           />
@@ -684,6 +687,7 @@ export function MetricCard({
             d={info.paths.current}
             ref={currentRef}
             strokeLinecap="round"
+            strokeLinejoin="round"
             strokeWidth={2}
             vectorEffect="non-scaling-stroke"
           />

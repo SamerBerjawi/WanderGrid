@@ -8,7 +8,8 @@ import { MetricCard } from '../../kokonutui/metric-card';
 import MomentumRail, { type RailItem } from '../../kokonutui/momentum-rail';
 import ThrowDeck, { type DeckCard } from '../../kokonutui/throw-deck';
 import { BarChart } from '../../bklit/bar-chart';
-import { ChoroplethChart, ChoroplethFeature, ChoroplethRoutes, type ChoroplethFeatureProperties } from '../../bklit/choropleth';
+import { geoCentroid, geoInterpolate } from 'd3';
+import { ChoroplethChart, ChoroplethFeature, ChoroplethPoints, ChoroplethRoutes, type ChoroplethFeatureProperties } from '../../bklit/choropleth';
 import type { FeatureCollection, Geometry } from 'geojson';
 import { featureCode, loadWorld } from '../atlas/AtlasMap';
 import { buildMapModel } from '../map/mapModel';
@@ -345,7 +346,7 @@ export const MetricWidget: React.FC<{ data: DashboardData; size: WidgetSize }> =
             valueFormat={config.format}
             suffix={config.suffix}
             formatValue={config.text}
-            smoothing={p => Math.max(1, Math.round(p / 18))}
+            smoothing={p => Math.max(3, Math.round(p / 9))}
             accent={config.accent}
             breakdownColumns={!mobile && size !== 's' ? 2 : 1}
         />
@@ -564,19 +565,44 @@ const ROUTE_STROKE: Record<string, string> = {
     sea: 'rgb(var(--rp-sea))',
 };
 
+const rad = (d: number) => (d * Math.PI) / 180;
+const mercY = (latDeg: number) => Math.log(Math.tan(Math.PI / 4 + rad(Math.max(-84, Math.min(84, latDeg))) / 2));
+
+/**
+ * The Mercator view that fits every point (route ends and the arcs between them, trips, visited
+ * countries) in a box of the given size, centred, never zoomed past about 40° across and never
+ * panned past the edge of the world, so the land always fills the box.
+ */
+const fitView = (points: [number, number][], w: number, h: number) => {
+    const pts = points.length ? points : [[-150, -50], [170, 75]] as [number, number][];
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    pts.forEach(([lng, lat]) => {
+        const x = rad(lng), y = mercY(lat);
+        minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+    });
+    const pad = 0.2;
+    const spanX = Math.max(maxX - minX, rad(40)) * (1 + pad * 2);
+    const spanY = Math.max(maxY - minY, mercY(25) - mercY(-25)) * (1 + pad * 2);
+    const kMin = Math.max(w / (2 * Math.PI), h / (mercY(84) - mercY(-60)));
+    const k = Math.max(kMin, Math.min(w / spanX, h / spanY));
+    let tx = w / 2 - k * ((minX + maxX) / 2);
+    let ty = h / 2 + k * ((minY + maxY) / 2);
+    // Keep the box inside the world (longitudes ±180°, latitudes 84°N to 60°S).
+    tx = Math.min(k * Math.PI, Math.max(w - k * Math.PI, tx));
+    ty = Math.min(k * mercY(84), Math.max(h + k * mercY(-60), ty));
+    return { scale: k, translate: [tx, ty] as [number, number] };
+};
+
 /**
  * A simplified world: countries you have been to scratched in green, every route as a thin arc (flights
- * rust, rail green, road ink, sea dashed). Static; the Map page has the real thing, one tap away.
+ * rust, rail green, road ink, sea dashed), a pin for each trip. The view fits all of them whatever the
+ * widget's size or shape, so a resize recentres and never shows empty bands. Static; the Map page has
+ * the real thing, one tap away.
  */
 export const MapWidget: React.FC<{ data: DashboardData }> = ({ data }) => {
     const [world, setWorld] = useState<FeatureCollection<Geometry, ChoroplethFeatureProperties> | null>(null);
     const [failed, setFailed] = useState(false);
     const [boxRef, box] = useSize<HTMLDivElement>();
-    // The world is 2:1 and its land fills about 84% of the height (no Antarctica): scale so it fills the box.
-    const cover = useMemo(() => {
-        const w = Math.max(box.width, box.height * 2 * 1.18);
-        return { w, h: w / 2 };
-    }, [box.width, box.height]);
     useEffect(() => {
         let alive = true;
         loadWorld().then(fc => { if (alive) setWorld(fc); }).catch(() => { if (alive) setFailed(true); });
@@ -589,17 +615,29 @@ export const MapWidget: React.FC<{ data: DashboardData }> = ({ data }) => {
     })), [data.countries]);
     const routes = useMemo(() => buildMapModel(data.trips, { mode: 'all', groupAirports: false }).routes.map(r => ({
         id: r.id, from: r.from, to: r.to, stroke: ROUTE_STROKE[r.mode] ?? ROUTE_STROKE.flight,
-        dashed: r.mode === 'sea', opacity: r.status === 'past' ? 0.85 : 0.5,
+        dashed: r.mode === 'sea', opacity: r.status === 'past' ? 0.85 : 0.55,
     })), [data.trips]);
+    const pins = useMemo(() => data.trips
+        .filter(t => t.status !== 'Cancelled' && !t.hideInPlanner && t.coordinates?.lat != null && t.coordinates?.lng != null)
+        .map(t => ({ id: t.id, lng: t.coordinates!.lng, lat: t.coordinates!.lat, label: t.name })), [data.trips]);
+
+    const view = useMemo(() => {
+        const pts: [number, number][] = [];
+        routes.forEach(r => {
+            const along = geoInterpolate(r.from, r.to);
+            [0, 0.25, 0.5, 0.75, 1].forEach(t => pts.push(along(t) as [number, number]));
+        });
+        pins.forEach(p => pts.push([p.lng, p.lat]));
+        if (world) world.features.forEach(f => { if (visited.has(featureCode(f))) pts.push(geoCentroid(f) as [number, number]); });
+        return box.width > 0 && box.height > 0 ? fitView(pts, box.width, box.height) : null;
+    }, [routes, pins, world, visited, box.width, box.height]);
 
     return (
         <div className="flex h-full flex-col gap-2">
             <div ref={boxRef} className="relative min-h-0 flex-1 overflow-hidden rounded-rp-inset bg-rp-inset/50">
-                {world && box.width > 0 ? (
-                    // The map covers the box: as wide as the box needs, or as tall (the map is 2:1), centred, so
-                    // resizing the widget in either direction never leaves empty space.
-                    <div className="absolute" style={{ width: cover.w, height: cover.h, left: (box.width - cover.w) / 2, top: (box.height - cover.h) / 2 }}>
-                        <ChoroplethChart data={world} aspectRatio="2 / 1" scaleRatio={1 / 5.6} offsetY={0} animationDuration={0} zoomEnabled={false} center={[10, 20]} className="text-rp-ink">
+                {world && view ? (
+                    <div className="absolute inset-0">
+                        <ChoroplethChart data={world} aspectRatio={`${box.width} / ${box.height}`} scale={view.scale} translate={view.translate} center={[0, 0]} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} animationDuration={0} zoomEnabled={false} className="text-rp-ink">
                             <ChoroplethFeature
                                 getFeatureColor={f => (visited.has(featureCode(f)) ? 'rgb(var(--rp-green))' : 'rgb(var(--rp-line))')}
                                 stroke="rgb(var(--rp-surface))"
@@ -607,6 +645,7 @@ export const MapWidget: React.FC<{ data: DashboardData }> = ({ data }) => {
                                 fadedOpacity={1}
                             />
                             <ChoroplethRoutes routes={routes} />
+                            {pins.length ? <ChoroplethPoints points={pins} radius={3} fill="rgb(var(--rp-ink))" stroke="rgb(var(--rp-surface))" labelColor="rgb(var(--rp-ink))" labelHalo="rgb(var(--rp-surface))" /> : null}
                         </ChoroplethChart>
                     </div>
                 ) : world ? null : (
