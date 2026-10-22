@@ -94,12 +94,16 @@ export const useMemberData = (memberId: string) => {
         });
         const countries = [...lastCountry.entries()].map(([name, date]) => ({ name, date })).sort((a, b) => b.date.localeCompare(a.date));
         const places = [...lastVisit.entries()].map(([name, date]) => ({ name, date })).sort((a, b) => b.date.localeCompare(a.date));
+        // Destinations include the country part of "City, Country"; cities are what is left once the countries are taken out.
+        const countryNames = new Set(countries.map(c => c.name.toLowerCase()));
+        const cities = places.filter(p => !countryNames.has(p.name.toLowerCase()));
         return {
             trips: live.length,
             coming: live.filter(r => r.bucket !== 'past').length,
             daysAway: past.reduce((sum, r) => sum + tripDays(r.trip), 0),
             flights: live.reduce((n, r) => n + (r.trip.transports || []).filter(x => x.mode === 'Flight').length, 0),
             places,
+            cities,
             countries,
         };
     }, [memberTrips]);

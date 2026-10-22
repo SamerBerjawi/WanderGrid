@@ -82,7 +82,6 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
     const [removing, setRemoving] = useState<User | null>(null);
     const [year, setYear] = useState(() => new Date().getFullYear());
     const [showAllTrips, setShowAllTrips] = useState(false);
-    const [showAllPlaces, setShowAllPlaces] = useState(false);
     const [reveal, setReveal] = useState(false);
 
     const { member } = data;
@@ -132,7 +131,7 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
         { id: 'overview', title: 'Overview', icon: UserCircle },
         { id: 'leave', title: 'Leave', icon: SunHorizon },
         { id: 'trips', title: 'Trips', icon: Suitcase, badge: data.memberTrips.length || undefined },
-        { id: 'places', title: 'Places', icon: Globe, badge: data.stats.places.length || undefined },
+        { id: 'places', title: 'Places', icon: Globe, badge: data.stats.countries.length + data.stats.cities.length || undefined },
         { id: 'documents', title: 'Documents', icon: IdentificationCard },
         ...(data.canEdit ? [{ id: 'settings', title: 'Settings', icon: UserIcon }] : []),
     ] as const);
@@ -243,7 +242,6 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
     if (accountPages.account.sections[1].rows.length === 0) accountPages.account.sections.pop();
 
     const visibleTrips: MemberTrip[] = showAllTrips ? data.memberTrips : data.memberTrips.slice(0, TRIPS_SHOWN);
-    const visiblePlaces = showAllPlaces ? data.stats.places : data.stats.places.slice(0, PLACES_SHOWN);
 
     return (
         <div className="custom-scrollbar h-full overflow-y-auto px-3 pt-2 pb-32 sm:px-6 md:pb-16">
@@ -276,7 +274,7 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
 
                 <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
                     <StatTile tone="ink" icon={Suitcase} value={data.stats.trips} unit={data.stats.trips === 1 ? 'trip' : 'trips'} sub={`${data.stats.coming} coming · ${data.stats.flights} ${data.stats.flights === 1 ? 'flight' : 'flights'}`} />
-                    <StatTile tone="green" icon={CalendarBlank} value={data.stats.daysAway} unit="days away" sub={`${data.stats.places.length} ${data.stats.places.length === 1 ? 'place' : 'places'}`} />
+                    <StatTile tone="green" icon={CalendarBlank} value={data.stats.daysAway} unit="days away" sub={`${data.stats.countries.length} ${data.stats.countries.length === 1 ? 'country' : 'countries'} · ${data.stats.cities.length} ${data.stats.cities.length === 1 ? 'city' : 'cities'}`} />
                     <StatTile tone="mustard" icon={SunHorizon} value={leave.left} unit="days left" sub={leave.allowance > 0 ? `of ${leave.allowance} in ${leave.year}` : `in ${leave.year}`} />
                 </div>
 
@@ -412,30 +410,14 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                     ) : null}
 
                     {activeTab === 'places' ? (
-                        data.stats.places.length === 0 ? (
+                        data.stats.countries.length + data.stats.cities.length === 0 ? (
                             <div className={card}>
                                 <RpEmpty title="No places yet">Places appear here once {firstName} has finished a trip.</RpEmpty>
                             </div>
                         ) : (
-                            <div className={cn(card, 'p-3 sm:p-4')}>
-                                <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                                    {visiblePlaces.map(p => (
-                                        <li key={p.name} className="flex min-h-14 items-center gap-3 rounded-rp-inset bg-rp-inset px-3">
-                                            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-rp-green text-rp-paper"><MapPin size={16} aria-hidden /></span>
-                                            <span className="min-w-0">
-                                                <span className="block truncate text-sm font-medium">{p.name}</span>
-                                                <span className="block text-xs text-rp-muted">{formatDate(p.date, 'month-year')}</span>
-                                            </span>
-                                        </li>
-                                    ))}
-                                </ul>
-                                {data.stats.places.length > PLACES_SHOWN ? (
-                                    <div className="flex justify-center pt-2">
-                                        <button type="button" onClick={() => setShowAllPlaces(v => !v)} className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium text-rp-muted outline-none hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted">
-                                            {showAllPlaces ? 'Show fewer' : `Show all ${data.stats.places.length}`}
-                                        </button>
-                                    </div>
-                                ) : null}
+                            <div className="flex flex-col gap-3 lg:gap-4">
+                                <PlaceGroup title="Countries" icon={Globe} items={data.stats.countries} tone="bg-rp-green text-rp-paper" />
+                                <PlaceGroup title="Cities" icon={MapPin} items={data.stats.cities} tone="bg-rp-ink text-rp-on-ink" />
                             </div>
                         )
                     ) : null}
@@ -487,6 +469,42 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                 onConfirm={async m => { await data.remove(); setRemoving(null); toast.success(`${m.name} was removed`); (onRemoved ?? onBack)(); }}
             />
         </div>
+    );
+};
+
+/** One list of visited places (countries or cities): the first few with their last visit, then "Show all". */
+const PlaceGroup: React.FC<{ title: string; icon: Icon; items: Array<{ name: string; date: string }>; tone: string }> = ({ title, icon: IconC, items, tone }) => {
+    const [all, setAll] = useState(false);
+    const shown = all ? items : items.slice(0, PLACES_SHOWN);
+    return (
+        <section aria-label={title} className={cn(card, 'p-3 sm:p-4')}>
+            <h2 className="mb-3 flex items-center gap-2 px-1 text-sm font-medium">
+                <IconC size={16} className="text-rp-muted" aria-hidden /> {title}
+                <span className="rp-tabular text-rp-muted">{items.length}</span>
+            </h2>
+            {items.length === 0 ? (
+                <p className="px-1 pb-1 text-sm text-rp-muted">None yet.</p>
+            ) : (
+                <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {shown.map(p => (
+                        <li key={p.name} className="flex min-h-14 items-center gap-3 rounded-rp-inset bg-rp-inset px-3">
+                            <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full', tone)}><IconC size={16} aria-hidden /></span>
+                            <span className="min-w-0">
+                                <span className="block truncate text-sm font-medium">{p.name}</span>
+                                <span className="block text-xs text-rp-muted">{formatDate(p.date, 'month-year')}</span>
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+            {items.length > PLACES_SHOWN ? (
+                <div className="flex justify-center pt-2">
+                    <button type="button" onClick={() => setAll(v => !v)} className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium text-rp-muted outline-none hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted">
+                        {all ? 'Show fewer' : `Show all ${items.length}`}
+                    </button>
+                </div>
+            ) : null}
+        </section>
     );
 };
 
