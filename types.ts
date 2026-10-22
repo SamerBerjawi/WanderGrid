@@ -95,6 +95,8 @@ export interface Transport {
   passengers?: string[];
   /** New pages: overrides how the Flights page groups this leg. `alone` keeps it out of any journey; `j:<id>` joins every leg with the same key. */
   journeyKey?: string;
+  /** New pages: the route actually flown, saved from the live transponder track: [longitude, latitude] pairs, about 80 points. */
+  track?: [number, number][];
   cost?: number;
   
   // Car Rental Specifics

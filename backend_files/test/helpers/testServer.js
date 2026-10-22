@@ -56,6 +56,9 @@ function installHooks() {
     global.fetch = async (input, init) => {
         const url = typeof input === 'string' ? input : input?.url || String(input);
         if (/^https?:\/\/(localhost|127\.0\.0\.1)/.test(url)) return realFetch(input, init);
+        // Manual checks only (devServer.js): TEST_ALLOW_HOSTS="api.adsb.lol,opensky-network.org" lets those hosts through.
+        const allowed = (process.env.TEST_ALLOW_HOSTS || '').split(',').filter(Boolean);
+        if (allowed.some(h => url.startsWith(`https://${h}/`))) return realFetch(input, init);
         throw new TypeError(`test: external network blocked (${url.slice(0, 80)})`);
     };
     return db;

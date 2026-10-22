@@ -4,6 +4,7 @@ import { useLiveFlight } from '../../../hooks/useLiveFlight';
 import ParticleButton from '../../kokonutui/particle-button';
 import { Airport, BaggageClaim, Broadcast, Check, DoorOpen, type Icon } from '../../ui/hugeicons';
 import { RpSection } from '../ui';
+import { fetchFlownTrack } from '../../../services/flightTrack';
 import { RoutesMap } from './RoutesMap';
 import { FlightProgress } from './FlightProgress';
 import { isLiveWindow, journeyEnds } from '../../../utils/journeysModel';
@@ -54,14 +55,25 @@ export const TrackPanel: React.FC<{
     const live = isLiveWindow(flight);
     const { data, candidate, source, error, loading, updatedAt, refresh } = useLiveFlight(flight, live);
     const [saved, setSaved] = useState(false);
+    const [fetched, setFetched] = useState<[number, number][]>([]);
     useEffect(() => { setSaved(false); }, [flight.id]);
 
     const status = data ? STATE[data.flight_status || 'scheduled'] ?? STATE.scheduled : null;
     const depActual = clock(data?.departure.actual || data?.departure.estimated);
     const arrActual = clock(data?.arrival.actual || data?.arrival.estimated);
-    const canSave = Boolean(onSave && data && (depActual || arrActual || data.departure.gate || data.arrival.gate || data.departure.terminal || data.arrival.terminal));
+    const canSave = Boolean(onSave && data && (fetched.length > 1 || depActual || arrActual || data.departure.gate || data.arrival.gate || data.departure.terminal || data.arrival.terminal));
     const position = data?.live && data.live.latitude != null ? { lat: data.live.latitude, lng: data.live.longitude } : undefined;
     const ends = useMemo(() => journeyEnds(flight), [flight]);
+    // The route flown: saved on the flight, or fetched from the transponder track while the flight is up.
+    const callsign = candidate ? `${candidate.airline.icao || ''}${(candidate.flightIata || '').replace(/^[A-Z0-9]{2}/, '')}` : '';
+    useEffect(() => { setFetched([]); }, [flight.id]);
+    useEffect(() => {
+        if (!live || !callsign || !position) return;
+        let on = true;
+        void fetchFlownTrack(callsign).then(t => { if (on && t.points.length > 1) setFetched(t.points); }).catch(() => undefined);
+        return () => { on = false; };
+    }, [live, callsign, updatedAt]);
+    const flown = fetched.length > 1 ? fetched : flight.track;
 
     const save = async () => {
         if (!data || !onSave) return;
@@ -72,6 +84,7 @@ export const TrackPanel: React.FC<{
             ...(data.departure.gate ? { departureGate: data.departure.gate } : {}),
             ...(data.arrival.terminal ? { arrivalTerminal: data.arrival.terminal } : {}),
             ...(data.arrival.gate ? { arrivalGate: data.arrival.gate } : {}),
+            ...(fetched.length > 1 ? { track: fetched } : {}),
             ...(data.aircraft?.registration ? { tailNumber: data.aircraft.registration } : {}),
             ...(data.aircraft?.model && !flight.vehicleModel ? { vehicleModel: data.aircraft.model } : {}),
         });
@@ -96,9 +109,10 @@ export const TrackPanel: React.FC<{
         >
             <div className="flex flex-col gap-2 py-2">
                 {live ? <FlightProgress flight={flight} candidate={candidate} /> : null}
-                {position && ends ? (
-                    <RoutesMap className="h-40 rounded-rp-inset bg-rp-surface" routes={[{ ...ends, count: 1, label: `${flight.origin} to ${flight.destination}` }]} marker={position} label="Where the aircraft is now" />
+                {(position || flown) && ends ? (
+                    <RoutesMap className="h-40 rounded-rp-inset bg-rp-surface" routes={[{ ...ends, count: 1, label: `${flight.origin} to ${flight.destination}` }]} marker={position} track={flown} label={flown ? 'The route flown' : 'Where the aircraft is now'} />
                 ) : null}
+                {flown ? <p className="text-2xs text-rp-muted">{fetched.length > 1 ? 'Route flown so far, from the transponder. Save to this flight to keep it.' : 'Route flown, saved from the transponder.'}</p> : null}
                 {data ? (
                     <div className="flex flex-col divide-y divide-rp-line">
                         {data.live ? (

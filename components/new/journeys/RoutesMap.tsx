@@ -25,8 +25,8 @@ const loadLand = () => {
     return landCache;
 };
 
-const RouteSvg: React.FC<{ land: FeatureCollection<Geometry> | null; routes: RouteLine[]; pins: { lng: number; lat: number }[]; marker?: { lng: number; lat: number }; width: number; height: number; label: string }> = ({ land, routes, pins, marker, width, height, label }) => {
-    const { path, project, lines, points } = useMemo(() => {
+const RouteSvg: React.FC<{ land: FeatureCollection<Geometry> | null; routes: RouteLine[]; pins: { lng: number; lat: number }[]; marker?: { lng: number; lat: number }; track?: [number, number][]; width: number; height: number; label: string }> = ({ land, routes, pins, marker, track, width, height, label }) => {
+    const { path, project, lines, points, flown } = useMemo(() => {
         const projection = geoNaturalEarth1();
         const pad = 14;
         const extent: [[number, number], [number, number]] = [[pad, pad], [width - pad, height - pad]];
@@ -38,6 +38,7 @@ const RouteSvg: React.FC<{ land: FeatureCollection<Geometry> | null; routes: Rou
         if (unique.size >= 2) {
             // Fit the arcs themselves (they bulge past the end points), not just the airports.
             const geometries: any[] = routes.map(r => ({ type: 'LineString', coordinates: [r.from, r.to] }));
+            if (track && track.length > 1) geometries.push({ type: 'LineString', coordinates: track });
             if (marker) geometries.push({ type: 'Point', coordinates: [marker.lng, marker.lat] });
             pins.forEach(p => geometries.push({ type: 'Point', coordinates: [p.lng, p.lat] }));
             projection.fitExtent(extent, { type: 'GeometryCollection', geometries });
@@ -58,8 +59,9 @@ const RouteSvg: React.FC<{ land: FeatureCollection<Geometry> | null; routes: Rou
             project: projection,
             lines: routes.map(r => ({ d: p({ type: 'LineString', coordinates: [r.from, r.to] }) || '', count: r.count, label: r.label })),
             points: [...seen.values()],
+            flown: track && track.length > 1 ? p({ type: 'LineString', coordinates: track }) || '' : '',
         };
-    }, [routes, pins, marker, width, height]);
+    }, [routes, pins, marker, track, width, height]);
 
     const maxCount = Math.max(1, ...routes.map(r => r.count));
     const m = marker ? project([marker.lng, marker.lat]) : null;
@@ -69,6 +71,7 @@ const RouteSvg: React.FC<{ land: FeatureCollection<Geometry> | null; routes: Rou
             <g fill="none" stroke="rgb(var(--rp-rust))" strokeLinecap="round">
                 {lines.map((l, i) => <path key={i} d={l.d} strokeWidth={1 + (l.count / maxCount) * 1.6} strokeOpacity={0.45 + (l.count / maxCount) * 0.4} />)}
             </g>
+            {flown ? <path d={flown} fill="none" stroke="rgb(var(--rp-ink))" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" /> : null}
             <g fill="rgb(var(--rp-ink))" stroke="rgb(var(--rp-surface))" strokeWidth={1.5}>
                 {points.map(pt => { const q = project(pt); return q ? <circle key={pt.join(',')} cx={q[0]} cy={q[1]} r={3} /> : null; })}
             </g>
@@ -85,13 +88,13 @@ const RouteSvg: React.FC<{ land: FeatureCollection<Geometry> | null; routes: Rou
     );
 };
 
-export const RoutesMap: React.FC<{ routes: RouteLine[]; /** Places that are not ends of a route: stays and stops, drawn as ochre dots. */ pins?: { lng: number; lat: number }[]; marker?: { lng: number; lat: number }; className?: string; label?: string }> = ({ routes, pins = EMPTY, marker, className, label }) => {
+export const RoutesMap: React.FC<{ routes: RouteLine[]; /** Places that are not ends of a route: stays and stops, drawn as ochre dots. */ pins?: { lng: number; lat: number }[]; marker?: { lng: number; lat: number }; /** The route actually flown, as [longitude, latitude] pairs, drawn as a solid line over the planned arc. */ track?: [number, number][]; className?: string; label?: string }> = ({ routes, pins = EMPTY, marker, track, className, label }) => {
     const [land, setLand] = useState<FeatureCollection<Geometry> | null>(null);
     useEffect(() => { let live = true; loadLand().then(l => { if (live) setLand(l); }).catch(() => undefined); return () => { live = false; }; }, []);
     const summary = label ?? `Map of ${routes.length} ${routes.length === 1 ? 'route' : 'routes'}`;
     return (
         <div className={cn('relative w-full overflow-hidden', className)}>
-            <ParentSize className="h-full">{({ width, height }) => (width > 0 && height > 0 ? <RouteSvg land={land} routes={routes} pins={pins} marker={marker} width={width} height={height} label={summary} /> : null)}</ParentSize>
+            <ParentSize className="h-full">{({ width, height }) => (width > 0 && height > 0 ? <RouteSvg land={land} routes={routes} pins={pins} marker={marker} track={track} width={width} height={height} label={summary} /> : null)}</ParentSize>
         </div>
     );
 };
