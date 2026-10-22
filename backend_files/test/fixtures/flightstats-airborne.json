@@ -1,0 +1,202 @@
+{
+ "data": {
+  "flightId": 1415560767,
+  "flightNote": {
+   "final": false,
+   "canceled": false,
+   "hasDepartedGate": true,
+   "hasDepartedRunway": true,
+   "landed": false,
+   "message": null,
+   "messageCode": null,
+   "pastExpectedTakeOff": true,
+   "tracking": true,
+   "hasPositions": true,
+   "trackingUnavailable": false,
+   "phase": "Climbing",
+   "hasActualRunwayDepartureTime": true,
+   "hasActualGateDepartureTime": true
+  },
+  "isTracking": true,
+  "isLanded": false,
+  "isScheduled": false,
+  "schedule": {
+   "scheduledDeparture": "2026-10-22T10:55:00.000",
+   "scheduledDepartureUTC": "2026-10-22T08:55:00.000Z",
+   "estimatedActualDepartureRunway": false,
+   "estimatedActualDepartureTitle": "Actual",
+   "estimatedActualDeparture": "2026-10-22T10:55:00.000",
+   "estimatedActualDepartureUTC": "2026-10-22T08:55:00.000Z",
+   "scheduledArrival": "2026-10-22T13:35:00.000",
+   "scheduledArrivalUTC": "2026-10-22T17:35:00.000Z",
+   "estimatedActualArrivalRunway": false,
+   "estimatedActualArrivalTitle": "Estimated",
+   "estimatedActualArrival": "2026-10-22T13:31:00.000",
+   "estimatedActualArrivalUTC": "2026-10-22T17:31:00.000Z",
+   "graphXAxis": {
+    "dep": "2026-10-22T10:55:00.000",
+    "depUTC": "2026-10-22T08:55:00.000Z",
+    "arr": "2026-10-22T13:31:00.000",
+    "arrUTC": "2026-10-22T17:31:00.000Z"
+   },
+   "tookOff": "2026-10-22T10:55:00.000"
+  },
+  "status": {
+   "statusCode": "A",
+   "status": "Departed",
+   "color": "green",
+   "statusDescription": "On time",
+   "delay": {
+    "departure": {
+     "minutes": 0
+    },
+    "arrival": {
+     "minutes": 0
+    }
+   },
+   "delayStatus": {
+    "wording": "On time",
+    "minutes": 0
+   },
+   "lastUpdatedText": "Status Last Updated 17 Minutes Ago",
+   "diverted": false
+  },
+  "resultHeader": {
+   "statusDescription": "On time",
+   "carrier": {
+    "name": "Lufthansa",
+    "fs": "LH"
+   },
+   "flightNumber": "400",
+   "status": "Departed",
+   "diverted": false,
+   "color": "green",
+   "departureAirportFS": "FRA",
+   "arrivalAirportFS": "JFK",
+   "divertedAirport": null
+  },
+  "ticketHeader": {
+   "carrier": {
+    "name": "Lufthansa",
+    "fs": "LH"
+   },
+   "flightNumber": "400"
+  },
+  "departureAirport": {
+   "fs": "FRA",
+   "iata": "FRA",
+   "name": "Frankfurt Airport",
+   "city": "Frankfurt",
+   "country": "DE",
+   "timeZoneRegionName": "Europe/Berlin",
+   "regionName": "Europe",
+   "gate": "Z19",
+   "terminal": "1",
+   "times": {
+    "scheduled": {
+     "time": "10:55",
+     "ampm": "AM",
+     "time24": "10:55",
+     "timezone": "CEST"
+    },
+    "estimatedActual": {
+     "title": "Actual",
+     "time": "10:55",
+     "ampm": "AM",
+     "time24": "10:55",
+     "runway": false,
+     "timezone": "CEST"
+    }
+   },
+   "date": "2026-10-22T10:55:00.000"
+  },
+  "arrivalAirport": {
+   "fs": "JFK",
+   "iata": "JFK",
+   "name": "New York John F. Kennedy International Airport",
+   "city": "New York",
+   "state": "NY",
+   "country": "US",
+   "timeZoneRegionName": "America/New_York",
+   "regionName": "North America",
+   "gate": null,
+   "terminal": "1",
+   "baggage": null,
+   "times": {
+    "scheduled": {
+     "time": "1:35",
+     "ampm": "PM",
+     "time24": "13:35",
+     "timezone": "EDT"
+    },
+    "estimatedActual": {
+     "title": "Estimated",
+     "time": "1:31",
+     "ampm": "PM",
+     "time24": "13:31",
+     "runway": false,
+     "timezone": "EDT"
+    }
+   },
+   "date": "2026-10-22T13:35:00.000"
+  },
+  "additionalFlightInfo": {
+   "equipment": {
+    "iata": "333",
+    "name": "Airbus A330-300",
+    "title": "Actual"
+   },
+   "flightDuration": "8h 40m"
+  },
+  "positional": {
+   "departureAirportCode": "FRA",
+   "arrivalAirportCode": "JFK",
+   "divertedAirportCode": null,
+   "flexFlightStatus": "A",
+   "flexTrack": {
+    "flightId": 1415560767,
+    "carrierFsCode": "LH",
+    "flightNumber": "400",
+    "tailNumber": "D-AIKN",
+    "callsign": "DLH400",
+    "departureAirportFsCode": "FRA",
+    "arrivalAirportFsCode": "JFK",
+    "departureDate": {
+     "dateUtc": "2026-10-22T08:55:00.000Z",
+     "dateLocal": "2026-10-22T10:55:00.000"
+    },
+    "equipment": "333",
+    "delayMinutes": 7,
+    "bearing": 293.37990901002183,
+    "heading": 275.71531513547194,
+    "positions": [
+     {
+      "lon": 7.250798,
+      "lat": 50.407008,
+      "speedMph": 292,
+      "altitudeFt": 10661,
+      "source": "derived",
+      "date": "2026-10-22T09:27:22.452Z",
+      "course": 294,
+      "vrateMps": 5,
+      "lastObserved": "2026-10-22T09:32:10.000Z"
+     },
+     {
+      "lon": 7.350609,
+      "lat": 50.379285,
+      "speedMph": 284,
+      "altitudeFt": 9790,
+      "source": "derived",
+      "date": "2026-10-22T09:26:22.365Z",
+      "course": 294,
+      "vrateMps": 3,
+      "lastObserved": "2026-10-22T09:31:05.000Z"
+     }
+    ],
+    "irregularOperations": [],
+    "fleetAircraftId": 11358
+   }
+  },
+  "flightState": "en-route"
+ }
+}

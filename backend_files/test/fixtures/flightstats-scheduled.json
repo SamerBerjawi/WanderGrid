@@ -1,0 +1,162 @@
+{
+ "data": {
+  "flightId": 1415965012,
+  "flightNote": {
+   "final": false,
+   "canceled": false,
+   "hasDepartedGate": false,
+   "hasDepartedRunway": false,
+   "landed": false,
+   "message": "Tracking will begin after departure",
+   "messageCode": "S",
+   "pastExpectedTakeOff": false,
+   "tracking": false,
+   "hasPositions": false,
+   "trackingUnavailable": false,
+   "phase": null,
+   "hasActualRunwayDepartureTime": false,
+   "hasActualGateDepartureTime": false
+  },
+  "isTracking": false,
+  "isLanded": false,
+  "isScheduled": true,
+  "schedule": {
+   "scheduledDeparture": "2026-10-24T07:05:00.000",
+   "scheduledDepartureUTC": "2026-10-24T04:05:00.000Z",
+   "estimatedActualDepartureRunway": false,
+   "estimatedActualDepartureTitle": "Estimated",
+   "estimatedActualDeparture": null,
+   "estimatedActualDepartureUTC": null,
+   "scheduledArrival": "2026-10-24T10:35:00.000",
+   "scheduledArrivalUTC": "2026-10-24T08:35:00.000Z",
+   "estimatedActualArrivalRunway": false,
+   "estimatedActualArrivalTitle": "Estimated",
+   "estimatedActualArrival": null,
+   "estimatedActualArrivalUTC": null,
+   "graphXAxis": {
+    "dep": "2026-10-24T07:05:00.000",
+    "depUTC": "2026-10-24T04:05:00.000Z",
+    "arr": "2026-10-24T10:35:00.000",
+    "arrUTC": "2026-10-24T08:35:00.000Z"
+   }
+  },
+  "status": {
+   "statusCode": "S",
+   "status": "Scheduled",
+   "color": "green",
+   "statusDescription": "On time",
+   "delay": {
+    "departure": {
+     "minutes": 0
+    },
+    "arrival": {
+     "minutes": 0
+    }
+   },
+   "delayStatus": {
+    "wording": "On time",
+    "minutes": 0
+   },
+   "lastUpdatedText": "Status Last Updated More Than 3 Hours Ago",
+   "diverted": false
+  },
+  "resultHeader": {
+   "statusDescription": "On time",
+   "carrier": {
+    "name": "Middle East Airlines",
+    "fs": "ME"
+   },
+   "flightNumber": "215",
+   "status": "Scheduled",
+   "diverted": false,
+   "color": "green",
+   "departureAirportFS": "BEY",
+   "arrivalAirportFS": "BRU",
+   "divertedAirport": null
+  },
+  "ticketHeader": {
+   "carrier": {
+    "name": "Middle East Airlines",
+    "fs": "ME"
+   },
+   "flightNumber": "215"
+  },
+  "departureAirport": {
+   "fs": "BEY",
+   "iata": "BEY",
+   "name": "Beirut Rafic Hariri International Airport",
+   "city": "Beirut",
+   "country": "LB",
+   "timeZoneRegionName": "Asia/Beirut",
+   "regionName": "Middle East",
+   "gate": null,
+   "terminal": null,
+   "times": {
+    "scheduled": {
+     "time": "7:05",
+     "ampm": "AM",
+     "time24": "07:05",
+     "timezone": "EEST"
+    },
+    "estimatedActual": {
+     "title": "Estimated"
+    }
+   },
+   "date": "2026-10-24T07:05:00.000"
+  },
+  "arrivalAirport": {
+   "fs": "BRU",
+   "iata": "BRU",
+   "name": "Brussels Airport",
+   "city": "Brussels",
+   "country": "BE",
+   "timeZoneRegionName": "Europe/Brussels",
+   "regionName": "Europe",
+   "gate": null,
+   "terminal": null,
+   "baggage": null,
+   "times": {
+    "scheduled": {
+     "time": "10:35",
+     "ampm": "AM",
+     "time24": "10:35",
+     "timezone": "CEST"
+    },
+    "estimatedActual": {
+     "title": "Estimated"
+    }
+   },
+   "date": "2026-10-24T10:35:00.000"
+  },
+  "additionalFlightInfo": {
+   "equipment": {
+    "iata": "320",
+    "name": "Airbus A320",
+    "title": "Scheduled"
+   },
+   "flightDuration": "4h 30m"
+  },
+  "positional": {
+   "departureAirportCode": "BEY",
+   "arrivalAirportCode": "BRU",
+   "divertedAirportCode": null,
+   "flexFlightStatus": "S",
+   "flexTrack": {
+    "flightId": 1415965012,
+    "carrierFsCode": "ME",
+    "flightNumber": "215",
+    "departureAirportFsCode": "BEY",
+    "arrivalAirportFsCode": "BRU",
+    "departureDate": {
+     "dateUtc": "2026-10-24T04:05:00.000Z",
+     "dateLocal": "2026-10-24T07:05:00.000"
+    },
+    "equipment": "320",
+    "bearing": 316.6109651127596,
+    "positions": [],
+    "irregularOperations": []
+   }
+  },
+  "flightState": "future"
+ }
+}

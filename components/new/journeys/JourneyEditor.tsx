@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import type { FlightStatusResponse, Transport, TransportMode, Trip, WorkspaceSettings } from '../../../types';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { Transport, TransportMode, Trip, WorkspaceSettings } from '../../../types';
 import ParticleButton from '../../kokonutui/particle-button';
-import { flightTracker } from '../../../services/flightTracker';
+import { candidateToLeg, type FlightCandidate } from '../../../services/flightLookup';
+import { useFlightLookup } from '../../../hooks/useFlightLookup';
+import { FlightFinder } from './FlightFinder';
 import { calculateDurationMinutes } from '../../../services/geocoding';
 import { Broadcast, Suitcase, X } from '../../ui/hugeicons';
 import { RP_FIELD, RpField } from '../fields';
@@ -24,7 +26,6 @@ export type JourneyEditorTarget = { kind: 'create' } | { kind: 'edit'; record: J
 const newId = () => Math.random().toString(36).slice(2, 11);
 const today = () => new Date().toISOString().slice(0, 10);
 const num = (v: string): number | undefined => { const n = parseFloat(v); return Number.isFinite(n) ? n : undefined; };
-const hhmm = (iso?: string) => ((iso || '').split('T')[1] || '').slice(0, 5);
 
 export const JourneyEditor: React.FC<{
     target: JourneyEditorTarget | null;
@@ -68,35 +69,30 @@ export const JourneyEditor: React.FC<{
     const patch = (p: Partial<Transport>) => setLeg(l => ({ ...l, ...p }));
     const flight = leg.mode === 'Flight';
     const trip = trips.find(t => t.id === tripId);
-    const canLookUp = flight && !editing && Boolean(leg.identifier?.trim() && leg.departureDate);
-
-    const lookUp = async () => {
-        setError('');
-        try {
-            const key = settings?.aeroDataBoxApiKey || settings?.aviationStackApiKey || '';
-            const provider = settings?.aeroDataBoxApiKey ? 'aerodatabox' : settings?.aviationStackApiKey ? 'aviationstack' : 'adsbdb';
-            const r: FlightStatusResponse = await flightTracker.getFlightStatus(key, leg.identifier!.replace(/\s/g, ''), leg.departureDate, provider);
-            const dep = r.departure, arr = r.arrival;
-            const [depDate, depTime] = (dep.scheduled || '').split('T');
-            const [arrDate, arrTime] = (arr.scheduled || '').split('T');
-            patch({
-                ...(r.airline?.name ? { provider: r.airline.name } : {}),
-                ...(dep.iata ? { origin: dep.iata, originLat: undefined, originLng: undefined, originGeoKey: undefined } : {}),
-                ...(arr.iata ? { destination: arr.iata, destLat: undefined, destLng: undefined, destGeoKey: undefined } : {}),
-                ...(depDate ? { departureDate: depDate } : {}),
-                ...(depTime ? { departureTime: depTime.slice(0, 5) } : {}),
-                ...(arrDate ? { arrivalDate: arrDate } : {}),
-                ...(arrTime ? { arrivalTime: arrTime.slice(0, 5) } : {}),
-                ...(dep.terminal ? { departureTerminal: dep.terminal } : {}),
-                ...(dep.gate ? { departureGate: dep.gate } : {}),
-                ...(arr.terminal ? { arrivalTerminal: arr.terminal } : {}),
-                ...(arr.gate ? { arrivalGate: arr.gate } : {}),
-            });
-        } catch (e) {
-            setError(errorMessage(e, "Couldn't find that flight. Check the number and date."));
-            throw e;
-        }
+    // Find the flight from its number and date: by itself for a new flight, on request for an existing one.
+    const lookup = useFlightLookup(leg.identifier || '', leg.departureDate || '', flight && !editing);
+    const [applied, setApplied] = useState<{ key: string; index: number } | null>(null);
+    const lastSig = useRef('');
+    const sigOf = (l: Partial<Transport>) => [l.origin, l.destination, l.departureDate, l.departureTime, l.arrivalTime].join('|');
+    const blankOrigin = flight ? settings?.defaultStartingAirport || '' : '';
+    const use = (c: FlightCandidate, index: number) => {
+        const p = candidateToLeg(c);
+        setLeg(l => {
+            const next = { ...l, ...p, originLat: undefined, originLng: undefined, originGeoKey: undefined, destLat: undefined, destLng: undefined, destGeoKey: undefined };
+            lastSig.current = sigOf(next);
+            return next;
+        });
+        setApplied({ key: lookup.key, index });
     };
+    // One result for a new flight is filled in at once, unless the person has already chosen the places themselves.
+    useEffect(() => {
+        if (editing || lookup.status !== 'done' || !lookup.result || lookup.result.candidates.length !== 1) return;
+        if (applied?.key === lookup.key) return;
+        const untouched = (!leg.origin?.trim() || leg.origin === blankOrigin) && !leg.destination?.trim();
+        if (untouched || sigOf(leg) === lastSig.current) use(lookup.result.candidates[0], 0);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [lookup.status, lookup.key, lookup.result]);
+    useEffect(() => { setApplied(null); lastSig.current = ''; }, [target]);
 
     const save = async () => {
         setError('');
@@ -169,12 +165,26 @@ export const JourneyEditor: React.FC<{
                         bias={trip?.coordinates}
                         modes={modes}
                         detailsKey={editing?.flight.id ?? 'new'}
+                        omit={flight ? ['identifier', 'departureDate'] : []}
+                        lead={flight ? (
+                            <div className="flex flex-col gap-1 pb-2">
+                                <div className="grid gap-x-3 sm:grid-cols-2">
+                                    <RpField label="Flight number">{id => <input id={id} value={leg.identifier || ''} onChange={e => patch({ identifier: e.target.value })} placeholder="ME215" className={RP_FIELD} autoComplete="off" autoCapitalize="characters" />}</RpField>
+                                    <RpField label="Departure date">{id => <input id={id} type="date" value={leg.departureDate || ''} onChange={e => patch({ departureDate: e.target.value, arrivalDate: leg.arrivalDate && leg.arrivalDate >= e.target.value ? leg.arrivalDate : e.target.value })} className={LEG_DATE} />}</RpField>
+                                </div>
+                                <FlightFinder
+                                    status={lookup.status}
+                                    result={lookup.result}
+                                    message={lookup.message}
+                                    valid={lookup.valid}
+                                    appliedIndex={applied?.key === lookup.key ? applied.index : -1}
+                                    onUse={use}
+                                    onRun={editing ? () => void lookup.run() : undefined}
+                                    brandfetchApiKey={brandfetchApiKey}
+                                />
+                            </div>
+                        ) : undefined}
                     />
-                    {canLookUp ? (
-                        <div className="py-2">
-                            <ParticleButton onClick={lookUp} variant="inset" icon={<Broadcast size={16} aria-hidden />} pendingLabel="Looking" successLabel="Filled in" errorLabel="Not found">Fill from flight number</ParticleButton>
-                        </div>
-                    ) : null}
                 </RpSection>
 
                 {flight && editing ? (

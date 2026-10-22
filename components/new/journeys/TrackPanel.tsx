@@ -44,7 +44,7 @@ export const TrackPanel: React.FC<{
     onSave?: (patch: Partial<Transport>) => Promise<void>;
 }> = ({ flight, onSave }) => {
     const live = isLiveWindow(flight);
-    const { data, error, loading, updatedAt, refresh } = useLiveFlight(flight, live);
+    const { data, source, error, loading, updatedAt, refresh } = useLiveFlight(flight, live);
     const [saved, setSaved] = useState(false);
     useEffect(() => { setSaved(false); }, [flight.id]);
 
@@ -96,7 +96,7 @@ export const TrackPanel: React.FC<{
                         {data.live ? (
                             <div className="py-1">
                                 <Row label="Altitude" value={data.live.is_ground ? 'On the ground' : data.live.altitude ? `${Math.round(data.live.altitude).toLocaleString('en-US')} ft` : undefined} />
-                                <Row label="Speed" value={data.live.speed_horizontal ? `${Math.round(data.live.speed_horizontal)} ${String(data.source || '').startsWith('adsb') ? 'kn' : 'km/h'}` : undefined} />
+                                <Row label="Speed" value={data.live.speed_horizontal ? `${Math.round(data.live.speed_horizontal)} km/h` : undefined} />
                             </div>
                         ) : null}
                         <div className="py-1">
@@ -114,6 +114,7 @@ export const TrackPanel: React.FC<{
                     </div>
                 ) : null}
                 {error ? <p role="alert" className="text-sm text-rp-rust">{error}</p> : null}
+                {source && data ? <p className="text-2xs text-rp-muted">Source: {source}</p> : null}
                 <div className="flex flex-wrap items-center gap-2">
                     <ParticleButton onClick={refresh} variant="inset" pendingLabel="Checking" successLabel="Updated" errorLabel="No result" icon={<Broadcast size={16} aria-hidden />}>
                         {data ? 'Check again' : 'Track flight'}

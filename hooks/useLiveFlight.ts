@@ -1,34 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FlightStatusResponse, Transport } from '../types';
-import { flightTracker } from '../services/flightTracker';
-import { dataService } from '../services/mockDb';
+import { candidateToStatus, lookupFlight, whyNotFound, type FlightCandidate } from '../services/flightLookup';
 import { errorMessage } from '../services/toast';
 
 /**
- * Follows one flight: asks the flight data engines for its status (the free open radar first; AeroDataBox or
- * AviationStack when the workspace has a key), once on demand and, with `auto`, again every minute while
- * the page is visible. A new flight starts clean. `refresh` rejects on failure so a button can show it.
+ * Follows one flight: asks the flight lookup (FlightStats first, then the workspace's AeroDataBox and
+ * AviationStack keys; see services/flightLookup.ts) for its status, once on demand and, with `auto`,
+ * again every minute while the page is visible. When a flight number has several legs that day the one
+ * with this flight's airports is used. A new flight starts clean. `refresh` rejects on failure so a
+ * button can show it.
  */
 
-type Provider = 'adsbdb' | 'aviationstack' | 'aerodatabox';
-interface Engine { provider: Provider; key: string }
-
-let engineCache: Promise<Engine> | null = null;
-const loadEngine = (): Promise<Engine> => {
-    if (!engineCache) {
-        engineCache = dataService.getWorkspaceSettings().then(s => {
-            // The server masks paid keys, so a non-empty value (or the configured flag) means "set up".
-            const configured = (k: 'aviationStackApiKey' | 'aeroDataBoxApiKey') => s[k] || (s.configuredKeys?.[k] ? '••••••••' : '');
-            const aero = configured('aeroDataBoxApiKey');
-            const avi = configured('aviationStackApiKey');
-            return aero ? { provider: 'aerodatabox' as const, key: aero } : avi ? { provider: 'aviationstack' as const, key: avi } : { provider: 'adsbdb' as const, key: '' };
-        }).catch(() => ({ provider: 'adsbdb' as const, key: '' }));
-    }
-    return engineCache;
+const pick = (list: FlightCandidate[], t: Transport): FlightCandidate | null => {
+    const code = (s: string) => (s || '').trim().toUpperCase().slice(0, 3);
+    return list.find(c => c.departure.iata === code(t.origin) && c.arrival.iata === code(t.destination)) ?? list.find(c => c.departure.iata === code(t.origin)) ?? list[0] ?? null;
 };
 
 export const useLiveFlight = (flight: Transport | null, auto: boolean, intervalMs = 60_000) => {
     const [data, setData] = useState<FlightStatusResponse | null>(null);
+    const [source, setSource] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [updatedAt, setUpdatedAt] = useState<number | null>(null);
@@ -44,10 +34,15 @@ export const useLiveFlight = (flight: Transport | null, auto: boolean, intervalM
         setLoading(true);
         setError('');
         try {
-            const ident = `${f.providerCode || ''}${f.identifier || ''}`.replace(/\s/g, '') || f.identifier;
+            const ident = `${f.identifier || ''}`.replace(/\s/g, '');
             if (!ident) throw new Error('Add the flight number first.');
-            const engine = await loadEngine();
-            setData(await flightTracker.getFlightStatus(engine.key, ident, f.departureDate, engine.provider));
+            // A number typed without its carrier ("215") takes the airline's code.
+            const number = /^\d/.test(ident) && f.providerCode ? `${f.providerCode}${ident}` : ident;
+            const r = await lookupFlight(number, f.departureDate);
+            const c = pick(r.candidates.filter(x => x.confidence === 'schedule'), f);
+            if (!c) throw new Error(r.candidates.length ? "Live status isn't available for this date yet." : whyNotFound(r, f.departureDate));
+            setData(candidateToStatus(c));
+            setSource(c.alsoFrom?.length ? `${c.sourceLabel} + ${c.alsoFrom.join(', ')}` : c.sourceLabel);
             setUpdatedAt(Date.now());
         } catch (e) {
             setData(null);
@@ -60,7 +55,7 @@ export const useLiveFlight = (flight: Transport | null, auto: boolean, intervalM
     }, []);
 
     // A different flight starts clean.
-    useEffect(() => { setData(null); setError(''); setUpdatedAt(null); }, [id]);
+    useEffect(() => { setData(null); setError(''); setUpdatedAt(null); setSource(''); }, [id]);
 
     // Follow it: now, then every interval while the page is visible.
     useEffect(() => {
@@ -72,5 +67,5 @@ export const useLiveFlight = (flight: Transport | null, auto: boolean, intervalM
         return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', run); };
     }, [auto, id, intervalMs, refresh]);
 
-    return { data, error, loading, updatedAt, refresh };
+    return { data, source, error, loading, updatedAt, refresh };
 };

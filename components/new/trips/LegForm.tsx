@@ -34,7 +34,11 @@ export const LegForm: React.FC<{
     detailsOpen?: boolean;
     /** Changing this resets the folded details (the leg being edited). */
     detailsKey?: string | number;
-}> = ({ leg, patch, cost, onCost, brandfetchApiKey, bias, modes, detailsOpen, detailsKey }) => {
+    /** Shown first, before From and To (the flight editor puts the flight number, date and lookup here). */
+    lead?: React.ReactNode;
+    /** Fields the lead already holds, left out of the grid below. */
+    omit?: Array<'identifier' | 'departureDate'>;
+}> = ({ leg, patch, cost, onCost, brandfetchApiKey, bias, modes, detailsOpen, detailsKey, lead, omit = [] }) => {
     const m = modeLook(leg.mode);
     const places = LEG_PLACES[leg.mode || 'Flight'];
     const format = legText(leg.mode);
@@ -50,8 +54,11 @@ export const LegForm: React.FC<{
         return () => { live = false; window.clearTimeout(timer); };
     }, [isFlight, leg.provider]);
 
+    const noDate = omit.includes('departureDate');
+    const noNumber = omit.includes('identifier');
     return (
         <>
+            {lead}
             {choices.length > 1 ? (
                 <div role="group" aria-label="Type of transport" className="flex flex-wrap gap-2 py-2">
                     {choices.map(o => (
@@ -92,10 +99,11 @@ export const LegForm: React.FC<{
                         onPick={(text, c) => patch({ destination: text, destLat: c.lat, destLng: c.lng, destGeoKey: text })}
                     />
                 )}</RpField>
-                <RpField label="Departs">{id => <input id={id} type="date" value={leg.departureDate || ''} onChange={e => patch({ departureDate: e.target.value, arrivalDate: leg.arrivalDate && leg.arrivalDate >= e.target.value ? leg.arrivalDate : e.target.value })} className={LEG_DATE} />}</RpField>
+                {noDate ? null : <RpField label="Departs">{id => <input id={id} type="date" value={leg.departureDate || ''} onChange={e => patch({ departureDate: e.target.value, arrivalDate: leg.arrivalDate && leg.arrivalDate >= e.target.value ? leg.arrivalDate : e.target.value })} className={LEG_DATE} />}</RpField>}
                 <RpField label="Departure time">{id => <input id={id} type="time" value={leg.departureTime || ''} onChange={e => patch({ departureTime: e.target.value })} className={LEG_DATE} />}</RpField>
+                {noDate ? <RpField label="Arrival time">{id => <input id={id} type="time" value={leg.arrivalTime || ''} onChange={e => patch({ arrivalTime: e.target.value })} className={LEG_DATE} />}</RpField> : null}
                 <RpField label="Arrives">{id => <input id={id} type="date" value={leg.arrivalDate || ''} min={leg.departureDate || undefined} onChange={e => patch({ arrivalDate: e.target.value })} className={LEG_DATE} />}</RpField>
-                <RpField label="Arrival time">{id => <input id={id} type="time" value={leg.arrivalTime || ''} onChange={e => patch({ arrivalTime: e.target.value })} className={LEG_DATE} />}</RpField>
+                {noDate ? null : <RpField label="Arrival time">{id => <input id={id} type="time" value={leg.arrivalTime || ''} onChange={e => patch({ arrivalTime: e.target.value })} className={LEG_DATE} />}</RpField>}
             </div>
             <RpField label={isFlight ? 'Airline' : 'Operator'}>
                 {id => (
@@ -115,7 +123,7 @@ export const LegForm: React.FC<{
                 )}
             </RpField>
             <div className="grid gap-x-3 sm:grid-cols-2">
-                <RpField label={m.number}>{id => <input id={id} value={leg.identifier || ''} onChange={e => patch({ identifier: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
+                {noNumber ? null : <RpField label={m.number}>{id => <input id={id} value={leg.identifier || ''} onChange={e => patch({ identifier: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>}
                 <RpField label="Confirmation">{id => <input id={id} value={leg.confirmationCode || ''} onChange={e => patch({ confirmationCode: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
                 <RpField label="Seat">{id => <input id={id} value={leg.seatNumber || ''} onChange={e => patch({ seatNumber: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
                 <RpField label="Cost">{id => <input id={id} inputMode="decimal" value={cost} onChange={e => onCost(e.target.value)} className={cn(RP_FIELD, 'rp-tabular')} placeholder="0" autoComplete="off" />}</RpField>

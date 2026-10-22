@@ -2,6 +2,7 @@
 const express = require('express');
 const { Pool } = require('pg');
 const { AviationStackError, normalizeFutureFlight, requestAviationStack } = require('./aviationStack');
+const { resolveFlight } = require('./flightLookup.js');
 const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
@@ -1379,6 +1380,32 @@ const AERODATABOX_ENDPOINTS = {
         authHeader: 'X-Api-Key'
     }
 };
+
+// ==========================================
+// FLIGHT LOOKUP BY NUMBER AND DATE (flightLookup.js)
+// Keyless sources first (FlightStats, ADSBdb), then the workspace's AeroDataBox / AviationStack keys.
+// Always answers 200 with the candidates found and what each source said.
+// ==========================================
+app.get('/api/flights/lookup', async (req, res) => {
+    const flight = String(req.query.flight || '').trim();
+    const date = String(req.query.date || '').trim();
+    try {
+        const adbKey = await workspaceSecret('aeroDataBoxApiKey') || '';
+        const mode = String(await workspaceSecret('aeroDataBoxEndpoint') || process.env.INTEGRATIONS_AERO_DATA_BOX_ENDPOINT || 'rapidapi').toLowerCase();
+        const cfg = AERODATABOX_ENDPOINTS[mode] || AERODATABOX_ENDPOINTS.rapidapi;
+        const result = await resolveFlight(flight, date, {
+            flightstats: String(process.env.FLIGHT_LOOKUP_FLIGHTSTATS || 'on').toLowerCase() !== 'off',
+            aerodatabox: adbKey ? { key: adbKey, baseUrl: cfg.baseUrl, authHeader: cfg.authHeader, host: mode === 'rapidapi' ? 'aerodatabox.p.rapidapi.com' : '' } : null,
+            aviationstackKey: await workspaceSecret('aviationStackApiKey') || '',
+        });
+        if (!result.ok) return res.status(400).json(result);
+        res.set('Cache-Control', 'private, max-age=15');
+        return res.json(result);
+    } catch (err) {
+        logger.warn('Flight lookup failed', { error: err.message });
+        return res.status(502).json({ ok: false, error: 'lookup_failed', message: 'The flight lookup failed. Try again.', candidates: [], attempts: [] });
+    }
+});
 
 app.get('/api/proxy/aerodatabox/flights/number/:flightNumber', async (req, res) => {
     const rawNumber = String(req.params.flightNumber || '').trim().replace(/\s|-/g, '').toUpperCase();
