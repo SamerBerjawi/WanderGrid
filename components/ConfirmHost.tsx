@@ -1,52 +1,41 @@
-import React, { useEffect, useState } from 'react';
-import { Modal } from './ui';
-import { BTN_SECONDARY_STYLE } from '../constants';
-import { GoldenConfirmActions, isGoldenHour } from './golden/GoldenDialog';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { markConfirmHostMounted, subscribeToConfirms, PendingConfirm } from '../services/confirm';
 
-/** Renders confirmDialog() requests one at a time in the shared Modal (focus trap, Escape = cancel). */
+// The dialog, Vaul and the Hold Button load with the first confirmation, not with the app.
+const ConfirmDialog = lazy(() => import('./new/ConfirmDialog'));
+
+/**
+ * Renders confirmDialog() requests one at a time (decision 176): a centred dialog from tablet up and a
+ * Smooth Drawer on phones (components/new/RpDialog.tsx, which carries its own `rp-root`, so it also
+ * works above an old page). A destructive request (`danger`) asks for the Hold Button (decision 9) and
+ * focuses Cancel first; an ordinary one is a plain Cancel / Confirm pill pair. Escape cancels.
+ */
 export const ConfirmHost: React.FC = () => {
   const [queue, setQueue] = useState<PendingConfirm[]>([]);
+  // Keep the last request while the dialog animates out, so its text does not vanish mid-fade.
+  const [shown, setShown] = useState<PendingConfirm | null>(null);
+  const pending = useRef<PendingConfirm[]>([]);
+  pending.current = queue;
   useEffect(() => {
     markConfirmHostMounted(true);
     const off = subscribeToConfirms((c) => setQueue((q) => [...q, c]));
-    return () => { off(); markConfirmHostMounted(false); };
+    // If the host goes away (the app swaps shells), answer "no" to what is still open rather than leave it hanging.
+    return () => { off(); markConfirmHostMounted(false); pending.current.forEach((c) => c.resolve(false)); };
   }, []);
   const current = queue[0];
+  useEffect(() => { if (current) setShown(current); }, [current]);
+  const view = current ?? shown;
+
   const settle = (ok: boolean) => {
     if (!current) return;
     current.resolve(ok);
     setQueue((q) => q.slice(1));
   };
-  if (isGoldenHour()) {
-    return (
-      <Modal isOpen={!!current} onClose={() => settle(false)} title={current?.title || 'Please confirm'} icon={current?.danger ? 'warning' : 'help'} maxWidth="max-w-md"
-        footerActions={<GoldenConfirmActions cancelLabel={current?.cancelLabel || 'Cancel'} confirmLabel={current?.confirmLabel || 'Confirm'} danger={current?.danger} onCancel={() => settle(false)} onConfirm={() => settle(true)} />}
-      >
-        <p className="text-base leading-relaxed text-left pb-2">{current?.message}</p>
-      </Modal>
-    );
-  }
+
+  if (!view) return null;
   return (
-    <Modal isOpen={!!current} onClose={() => settle(false)} title={current?.title || 'Please confirm'} icon={current?.danger ? 'warning' : 'help'} maxWidth="max-w-md">
-      <div className="space-y-6 text-left font-sans">
-        <p className="text-sm text-light-text dark:text-dark-text leading-relaxed">{current?.message}</p>
-        <div className="flex gap-3 justify-end pt-4 border-t border-black/10 dark:border-white/10 mt-6">
-          <button type="button" onClick={() => settle(false)} className={`${BTN_SECONDARY_STYLE} px-4 py-2 text-xs font-bold uppercase`}>
-            {current?.cancelLabel || 'Cancel'}
-          </button>
-          <button
-            type="button"
-            autoFocus
-            onClick={() => settle(true)}
-            className={`min-h-[44px] px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border cursor-pointer ${current?.danger
-              ? 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-800 dark:text-rose-300 border-rose-500/35'
-              : 'bg-primary-500/15 hover:bg-primary-500/25 text-primary-900 dark:text-primary-300 border-primary-500/35'}`}
-          >
-            {current?.confirmLabel || 'Confirm'}
-          </button>
-        </div>
-      </div>
-    </Modal>
+    <Suspense fallback={null}>
+      <ConfirmDialog open={!!current} request={view} onSettle={settle} />
+    </Suspense>
   );
 };

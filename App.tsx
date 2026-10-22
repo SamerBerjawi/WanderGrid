@@ -97,9 +97,9 @@ const getUrlState = () => {
 
 import ViewSkeleton from './components/skeletons/ViewSkeleton';
 
-// Content-shaped Liquid Glass skeleton fallback for lazy components
-const ViewLoader: React.FC<{ view?: ViewState | string }> = ({ view = 'dashboard' }) => (
-    <ViewSkeleton view={view} />
+// Content-shaped New-style skeleton fallback for lazy components
+const ViewLoader: React.FC<{ view?: ViewState | string; fullScreen?: boolean }> = ({ view = 'dashboard', fullScreen }) => (
+    <ViewSkeleton view={view} fullScreen={fullScreen} />
 );
 
 import { AmbientBackground } from './components/AmbientBackground';
@@ -303,6 +303,7 @@ export default function App() {
 
   useEffect(() => {
     const handleUnauthorized = () => {
+        toast.info('Your session ended. Sign in again to continue.', { key: 'session-ended' });
         handleLogout({ keepLocation: true });
     };
     window.addEventListener('wandergrid-unauthorized', handleUnauthorized);
@@ -431,6 +432,7 @@ export default function App() {
                     <Auth onLogin={handleLogin} />
                 </Suspense>
             </div>
+            <Toaster />
         </div>
       );
   }
@@ -461,7 +463,7 @@ export default function App() {
 
   if (newPage) {
       return (
-        <Suspense fallback={null}>
+        <Suspense fallback={<ViewLoader view={newPage} fullScreen />}>
           <ShellNew
             currentPath={newPage === 'trip' ? '/trips-new' : newPage === 'roadtrips' ? '/flights-new' : newPage === 'member' ? '' : window.location.pathname}
             onNavigate={navigateFromShell}
@@ -474,7 +476,7 @@ export default function App() {
             hideBrandOnMobile={newPage === 'map'}
           >
             <AppErrorBoundary routeKey={`new-${newPage}`} onResetToDashboard={() => navigate(ViewState.DASHBOARD)}>
-              <Suspense fallback={null}>
+              <Suspense fallback={<ViewLoader view={newPage} />}>
                 {newPage === 'map' ? <MapNew onTripClick={openTripNew} isSidebarCollapsed={isSidebarCollapsed} onThemeChange={t => handleThemeChange(t)} /> : null}
                 {newPage === 'atlas' ? <AtlasNew onTripClick={openTripNew} /> : null}
                 {newPage === 'trips' ? <TripsNew onTripClick={openTripNew} /> : null}
@@ -496,6 +498,7 @@ export default function App() {
               </Suspense>
             </AppErrorBoundary>
           </ShellNew>
+          <PWAInstallBanner />
           <Toaster />
           <ConfirmHost />
         </Suspense>
@@ -548,8 +551,8 @@ export default function App() {
         <Toaster />
         <ConfirmHost />
         {!dataService.isDatabaseMode() && (
-          <div className="fixed top-safe-offset right-3 z-toast px-3 py-1.5 rounded-full bg-amber-500 text-black text-xs font-bold shadow-lg pointer-events-none" role="status">
-            Local mode · data stays in this browser
+          <div className="rp-root fixed top-safe-offset right-3 z-toast pointer-events-none" role="status">
+            <span className="inline-flex min-h-8 items-center rounded-full bg-rp-mustard px-3 text-xs font-medium text-rp-on-mustard rp-shadow-soft">Local mode · data stays in this browser</span>
           </div>
         )}
       </div>

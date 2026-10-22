@@ -1,73 +1,101 @@
-import React, { useEffect, useState } from 'react';
-import { isGoldenHour } from './golden/GoldenDialog';
-import { subscribeToToasts, ToastMessage } from '../services/toast';
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { ArrowUndo, Check, Info, Warning, X } from './ui/hugeicons';
+import { getToasts, subscribeToastList, toast, type ToastMessage } from '../services/toast';
+import { cn } from '../utils/cn';
+import './new/new.css';
 
-const KIND_STYLE: Record<ToastMessage['kind'], string> = {
-  error: 'bg-rose-600 text-white',
-  success: 'bg-emerald-600 text-white',
-  info: 'bg-slate-800 text-white dark:bg-white dark:text-slate-900',
+/**
+ * The one toast host (UI_UX_DESIGN_REFERENCE.md §3.2, decision 175): an ink pill at the bottom with an
+ * optional mustard Undo, fed by services/toast (and by useUndoToast in components/new/UndoToast.tsx, so
+ * only one pill style ever appears). It carries its own `rp-root`, so it renders the same above the New
+ * shell and above an old page. Up to three transient toasts stack; sticky ones (offline, update ready)
+ * sit above them. A toast pauses while hovered or focused.
+ */
+
+const STYLE: Record<ToastMessage['kind'], { icon: typeof Info | null; chip: string }> = {
+  success: { icon: Check, chip: 'bg-rp-green text-rp-paper' },
+  error: { icon: Warning, chip: 'bg-rp-rust text-rp-paper' },
+  info: { icon: null, chip: '' },
 };
 
-const GH_TOAST: Record<ToastMessage['kind'], string> = {
-  error: 'bg-sunset-coral text-white',
-  success: 'bg-sunset-teal text-sunset-ink',
-  info: 'bg-sunset-sun text-sunset-ink',
-};
-const GH_TOAST_GLYPH: Record<ToastMessage['kind'], string> = { error: '!', success: '✓', info: 'i' };
+const ToastPill: React.FC<{ t: ToastMessage }> = ({ t }) => {
+  const reduce = useReducedMotion();
+  const [paused, setPaused] = useState(false);
+  const remaining = useRef(t.duration);
+  const startedAt = useRef(0);
+  const style = STYLE[t.kind];
+  const dismiss = useCallback(() => toast.dismiss(t.id), [t.id]);
 
-/** Renders toasts from services/toast. Errors are announced to screen readers immediately. */
-export const Toaster: React.FC = () => {
-  const [items, setItems] = useState<ToastMessage[]>([]);
+  useEffect(() => {
+    if (!t.duration || paused) return;
+    startedAt.current = Date.now();
+    const timer = window.setTimeout(dismiss, remaining.current);
+    return () => {
+      window.clearTimeout(timer);
+      remaining.current = Math.max(1200, remaining.current - (Date.now() - startedAt.current));
+    };
+  }, [t.duration, paused, dismiss]);
 
-  useEffect(() => subscribeToToasts((t) => {
-    setItems((prev) => [...prev.filter((p) => p.message !== t.message), t].slice(-3));
-    window.setTimeout(() => setItems((prev) => prev.filter((p) => p.id !== t.id)), t.kind === 'error' ? 8000 : 4000);
-  }), []);
-
-  if (isGoldenHour()) {
-    return (
-      <div className="fixed top-safe-offset left-1/2 -translate-x-1/2 z-toast flex flex-col items-center gap-2 w-[min(92vw,28rem)] pointer-events-none font-sans">
-        {items.map((t) => (
-          <div
-            key={t.id}
-            role={t.kind === 'error' ? 'alert' : 'status'}
-            className={`pointer-events-auto w-full flex items-center justify-between gap-3 pl-3 pr-1 py-1 rounded-full shadow-card text-sm font-semibold animate-fadeIn ${GH_TOAST[t.kind]}`}
-          >
-            <span aria-hidden="true" className="w-8 h-8 rounded-full bg-white/90 text-sunset-ink flex items-center justify-center text-base font-black shrink-0">{GH_TOAST_GLYPH[t.kind]}</span>
-            <span className="min-w-0 break-words flex-1 py-2">{t.message}</span>
-            <button
-              type="button"
-              onClick={() => setItems((prev) => prev.filter((p) => p.id !== t.id))}
-              className="shrink-0 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center cursor-pointer hover:bg-black/10"
-              aria-label="Dismiss notification"
-            >
-              ✕
-            </button>
-          </div>
-        ))}
-      </div>
-    );
-  }
+  const act = (run: () => void | Promise<void>) => { dismiss(); void run(); };
+  const btn = 'inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-medium outline-none transition-transform active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-rp-paper';
 
   return (
-    <div className="fixed top-safe-offset left-1/2 -translate-x-1/2 z-toast flex flex-col items-center gap-2 w-[min(92vw,28rem)] pointer-events-none">
-      {items.map((t) => (
-        <div
-          key={t.id}
-          role={t.kind === 'error' ? 'alert' : 'status'}
-          className={`pointer-events-auto w-full flex items-start justify-between gap-3 px-4 py-3 rounded-2xl shadow-xl text-sm font-semibold ${KIND_STYLE[t.kind]}`}
+    <motion.div
+      layout={!reduce}
+      role={t.kind === 'error' ? 'alert' : 'status'}
+      aria-live={t.kind === 'error' ? 'assertive' : 'polite'}
+      aria-atomic="true"
+      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={reduce ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.97 }}
+      transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+      onPointerEnter={() => setPaused(true)}
+      onPointerLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+      className="pointer-events-auto flex min-h-14 w-fit max-w-full items-center gap-2 rounded-rp-card bg-rp-ink py-1.5 pr-1.5 pl-3 text-rp-on-ink rp-shadow-ink"
+    >
+      {style.icon ? (
+        <span className={cn('flex size-6 shrink-0 items-center justify-center rounded-full', style.chip)} aria-hidden>
+          <style.icon size={14} />
+        </span>
+      ) : <span className="w-1" aria-hidden />}
+      <span className="min-w-0 py-2 text-sm leading-snug break-words">{t.message}</span>
+      {t.action ? (
+        <button type="button" onClick={() => act(t.action!.onClick)} className={cn(btn, 'bg-rp-on-ink/15 text-rp-on-ink')}>
+          {t.action.icon ? <t.action.icon size={16} aria-hidden /> : null}
+          {t.action.label}
+        </button>
+      ) : null}
+      {t.onUndo ? (
+        <button type="button" onClick={() => act(t.onUndo!)} className={cn(btn, 'bg-rp-mustard text-rp-on-mustard')}>
+          <ArrowUndo size={16} aria-hidden />
+          Undo
+        </button>
+      ) : null}
+      {!t.onUndo ? (
+        <button
+          type="button"
+          onClick={() => { dismiss(); t.onDismiss?.(); }}
+          aria-label="Dismiss notification"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full text-rp-on-ink/80 outline-none transition-colors hover:bg-rp-on-ink/15 hover:text-rp-on-ink focus-visible:ring-2 focus-visible:ring-rp-paper"
         >
-          <span className="min-w-0 break-words">{t.message}</span>
-          <button
-            type="button"
-            onClick={() => setItems((prev) => prev.filter((p) => p.id !== t.id))}
-            className="shrink-0 min-w-[44px] min-h-[44px] -my-3 -mr-3 flex items-center justify-center opacity-80 hover:opacity-100 cursor-pointer"
-            aria-label="Dismiss notification"
-          >
-            ✕
-          </button>
-        </div>
-      ))}
+          <X size={16} aria-hidden />
+        </button>
+      ) : null}
+    </motion.div>
+  );
+};
+
+/** Renders the toast list from services/toast. Errors are announced at once (assertive); the rest politely. */
+export const Toaster: React.FC = () => {
+  const items = useSyncExternalStore(subscribeToastList, getToasts, getToasts);
+  return (
+    <div className="rp-root pointer-events-none fixed inset-x-0 bottom-[calc(96px+env(safe-area-inset-bottom,0px))] z-toast flex flex-col items-center gap-2 px-3 md:bottom-6">
+      <AnimatePresence initial={false} mode="popLayout">
+        {items.map((t) => <ToastPill key={t.id} t={t} />)}
+      </AnimatePresence>
     </div>
   );
 };
