@@ -36,15 +36,21 @@ const AtlasNew = lazy(() => import('./views/new/AtlasNew').then(m => ({ default:
 const TripsNew = lazy(() => import('./views/new/TripsNew').then(m => ({ default: m.TripsNew })));
 const TripNew = lazy(() => import('./views/new/TripNew').then(m => ({ default: m.TripNew })));
 const DashboardNew = lazy(() => import('./views/new/DashboardNew').then(m => ({ default: m.DashboardNew })));
-type NewPage = 'map' | 'atlas' | 'trips' | 'trip' | 'dashboard';
+const MemberNew = lazy(() => import('./views/new/MemberNew').then(m => ({ default: m.MemberNew })));
+type NewPage = 'map' | 'atlas' | 'trips' | 'trip' | 'member' | 'dashboard';
 const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips', '/dashboard-new': 'dashboard' };
 // One trip's page: /trip-new/:id (the Trips page opens it).
 const NEW_TRIP_PATH = /^\/trip-new\/([^/]+)$/;
 const getNewTripId = (): string | null => {
     try { const m = window.location.pathname.match(NEW_TRIP_PATH); return m ? safeDecode(m[1]) : null; } catch (e) { return null; }
 };
+// One member's page: /member-new/:id.
+const NEW_MEMBER_PATH = /^\/member-new\/([^/]+)$/;
+const getNewMemberId = (): string | null => {
+    try { const m = window.location.pathname.match(NEW_MEMBER_PATH); return m ? safeDecode(m[1]) : null; } catch (e) { return null; }
+};
 const getNewPage = (): NewPage | null => {
-    try { return NEW_PAGES[window.location.pathname] ?? (NEW_TRIP_PATH.test(window.location.pathname) ? 'trip' : null); } catch (e) { return null; }
+    try { return NEW_PAGES[window.location.pathname] ?? (NEW_TRIP_PATH.test(window.location.pathname) ? 'trip' : NEW_MEMBER_PATH.test(window.location.pathname) ? 'member' : null); } catch (e) { return null; }
 };
 
 import { PWAInstallBanner } from './components/PWAInstallBanner';
@@ -428,18 +434,13 @@ export default function App() {
       else navigateFromShell(`/trip-new/${encodeURIComponent(id)}`);
   };
 
-  // Members open their New page once it exists (flip the flag when MemberNew is routed); until then the original page.
-  const MEMBER_NEW_READY = false;
-  const openMemberNew = (id: string) => {
-      if (MEMBER_NEW_READY) navigateFromShell(`/member-new/${encodeURIComponent(id)}`);
-      else handleUserClick(id);
-  };
+  const openMemberNew = (id: string) => navigateFromShell(`/member-new/${encodeURIComponent(id)}`);
 
   if (newPage) {
       return (
         <Suspense fallback={null}>
           <ShellNew
-            currentPath={newPage === 'trip' ? '/trips-new' : window.location.pathname}
+            currentPath={newPage === 'trip' ? '/trips-new' : newPage === 'member' ? '' : window.location.pathname}
             onNavigate={navigateFromShell}
             user={currentUser}
             isDark={isDarkMode}
@@ -455,8 +456,17 @@ export default function App() {
                 {newPage === 'atlas' ? <AtlasNew onTripClick={openTripNew} /> : null}
                 {newPage === 'trips' ? <TripsNew onTripClick={openTripNew} /> : null}
                 {newPage === 'dashboard' ? <DashboardNew onTripClick={openTripNew} onMemberClick={openMemberNew} /> : null}
+                {newPage === 'member' && getNewMemberId() ? (
+                  <MemberNew
+                    key={getNewMemberId()!}
+                    memberId={getNewMemberId()!}
+                    onBack={() => (window.history.length > 1 ? window.history.back() : navigateFromShell('/trips-new'))}
+                    onOpenTrip={openTripNew}
+                    onLogout={() => handleLogout()}
+                  />
+                ) : null}
                 {newPage === 'trip' && getNewTripId() ? (
-                  <TripNew key={getNewTripId()!} tripId={getNewTripId()!} onBack={() => navigateFromShell('/trips-new')} onOpenOriginal={handleTripClick} />
+                  <TripNew key={getNewTripId()!} tripId={getNewTripId()!} onOpenMember={openMemberNew} onBack={() => navigateFromShell('/trips-new')} onOpenOriginal={handleTripClick} />
                 ) : null}
               </Suspense>
             </AppErrorBoundary>
