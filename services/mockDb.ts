@@ -345,17 +345,30 @@ class DataService {
   }
 
   /** Poll a background job (202 + jobId) until it finishes; rejects with the job's error. */
-  async waitForJob(jobId: string, timeoutMs = 10 * 60 * 1000): Promise<any> {
+  async waitForJob(jobId: string, timeoutMs = 10 * 60 * 1000, onProgress?: (percent: number) => void): Promise<any> {
     const deadline = Date.now() + timeoutMs;
     let delay = 300;
     while (Date.now() < deadline) {
         const job = await this.fetch<any>(`/jobs/status/${jobId}`);
+        if (typeof job?.progress === 'number') onProgress?.(job.progress);
         if (job?.status === 'Completed') return job.result;
         if (job?.status === 'Failed') throw new Error(job.error || 'The job failed');
         await new Promise(resolve => setTimeout(resolve, delay));
         delay = Math.min(delay * 1.5, 2000);
     }
     throw new Error('Timed out waiting for the server to finish');
+  }
+
+  /** Starts a background job on the server (POST, answered with 202 and a jobId) and waits for it, reporting progress. */
+  async runServerJob(path: '/jobs/refresh' | '/jobs/backup', onProgress?: (percent: number) => void): Promise<any> {
+    const started = await this.fetch<any>(path, { method: 'POST' });
+    if (!started?.jobId) throw new Error('The server did not start the job');
+    return this.waitForJob(started.jobId, 10 * 60 * 1000, onProgress);
+  }
+
+  /** Asks the server whether a stored API key works (admin only). The key itself is never returned. */
+  async testApiKey(service: 'gemini' | 'aviationstack' | 'aerodatabox' | 'openaip' | 'brandfetch'): Promise<{ success: boolean; latencyMs: number; message: string }> {
+    return this.fetch(`/integrations/test-key/${service}`, { method: 'POST' });
   }
 
   /**
@@ -1608,7 +1621,7 @@ class DataService {
         window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
       } catch (e) {}
   }
-  async exportFullState(options?: BackupSelectionOptions): Promise<string> {
+  async exportFullState(options?: BackupSelectionOptions, onProgress?: (percent: number) => void): Promise<string> {
       const selected: BackupSelectionOptions = {
           flights: true,
           roadTrips: true,
@@ -1627,7 +1640,12 @@ class DataService {
           } catch (e) {}
       }
 
-      const dbState = await this.fetch<any>('/backup');
+      // With the server, the tables are read by a background job (AGENTS.md §3); without one, or if the job route is missing, read them directly.
+      let dbState: any = null;
+      if (this._useApi) {
+          try { dbState = await this.runServerJob('/jobs/backup', onProgress); } catch (e) { dbState = null; }
+      }
+      if (!dbState) dbState = await this.fetch<any>('/backup');
       const cleanDbState = removeSensitiveData(dbState) || {};
 
       // Filter trips according to granularity

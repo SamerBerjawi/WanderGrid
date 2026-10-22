@@ -335,6 +335,8 @@ export interface WorkspaceSettings {
     defaultBasemapDark?: 'citylights' | 'ocean' | 'satellite' | 'onyx';
     allowSelfRegistration?: boolean; // Public "Sign Up" after the first admin exists (default true)
     configuredKeys?: Partial<Record<'googleGeminiApiKey' | 'aviationStackApiKey' | 'aeroDataBoxApiKey' | 'openAipApiKey', boolean>>; // Read-only, from the server
+    /** Read-only, from the server: where each key comes from (saved in the workspace, or the host's environment). */
+    keySources?: Partial<Record<'googleGeminiApiKey' | 'aviationStackApiKey' | 'aeroDataBoxApiKey' | 'openAipApiKey', 'workspace' | 'env' | 'none'>>;
 }
 
 export enum ViewState {
