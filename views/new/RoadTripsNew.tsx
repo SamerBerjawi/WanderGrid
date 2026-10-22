@@ -5,7 +5,7 @@ import { LAND_MODES, useRoadTripLog } from '../../hooks/useRoadTripLog';
 import { errorMessage, toast } from '../../services/toast';
 import { mapLink } from '../../utils/mapLinks';
 import {
-    SORT_LABEL, byCarrier, carrierLabel, groupJourneys, isIndependent, journeyStatus, sortJourneys,
+    SORT_LABEL, byCarrier, journeyMinutes, carrierLabel, groupJourneys, isIndependent, journeyStatus, sortJourneys,
     type JourneyGroup, type JourneyRecord, type JourneySortKey, type JourneyState,
 } from '../../utils/journeysModel';
 import type { DockTool } from '../../components/kokonutui/tool-dock';
@@ -64,6 +64,18 @@ const PILL = 'inline-flex min-h-11 shrink-0 items-center justify-center gap-2 ro
 const STATES: { id: JourneyState; label: string }[] = [
     { id: 'scheduled', label: 'Scheduled' }, { id: 'travelling', label: 'On the way' }, { id: 'done', label: 'Arrived' }, { id: 'cancelled', label: 'Cancelled' },
 ];
+const LENGTHS = [
+    { id: 'short', label: 'Under 1 hour', test: (m: number) => m > 0 && m < 60 },
+    { id: 'half', label: '1 to 4 hours', test: (m: number) => m >= 60 && m < 240 },
+    { id: 'day', label: '4 to 12 hours', test: (m: number) => m >= 240 && m < 720 },
+    { id: 'long', label: 'Over 12 hours', test: (m: number) => m >= 720 },
+] as const;
+const COSTS = [
+    { id: 'none', label: 'No cost logged', test: (c: number) => !c },
+    { id: 'low', label: 'Under 50', test: (c: number) => c > 0 && c < 50 },
+    { id: 'mid', label: '50 to 200', test: (c: number) => c >= 50 && c < 200 },
+    { id: 'high', label: '200 and over', test: (c: number) => c >= 200 },
+] as const;
 const SORTS: { key: JourneySortKey; asc: boolean; label: string; short: string }[] = [
     { key: 'date', asc: false, label: 'Date, newest first', short: 'Newest' },
     { key: 'date', asc: true, label: 'Date, oldest first', short: 'Oldest' },
@@ -100,6 +112,8 @@ export const RoadTripsNew: React.FC<RoadTripsNewProps> = ({ onTripClick }) => {
     const [statusFilter, setStatusFilter] = useState<JourneyState | 'all'>('all');
     const [noTrip, setNoTrip] = useState(false);
     const [operator, setOperator] = useState('all');
+    const [length, setLength] = useState<'all' | typeof LENGTHS[number]['id']>('all');
+    const [costBand, setCostBand] = useState<'all' | typeof COSTS[number]['id']>('all');
     const [modeFilter, setModeFilter] = useState<'all' | typeof LAND_MODES[number]>('all');
     const [expanded, setExpanded] = useState(false);
     const [detailId, setDetailId] = useState<string | null>(null);
@@ -138,13 +152,15 @@ export const RoadTripsNew: React.FC<RoadTripsNewProps> = ({ onTripClick }) => {
         const list = log.filtered.filter(r =>
             (statusFilter === 'all' || journeyStatus(r.flight, now).state === statusFilter) && (!noTrip || isIndependent(r.trip.id))
             && (operator === 'all' || carrierLabel(r.flight).trim().toLowerCase() === operator)
-            && (modeFilter === 'all' || r.flight.mode === modeFilter));
+            && (modeFilter === 'all' || r.flight.mode === modeFilter)
+            && (length === 'all' || LENGTHS.find(l => l.id === length)!.test(journeyMinutes(r.flight)))
+            && (costBand === 'all' || COSTS.find(c => c.id === costBand)!.test(r.flight.cost || 0)));
         return sortJourneys(list, sortKey, sortAsc);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [log.filtered, statusFilter, noTrip, operator, modeFilter, sortKey, sortAsc]);
+    }, [log.filtered, statusFilter, noTrip, operator, modeFilter, length, costBand, sortKey, sortAsc]);
     const operatorOptions = useMemo(() => byCarrier(log.records), [log.records]);
     const modeCounts = useMemo(() => { const m = new Map<string, number>(); log.records.forEach(r => m.set(r.flight.mode, (m.get(r.flight.mode) || 0) + 1)); return m; }, [log.records]);
-    const filtering = Boolean(log.searchQuery.trim()) || log.timeFilter !== 'all' || log.yearFilter !== 'all' || statusFilter !== 'all' || noTrip || operator !== 'all' || modeFilter !== 'all';
+    const filtering = Boolean(log.searchQuery.trim()) || log.timeFilter !== 'all' || log.yearFilter !== 'all' || statusFilter !== 'all' || noTrip || operator !== 'all' || modeFilter !== 'all' || length !== 'all' || costBand !== 'all';
     const independentCount = useMemo(() => log.records.filter(r => isIndependent(r.trip.id)).length, [log.records]);
 
     const tripChoices = useMemo<Trip[]>(() =>
@@ -230,7 +246,7 @@ export const RoadTripsNew: React.FC<RoadTripsNewProps> = ({ onTripClick }) => {
     const sortLabel = (SORTS.find(s => s.key === sortKey && s.asc === sortAsc) ?? SORTS[0]).short;
     const tickets = shown.filter(r => selected.has(r.flight.id));
 
-    const clearFilters = () => { log.resetFilters(); setStatusFilter('all'); setNoTrip(false); setOperator('all'); setModeFilter('all'); };
+    const clearFilters = () => { log.resetFilters(); setStatusFilter('all'); setNoTrip(false); setOperator('all'); setModeFilter('all'); setLength('all'); setCostBand('all'); };
 
     return (
         <div className="custom-scrollbar h-full overflow-y-auto px-3 pt-2 pb-32 sm:px-6 md:pb-16">
@@ -303,6 +319,16 @@ export const RoadTripsNew: React.FC<RoadTripsNewProps> = ({ onTripClick }) => {
                                     label="Filter by status"
                                     pill={{ label: statusFilter === 'all' ? 'Status' : STATES.find(s => s.id === statusFilter)!.label, icon: Clock }}
                                     items={[{ id: 'all', label: 'Any status', icon: X, selected: statusFilter === 'all', onSelect: () => setStatusFilter('all') }, ...STATES.map(s => ({ id: s.id, label: s.label, icon: s.id === 'cancelled' ? XCircle : Clock, selected: statusFilter === s.id, onSelect: () => setStatusFilter(s.id) }))]}
+                                />
+                                <TripMenu
+                                    label="Filter by length"
+                                    pill={{ label: length === 'all' ? 'Length' : LENGTHS.find(l => l.id === length)!.label, icon: Clock }}
+                                    items={[{ id: 'all', label: 'Any length', icon: X, selected: length === 'all', onSelect: () => setLength('all') }, ...LENGTHS.map(l => ({ id: l.id, label: l.label, icon: Clock, selected: length === l.id, onSelect: () => setLength(l.id) }))]}
+                                />
+                                <TripMenu
+                                    label="Filter by cost"
+                                    pill={{ label: costBand === 'all' ? 'Cost' : COSTS.find(c => c.id === costBand)!.label, icon: Funnel }}
+                                    items={[{ id: 'all', label: 'Any cost', icon: X, selected: costBand === 'all', onSelect: () => setCostBand('all') }, ...COSTS.map(c => ({ id: c.id, label: c.label, icon: Funnel, selected: costBand === c.id, onSelect: () => setCostBand(c.id) }))]}
                                 />
                                 <TripMenu
                                     label="Filter by operator"

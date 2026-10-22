@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { Transport, TransportMode, Trip } from '../../../types';
 import { RpChip, RpSheet } from '../ui';
 import { MODE_LOOKS } from '../trips/transportModes';
-import { MODE_SPEED_KMH } from '../../../utils/journeysModel';
+import { estimateLeg } from '../../../services/journeyEstimate';
 import { formatDate } from '../../../utils/formatters';
 import { Plus } from '../../ui/hugeicons';
 import { cn } from '../../../utils/cn';
@@ -13,7 +13,10 @@ import { cn } from '../../../utils/cn';
  * can be trimmed before anything is saved.
  */
 
-const suggest = (trip: Trip, mode: TransportMode, newId: () => string): Transport[] => {
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/** One journey per consecutive pair of stops. Distance and time come from the places (the road, the rail line or the sea lane when they can be found, else an estimate); only stops with no position at all fall back to the gap between the dates. */
+const suggest = async (trip: Trip, mode: TransportMode, newId: () => string): Promise<Transport[]> => {
     const stops = [...(trip.locations || [])].sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
     const have = trip.transports || [];
     const out: Transport[] = [];
@@ -22,15 +25,28 @@ const suggest = (trip: Trip, mode: TransportMode, newId: () => string): Transpor
         const b = stops[i + 1];
         const same = (x?: string, y?: string) => (x || '').toLowerCase().trim() === (y || '').toLowerCase().trim();
         if (have.some(t => same(t.origin, a.name) && same(t.destination, b.name))) continue;
-        let hours = Math.abs(new Date(b.startDate).getTime() - new Date(a.endDate || a.startDate).getTime()) / 3_600_000;
-        if (!Number.isFinite(hours) || hours <= 0) hours = 4;
-        if (hours > 24) hours = 6;
+        let km = 0;
+        let minutes = 0;
+        if (a.coordinates && b.coordinates) {
+            const est = await estimateLeg(mode, [[a.coordinates.lng, a.coordinates.lat], [b.coordinates.lng, b.coordinates.lat]]);
+            km = est.km; minutes = est.minutes;
+        }
+        if (!minutes) {
+            let hours = Math.abs(new Date(b.startDate).getTime() - new Date(a.endDate || a.startDate).getTime()) / 3_600_000;
+            if (!Number.isFinite(hours) || hours <= 0) hours = 4;
+            if (hours > 24) hours = 6;
+            minutes = Math.round(hours * 60);
+        }
+        const departureDate = a.endDate || a.startDate;
+        const depart = new Date(`${departureDate}T10:00:00`);
+        const arrive = new Date(depart.getTime() + minutes * 60000);
         out.push({
             id: newId(), itineraryId: newId(), type: 'One-Way', mode, origin: a.name, destination: b.name,
             originLat: a.coordinates?.lat, originLng: a.coordinates?.lng, destLat: b.coordinates?.lat, destLng: b.coordinates?.lng,
-            departureDate: a.endDate || a.startDate, departureTime: '10:00', arrivalDate: b.startDate, arrivalTime: '14:00',
+            departureDate, departureTime: '10:00',
+            arrivalDate: `${arrive.getFullYear()}-${pad(arrive.getMonth() + 1)}-${pad(arrive.getDate())}`, arrivalTime: `${pad(arrive.getHours())}:${pad(arrive.getMinutes())}`,
             provider: '', identifier: '', confirmationCode: '', cost: 0, waypoints: [],
-            duration: Math.round(hours * 60), distance: Math.round(hours * (MODE_SPEED_KMH[mode] || 80)),
+            duration: minutes, distance: km || undefined,
             notes: "From the trip's route planner.",
         } as Transport);
     }
@@ -51,7 +67,15 @@ export const RouteImportSheet: React.FC<{
     const [skipped, setSkipped] = useState<Set<string>>(new Set());
     const [busy, setBusy] = useState(false);
     const trip = withRoute.find(t => t.id === tripId);
-    const items = useMemo(() => (trip ? suggest(trip, mode, newId) : []), [trip, mode, newId]);
+    const [items, setItems] = useState<Transport[]>([]);
+    const [working, setWorking] = useState(false);
+    useEffect(() => {
+        let live = true;
+        if (!trip) { setItems([]); return; }
+        setWorking(true);
+        void suggest(trip, mode, newId).then(list => { if (live) { setItems(list); setWorking(false); } }).catch(() => { if (live) { setItems([]); setWorking(false); } });
+        return () => { live = false; };
+    }, [trip, mode, newId]);
     const chosen = items.filter(i => !skipped.has(`${i.origin}>${i.destination}`));
     const key = (t: Transport) => `${t.origin}>${t.destination}`;
 
@@ -67,7 +91,7 @@ export const RouteImportSheet: React.FC<{
             title="From a trip's route"
             subtitle="One journey between each pair of stops"
             footer={withRoute.length === 0 ? null : (
-                <button type="button" disabled={chosen.length === 0 || busy} onClick={() => void save()} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-ink px-5 text-sm font-medium text-rp-on-ink outline-none hover:bg-rp-ink/90 focus-visible:ring-2 focus-visible:ring-rp-muted disabled:opacity-40">
+                <button type="button" disabled={chosen.length === 0 || busy || working} onClick={() => void save()} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-ink px-5 text-sm font-medium text-rp-on-ink outline-none hover:bg-rp-ink/90 focus-visible:ring-2 focus-visible:ring-rp-muted disabled:opacity-40">
                     <Plus size={16} aria-hidden /> {chosen.length ? `Add ${chosen.length} ${chosen.length === 1 ? 'journey' : 'journeys'}` : 'Add journeys'}
                 </button>
             )}
@@ -92,7 +116,7 @@ export const RouteImportSheet: React.FC<{
                         ))}
                     </div>
                     {trip ? (
-                        items.length === 0 ? (
+                        working ? <p className="text-sm text-rp-muted">Working out distances…</p> : items.length === 0 ? (
                             <p className="text-sm text-rp-muted">Every stop on this route is already linked by a journey.</p>
                         ) : (
                             <ul className="flex flex-col gap-2">

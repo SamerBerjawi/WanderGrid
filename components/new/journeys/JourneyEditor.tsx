@@ -11,7 +11,7 @@ import { RpSection, RpSheet } from '../ui';
 import { TripMenu } from '../trips/TripMenu';
 import { LEG_DATE, LegForm } from '../trips/LegForm';
 import { extractIata } from '../../../hooks/useFlightLog';
-import { MODE_SPEED_KMH, estimateMinutes, estimateMinutesFor, fromLog, isIndependent, journeyKm, localArrival, type JourneyRecord } from '../../../utils/journeysModel';
+import { MODE_SPEED_KMH, estimateMinutes, fromLog, isIndependent, journeyKm, localArrival, type JourneyRecord } from '../../../utils/journeysModel';
 import { toast } from '../../../services/toast';
 import { errorMessage } from '../../../services/toast';
 import { cn } from '../../../utils/cn';
@@ -115,7 +115,10 @@ export const JourneyEditor: React.FC<{
             const minutes = flight ? calculateDurationMinutes(origin, destination, leg.departureDate, leg.departureTime || '00:00', arrivalDate, leg.arrivalTime || '00:00') : 0;
             // Land and sea: the time is the wall-clock gap (no airport zones), the distance the one given, else the time at the mode's average speed, else the straight line.
             const wall = flight ? 0 : Math.max(0, Math.round((Date.parse(`${arrivalDate}T${leg.arrivalTime || '00:00'}:00Z`) - Date.parse(`${leg.departureDate}T${leg.departureTime || '00:00'}:00Z`)) / 60000));
-            const landKm = flight ? undefined : leg.distance || (wall ? Math.round((wall / 60) * (MODE_SPEED_KMH[leg.mode || ''] || 80)) : journeyKm({ origin, destination, originLat: leg.originLat, originLng: leg.originLng, destLat: leg.destLat, destLng: leg.destLng } as Transport)) || undefined;
+            // The distance given, else the places (stretched for how winding the route is), else the time at the mode's average speed.
+            // A distance left over from other places is not kept when From or To changed.
+            const stale = Boolean(editing && (origin !== editing.flight.origin || destination !== editing.flight.destination) && leg.distance === editing.flight.distance);
+            const landKm = flight ? undefined : (stale ? 0 : leg.distance) || Math.round(journeyKm({ mode: leg.mode, origin, destination, originLat: leg.originLat, originLng: leg.originLng, destLat: leg.destLat, destLng: leg.destLng } as Transport)) || (wall ? Math.round((wall / 60) * (MODE_SPEED_KMH[leg.mode || ''] || 80)) : undefined);
             const payload: Transport = {
                 ...(editing?.flight ?? {}),
                 ...(leg as Transport),
@@ -153,7 +156,7 @@ export const JourneyEditor: React.FC<{
         setError('');
         setRouting(true);
         try {
-            const [{ getCoordinates }, { fetchRoute }] = await Promise.all([import('../../../services/geocoding'), import('../../../services/multiModalRouting')]);
+            const [{ getCoordinates }, { estimateLeg, SOURCE_LABEL }] = await Promise.all([import('../../../services/geocoding'), import('../../../services/journeyEstimate')]);
             const [a, b] = await Promise.all([getCoordinates(leg.origin!.trim()), getCoordinates(leg.destination!.trim())]);
             if (!a || !b) throw new Error('Could not find both places on the map.');
             const coords: [number, number][] = [[a.lng, a.lat]];
@@ -162,11 +165,10 @@ export const JourneyEditor: React.FC<{
                 else if (w.name) { const c = await getCoordinates(w.name); if (c) coords.push([c.lng, c.lat]); }
             }
             coords.push([b.lng, b.lat]);
-            const byRoad = leg.mode === 'Car Rental' || leg.mode === 'Personal Car' || leg.mode === 'Bus';
-            const route = byRoad ? await fetchRoute('car', coords) : null;
-            const km = route && route.distanceKm > 0 ? route.distanceKm : journeyKm({ origin: leg.origin!, destination: leg.destination!, originLat: a.lat, originLng: a.lng, destLat: b.lat, destLng: b.lng } as Transport);
-            const minutes = route && route.durationMin > 0 ? Math.round(route.durationMin) : estimateMinutesFor(leg.mode, km);
-            const patchBody: Partial<Transport> = { distance: Math.round(km), originLat: a.lat, originLng: a.lng, originGeoKey: leg.origin!.trim(), destLat: b.lat, destLng: b.lng, destGeoKey: leg.destination!.trim() };
+            const est = await estimateLeg(leg.mode, coords);
+            if (est.km <= 0) throw new Error("Couldn't work out the distance between these places.");
+            const minutes = est.minutes;
+            const patchBody: Partial<Transport> = { distance: est.km, duration: minutes, originLat: a.lat, originLng: a.lng, originGeoKey: leg.origin!.trim(), destLat: b.lat, destLng: b.lng, destGeoKey: leg.destination!.trim() };
             if (leg.departureDate && leg.departureTime && minutes > 0) {
                 const dep = new Date(`${leg.departureDate}T${leg.departureTime}:00`);
                 const arr = new Date(dep.getTime() + minutes * 60000);
@@ -174,8 +176,9 @@ export const JourneyEditor: React.FC<{
                 patchBody.arrivalDate = `${arr.getFullYear()}-${pad(arr.getMonth() + 1)}-${pad(arr.getDate())}`;
                 patchBody.arrivalTime = `${pad(arr.getHours())}:${pad(arr.getMinutes())}`;
             }
+            const h = Math.floor(minutes / 60);
+            toast.info(`${est.km.toLocaleString('en-US')} km, ${h ? `${h} h ` : ''}${minutes % 60} min, ${SOURCE_LABEL[est.source]}. Times are local to the departure place.`);
             patch(patchBody);
-            if (!route && byRoad) toast.info('Routing is unavailable, so the distance is a straight-line estimate.');
         } catch (e) {
             setError(errorMessage(e, "Couldn't work out the route."));
         } finally {

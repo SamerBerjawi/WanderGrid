@@ -65,6 +65,9 @@ const pointOf = (text: string, lat?: number, lng?: number): Point | undefined =>
 
 /** Great-circle distance in km from the two places (saved distance first); 0 when a place can't be found. */
 const kmCache = new Map<string, number>();
+/** How much longer the real route is than the straight line, by mode (roads wind, rails less, sea lanes go round land). Flights fly the straight line. */
+export const CIRCUITY: Record<string, number> = { Train: 1.2, Bus: 1.3, 'Car Rental': 1.3, 'Personal Car': 1.3, Ferry: 1.15, Cruise: 1.25 };
+
 export const journeyKm = (t: Transport): number => {
     if (t.distance && t.distance > 0) return t.distance;
     // Looking two places up for every row on every render is slow for a long log: remember the answer.
@@ -73,7 +76,7 @@ export const journeyKm = (t: Transport): number => {
     if (hit !== undefined) return hit;
     const a = pointOf(t.origin, t.originLat, t.originLng);
     const b = pointOf(t.destination, t.destLat, t.destLng);
-    const km = a && b ? calculateDistance(a.lat, a.lng, b.lat, b.lng) : 0;
+    const km = a && b ? calculateDistance(a.lat, a.lng, b.lat, b.lng) * (t.mode === 'Flight' || !t.mode ? 1 : CIRCUITY[t.mode] ?? 1.25) : 0;
     if (km > 0) kmCache.set(key, km);
     return km;
 };
