@@ -83,3 +83,32 @@ test('OpenAIP tile proxy only accepts numeric coordinates', async () => {
     const r = await srv.api('GET', '/api/proxy/openaip/1/2/..%2F..%2Fx', { token: partner.token });
     assert.equal(r.status, 400);
 });
+
+test('settings say where each key comes from, without the key', async () => {
+    const s = (await srv.api('GET', '/api/settings', { token: admin.token })).json;
+    assert.equal(s.keySources.googleGeminiApiKey, 'workspace');
+    assert.equal(s.keySources.aeroDataBoxApiKey, 'none');
+    assert.ok(!JSON.stringify(s).includes('AIza-REAL-KEY'));
+});
+
+test('testing a stored key is for admins and never returns the key', async () => {
+    const denied = await srv.api('POST', '/api/integrations/test-key/gemini', { token: partner.token });
+    assert.equal(denied.status, 403);
+    const original = global.fetch;
+    let sent = '';
+    global.fetch = (input, init) => {
+        const url = typeof input === 'string' ? input : input.url;
+        if (/localhost|127\.0\.0\.1/.test(url)) return original(input, init);
+        sent = JSON.stringify(init?.headers || {});
+        return Promise.resolve(new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    };
+    try {
+        const r = await srv.api('POST', '/api/integrations/test-key/gemini', { token: admin.token });
+        assert.equal(r.status, 200);
+        assert.equal(r.json.success, true);
+        assert.match(sent, /AIza-REAL-KEY/, 'the stored key is used upstream');
+        assert.ok(!JSON.stringify(r.json).includes('AIza-REAL-KEY'));
+        const unknown = await srv.api('POST', '/api/integrations/test-key/nope', { token: admin.token });
+        assert.equal(unknown.status, 400);
+    } finally { global.fetch = original; }
+});

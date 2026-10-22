@@ -17,6 +17,7 @@ const { handleRouteProxy, handleRailRouteProxy } = require('./routeProxy');
 const { createRouteService } = require('./routeStore');
 const { searchGeocodingChain, searchOpenMeteo, searchPhoton, searchNominatim } = require('./geocodingChain');
 const { testProvider } = require('./integrationsTester');
+const { SERVICE_KEYS, testKey } = require('./keyTester');
 
 const pbkdf2Async = util.promisify(crypto.pbkdf2);
 
@@ -1676,6 +1677,24 @@ app.get('/api/proxy/test/:provider', async (req, res) => {
     }
 });
 
+// Tests a stored API key (Settings › Integrations). Admin only; the key is read here and never sent back.
+const KEY_SERVICE_SETTING = { gemini: 'googleGeminiApiKey', aviationstack: 'aviationStackApiKey', aerodatabox: 'aeroDataBoxApiKey', openaip: 'openAipApiKey' };
+app.post('/api/integrations/test-key/:service', requireAdmin, async (req, res) => {
+    const service = String(req.params.service || '').toLowerCase();
+    if (!SERVICE_KEYS.includes(service)) return res.status(400).json({ error: 'Unknown service' });
+    try {
+        let key;
+        if (service === 'brandfetch') key = String((await readWorkspaceSettings()).brandfetchApiKey || '').trim();
+        else key = await workspaceSecret(KEY_SERVICE_SETTING[service]);
+        const mode = String(await workspaceSecret('aeroDataBoxEndpoint') || process.env.INTEGRATIONS_AERO_DATA_BOX_ENDPOINT || 'rapidapi').toLowerCase();
+        const cfg = AERODATABOX_ENDPOINTS[mode] || AERODATABOX_ENDPOINTS.rapidapi;
+        const result = await testKey(service, key, { ...cfg, host: mode === 'rapidapi' ? 'aerodatabox.p.rapidapi.com' : '' });
+        return res.json(result);
+    } catch (err) {
+        return sendError(res, err, 500, 'The key could not be tested');
+    }
+});
+
 // The route a flight in the air (or just landed) has flown so far. OpenSky serves tracks keyless for the current
 // flight only ("You cannot access historical tracks" otherwise), so this is for saving the route while it is live.
 const trackCache = new BoundedMap(CACHE_MAX_ENTRIES);
@@ -3070,12 +3089,16 @@ const SECRET_ENV_FALLBACKS = {
 const maskSettings = (settings) => {
     const masked = { ...settings };
     const configuredKeys = {};
+    const keySources = {};
     for (const key of SECRET_SETTING_KEYS) {
         const hasKey = Boolean(settings[key] || process.env[SECRET_ENV_FALLBACKS[key]]);
         configuredKeys[key] = hasKey;
+        // Where the key comes from: saved in the workspace, or provided by the host's environment.
+        keySources[key] = settings[key] ? 'workspace' : hasKey ? 'env' : 'none';
         masked[key] = hasKey ? SECRET_MASK : '';
     }
     masked.configuredKeys = configuredKeys;
+    masked.keySources = keySources;
     return masked;
 };
 
@@ -3100,6 +3123,7 @@ app.put('/api/settings', requireAdmin, async (req, res) => {
     try {
         const incoming = { ...(req.body || {}) };
         delete incoming.configuredKeys;
+        delete incoming.keySources;
         const saved = await withTransaction(async (client) => {
             const current = await readWorkspaceSettings(client);
             for (const key of SECRET_SETTING_KEYS) {
@@ -3127,6 +3151,7 @@ app.patch('/api/settings', requireAdmin, async (req, res) => {
     try {
         const changes = { ...(req.body || {}) };
         delete changes.configuredKeys;
+        delete changes.keySources;
         for (const key of SECRET_SETTING_KEYS) if (changes[key] === SECRET_MASK) delete changes[key];
         const saved = await withTransaction(async (client) => {
             const merged = { ...(await readWorkspaceSettings(client)), ...changes };

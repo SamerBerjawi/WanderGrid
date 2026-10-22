@@ -43,7 +43,7 @@ const SIZES = [
 type BasemapTone = 'light' | 'dark';
 
 /** Basemap choices, grouped by how they look. Previews are one low-zoom tile from the same provider. */
-const BASEMAPS: { value: MapAppearanceSettings['basemap']; label: string; tone: BasemapTone; preview: string; filter?: string }[] = [
+export const BASEMAPS: { value: MapAppearanceSettings['basemap']; label: string; tone: BasemapTone; preview: string; filter?: string }[] = [
     { value: 'liberty', label: 'Streets', tone: 'light', preview: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/2/1/2' },
     { value: 'bright', label: 'Bright', tone: 'light', preview: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/2/1/2' },
     { value: 'positron', label: 'Light grey', tone: 'light', preview: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/2/1/2' },
@@ -62,7 +62,7 @@ export const basemapTone = (value: MapAppearanceSettings['basemap']): BasemapTon
  * A basemap tile: the preview fills the card, the name sits on a soft scrim (a photo overlay, so
  * fixed dark-on-image colours are fine), and the chosen one gets a ring and a check.
  */
-const BasemapCard: React.FC<{ label: string; hint?: string; selected: boolean; onClick: () => void; children: React.ReactNode }> = ({ label, hint, selected, onClick, children }) => (
+export const BasemapCard: React.FC<{ label: string; hint?: string; selected: boolean; onClick: () => void; children: React.ReactNode }> = ({ label, hint, selected, onClick, children }) => (
     <button
         type="button"
         aria-pressed={selected}

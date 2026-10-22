@@ -11,6 +11,7 @@ export const NEW_PAGE_LINKS = [
     { path: '/dashboard-new', label: 'Dashboard (new)', short: 'Dashboard new', icon: 'dashboard' },
     { path: '/flights-new', label: 'Flights (new)', short: 'Flights new', icon: 'flight' },
     { path: '/roadtrips-new', label: 'Road trips (new)', short: 'Road trips new', icon: 'train' },
+    { path: '/settings-new', label: 'Settings (new)', short: 'Settings new', icon: 'settings' },
     { path: '/calendar-new', label: 'Calendar (new)', short: 'Calendar new', icon: 'calendar_month' },
     { path: '/auth-new', label: 'Sign in (new)', short: 'Sign in new', icon: 'login' },
 ] as const;

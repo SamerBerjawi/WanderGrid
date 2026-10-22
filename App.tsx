@@ -40,9 +40,10 @@ const FlightsNew = lazy(() => import('./views/new/FlightsNew').then(m => ({ defa
 const RoadTripsNew = lazy(() => import('./views/new/RoadTripsNew').then(m => ({ default: m.RoadTripsNew })));
 const CalendarNew = lazy(() => import('./views/new/CalendarNew').then(m => ({ default: m.CalendarNew })));
 const MemberNew = lazy(() => import('./views/new/MemberNew').then(m => ({ default: m.MemberNew })));
+const SettingsNew = lazy(() => import('./views/new/SettingsNew').then(m => ({ default: m.SettingsNew })));
 const AuthNew = lazy(() => import('./views/new/AuthNew').then(m => ({ default: m.AuthNew })));
-type NewPage = 'map' | 'atlas' | 'trips' | 'trip' | 'member' | 'auth' | 'flights' | 'roadtrips' | 'dashboard' | 'calendar';
-const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips', '/auth-new': 'auth', '/flights-new': 'flights', '/roadtrips-new': 'roadtrips', '/dashboard-new': 'dashboard', '/calendar-new': 'calendar' };
+type NewPage = 'map' | 'atlas' | 'trips' | 'trip' | 'member' | 'auth' | 'flights' | 'roadtrips' | 'dashboard' | 'settings' | 'calendar';
+const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips', '/auth-new': 'auth', '/flights-new': 'flights', '/roadtrips-new': 'roadtrips', '/dashboard-new': 'dashboard', '/settings-new': 'settings', '/calendar-new': 'calendar' };
 // One trip's page: /trip-new/:id (the Trips page opens it).
 const NEW_TRIP_PATH = /^\/trip-new\/([^/]+)$/;
 const getNewTripId = (): string | null => {
@@ -466,7 +467,7 @@ export default function App() {
       return (
         <Suspense fallback={<ViewLoader view={newPage} fullScreen />}>
           <ShellNew
-            currentPath={newPage === 'trip' ? '/trips-new' : newPage === 'roadtrips' ? '/flights-new' : newPage === 'member' ? '' : window.location.pathname}
+            currentPath={newPage === 'trip' ? '/trips-new' : newPage === 'roadtrips' ? '/flights-new' : newPage === 'member' || newPage === 'settings' ? '' : window.location.pathname}
             onNavigate={navigateFromShell}
             user={currentUser}
             isDark={isDarkMode}
@@ -484,6 +485,7 @@ export default function App() {
                 {newPage === 'dashboard' ? <DashboardNew onTripClick={openTripNew} onMemberClick={openMemberNew} /> : null}
                 {newPage === 'flights' ? <FlightsNew onTripClick={openTripNew} /> : null}
                 {newPage === 'roadtrips' ? <RoadTripsNew onTripClick={openTripNew} /> : null}
+                {newPage === 'settings' ? <SettingsNew theme={theme} isDark={isDarkMode} onThemeChange={t => handleThemeChange(t)} onOpenMember={openMemberNew} onNavigate={navigateFromShell} /> : null}
                 {newPage === 'calendar' ? <CalendarNew onTripClick={openTripNew} onMemberClick={openMemberNew} /> : null}
                 {newPage === 'member' && getNewMemberId() ? (
                   <MemberNew
