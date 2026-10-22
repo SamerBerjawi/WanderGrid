@@ -11,6 +11,7 @@ import { StackPanel, type StackPage } from '../../components/kokonutui/stack-pan
 import { RpChip, RpEmpty, useIsMobile } from '../../components/new/ui';
 import { RpHugeicon } from '../../components/new/RpHugeicon';
 import { Avatar } from '../../components/new/member/Avatar';
+import { FlagBadge } from '../../components/new/atlas/AtlasParts';
 import { PassportCard, PassportValidity } from '../../components/new/member/PassportCard';
 import { MemberRing, leaveColor, type RingSegment } from '../../components/new/member/MemberRing';
 import { MemberSheet, RemoveMemberSheet, type MemberTopic } from '../../components/new/member/MemberSheets';
@@ -416,8 +417,8 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                             </div>
                         ) : (
                             <div className="flex flex-col gap-3 lg:gap-4">
-                                <PlaceGroup title="Countries" icon={Globe} items={data.stats.countries} tone="bg-rp-green text-rp-paper" />
-                                <PlaceGroup title="Cities" icon={MapPin} items={data.stats.cities} tone="bg-rp-ink text-rp-on-ink" />
+                                <PlaceGroup title="Countries" icon={Globe} items={data.stats.countries} />
+                                <PlaceGroup title="Cities" icon={MapPin} items={data.stats.cities} />
                             </div>
                         )
                     ) : null}
@@ -426,7 +427,7 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                         hasPassport ? (
                             <div className={cn('grid gap-3 lg:gap-4', member.passportExpiryDate && 'lg:grid-cols-2')}>
                                 <div className={cn(card, 'p-2 sm:p-3')}>
-                                    <StackPanel pages={documentPages} root="documents" />
+                                    <StackPanel pages={documentPages} root="documents" bare />
                                 </div>
                                 {member.passportExpiryDate ? <PassportValidity issued={member.passportIssueDate} expires={member.passportExpiryDate} today={data.today} /> : null}
                             </div>
@@ -445,10 +446,10 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                     {activeTab === 'settings' && data.canEdit ? (
                         <div className="grid items-start gap-3 lg:grid-cols-2 lg:gap-4">
                             <div className={cn(card, 'p-2 sm:p-3')}>
-                                <StackPanel pages={settingsPages} root="settings" />
+                                <StackPanel pages={settingsPages} root="settings" bare />
                             </div>
                             <div className={cn(card, 'p-2 sm:p-3')}>
-                                <StackPanel pages={accountPages} root="account" />
+                                <StackPanel pages={accountPages} root="account" bare />
                             </div>
                         </div>
                     ) : null}
@@ -473,7 +474,7 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
 };
 
 /** One list of visited places (countries or cities): the first few with their last visit, then "Show all". */
-const PlaceGroup: React.FC<{ title: string; icon: Icon; items: Array<{ name: string; date: string }>; tone: string }> = ({ title, icon: IconC, items, tone }) => {
+const PlaceGroup: React.FC<{ title: string; icon: Icon; items: Array<{ name: string; date: string; code?: string }>}> = ({ title, icon: IconC, items }) => {
     const [all, setAll] = useState(false);
     const shown = all ? items : items.slice(0, PLACES_SHOWN);
     return (
@@ -488,7 +489,7 @@ const PlaceGroup: React.FC<{ title: string; icon: Icon; items: Array<{ name: str
                 <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {shown.map(p => (
                         <li key={p.name} className="flex min-h-14 items-center gap-3 rounded-rp-inset bg-rp-inset px-3">
-                            <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full', tone)}><IconC size={16} aria-hidden /></span>
+                            <FlagBadge code={p.code} className="!bg-rp-surface" />
                             <span className="min-w-0">
                                 <span className="block truncate text-sm font-medium">{p.name}</span>
                                 <span className="block text-xs text-rp-muted">{formatDate(p.date, 'month-year')}</span>

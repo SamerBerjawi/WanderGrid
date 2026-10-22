@@ -1,5 +1,6 @@
 import React from 'react';
 import type { User } from '../../../types';
+import { getFlagEmoji } from '../../../services/geoData';
 import { formatDate } from '../../../utils/formatters';
 import { cn } from '../../../utils/cn';
 import { Eye, EyeSlash, Globe, PencilSimple } from '../../ui/hugeicons';
@@ -29,7 +30,7 @@ const Field: React.FC<{ label: string; children: React.ReactNode; className?: st
 
 export const PassportCard: React.FC<{
     member: User;
-    countries: Array<{ name: string; date: string }>;
+    countries: Array<{ name: string; date: string; code?: string }>;
     status: { label: string; className: string } | null;
     reveal: boolean;
     onToggleReveal: () => void;
@@ -86,7 +87,7 @@ export const PassportCard: React.FC<{
                     <ul className="flex flex-wrap gap-3">
                         {shown.map((p, i) => (
                             <li key={p.name} className={cn('flex min-h-16 min-w-28 max-w-full flex-col items-center justify-center rounded-rp-inset border-2 border-dashed px-3 py-2 text-center', STAMP_TONES[i % STAMP_TONES.length], STAMP_TILT[i % STAMP_TILT.length])}>
-                                <span className="max-w-40 truncate text-sm font-semibold uppercase tracking-wide">{p.name}</span>
+                                <span className="max-w-40 truncate text-sm font-semibold uppercase tracking-wide">{p.code ? <span aria-hidden className="mr-1.5">{getFlagEmoji(p.code)}</span> : null}{p.name}</span>
                                 <span className="rp-tabular text-xs">{formatDate(p.date, 'month-year')}</span>
                             </li>
                         ))}
