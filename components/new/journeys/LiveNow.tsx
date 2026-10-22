@@ -20,7 +20,7 @@ export const LiveNow: React.FC<{ items: JourneyRecord[]; onOpen: (r: JourneyReco
         const near = items.filter(r => r.flight.mode === 'Flight' && isLiveWindow(r.flight, 3, now) && journeyStatus(r.flight, now).state !== 'done');
         return near.sort((a, b) => getFlightDepartureUtcDate(a.flight).getTime() - getFlightDepartureUtcDate(b.flight).getTime())[0] ?? null;
     }, [items]);
-    const { data } = useLiveFlight(rec?.flight ?? null, Boolean(rec));
+    const { data, candidate } = useLiveFlight(rec?.flight ?? null, Boolean(rec));
     if (!rec) return null;
     const t = rec.flight;
     const status = journeyStatus(t);
@@ -50,7 +50,7 @@ export const LiveNow: React.FC<{ items: JourneyRecord[]; onOpen: (r: JourneyReco
                     <StatusPill status={status} mode={t.mode} className="bg-rp-surface text-rp-ink" />
                 </span>
             </span>
-            <FlightProgress flight={t} tone="onInk" />
+            <FlightProgress flight={t} candidate={candidate} tone="onInk" />
             <span className="rp-tabular text-center text-xs text-rp-on-ink/70 sm:hidden">{formatDate(t.departureDate, 'short')}{gate ? <> · {gate}</> : null}</span>
         </button>
     );

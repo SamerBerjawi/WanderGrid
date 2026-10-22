@@ -14,6 +14,8 @@ import {
   AirplaneLanding01Icon,
   AirplaneTakeOff01Icon,
   Alert02Icon,
+  Notification01Icon,
+  NotificationOff01Icon,
   AlertCircleIcon,
   AnchorIcon,
   AntennaIcon,
@@ -404,6 +406,8 @@ export const UserCheck = make(UserCheck01Icon, 'UserCheck');
 export const UserCircle = make(UserCircleIcon, 'UserCircle');
 export const Users = make(UserMultipleIcon, 'Users');
 export const Warning = make(Alert02Icon, 'Warning');
+export const Bell = make(Notification01Icon, 'Bell');
+export const BellOff = make(NotificationOff01Icon, 'BellOff');
 export const WarningCircle = make(AlertCircleIcon, 'WarningCircle');
 export const Waves = make(WaveIcon, 'Waves');
 export const WifiHigh = make(Wifi01Icon, 'WifiHigh');

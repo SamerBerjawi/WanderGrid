@@ -20,6 +20,8 @@ import { JourneyTable, type JourneyGrouping } from '../../components/new/journey
 import { JourneyHero } from '../../components/new/journeys/JourneyHero';
 import { JourneyTimeline } from '../../components/new/journeys/JourneyTimeline';
 import { LiveNow } from '../../components/new/journeys/LiveNow';
+import { FlightAlerts } from '../../components/new/journeys/FlightAlerts';
+import { useFlightAlerts } from '../../hooks/useFlightAlerts';
 import { JourneySheet } from '../../components/new/journeys/JourneySheet';
 import { JourneyEditor, type JourneyEditorTarget } from '../../components/new/journeys/JourneyEditor';
 import { ImportSheet, exportJourneys, type ExportFormat } from '../../components/new/journeys/JourneyTransfer';
@@ -89,6 +91,7 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
     const log = useFlightLog();
     const undo = useUndoToast();
     const mobile = useIsMobile();
+    const alerts = useFlightAlerts(log.flights);
     const [tab, setTab] = useState<Tab>(readTab);
     const changeTab = (t: Tab) => { setTab(t); try { localStorage.setItem(TAB_KEY, t); } catch { /* storage unavailable */ } };
     const [{ key: sortKey, asc: sortAsc }, setSort] = useState(readSort);
@@ -277,6 +280,8 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                         />
                     </div>
                 ) : null}
+
+                <FlightAlerts alerts={alerts.alerts} onDismiss={alerts.dismiss} notify={alerts.notify} canNotify={alerts.canNotify} onToggleNotify={() => void alerts.toggleNotify()} watching={alerts.watching} />
 
                 {log.loaded && log.flights.length > 0 && (!mobile || tab === 'stats') ? <JourneyHero items={shown} /> : null}
 

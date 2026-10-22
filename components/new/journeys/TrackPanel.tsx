@@ -52,7 +52,7 @@ export const TrackPanel: React.FC<{
     onSave?: (patch: Partial<Transport>) => Promise<void>;
 }> = ({ flight, onSave }) => {
     const live = isLiveWindow(flight);
-    const { data, source, error, loading, updatedAt, refresh } = useLiveFlight(flight, live);
+    const { data, candidate, source, error, loading, updatedAt, refresh } = useLiveFlight(flight, live);
     const [saved, setSaved] = useState(false);
     useEffect(() => { setSaved(false); }, [flight.id]);
 
@@ -95,7 +95,7 @@ export const TrackPanel: React.FC<{
             }
         >
             <div className="flex flex-col gap-2 py-2">
-                {live ? <FlightProgress flight={flight} live={data?.live ?? undefined} /> : null}
+                {live ? <FlightProgress flight={flight} candidate={candidate} /> : null}
                 {position && ends ? (
                     <RoutesMap className="h-40 rounded-rp-inset bg-rp-surface" routes={[{ ...ends, count: 1, label: `${flight.origin} to ${flight.destination}` }]} marker={position} label="Where the aircraft is now" />
                 ) : null}

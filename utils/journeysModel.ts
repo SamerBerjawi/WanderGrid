@@ -469,3 +469,53 @@ export const localArrival = (origin: string, destination: string, date: string, 
     const get = (t: string) => parts.find(p => p.type === t)?.value || '';
     return { date: `${get('year')}-${get('month')}-${get('day')}`, time: `${get('hour')}:${get('minute')}` };
 };
+
+/* ------------------------------------------------------------------ */
+/* Progress of a journey under way, from real data when there is any    */
+/* ------------------------------------------------------------------ */
+
+export interface LiveInput {
+    /** Where the aircraft or vehicle is now. */
+    position?: { lat: number; lng: number } | null;
+    /** Estimated (or actual) departure and arrival from a live source, as UTC ISO strings. */
+    departureUtc?: string | null;
+    arrivalUtc?: string | null;
+}
+
+export interface LiveProgress {
+    /** 0 to 1 along the route. */
+    progress: number;
+    /** Estimated arrival, epoch ms. */
+    etaMs: number | null;
+    /** Minutes later (positive) or earlier than scheduled; 0 when unknown. */
+    delayMin: number;
+    /** What the progress came from. */
+    basis: 'position' | 'times' | 'clock';
+}
+
+const haversine = (a: [number, number], b: [number, number]) => calculateDistance(a[1], a[0], b[1], b[0]);
+
+/**
+ * How far along a journey is and when it will arrive. The best answer is the real position (how far the
+ * aircraft is along the great circle between its two airports); next the live estimated times; last the
+ * schedule. A late flight shows its real ETA and delay instead of the schedule's.
+ */
+export const liveProgress = (t: Transport, live: LiveInput | undefined, now = Date.now()): LiveProgress => {
+    const schedDep = depMs(t), schedArr = arrMs(t);
+    const dep = live?.departureUtc ? Date.parse(live.departureUtc) : schedDep;
+    const arr = live?.arrivalUtc ? Date.parse(live.arrivalUtc) : schedArr;
+    const etaMs = Number.isFinite(arr) ? arr : null;
+    const delayMin = etaMs != null && Number.isFinite(schedArr) ? Math.round((etaMs - schedArr) / 60000) : 0;
+    const clamp = (n: number) => Math.min(1, Math.max(0, n));
+
+    const ends = journeyEnds(t);
+    if (live?.position && ends) {
+        const pos: [number, number] = [live.position.lng, live.position.lat];
+        const done = haversine(ends.from, pos);
+        const left = haversine(pos, ends.to);
+        if (done + left > 0) return { progress: clamp(done / (done + left)), etaMs, delayMin, basis: 'position' };
+    }
+    const span = (Number.isFinite(dep) && Number.isFinite(arr)) ? arr - dep : 0;
+    const progress = span > 0 ? clamp((now - dep) / span) : now >= arr ? 1 : 0;
+    return { progress, etaMs, delayMin, basis: live?.departureUtc || live?.arrivalUtc ? 'times' : 'clock' };
+};
