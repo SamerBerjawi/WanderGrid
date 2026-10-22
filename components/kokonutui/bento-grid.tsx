@@ -20,7 +20,7 @@
  * @github: https://github.com/kokonut-labs/kokonutui
  */
 
-import { ArrowUpRight, DotsSixVertical } from "@/components/ui/hugeicons";
+import { ArrowDown, ArrowUp, ArrowUpRight, DotsSixVertical, EyeSlash } from "@/components/ui/hugeicons";
 import { AnimatePresence, motion } from "motion/react";
 import {
   type CSSProperties,
@@ -84,6 +84,13 @@ export interface WidgetGridProps {
   defaultLayout?: WidgetLayoutItem[];
   /** Called on every reorder or resize, including live moves while dragging. */
   onLayoutChange?: (layout: WidgetLayoutItem[]) => void;
+  /**
+   * Edit mode, for touch and anyone who prefers buttons to dragging: each widget shows Move up, Move
+   * down and Hide in its header, so the whole layout can be arranged with taps.
+   */
+  editing?: boolean;
+  onMoveItem?: (id: string, delta: -1 | 1) => void;
+  onHideItem?: (id: string) => void;
   className?: string;
   /** Height of one row in pixels. */
   rowHeight?: number;
@@ -456,6 +463,12 @@ interface CellProps {
   narrow: boolean;
   lifted: boolean;
   dimmed: boolean;
+  editing: boolean;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onHide: () => void;
   instructionsId: string;
   cellRef: (el: HTMLDivElement | null) => void;
   gripRef: (el: HTMLButtonElement | null) => void;
@@ -475,6 +488,12 @@ function WidgetCell({
   narrow,
   lifted,
   dimmed,
+  editing,
+  canMoveUp,
+  canMoveDown,
+  onMoveUp,
+  onMoveDown,
+  onHide,
   instructionsId,
   cellRef,
   gripRef,
@@ -559,7 +578,31 @@ function WidgetCell({
             {item.title}
           </span>
           <div className="-mr-3 ml-auto flex items-center">
-            {item.onOpen ? (
+            {editing ? (
+              <>
+                {[
+                  { label: `Move ${item.title} up`, icon: ArrowUp, off: !canMoveUp, run: onMoveUp },
+                  { label: `Move ${item.title} down`, icon: ArrowDown, off: !canMoveDown, run: onMoveDown },
+                  { label: `Hide ${item.title}`, icon: EyeSlash, off: false, run: onHide },
+                ].map(({ label, icon: Glyph, off, run }) => (
+                  <button
+                    aria-label={label}
+                    className={cn(
+                      "flex size-11 shrink-0 items-center justify-center rounded-full outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-rp-muted disabled:opacity-30",
+                      filled ? TONE_HOVER[tone] : "text-rp-ink hover:bg-rp-inset"
+                    )}
+                    data-no-press
+                    disabled={off}
+                    key={label}
+                    onClick={run}
+                    type="button"
+                  >
+                    <Glyph aria-hidden size={18} />
+                  </button>
+                ))}
+              </>
+            ) : null}
+            {item.onOpen && !editing ? (
               <button
                 aria-label={item.openLabel ?? `Open ${item.title}`}
                 className={cn(
@@ -645,6 +688,9 @@ export function WidgetGrid({
   layout,
   defaultLayout,
   onLayoutChange,
+  editing = false,
+  onMoveItem,
+  onHideItem,
   className,
   rowHeight = 168,
 }: WidgetGridProps) {
@@ -1389,7 +1435,7 @@ export function WidgetGrid({
             {slotDots}
           </svg>
         )}
-        {current.map((entry) => {
+        {current.map((entry, index) => {
           const item = itemsById.get(entry.id);
           if (!item) {
             return null;
@@ -1404,7 +1450,13 @@ export function WidgetGrid({
                   engine.els.delete(id);
                 }
               }}
+              canMoveDown={index < current.length - 1}
+              canMoveUp={index > 0}
               dimmed={activeId !== null && activeId !== id}
+              editing={editing}
+              onHide={() => onHideItem?.(id)}
+              onMoveDown={() => onMoveItem?.(id, 1)}
+              onMoveUp={() => onMoveItem?.(id, -1)}
               gripRef={(el) => {
                 if (el) {
                   gripsRef.current.set(id, el);

@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import NumberFlow from '@number-flow/react';
 import type { Trip, User, VisitedItem } from '../../../types';
 import type { DashboardData } from '../../../hooks/useDashboardData';
@@ -8,6 +8,12 @@ import { MetricCard } from '../../kokonutui/metric-card';
 import MomentumRail, { type RailItem } from '../../kokonutui/momentum-rail';
 import ThrowDeck, { type DeckCard } from '../../kokonutui/throw-deck';
 import { BarChart } from '../../bklit/bar-chart';
+import { ChoroplethChart, ChoroplethFeature, ChoroplethRoutes, type ChoroplethFeatureProperties } from '../../bklit/choropleth';
+import type { FeatureCollection, Geometry } from 'geojson';
+import { featureCode, loadWorld } from '../atlas/AtlasMap';
+import { buildMapModel } from '../map/mapModel';
+import { normalizeCountryCode } from '../../../services/countryRegistry';
+import { mapLink } from '../../../utils/mapLinks';
 import { FlagArt, FlagBadge } from '../atlas/AtlasParts';
 import { RpHugeicon } from '../RpHugeicon';
 import { RpChip, RpEmpty, RpSheet, useIsMobile } from '../ui';
@@ -220,17 +226,14 @@ const UpcomingTiles: React.FC<{ trips: Trip[]; today: string; onTripClick: (id: 
     const cols = Math.max(2, Math.min(6, Math.floor((width + 12) / 177)));
     const shown = trips.slice(0, cols);
     return (
-        <div ref={ref} className="relative h-full">
-            <ul className="grid h-full grid-rows-1 gap-3" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+        <div ref={ref} className="flex h-full flex-col gap-2">
+            <ul className="grid min-h-0 flex-1 grid-rows-1 gap-3" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
                 {shown.map(t => <TripTile key={t.id} trip={t} today={today} onClick={() => onTripClick(t.id)} />)}
             </ul>
             {trips.length > shown.length ? (
-                <>
-                    <div className={FADE} />
-                    <div className="absolute inset-x-0 bottom-0 flex justify-center">
-                        <button type="button" onClick={() => openNewPage('/trips-new')} className={cn(PILL, 'bg-rp-inset text-rp-ink hover:bg-rp-line focus-visible:ring-offset-rp-surface')}>Show all {trips.length}</button>
-                    </div>
-                </>
+                <div className="flex justify-center">
+                    <button type="button" onClick={() => openNewPage('/trips-new')} className={cn(PILL, 'bg-rp-inset text-rp-ink hover:bg-rp-line focus-visible:ring-offset-rp-surface')}>Show all {trips.length}</button>
+                </div>
             ) : null}
         </div>
     );
@@ -546,3 +549,60 @@ export const WhereNextWidget: React.FC<{ data: DashboardData }> = ({ data }) => 
     );
 };
 
+
+/* ----------------------------------- map ---------------------------------- */
+
+const ROUTE_STROKE: Record<string, string> = {
+    flight: 'rgb(var(--rp-rust))',
+    rail: 'rgb(var(--rp-green))',
+    road: 'rgb(var(--rp-ink))',
+    sea: 'rgb(var(--rp-sea))',
+};
+
+/**
+ * A simplified world: countries you have been to scratched in green, every route as a thin arc (flights
+ * rust, rail green, road ink, sea dashed). Static; the Map page has the real thing, one tap away.
+ */
+export const MapWidget: React.FC<{ data: DashboardData }> = ({ data }) => {
+    const [world, setWorld] = useState<FeatureCollection<Geometry, ChoroplethFeatureProperties> | null>(null);
+    const [failed, setFailed] = useState(false);
+    useEffect(() => {
+        let alive = true;
+        loadWorld().then(fc => { if (alive) setWorld(fc); }).catch(() => { if (alive) setFailed(true); });
+        return () => { alive = false; };
+    }, []);
+
+    const visited = useMemo(() => new Set(data.countries.map(c => {
+        const code = normalizeCountryCode(c.code);
+        return code.startsWith('GB-') ? 'GB' : code;
+    })), [data.countries]);
+    const routes = useMemo(() => buildMapModel(data.trips, { mode: 'all', groupAirports: false }).routes.map(r => ({
+        id: r.id, from: r.from, to: r.to, stroke: ROUTE_STROKE[r.mode] ?? ROUTE_STROKE.flight,
+        dashed: r.mode === 'sea', opacity: r.status === 'past' ? 0.85 : 0.5,
+    })), [data.trips]);
+
+    return (
+        <div className="flex h-full flex-col gap-2">
+            <div className="relative min-h-0 flex-1 overflow-hidden rounded-rp-inset bg-rp-inset/50">
+                {world ? (
+                    <ChoroplethChart data={world} aspectRatio="2 / 1" scaleRatio={1 / 6.4} offsetY={0} animationDuration={0} zoomEnabled={false} center={[10, 25]} className="text-rp-ink">
+                        <ChoroplethFeature
+                            getFeatureColor={f => (visited.has(featureCode(f)) ? 'rgb(var(--rp-green))' : 'rgb(var(--rp-line))')}
+                            stroke="rgb(var(--rp-surface))"
+                            strokeWidth={0.4}
+                            fadedOpacity={1}
+                        />
+                        <ChoroplethRoutes routes={routes} />
+                    </ChoroplethChart>
+                ) : (
+                    <div className="flex h-full min-h-32 items-center justify-center text-sm text-rp-muted">{failed ? "Couldn't load the map." : <span className="sr-only">Loading the map</span>}</div>
+                )}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-rp-muted">
+                <span className="flex items-center gap-1.5"><span aria-hidden className="size-2.5 rounded-full bg-rp-green" /><span className="text-rp-ink rp-tabular">{data.countries.length}</span> {data.countries.length === 1 ? 'country' : 'countries'}</span>
+                <span className="flex items-center gap-1.5"><span aria-hidden className="h-0.5 w-4 rounded-full bg-rp-rust" /><span className="text-rp-ink rp-tabular">{routes.length}</span> {routes.length === 1 ? 'route' : 'routes'}</span>
+                <button type="button" onClick={() => openNewPage(mapLink())} className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-xs font-medium text-rp-ink outline-none hover:bg-rp-inset focus-visible:ring-2 focus-visible:ring-rp-muted">Open map <ArrowUpRight size={14} aria-hidden /></button>
+            </div>
+        </div>
+    );
+};

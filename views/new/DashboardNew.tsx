@@ -7,11 +7,12 @@ import { RpPageToolbar } from '../../components/new/PageToolbar';
 import { RpEmpty, useIsMobile } from '../../components/new/ui';
 import { openNewPage } from '../../components/new/devLinks';
 import {
-    LeaveWidget, MetricWidget, NextWidget, PassportWidget, RecentWidget, UpcomingWidget, WhereNextWidget, YearsWidget, nextTone,
+    LeaveWidget, MapWidget, MetricWidget, NextWidget, PassportWidget, RecentWidget, UpcomingWidget, WhereNextWidget, YearsWidget, nextTone,
 } from '../../components/new/dashboard/DashboardWidgets';
 import {
-    Airplane, ArrowCounterClockwise, ChartBar, ClockCounterClockwise, Compass, Globe, IdentificationCard, Moon, Path, Plus, SunHorizon, Suitcase, type Icon,
+    Airplane, ArrowCounterClockwise, ChartBar, Check, PencilSimple, ClockCounterClockwise, Compass, Globe, IdentificationCard, Moon, Path, Plus, SunHorizon, Suitcase, type Icon,
 } from '../../components/ui/hugeicons';
+import { mapLink } from '../../utils/mapLinks';
 import { ORBIT_KM, leaveByType, leaveTrips, type LeaveTrip, type LeaveUse } from '../../utils/dashboardModel';
 import { cn } from '../../utils/cn';
 
@@ -29,6 +30,7 @@ interface DashboardNewProps {
 }
 
 const LAYOUT_KEY = 'wandergrid_dashboard_new_layout_v1';
+const HIDDEN_KEY = 'wandergrid_dashboard_new_hidden_v1';
 
 /**
  * Default order (also the phone order) and spans. On a wide screen the grid packs gaps with later widgets:
@@ -38,6 +40,7 @@ const DESKTOP_LAYOUT: WidgetLayoutItem[] = [
     { id: 'next', span: 3 },
     { id: 'upcoming', span: 6 },
     { id: 'passport', span: 3 },
+    { id: 'map', span: 6 },
     { id: 'metric', span: 4 },
     { id: 'leave', span: 2 },
     { id: 'years', span: 3 },
@@ -48,6 +51,7 @@ const TABLET_LAYOUT: WidgetLayoutItem[] = [
     { id: 'next', span: 3 },
     { id: 'upcoming', span: 6 },
     { id: 'passport', span: 3 },
+    { id: 'map', span: 6 },
     { id: 'metric', span: 6 },
     { id: 'leave', span: 3 },
     { id: 'years', span: 3 },
@@ -80,6 +84,21 @@ const writeLayout = (userId: string | null, layout: WidgetLayoutItem[] | null) =
     } catch { /* blocked storage: the layout just won't be remembered */ }
 };
 
+const readHidden = (userId: string | null): string[] => {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(`${HIDDEN_KEY}:${userId || 'guest'}`) || 'null');
+        return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [];
+    } catch { return []; }
+};
+
+const writeHidden = (userId: string | null, hidden: string[]) => {
+    try {
+        const key = `${HIDDEN_KEY}:${userId || 'guest'}`;
+        if (hidden.length) localStorage.setItem(key, JSON.stringify(hidden));
+        else localStorage.removeItem(key);
+    } catch { /* blocked storage */ }
+};
+
 const TILE_TONE = {
     ink: { card: 'bg-rp-ink text-rp-on-ink', muted: 'text-rp-on-ink/70', circle: 'bg-rp-on-ink/15' },
     green: { card: 'bg-rp-green text-rp-paper', muted: 'text-rp-paper/80', circle: 'bg-rp-paper/20' },
@@ -93,7 +112,7 @@ const Tile: React.FC<{ icon: Icon; tone: keyof typeof TILE_TONE; value: number; 
         <div className={cn('flex min-w-0 items-center gap-3 rounded-rp-tile p-3 rp-shadow-rest sm:p-4', t.card)}>
             <span className={cn('hidden size-10 shrink-0 items-center justify-center rounded-full sm:flex', t.circle)}><IconC size={18} aria-hidden /></span>
             <span className="min-w-0">
-                <span className="flex flex-wrap items-baseline gap-x-1.5">
+                <span className="flex flex-col sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-1.5">
                     <NumberFlow value={value} format={{ maximumFractionDigits: 0 }} className="rp-tabular text-xl leading-tight font-semibold" />
                     <span className={cn('text-sm', t.muted)}>{unit}</span>
                 </span>
@@ -111,9 +130,31 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
     const userId = sessionUserId();
     const [layout, setLayout] = useState<WidgetLayoutItem[]>(() => readLayout(userId));
     const [memberId, setMemberId] = useState<string | null>(userId);
+    const [hidden, setHidden] = useState<string[]>(() => readHidden(userId));
+    const [editing, setEditing] = useState(false);
 
-    const changeLayout = useCallback((next: WidgetLayoutItem[]) => { setLayout(next); writeLayout(userId, next); }, [userId]);
-    const resetLayout = useCallback(() => { setLayout(defaultLayout()); writeLayout(userId, null); }, [userId]);
+    // The grid only knows the visible widgets; hidden ones keep their place and size at the end.
+    const changeLayout = useCallback((next: WidgetLayoutItem[]) => {
+        const kept = layout.filter(l => hidden.includes(l.id) && !next.some(n => n.id === l.id));
+        const all = [...next, ...kept];
+        setLayout(all);
+        writeLayout(userId, all);
+    }, [userId, layout, hidden]);
+    const resetLayout = useCallback(() => { setLayout(defaultLayout()); writeLayout(userId, null); setHidden([]); writeHidden(userId, []); }, [userId]);
+    const hideItem = useCallback((id: string) => { setHidden(h => { const next = [...new Set([...h, id])]; writeHidden(userId, next); return next; }); }, [userId]);
+    const showItem = useCallback((id: string) => { setHidden(h => { const next = h.filter(x => x !== id); writeHidden(userId, next); return next; }); }, [userId]);
+    // Move a widget one place among the visible ones (the keyboard- and touch-friendly twin of dragging).
+    const moveItem = useCallback((id: string, delta: -1 | 1) => {
+        const shown = layout.filter(l => !hidden.includes(l.id));
+        const at = shown.findIndex(l => l.id === id);
+        const other = shown[at + delta];
+        if (at < 0 || !other) return;
+        const next = layout.slice();
+        const i = next.findIndex(l => l.id === id);
+        const j = next.findIndex(l => l.id === other.id);
+        [next[i], next[j]] = [next[j], next[i]];
+        changeLayout(next);
+    }, [layout, hidden, changeLayout]);
 
     const openTrip = useCallback((id: string) => onTripClick?.(id), [onTripClick]);
 
@@ -139,6 +180,11 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
             id: 'passport', title: 'Passport', icon: <WidgetIcon icon={IdentificationCard} />, defaultSpan: 3, rows: 2, narrowRows: 3,
             onOpen: () => openNewPage('/atlas-new'), openLabel: 'Open Atlas',
             render: size => <PassportWidget data={data} size={size} />,
+        },
+        {
+            id: 'map', title: 'World', icon: <WidgetIcon icon={Globe} />, defaultSpan: 6, rows: span => (span >= 5 ? 4 : 3), narrowRows: 2,
+            onOpen: () => openNewPage(mapLink()), openLabel: 'Open Map',
+            render: () => <MapWidget data={data} />,
         },
         {
             id: 'metric', title: 'Travel over time', icon: <WidgetIcon icon={ChartBar} />, defaultSpan: 4, rows: span => (span >= 5 ? 3 : 4), narrowRows: 4, interactive: true,
@@ -174,8 +220,9 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
 
     // On phones the tab bar's "+" starts a trip.
     const tools: DockTool[] = [
+        { id: 'edit', label: editing ? 'Done' : 'Edit widgets', icon: (editing ? Check : PencilSimple) as any, action: () => setEditing(e => !e) },
         ...(mobile ? [] : [{ id: 'new', label: 'New trip', icon: Plus as any, action: () => openNewPage('/trips-new?new=1') }]),
-        { id: 'reset', label: 'Reset layout', icon: ArrowCounterClockwise as any, action: resetLayout },
+        { id: 'reset', label: 'Reset widgets', icon: ArrowCounterClockwise as any, action: resetLayout },
     ];
 
     const t = data.totals;
@@ -222,7 +269,22 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
                         {[0, 1, 2, 3].map(i => <div key={i} className="h-56 animate-pulse rounded-rp-card bg-rp-surface rp-shadow-rest" />)}
                     </div>
                 ) : data.isEmpty ? null : (
-                    <WidgetGrid items={items} layout={layout} onLayoutChange={changeLayout} rowHeight={160} />
+                    <>
+                        {editing || hidden.length ? (
+                            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Hidden widgets">
+                                {hidden.length ? <span className="text-sm text-rp-muted">Hidden</span> : null}
+                                {hidden.map(id => {
+                                    const item = items.find(i => i.id === id);
+                                    return item ? (
+                                        <button key={id} type="button" onClick={() => showItem(id)} aria-label={`Show ${item.title}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-rp-surface px-4 text-sm font-medium text-rp-ink outline-none rp-shadow-rest focus-visible:ring-2 focus-visible:ring-rp-muted">
+                                            <Plus size={14} aria-hidden />{item.title}
+                                        </button>
+                                    ) : null;
+                                })}
+                            </div>
+                        ) : null}
+                        <WidgetGrid items={items.filter(i => !hidden.includes(i.id))} layout={layout} onLayoutChange={changeLayout} editing={editing} onMoveItem={moveItem} onHideItem={hideItem} rowHeight={160} />
+                    </>
                 )}
             </div>
         </div>
