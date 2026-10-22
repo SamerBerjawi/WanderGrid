@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { byAirport, byCarrier, estimateMinutes, fromLog, groupJourneys, journeyRoute, journeyStatus, layoverMinutes, liveProgress, localArrival, placeCode, sortJourneys, splitLegs, totalsByYear } from '../../utils/journeysModel';
+import { durationBetween, byAirport, byCarrier, estimateMinutes, fromLog, groupJourneys, journeyRoute, journeyStatus, layoverMinutes, liveProgress, localArrival, placeCode, sortJourneys, splitLegs, totalsByYear } from '../../utils/journeysModel';
 import { flight, record, tripOf } from './helpers';
 
 const ids = (g: { legs: { flight: { id: string } }[] }) => g.legs.map(l => l.flight.id);
@@ -123,6 +123,12 @@ describe('status, progress and times', () => {
         expect(localArrival('FCO', 'MAD', '2027-03-27', '10:00', 130)).toEqual({ date: '2027-03-27', time: '12:10' });
         expect(localArrival('AMS', 'JFK', '2027-10-28', '10:30', 460)).toEqual({ date: '2027-10-28', time: '12:10' });
         expect(localArrival('ZZZ', 'JFK', '2027-10-28', '10:30', 460)).toBeNull();
+    });
+
+    it('works out the real duration across time zones, and says when it cannot', () => {
+        expect(durationBetween('BEY', 'BRU', '2026-10-24', '07:05', '2026-10-24', '10:35')).toBe(270);
+        expect(durationBetween('AMS', 'JFK', '2026-10-28', '10:30', '2026-10-28', '13:10')).toBe(460);
+        expect(durationBetween('ZZZ', 'JFK', '2026-10-28', '10:30', '2026-10-28', '13:10')).toBeNull();
     });
 
     it('estimates a flight at 30 minutes plus 800 km/h', () => {

@@ -61,7 +61,7 @@ function installHooks() {
     return db;
 }
 
-async function startTestServer() {
+async function startTestServer({ port = 0 } = {}) {
     process.env.NODE_ENV = 'production';
     process.env.JWT_SECRET = process.env.JWT_SECRET || 'api_test_secret_not_for_production';
     process.env.DATABASE_URL = 'postgres://test@memory/test';
@@ -70,7 +70,7 @@ async function startTestServer() {
     const mod = require(path.resolve(__dirname, '../../server.js'));
     await mod.ready;
     const snapshot = db.backup();
-    const server = mod.start(0);
+    const server = mod.start(port);
     await new Promise((r) => server.listening ? r() : server.once('listening', r));
     const base = `http://127.0.0.1:${server.address().port}`;
 

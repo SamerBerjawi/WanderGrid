@@ -519,3 +519,13 @@ export const liveProgress = (t: Transport, live: LiveInput | undefined, now = Da
     const progress = span > 0 ? clamp((now - dep) / span) : now >= arr ? 1 : 0;
     return { progress, etaMs, delayMin, basis: live?.departureUtc || live?.arrivalUtc ? 'times' : 'clock' };
 };
+
+/** Minutes a flight takes from its local departure and arrival times, using each airport's own time zone; null when a zone is unknown. */
+export const durationBetween = (origin: string, destination: string, depDate: string, depTime: string, arrDate: string, arrTime: string): number | null => {
+    const from = zoneOf(origin), to = zoneOf(destination);
+    if (!from || !to) return null;
+    const dep = parseLocalDateInTimezone(depDate, depTime || '00:00', from).getTime();
+    const arr = parseLocalDateInTimezone(arrDate || depDate, arrTime || '00:00', to).getTime();
+    const mins = Math.round((arr - dep) / 60000);
+    return Number.isFinite(mins) && mins > 0 ? mins : null;
+};

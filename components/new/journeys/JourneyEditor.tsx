@@ -11,7 +11,7 @@ import { RpSection, RpSheet } from '../ui';
 import { TripMenu } from '../trips/TripMenu';
 import { LEG_DATE, LegForm } from '../trips/LegForm';
 import { extractIata } from '../../../hooks/useFlightLog';
-import { estimateMinutes, fromLog, isIndependent, journeyKm, localArrival, type JourneyRecord } from '../../../utils/journeysModel';
+import { durationBetween, estimateMinutes, fromLog, isIndependent, journeyKm, localArrival, type JourneyRecord } from '../../../utils/journeysModel';
 import { errorMessage } from '../../../services/toast';
 import { cn } from '../../../utils/cn';
 
@@ -111,7 +111,7 @@ export const JourneyEditor: React.FC<{
             const origin = flight ? extractIata(leg.origin).toUpperCase() || leg.origin.trim() : leg.origin.trim();
             const destination = flight ? extractIata(leg.destination).toUpperCase() || leg.destination.trim() : leg.destination.trim();
             const arrivalDate = leg.arrivalDate || leg.departureDate;
-            const minutes = flight ? calculateDurationMinutes(origin, destination, leg.departureDate, leg.departureTime || '00:00', arrivalDate, leg.arrivalTime || '00:00') : 0;
+            const minutes = flight ? (durationBetween(origin, destination, leg.departureDate, leg.departureTime || '00:00', arrivalDate, leg.arrivalTime || '00:00') ?? calculateDurationMinutes(origin, destination, leg.departureDate, leg.departureTime || '00:00', arrivalDate, leg.arrivalTime || '00:00')) : 0;
             const payload: Transport = {
                 ...(editing?.flight ?? {}),
                 ...(leg as Transport),

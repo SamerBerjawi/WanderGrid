@@ -37,6 +37,7 @@ PORT=3001 DATABASE_URL=postgres://wandergrid:wandergrid_password@localhost:5432/
 docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT_SECRET in .env (copy .env.example)
 ```
 
+- **Real mode without Postgres:** `cd backend_files && node test/helpers/devServer.js` runs the real `server.js` on :3001 against in-memory pg-mem (same routes, auth, versioned writes and batch transactions; data is lost on exit), and `VITE_LOCAL_MODE=false npx vite --port 3114` runs the app against it. Register with `POST /api/auth/register`, then put the token and user in `localStorage` (`wandergrid_session_token`, `wandergrid_session_user`). The Flights page was checked this way (import, create, edit, delete, create-trip and undo); a real Postgres server has still not been run.
 - `npm start` is in the README but **does not exist**. Use `npm run dev`.
 - The backend defaults to `PORT=3000`, and that clashes with Vite. Set `PORT=3001` locally so the Vite proxy reaches it. I verified that it boots and that `/api/health` responds. Running it against a live Postgres was **not verified** because no Postgres or Docker was available.
 - `npm run dev` runs in local mode by default (`.env.development` sets `VITE_LOCAL_MODE=true`): the data layer uses localStorage only and shows a "Local mode" badge, so no backend or Postgres is needed. To develop against the API, put `VITE_LOCAL_MODE=false` in `.env.development.local` (git-ignored) and run the backend on `PORT=3001`.
