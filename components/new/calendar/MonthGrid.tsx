@@ -31,14 +31,15 @@ export const MonthGrid: React.FC<{
     onOpen: (iso: string) => void;
     /** Moves the shown month by this many months (arrow keys past the first or last day). */
     onShiftMonth: (by: number) => void;
-}> = ({ year, month0, weekStart, items, workingDays, today, selected, focusISO, compact, onFocusISO, onOpen, onShiftMonth }) => {
+    /** Set when a key moved the focus: the grid takes focus once the day is on screen (it may be in the next month). */
+    wantFocus: React.MutableRefObject<boolean>;
+}> = ({ year, month0, weekStart, items, workingDays, today, selected, focusISO, compact, onFocusISO, onOpen, onShiftMonth, wantFocus }) => {
     const weeks = useMemo(() => monthMatrix(year, month0, weekStart), [year, month0, weekStart]);
     const layouts = useMemo(
         () => weeks.map(w => layoutWeek(items, w.map(d => d.iso), LANES)),
         [weeks, items],
     );
     const gridRef = useRef<HTMLDivElement>(null);
-    const wantFocus = useRef(false);
 
     const monthStartISO = weeks[0].find(d => d.inMonth)!.iso;
     const monthEndISO = [...weeks[weeks.length - 1]].reverse().find(d => d.inMonth)!.iso;
@@ -47,9 +48,11 @@ export const MonthGrid: React.FC<{
 
     useEffect(() => {
         if (!wantFocus.current) return;
+        const cell = gridRef.current?.querySelector<HTMLElement>(`[data-iso="${stop}"]`);
+        if (!cell) return;
         wantFocus.current = false;
-        gridRef.current?.querySelector<HTMLElement>(`[data-iso="${stop}"]`)?.focus();
-    }, [stop, year, month0]);
+        cell.focus();
+    }, [stop, year, month0, wantFocus]);
 
     const move = (to: string) => {
         wantFocus.current = true;

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { motion } from 'motion/react';
 import type { Trip, User } from '../../types';
 import { useCalendarData, leaveFieldsOf, NO_LEAVE, type LeaveFields, type NewLeave } from '../../hooks/useCalendarData';
 import {
@@ -74,6 +74,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
     const data = useCalendarData();
     const mobile = useIsMobile();
     const undo = useUndoToast();
+    const wantFocus = useRef(false);
     const latest = useRef(data);
     latest.current = data;
 
@@ -327,14 +328,13 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                             ) : null}
                         </div>
 
-                        <AnimatePresence mode="wait" initial={false}>
-                            <motion.div
-                                key={tab === 'month' ? `m-${cursor.year}-${cursor.month0}` : tab === 'year' ? `y-${cursor.year}` : 's'}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.15 }}
-                            >
+                        {/* A short fade in when the view or month changes; no exit, so a key press lands on the new month at once. */}
+                        <motion.div
+                            key={tab === 'month' ? `m-${cursor.year}-${cursor.month0}` : tab === 'year' ? `y-${cursor.year}` : 's'}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.15 }}
+                        >
                                 {tab === 'month' ? (
                                     <>
                                         <MonthGrid
@@ -350,6 +350,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                                             onFocusISO={setFocusISO}
                                             onOpen={openDay}
                                             onShiftMonth={shiftMonth}
+                                            wantFocus={wantFocus}
                                         />
                                         <Legend />
                                         {mobile ? (
@@ -374,8 +375,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                                 {tab === 'schedule' ? (
                                     <AgendaList items={scheduleItems} grouped cap empty="Nothing coming up" onOpen={openItem} today={today} />
                                 ) : null}
-                            </motion.div>
-                        </AnimatePresence>
+                        </motion.div>
                     </section>
 
                     <aside className={cn('flex min-w-0 flex-col gap-4 lg:gap-6', tab === 'year' && 'lg:grid lg:grid-cols-2 lg:items-start')}>
