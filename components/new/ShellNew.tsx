@@ -23,7 +23,7 @@ export interface ShellNavItem {
 
 /** Grouped top tabs (decision 6). Pages without a New version open their current page. */
 export const SHELL_NAV: ShellNavItem[] = [
-    { path: '/', label: 'Dashboard', icon: House },
+    { path: '/dashboard-new', label: 'Dashboard', icon: House },
     { path: '/trips-new', label: 'Trips', icon: Suitcase },
     { path: '/flights-new', label: 'Flights', icon: Airplane },
     { path: '/calendar', label: 'Calendar', icon: CalendarBlank },
@@ -31,7 +31,7 @@ export const SHELL_NAV: ShellNavItem[] = [
     { path: '/map-new', label: 'Map', icon: MapTrifold },
 ];
 
-const MOBILE_TABS = ['/', '/trips-new', '/map-new', '/flights-new'];
+const MOBILE_TABS = ['/dashboard-new', '/trips-new', '/map-new', '/flights-new'];
 
 export interface ShellNewProps {
     currentPath: string;
@@ -122,7 +122,7 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
             >
                 <button
                     type="button"
-                    onClick={() => go('/')}
+                    onClick={() => go('/dashboard-new')}
                     aria-label="WanderGrid home"
                     className={cn(
                         'pointer-events-auto min-h-11 items-center gap-2.5 rounded-full bg-rp-surface py-1.5 pr-4 pl-1.5 rp-shadow-soft outline-none focus-visible:ring-2 focus-visible:ring-rp-muted',

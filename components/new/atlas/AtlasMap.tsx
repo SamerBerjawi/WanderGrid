@@ -20,7 +20,7 @@ import { cn } from '../../../utils/cn';
 
 const GEOJSON_URL = '/data/ne_110m_admin_0_countries.geojson';
 let geoCache: Promise<FeatureCollection<Geometry, ChoroplethFeatureProperties>> | null = null;
-const loadWorld = () => {
+export const loadWorld = () => {
     if (!geoCache) {
         geoCache = fetch(GEOJSON_URL)
             .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })

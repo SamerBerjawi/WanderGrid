@@ -11,3 +11,4 @@ export {
 export { ChoroplethFeature, type ChoroplethFeatureProps } from "./choropleth-feature";
 export { ChoroplethGraticule, type ChoroplethGraticuleProps } from "./choropleth-graticule";
 export { ChoroplethPoints, type ChoroplethPoint, type ChoroplethPointsProps } from "./choropleth-points";
+export { ChoroplethRoutes, type ChoroplethRoute, type ChoroplethRoutesProps } from "./choropleth-routes";

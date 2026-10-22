@@ -35,12 +35,13 @@ const MapNew = lazy(() => import('./views/new/MapNew').then(m => ({ default: m.M
 const AtlasNew = lazy(() => import('./views/new/AtlasNew').then(m => ({ default: m.AtlasNew })));
 const TripsNew = lazy(() => import('./views/new/TripsNew').then(m => ({ default: m.TripsNew })));
 const TripNew = lazy(() => import('./views/new/TripNew').then(m => ({ default: m.TripNew })));
+const DashboardNew = lazy(() => import('./views/new/DashboardNew').then(m => ({ default: m.DashboardNew })));
 const FlightsNew = lazy(() => import('./views/new/FlightsNew').then(m => ({ default: m.FlightsNew })));
 const RoadTripsNew = lazy(() => import('./views/new/RoadTripsNew').then(m => ({ default: m.RoadTripsNew })));
 const MemberNew = lazy(() => import('./views/new/MemberNew').then(m => ({ default: m.MemberNew })));
 const AuthNew = lazy(() => import('./views/new/AuthNew').then(m => ({ default: m.AuthNew })));
-type NewPage = 'map' | 'atlas' | 'trips' | 'trip' | 'member' | 'auth' | 'flights' | 'roadtrips';
-const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips', '/auth-new': 'auth', '/flights-new': 'flights', '/roadtrips-new': 'roadtrips' };
+type NewPage = 'map' | 'atlas' | 'trips' | 'trip' | 'member' | 'auth' | 'flights' | 'roadtrips' | 'dashboard';
+const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips', '/auth-new': 'auth', '/flights-new': 'flights', '/roadtrips-new': 'roadtrips', '/dashboard-new': 'dashboard' };
 // One trip's page: /trip-new/:id (the Trips page opens it).
 const NEW_TRIP_PATH = /^\/trip-new\/([^/]+)$/;
 const getNewTripId = (): string | null => {
@@ -477,6 +478,7 @@ export default function App() {
                 {newPage === 'map' ? <MapNew onTripClick={openTripNew} isSidebarCollapsed={isSidebarCollapsed} onThemeChange={t => handleThemeChange(t)} /> : null}
                 {newPage === 'atlas' ? <AtlasNew onTripClick={openTripNew} /> : null}
                 {newPage === 'trips' ? <TripsNew onTripClick={openTripNew} /> : null}
+                {newPage === 'dashboard' ? <DashboardNew onTripClick={openTripNew} onMemberClick={openMemberNew} /> : null}
                 {newPage === 'flights' ? <FlightsNew onTripClick={openTripNew} /> : null}
                 {newPage === 'roadtrips' ? <RoadTripsNew onTripClick={openTripNew} /> : null}
                 {newPage === 'member' && getNewMemberId() ? (
