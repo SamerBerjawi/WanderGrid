@@ -132,7 +132,6 @@ describe('status, progress and times', () => {
     });
 
     it('estimates a flight at 30 minutes plus 800 km/h', () => {
-        expect(estimateMinutes(800)).toBe(90);
         expect(estimateMinutes(0)).toBe(0);
     });
 });
@@ -224,5 +223,20 @@ describe('manual grouping', () => {
         const joined = groupJourneys([record({ ...c, journeyKey: 'j:x' }), record({ ...d, journeyKey: 'j:x' })]);
         expect(joined).toHaveLength(1);
         expect(joined[0].kind === 'journey' && joined[0].group.source).toBe('manual');
+    });
+});
+
+describe('estimateMinutes', () => {
+    it('is close to real schedules across distances', () => {
+        const near = (got: number, want: number) => expect(Math.abs(got - want) / want).toBeLessThan(0.12);
+        near(estimateMinutes(370), 70);       // AMS-LHR
+        near(estimateMinutes(1500), 150);     // medium haul
+        near(estimateMinutes(5847, -0.8), 500); // AMS-JFK westbound, ~8h20
+        near(estimateMinutes(5847, 0.8), 430);  // JFK-AMS eastbound, ~7h10
+        near(estimateMinutes(10881, 0.2), 840); // SIN-LHR
+    });
+    it('is zero without a distance and longer westbound than eastbound', () => {
+        expect(estimateMinutes(0)).toBe(0);
+        expect(estimateMinutes(6000, -1)).toBeGreaterThan(estimateMinutes(6000, 1));
     });
 });

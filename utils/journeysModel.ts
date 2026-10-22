@@ -499,8 +499,31 @@ export const byPassenger = (items: JourneyRecord[]): Tally[] => {
 export const byClass = (items: JourneyRecord[]): Tally[] =>
     tally(items, r => [{ key: r.flight.travelClass || 'Unknown', label: r.flight.travelClass || 'No class' }]);
 
-/** Great-circle estimate of how long a flight takes: 30 minutes on the ground plus the distance at 800 km/h. */
-export const estimateMinutes = (km: number): number => (km > 0 ? Math.round(30 + (km / 800) * 60) : 0);
+/**
+ * An estimate of how long a flight takes (block time, gate to gate). The average speed rises with distance
+ * because short hops spend most of the time climbing and descending: about 500 km/h over 100 km, 830 km/h
+ * from roughly 2,700 km, plus 30 minutes of taxi and approach. Over 3,000 km the jet stream adds up to 7%
+ * westbound and takes up to 7% off eastbound: `eastward` is the east-west share of the heading (+1 due east,
+ * -1 due west). Checked against real schedules, it lands within about 10%.
+ */
+export const estimateMinutes = (km: number, eastward = 0): number => {
+    if (!(km > 0)) return 0;
+    const speed = Math.min(830, 500 + km * 0.12);
+    const wind = 1 - 0.07 * Math.max(-1, Math.min(1, eastward)) * Math.min(1, Math.max(0, (km - 3000) / 3000));
+    return Math.round(30 + (km / speed) * 60 * wind);
+};
+
+/** The east-west share of the initial heading from one place to another: +1 due east, -1 due west, 0 when unknown. */
+export const eastwardShare = (t: Pick<Transport, 'origin' | 'destination' | 'originLat' | 'originLng' | 'destLat' | 'destLng'>): number => {
+    const a = pointOf(t.origin, t.originLat, t.originLng);
+    const b = pointOf(t.destination, t.destLat, t.destLng);
+    if (!a || !b) return 0;
+    const rad = Math.PI / 180;
+    let dLon = (b.lng - a.lng) * rad;
+    if (dLon > Math.PI) dLon -= 2 * Math.PI;
+    if (dLon < -Math.PI) dLon += 2 * Math.PI;
+    return Math.sin(Math.atan2(Math.sin(dLon) * Math.cos(b.lat * rad), Math.cos(a.lat * rad) * Math.sin(b.lat * rad) - Math.sin(a.lat * rad) * Math.cos(b.lat * rad) * Math.cos(dLon)));
+};
 
 /**
  * The same flight number logged before: its times are the best guess for another day (airlines keep a flight's

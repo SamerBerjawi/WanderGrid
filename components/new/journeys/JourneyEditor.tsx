@@ -11,7 +11,7 @@ import { RpChip, RpSection, RpSheet } from '../ui';
 import { TripMenu } from '../trips/TripMenu';
 import { LEG_DATE, LegForm } from '../trips/LegForm';
 import { extractIata } from '../../../hooks/useFlightLog';
-import { durationBetween, estimateMinutes, fromLog, isIndependent, journeyKm, localArrival, type JourneyRecord } from '../../../utils/journeysModel';
+import { durationBetween, eastwardShare, estimateMinutes, fromLog, isIndependent, journeyKm, localArrival, type JourneyRecord } from '../../../utils/journeysModel';
 import { errorMessage } from '../../../services/toast';
 import { cn } from '../../../utils/cn';
 
@@ -145,8 +145,9 @@ export const JourneyEditor: React.FC<{
     // A guess at the arrival from the distance, for a flight whose schedule can't be looked up.
     const canEstimate = flight && /^[A-Za-z]{3}$/.test((leg.origin || '').trim()) && /^[A-Za-z]{3}$/.test((leg.destination || '').trim()) && Boolean(leg.departureDate && leg.departureTime);
     const estimate = () => {
-        const km = journeyKm({ origin: leg.origin || '', destination: leg.destination || '', originLat: leg.originLat, originLng: leg.originLng, destLat: leg.destLat, destLng: leg.destLng } as Transport);
-        const minutes = estimateMinutes(km);
+        const ends = { origin: leg.origin || '', destination: leg.destination || '', originLat: leg.originLat, originLng: leg.originLng, destLat: leg.destLat, destLng: leg.destLng };
+        const km = journeyKm(ends as Transport);
+        const minutes = estimateMinutes(km, eastwardShare(ends));
         if (!minutes) { setError("Couldn't work out the distance. Enter the arrival time."); return; }
         setError('');
         const arr = localArrival(leg.origin!, leg.destination!, leg.departureDate!, leg.departureTime!, minutes);
