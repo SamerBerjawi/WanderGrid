@@ -403,12 +403,12 @@ export function StackPanel({ pages, root, className }: StackPanelProps) {
         onKeyDown={onKeyDown}
         ref={panelRef}
       >
-        <div className="relative z-10 flex h-12 items-center border-rp-line border-b bg-rp-surface px-2">
+        <div className="relative z-raised flex h-12 items-center border-rp-line border-b bg-rp-surface px-2">
           <AnimatePresence initial={false}>
             {parent && (
               <motion.button
                 animate={{ opacity: 1 }}
-                className="relative z-10 flex max-w-[30%] items-center rounded-lg py-1.5 pr-2 pl-1 min-h-11 text-sm text-rp-muted outline-none transition-colors duration-150 hover:bg-rp-inset hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted"
+                className="relative z-raised flex max-w-[30%] items-center rounded-lg py-1.5 pr-2 pl-1 min-h-11 text-sm text-rp-muted outline-none transition-colors duration-150 hover:bg-rp-inset hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted"
                 exit={{ opacity: 0 }}
                 initial={{ opacity: 0 }}
                 key="back"

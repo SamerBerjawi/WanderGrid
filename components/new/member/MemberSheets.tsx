@@ -107,6 +107,7 @@ export const MemberSheet: React.FC<{
                                 ) : null}
                             </div>
                         </div>
+                        <RpSection title="Profile">
                         <RpField label="Name">{id => <input id={id} value={draft.name} onChange={e => set('name', e.target.value)} className={RP_FIELD} autoComplete="name" autoFocus />}</RpField>
                         {isAdmin ? (
                             <div className="flex flex-col gap-1.5 py-1.5">
@@ -117,6 +118,7 @@ export const MemberSheet: React.FC<{
                                 {isSelf && member.role === 'Admin' && draft.role !== 'Admin' ? <p className="text-xs text-rp-rust">You won't be able to manage members after this.</p> : null}
                             </div>
                         ) : null}
+                        </RpSection>
                     </>
                 ) : null}
 
@@ -134,12 +136,15 @@ export const MemberSheet: React.FC<{
                 ) : null}
 
                 {topic === 'account' ? (
-                    <RpField label="New password">
-                        {id => <input id={id} type="password" value={password} onChange={e => setPassword(e.target.value)} className={RP_FIELD} autoComplete="new-password" placeholder="8 or more characters" autoFocus />}
-                    </RpField>
+                    <RpSection title="Password">
+                        <RpField label="New password">
+                            {id => <input id={id} type="password" value={password} onChange={e => setPassword(e.target.value)} className={RP_FIELD} autoComplete="new-password" placeholder="8 or more characters" autoFocus />}
+                        </RpField>
+                    </RpSection>
                 ) : null}
 
                 {topic === 'leave' ? (
+                    <RpSection title="Per year">
                     <div className="grid grid-cols-2 gap-3">
                         <RpField label="Days a year">
                             {id => <input id={id} inputMode="numeric" type="number" min={0} value={draft.allowance ?? draft.leaveBalance ?? 0} onChange={e => setDraft(d => ({ ...d, allowance: toNumber(e.target.value), leaveBalance: toNumber(e.target.value) }))} className={cn(RP_FIELD, 'rp-tabular')} autoFocus />}
@@ -148,6 +153,7 @@ export const MemberSheet: React.FC<{
                             {id => <input id={id} inputMode="numeric" type="number" min={0} value={draft.takenLeave ?? 0} onChange={e => set('takenLeave', toNumber(e.target.value))} className={cn(RP_FIELD, 'rp-tabular')} />}
                         </RpField>
                     </div>
+                    </RpSection>
                 ) : null}
 
                 {error ? <p role="alert" className="text-sm text-rp-rust">{error}</p> : null}

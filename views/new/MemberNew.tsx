@@ -8,12 +8,12 @@ import { formatDate, formatDateRange } from '../../utils/formatters';
 import { errorMessage, toast } from '../../services/toast';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import { StackPanel, type StackPage } from '../../components/kokonutui/stack-panel';
-import { RpChip, RpEmpty } from '../../components/new/ui';
+import { RpChip, RpEmpty, useIsMobile } from '../../components/new/ui';
 import { RpHugeicon } from '../../components/new/RpHugeicon';
 import { Avatar } from '../../components/new/member/Avatar';
 import { MemberRing, leaveColor, type RingSegment } from '../../components/new/member/MemberRing';
 import { MemberSheet, RemoveMemberSheet, type MemberTopic } from '../../components/new/member/MemberSheets';
-import { ArrowLeft, CalendarBlank, Check, Envelope, Eye, EyeSlash, Globe, IdentificationCard, Lock, MapPin, PencilSimple, Plus, SignOut, SunHorizon, Suitcase, Trash, User as UserIcon, type Icon } from '../../components/ui/hugeicons';
+import { ArrowLeft, CalendarBlank, Envelope, Eye, EyeSlash, Globe, IdentificationCard, Lock, MapPin, PencilSimple, Plus, SignOut, SunHorizon, Suitcase, Trash, User as UserIcon, type Icon } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -74,6 +74,7 @@ const passportStatus = (expiry?: string): { label: string; className: string } |
 
 export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTrip, onLogout, onRemoved }) => {
     const data = useMemberData(memberId);
+    const mobile = useIsMobile();
     const [tab, setTab] = useState<TabId>(readTab);
     const [topic, setTopic] = useState<MemberTopic | null>(null);
     const [removing, setRemoving] = useState<User | null>(null);
@@ -131,8 +132,10 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
         { id: 'places', title: 'Places', icon: Globe, badge: data.stats.places.length || undefined },
         { id: 'documents', title: 'Documents', icon: IdentificationCard },
         ...(data.canEdit ? [{ id: 'settings', title: 'Settings', icon: UserIcon }] : []),
-    ] as const).map(t => ({ ...t, iconClassName: tab === t.id ? undefined : TAB_PILL[t.id as TabId].icon }));
+    ] as const);
     const activeTab: TabId = tabItems.some(t => t.id === tab) ? tab : 'leave';
+    // On phones only the selected tab shows its name (§1.5); the rest keep their icon and count.
+    const tabs = tabItems.map(t => ({ ...t, hideTitle: mobile && t.id !== activeTab, iconClassName: activeTab === t.id ? undefined : TAB_PILL[t.id as TabId].icon }));
 
     // ---- Leave -------------------------------------------------------------------------------
     const segments: RingSegment[] = [
@@ -148,7 +151,7 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
             sections: [
                 {
                     rows: [
-                        { id: 'passport', icon: IdentificationCard, label: 'Passport', detail: passport?.label ?? (hasPassport ? 'Added' : 'Not added'), to: 'passport' },
+                        { id: 'passport', icon: IdentificationCard, label: 'Passport', detail: passport ? <span className={cn('inline-flex h-6 items-center rounded-full px-2.5 text-xs font-medium', passport.className)}>{passport.label}</span> : (hasPassport ? 'Added' : 'Not added'), to: 'passport' },
                     ],
                 },
                 ...(data.canEdit ? [{ rows: [{ id: 'edit-passport', icon: PencilSimple, label: 'Edit passport details', onSelect: () => setTopic('passport' as MemberTopic) }] }] : []),
@@ -264,7 +267,7 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
 
                 <div className="-m-3 overflow-x-auto p-3 [scrollbar-width:none]">
                     <SwipeTabs
-                        items={tabItems}
+                        items={tabs}
                         value={activeTab}
                         onChange={id => changeTab(id as TabId)}
                         panels={false}
@@ -414,17 +417,7 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                     {activeTab === 'documents' ? (
                         <div className={cn(card, 'p-2 sm:p-3 lg:max-w-xl')}>
                             {hasPassport ? (
-                                <>
-                                    {passport ? (
-                                        <p className="flex items-center gap-2 px-3 pt-2 pb-1 text-sm">
-                                            <span className={cn('inline-flex h-6 items-center gap-1 rounded-full px-2.5 text-xs font-medium', passport.className)}>
-                                                {passport.label === 'Valid' ? <Check size={12} aria-hidden /> : null}{passport.label}
-                                            </span>
-                                            <span className="text-rp-muted">Passport</span>
-                                        </p>
-                                    ) : null}
-                                    <StackPanel pages={documentPages} root="documents" />
-                                </>
+                                <StackPanel pages={documentPages} root="documents" />
                             ) : (
                                 <RpEmpty
                                     title="No passport details"

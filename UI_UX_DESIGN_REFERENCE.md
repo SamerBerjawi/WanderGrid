@@ -410,6 +410,14 @@ npx shadcn@latest add @kokonutui/<slug>
 - **Demo data.** Several components default to demo content (event ticket, checkout order, sample article). Always pass real props.
 - **Tracking.** Record each port, with its KokonutUI version (most are 1.0–2.0, dated October 2026), in a change registry like `docs/gev-changes.md`.
 
+### 4.5 Ports already in `components/kokonutui/`
+
+Only the port added with MemberNew is listed here; the other ports (Swipe Tabs, Hold Button, Particle Button and so on) are in the folder and are listed on the branches that added them. Merge this list when the branches meet.
+
+| Component | Slug | File | Notes |
+| --- | --- | --- | --- |
+| Stack Panel | `stack-panel` v1.0.0 | `components/kokonutui/stack-panel.tsx` | `lucide-react` and `@/lib/utils` replaced by the Hugeicons adapter and `utils/cn`; `zinc-*` and `bg-black` replaced by `rp-*` tokens; the demo page removed; rows take an `icon` (18px), a `detail` that can be any node and `disabled`; the toggle is green when on; tap targets are 44px |
+
 ---
 
 ## 5. Application Feature Inventory Mapping Template
@@ -625,7 +633,11 @@ The view inventory below lists which **features** each New page inherits, and su
 | 57 | Weather | A small pill with an icon and the temperature: the day's high and low when the day is within the next two weeks, otherwise how it is there now. Shown at every stop and day trip in the planner, on the route stops in the trip header, and on a place in the Map page. Open-Meteo, no key, cached for 30 minutes, silent when unavailable |
 | 58 | Trip map in the header | The map sits in the trip's header card (beside the title on wide screens, below it on phones), on a **plain light or dark basemap** that follows the theme, with no overlays or animation; the person's own map settings stay on the Map page. Place names are in proper case everywhere (Paris, not PARIS; airport codes stay as codes) |
 | 59 | Compact trip header and three tiles | The header is one tight card: dates and actions on the first line, name and total cost on the second, the stops with their weather, a thin status bar, then members and the main action, with the map beside it (about 15rem tall). The numbers are **three tiles**: Days (with nights booked), km (with legs and excursions), Stays (with activities). The tiles are filled with their accent (Days ink, km green, Stays mustard), with a tick on the nights line when every night has a bed. Supersedes the six tiles of decision 53 |
-
+| 60 | MemberNew page (Member build) | One member at `/member-new/:id`: a compact header (photo or initials, name, role chip, email, nationality, Edit circle), **three filled tiles** (Trips ink with coming and flights, Days away green with places, Days left mustard with "of N in year") and **Swipe Tabs**: Leave mustard, Trips ink, Places green, Documents rust, Settings ink (shown only to an admin or the member). On phones inactive tabs show icon and count only. The tab is remembered. Opened from the TripNew header's member names and from "My profile" in the Account Menu and the phone More sheet; back goes to the previous page |
+| 61 | Leave on MemberNew | A plain-SVG **ring by leave type** (a stand-in for the Spending Ring port) with days left in the centre, year chips, and one row per type: used, planned and the policy allowance (or Unlimited). Figures come from `utils/leaveModel.ts`, which follows the calendar: the allowance and taken days are the member's own, a trip counts when it has a leave type or `allocations`, in the year it starts (split trips by `targetYear`), past trips as used and the rest as planned. **Left = allowance − taken − planned.** Days taken is the admin's record and is not added to past trips, so nothing counts twice. Types with no policy and no trips are not listed |
+| 62 | Documents and Settings are Stack Panels | Both tabs use the ported **Stack Panel** (settings-style rows, nested pages, swipe or Back or Escape to return). Documents: Passport row with a coloured Valid / Expires soon / Expired chip, a nested page of the details with the number masked and an eye to reveal, and an edit row. Settings: Name, Email, Role, Weekend holidays (a nested page that saves on choosing), Leave allowance (admin), Password, Sign out (your own page) and **Remove member** (admin, not yourself). One edit sheet with a topic each: profile (photo, name, role), passport, password, leave allowance |
+| 63 | Removing a member | A sheet with a **Hold button** and no Undo (decision 9). The server refuses removing yourself or the last admin; the page hides the row for yourself and shows the server's message otherwise. Trips keep the member's id in their participants |
+| 64 | MemberNew not carried over | The old page's per-trip edit and delete buttons and "Add to Planner" for flight bundles (trips are edited on their own page), and the colour, emoji and photo choices the task mentioned: the app only stores a photo. Wheel Picker not used: dates use the same date fields as the trip sheets |
 ---
 
 ## 8. Review adjustments: what the user changed after MapNew, AtlasNew and TripsNew were built
