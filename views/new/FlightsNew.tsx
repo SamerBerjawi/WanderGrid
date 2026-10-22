@@ -16,7 +16,7 @@ import { openNewPage } from '../../components/new/devLinks';
 import { useUndoToast } from '../../components/new/UndoToast';
 import { TripMenu, type TripMenuItem } from '../../components/new/trips/TripMenu';
 import { JourneyTable, type JourneyGrouping } from '../../components/new/journeys/JourneyTable';
-import { JourneyStats } from '../../components/new/journeys/JourneyStats';
+import { JourneyHero } from '../../components/new/journeys/JourneyHero';
 import { JourneyTimeline } from '../../components/new/journeys/JourneyTimeline';
 import { LiveNow } from '../../components/new/journeys/LiveNow';
 import { JourneyBoard } from '../../components/new/journeys/JourneyBoard';
@@ -24,7 +24,7 @@ import { JourneySheet } from '../../components/new/journeys/JourneySheet';
 import { JourneyEditor, type JourneyEditorTarget } from '../../components/new/journeys/JourneyEditor';
 import { ImportSheet, exportJourneys, type ExportFormat } from '../../components/new/journeys/JourneyTransfer';
 import {
-    Airplane, AirplaneTakeoff, ArrowDown, ChartBar, Stack, type Icon, CalendarBlank, CheckSquare, Clock, DownloadSimple, Funnel, Globe, MagnifyingGlass, PencilSimple, Plus, Suitcase, Table, Trash, UploadSimple, X, XCircle,
+    Airplane, AirplaneTakeoff, ArrowDown, Stack, type Icon, CalendarBlank, CheckSquare, Clock, DownloadSimple, Funnel, Globe, MagnifyingGlass, PencilSimple, Plus, Suitcase, Table, Trash, UploadSimple, X, XCircle,
 } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
@@ -40,14 +40,14 @@ interface FlightsNewProps {
     onTripClick?: (tripId: string) => void;
 }
 
-type View = 'table' | 'board' | 'stats';
+type View = 'table' | 'board';
 const GROUP_KEY = 'wandergrid_flights_new_group';
 const VIEW_KEY = 'wandergrid_flights_new_view';
 const SORT_KEY = 'wandergrid_flights_new_sort';
 const NEW_FLIGHT_EVENT = 'rp:new-flight';
 const NOUN = { one: 'Flight', many: 'flights' };
 
-const readView = (): View => { try { const v = localStorage.getItem(VIEW_KEY); return v === 'board' || v === 'stats' ? v : 'table'; } catch { return 'table'; } };
+const readView = (): View => { try { return localStorage.getItem(VIEW_KEY) === 'board' ? 'board' : 'table'; } catch { return 'table'; } };
 const readGroup = (): JourneyGrouping => { try { const v = localStorage.getItem(GROUP_KEY); return v === 'year' || v === 'journey' ? v : 'none'; } catch { return 'none'; } };
 const readSort = (): { key: JourneySortKey; asc: boolean } => {
     try {
@@ -218,7 +218,6 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
     const tools: DockTool[] = [
         { id: 'table', label: 'Table', icon: Table as any },
         { id: 'board', label: 'Board', icon: AirplaneTakeoff as any },
-        { id: 'stats', label: 'Stats', icon: ChartBar as any },
         { id: 'search', label: 'Search flights', icon: MagnifyingGlass as any, action: () => setSearchOpen(o => !o), dividerBefore: true },
         { id: 'import', label: 'Import flights', icon: UploadSimple as any, action: () => setImportOpen(true) },
         { id: 'new', label: 'New flight', icon: Plus as any, action: () => setEditor({ kind: 'create' }) },
@@ -290,6 +289,8 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                 </div>
 
                 {log.loaded ? <LiveNow items={log.flights} onOpen={open} brandfetchApiKey={brandfetchApiKey} /> : null}
+
+                {log.loaded && log.flights.length > 0 ? <JourneyHero items={shown} /> : null}
 
                 <section aria-label="Your flights" className="flex flex-col gap-4">
                     <div className="-m-3 overflow-x-auto p-3 [scrollbar-width:none] sm:m-0 sm:overflow-visible sm:p-0">
@@ -366,8 +367,6 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                                 Try another search or filter.
                             </RpEmpty>
                         </EmptyCard>
-                    ) : view === 'stats' ? (
-                        <JourneyStats items={shown} />
                     ) : view === 'board' ? (
                         <JourneyBoard items={shown} onOpen={open} brandfetchApiKey={brandfetchApiKey} expanded={expanded} onExpandedChange={setExpanded} filtering={filtering} noun={NOUN} />
                     ) : (
