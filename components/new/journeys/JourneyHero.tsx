@@ -120,20 +120,21 @@ export const JourneyHero: React.FC<{ items: JourneyRecord[]; kind?: 'flight' | '
     const [lanes, setLanes] = useState<Map<string, [number, number][]>>(new Map());
     useEffect(() => {
         let live = true;
-        const todo = flat.filter(r => r.sea && !lanes.has(`${r.from}|${r.to}`));
+        const laneKey = (r: { from: unknown; to: unknown; via?: unknown }) => `${r.from}|${r.to}|${r.via ?? ''}`;
+        const todo = flat.filter(r => r.sea && !lanes.has(laneKey(r)));
         if (todo.length === 0) return;
         void import('../../../services/maritimeRouting').then(async ({ fetchSeaRoute }) => {
             const found = new Map<string, [number, number][]>();
             for (const r of todo.slice(0, 30)) {
-                const g = await fetchSeaRoute(r.from[1], r.from[0], r.to[1], r.to[0]).catch(() => null);
-                found.set(`${r.from}|${r.to}`, g && g.length > 2 ? g.map(([x, y]) => [x, y] as [number, number]) : []);
+                const g = await fetchSeaRoute(r.from[1], r.from[0], r.to[1], r.to[0], (r.via || []).map(([lng, lat]) => ({ lat, lng }))).catch(() => null);
+                found.set(laneKey(r), g && g.length > 2 ? g.map(([x, y]) => [x, y] as [number, number]) : []);
             }
             if (live) setLanes(prev => new Map([...prev, ...found]));
         });
         return () => { live = false; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [flat]);
-    const routes = useMemo(() => flat.map(r => { const p = r.sea ? lanes.get(`${r.from}|${r.to}`) : undefined; return p && p.length > 2 ? { ...r, path: p } : r; }), [flat, lanes]);
+    const routes = useMemo(() => flat.map(r => { const p = r.sea ? lanes.get(`${r.from}|${r.to}|${r.via ?? ''}`) : undefined; return p && p.length > 2 ? { ...r, path: p } : r; }), [flat, lanes]);
     const totals = useMemo(() => journeyTotals(items), [items]);
     const best = years.reduce((a, b) => (b[metric] > a[metric] ? b : a), years[0]);
     const earth = aroundTheWorld(totals.km);
@@ -176,7 +177,7 @@ export const JourneyHero: React.FC<{ items: JourneyRecord[]; kind?: 'flight' | '
                 <div className="flex min-w-0 flex-col gap-2 px-1">
                     <p className="text-sm text-rp-muted"><span className="rp-tabular font-medium text-rp-ink">{routes.length}</span> {routes.length === 1 ? 'route' : 'routes'} between {land ? plural(totals.airports, 'place', 'places') : plural(totals.airports, 'airport', 'airports')}</p>
                     {routes.length > 0
-                        ? <RoutesMap routes={routes} className="h-48 sm:h-60 lg:h-full lg:min-h-64" label={`Map of ${routes.length} routes between ${totals.airports} places`} />
+                        ? <RoutesMap routes={routes} maxZoom={land ? 14 : undefined} className="h-48 sm:h-60 lg:h-full lg:min-h-64" label={`Map of ${routes.length} routes between ${totals.airports} places`} />
                         : <p className="py-10 text-center text-sm text-rp-muted">{land ? 'No journeys with known places to draw.' : 'No flights with known airports to draw.'}</p>}
                 </div>
                 <div className="flex min-w-0 flex-col gap-2 px-1">

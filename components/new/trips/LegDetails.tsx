@@ -131,6 +131,8 @@ export const LegDetails: React.FC<{ leg: Partial<Transport>; patch: Patch; open?
     const flight = mode === 'Flight';
     const rental = mode === 'Car Rental';
     const road = mode === 'Car Rental' || mode === 'Personal Car';
+    // Stops along the way suit every kind of journey but a flight: a ferry that calls at Mariehamn, a train through Basel.
+    const canStop = !flight;
     const seated = flight || mode === 'Train' || mode === 'Bus';
     const fields = leg.customFields || [];
     const setFields = (next: Array<{ key: string; value: string }>) => patch({ customFields: next.length ? next : undefined });
@@ -195,7 +197,7 @@ export const LegDetails: React.FC<{ leg: Partial<Transport>; patch: Patch; open?
                             {id => <textarea id={id} value={leg.notes || ''} onChange={e => patch({ notes: e.target.value })} rows={3} className={cn(RP_FIELD, 'resize-y py-3')} />}
                         </RpField>
                     </Group>
-                    {road ? <Waypoints leg={leg} patch={patch} /> : null}
+                    {canStop ? <Waypoints leg={leg} patch={patch} /> : null}
                     <Group title="Custom fields">
                         <ul className="flex flex-col gap-2">
                             {fields.map((f, i) => (

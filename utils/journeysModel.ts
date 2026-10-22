@@ -384,7 +384,7 @@ export const journeyEnds = (t: Transport): { from: [number, number]; to: [number
 };
 
 /** `sea` marks a ferry or cruise route (drawn along its shipping lane); `path` is that lane once found. */
-export interface RouteLine { from: [number, number]; to: [number, number]; count: number; label: string; sea?: boolean; path?: [number, number][] }
+export interface RouteLine { from: [number, number]; to: [number, number]; count: number; label: string; sea?: boolean; /** Stops along the way with a position, in order. */ via?: [number, number][]; path?: [number, number][] }
 
 /** Distinct routes (either direction counts as one) with how often they were flown. */
 export const routeLines = (items: JourneyRecord[]): RouteLine[] => {
@@ -394,9 +394,12 @@ export const routeLines = (items: JourneyRecord[]): RouteLine[] => {
         const ends = journeyEnds(r.flight);
         if (!ends) continue;
         const a = placeCode(r.flight.origin, r.flight.mode), b = placeCode(r.flight.destination, r.flight.mode);
-        const key = [a, b].sort().join('-');
+        const via: [number, number][] = r.flight.mode === 'Flight' ? [] : (r.flight.waypoints || []).filter(w => w.coordinates).map(w => [w.coordinates!.lng, w.coordinates!.lat] as [number, number]);
+        // Stops are part of what makes a route the same route: Stockholm to Helsinki direct is not the same as via Åland.
+        const key = [[a, b].sort().join('-'), via.map(v => v.join(',')).join(';')].join('|');
         const row = map.get(key);
-        if (row) row.count += 1; else map.set(key, { ...ends, count: 1, label: `${a} to ${b}`, sea: r.flight.mode === 'Ferry' || r.flight.mode === 'Cruise' });
+        if (row) row.count += 1;
+        else map.set(key, { ...ends, count: 1, label: `${a} to ${b}`, sea: r.flight.mode === 'Ferry' || r.flight.mode === 'Cruise', via: via.length ? via : undefined });
     }
     return [...map.values()];
 };

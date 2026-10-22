@@ -81,7 +81,9 @@ export async function fetchSeaRoute(
     endLng: number,
     waypoints?: any[]
 ): Promise<[number, number, number][] | null> {
-    const cacheKey = `sea_${startLat.toFixed(3)},${startLng.toFixed(3)}|${endLat.toFixed(3)},${endLng.toFixed(3)}`;
+    // The stops along the way are part of the key: Stockholm to Helsinki direct is not Stockholm to Helsinki via Åland.
+    const viaKey = (waypoints || []).map((w: any) => `${(w?.coordinates?.lat ?? w?.lat)?.toFixed?.(3)},${(w?.coordinates?.lng ?? w?.lng)?.toFixed?.(3)}`).join(';');
+    const cacheKey = `sea_${startLat.toFixed(3)},${startLng.toFixed(3)}|${endLat.toFixed(3)},${endLng.toFixed(3)}|${viaKey}`;
     if (seaRouteCache.has(cacheKey)) {
         return seaRouteCache.get(cacheKey)!;
     }
