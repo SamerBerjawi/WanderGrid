@@ -214,8 +214,8 @@ export const AuthNew: React.FC<AuthNewProps> = ({ onLogin, isDark, onThemeChange
                                         stretch
                                         label="Account"
                                         listClassName="bg-rp-inset"
-                                        activeColor="bg-rp-ink"
-                                        activeTextColor="text-rp-on-ink"
+                                        activeColor="bg-rp-green"
+                                        activeTextColor="text-rp-paper"
                                     />
                                 </div>
                             ) : null}
@@ -311,7 +311,7 @@ export const AuthNew: React.FC<AuthNewProps> = ({ onLogin, isDark, onThemeChange
                                         <span className="h-px flex-1 bg-rp-line" />
                                     </div>
                                     <ParticleButton
-                                        variant="inset"
+                                        variant="mustard"
                                         className="!w-full"
                                         disabled={busy}
                                         pendingLabel="Starting demo"
