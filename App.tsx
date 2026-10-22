@@ -551,7 +551,7 @@ export default function App() {
         <Toaster />
         <ConfirmHost />
         {!dataService.isDatabaseMode() && (
-          <div className="rp-root fixed top-safe-offset right-3 z-toast pointer-events-none" role="status">
+          <div className="rp-root fixed top-safe-offset right-3 z-sticky pointer-events-none" role="status">
             <span className="inline-flex min-h-8 items-center rounded-full bg-rp-mustard px-3 text-xs font-medium text-rp-on-mustard rp-shadow-soft">Local mode · data stays in this browser</span>
           </div>
         )}

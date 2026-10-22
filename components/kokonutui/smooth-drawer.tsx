@@ -27,6 +27,7 @@ import {
 import { Drawer } from "vaul";
 import { ArrowUp as ChevronUp } from "@/components/ui/hugeicons";
 import { cn } from "@/utils/cn";
+import { useSheetFlag } from "@/hooks/useOverlayA11y";
 
 export interface SmoothDrawerProps {
   open: boolean;
@@ -71,6 +72,7 @@ export default function SmoothDrawer({
   const detailsRef = useRef<HTMLDivElement>(null);
   const frame = useRef(0);
   const reduceMotion = useReducedMotion();
+  useSheetFlag(open);
 
   useEffect(() => {
     const measure = () => setViewportHeight(window.innerHeight);
@@ -140,7 +142,7 @@ export default function SmoothDrawer({
       snapPoints={snapPoints}
     >
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-modal-backdrop bg-rp-ink/20" />
+        <Drawer.Overlay className="rp-root fixed inset-0 z-modal-backdrop bg-rp-canvas/50 backdrop-blur-xl" />
         <Drawer.Content
           aria-describedby={undefined}
           className="rp-root fixed inset-x-0 bottom-0 z-modal mx-auto flex w-full max-w-[440px] flex-col rounded-t-rp-card bg-rp-surface font-rp text-rp-ink outline-none rp-shadow-float"

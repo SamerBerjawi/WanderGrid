@@ -74,3 +74,19 @@ export const useOverlayA11y = (open: boolean, containerRef: RefObject<HTMLElemen
         };
     }, [open, trap, lock, containerRef]);
 };
+
+let sheetsOpen = 0;
+/**
+ * Marks <html data-rp-sheet> while a bottom sheet is open on a phone, so the toast host moves to the top
+ * instead of covering the sheet's buttons (components/Toaster.tsx).
+ */
+export const useSheetFlag = (open: boolean) => {
+    useEffect(() => {
+        if (!open) return;
+        sheetsOpen++;
+        document.documentElement.setAttribute('data-rp-sheet', '');
+        return () => {
+            if (--sheetsOpen === 0) document.documentElement.removeAttribute('data-rp-sheet');
+        };
+    }, [open]);
+};

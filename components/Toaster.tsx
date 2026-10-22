@@ -10,7 +10,8 @@ import './new/new.css';
  * optional mustard Undo, fed by services/toast (and by useUndoToast in components/new/UndoToast.tsx, so
  * only one pill style ever appears). It carries its own `rp-root`, so it renders the same above the New
  * shell and above an old page. Up to three transient toasts stack; sticky ones (offline, update ready)
- * sit above them. A toast pauses while hovered or focused.
+ * sit above them. A toast pauses while hovered or focused. While a bottom sheet is open on a phone
+ * (`html[data-rp-sheet]`, set by useSheetFlag) the stack moves to the top so it never covers the sheet.
  */
 
 const STYLE: Record<ToastMessage['kind'], { icon: typeof Info | null; chip: string }> = {
@@ -92,7 +93,7 @@ const ToastPill: React.FC<{ t: ToastMessage }> = ({ t }) => {
 export const Toaster: React.FC = () => {
   const items = useSyncExternalStore(subscribeToastList, getToasts, getToasts);
   return (
-    <div className="rp-root pointer-events-none fixed inset-x-0 bottom-[calc(96px+env(safe-area-inset-bottom,0px))] z-toast flex flex-col items-center gap-2 px-3 md:bottom-6">
+    <div className="rp-root pointer-events-none fixed inset-x-0 bottom-[calc(96px+env(safe-area-inset-bottom,0px))] z-toast flex flex-col items-center gap-2 px-3 md:bottom-6 [html[data-rp-sheet]_&]:max-md:bottom-auto [html[data-rp-sheet]_&]:max-md:top-[calc(12px+env(safe-area-inset-top,0px))]">
       <AnimatePresence initial={false} mode="popLayout">
         {items.map((t) => <ToastPill key={t.id} t={t} />)}
       </AnimatePresence>
