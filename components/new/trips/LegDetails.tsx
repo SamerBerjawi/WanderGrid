@@ -43,7 +43,7 @@ const StopRow: React.FC<{ id: string; label: string; children: (grip: React.Reac
         </button>
     );
     return (
-        <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={cn('rounded-rp-inset bg-rp-surface p-3', isDragging && 'relative z-10 rp-shadow-float')}>
+        <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={cn('rounded-rp-inset bg-rp-surface p-3', isDragging && 'relative z-raised rp-shadow-float')}>
             {children(grip)}
         </li>
     );
