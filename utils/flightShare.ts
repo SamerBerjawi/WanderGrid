@@ -21,6 +21,10 @@ const fold = (line: string): string => {
     return out.join('\r\n');
 };
 
+/** The little symbol in front of a journey: a plane for flights, the vehicle for land and sea. */
+const SYMBOL: Record<string, string> = { Flight: '✈', Train: '🚆', Bus: '🚌', 'Car Rental': '🚗', 'Personal Car': '🚗', Cruise: '🛳', Ferry: '⛴' };
+const symbol = (t: Transport) => SYMBOL[t.mode] ?? '✈';
+
 const details = (t: Transport): string[] => [
     t.confirmationCode ? `Confirmation: ${t.confirmationCode}` : '',
     t.seatNumber ? `Seat: ${t.seatNumber}${t.seatType ? ` (${t.seatType.toLowerCase()})` : ''}` : '',
@@ -40,10 +44,10 @@ export const flightsToIcs = (records: JourneyRecord[], now = new Date()): string
             `DTSTAMP:${stamp(now)}`,
             `DTSTART:${stamp(start)}`,
             `DTEND:${stamp(end > start ? end : new Date(start.getTime() + 3_600_000))}`,
-            `SUMMARY:${ics(`✈ ${[t.identifier, `${placeCode(t.origin)} → ${placeCode(t.destination)}`].filter(Boolean).join(' ')}`)}`,
-            `LOCATION:${ics(getAirportName(t.origin) || placeName(t.origin))}`,
+            `SUMMARY:${ics(`${symbol(t)} ${[t.identifier, `${placeCode(t.origin, t.mode)} → ${placeCode(t.destination, t.mode)}`].filter(Boolean).join(' ')}`)}`,
+            `LOCATION:${ics((t.mode === 'Flight' && getAirportName(t.origin)) || placeName(t.origin))}`,
             `DESCRIPTION:${ics([t.provider, ...details(t), trip && trip.id !== 'unassigned' ? `Trip: ${trip.name}` : ''].filter(Boolean).join('\n'))}`,
-            'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${ics(`${t.identifier || 'Flight'} leaves in 3 hours`)}`, 'TRIGGER:-PT3H', 'END:VALARM',
+            'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${ics(`${t.identifier || (t.mode === 'Flight' ? 'Flight' : t.mode)} leaves in 3 hours`)}`, 'TRIGGER:-PT3H', 'END:VALARM',
             'END:VEVENT',
         ];
         return lines.map(fold).join('\r\n');
@@ -57,7 +61,7 @@ const when = (t: Transport) => `${t.departureDate} ${t.departureTime || ''}`.tri
 export const flightsToText = (records: JourneyRecord[]): string => {
     const sorted = [...records].sort((a, b) => getFlightDepartureUtcDate(a.flight).getTime() - getFlightDepartureUtcDate(b.flight).getTime());
     return sorted.map(({ flight: t }) => {
-        const head = `${t.identifier ? `${t.identifier}  ` : ''}${placeCode(t.origin)} → ${placeCode(t.destination)}  ${when(t)}${t.arrivalTime ? ` → ${t.arrivalTime}` : ''}${journeyMinutes(t) ? `  (${formatMinutes(journeyMinutes(t))})` : ''}`;
+        const head = `${t.identifier ? `${t.identifier}  ` : ''}${placeCode(t.origin, t.mode)} → ${placeCode(t.destination, t.mode)}  ${when(t)}${t.arrivalTime ? ` → ${t.arrivalTime}` : ''}${journeyMinutes(t) ? `  (${formatMinutes(journeyMinutes(t))})` : ''}`;
         return [head, ...details(t).map(d => `  ${d}`)].join('\n');
     }).join('\n\n');
 };

@@ -36,8 +36,9 @@ const AtlasNew = lazy(() => import('./views/new/AtlasNew').then(m => ({ default:
 const TripsNew = lazy(() => import('./views/new/TripsNew').then(m => ({ default: m.TripsNew })));
 const TripNew = lazy(() => import('./views/new/TripNew').then(m => ({ default: m.TripNew })));
 const FlightsNew = lazy(() => import('./views/new/FlightsNew').then(m => ({ default: m.FlightsNew })));
-type NewPage = 'map' | 'atlas' | 'trips' | 'trip' | 'flights';
-const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips', '/flights-new': 'flights' };
+const RoadTripsNew = lazy(() => import('./views/new/RoadTripsNew').then(m => ({ default: m.RoadTripsNew })));
+type NewPage = 'map' | 'atlas' | 'trips' | 'trip' | 'flights' | 'roadtrips';
+const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips', '/flights-new': 'flights', '/roadtrips-new': 'roadtrips' };
 // One trip's page: /trip-new/:id (the Trips page opens it).
 const NEW_TRIP_PATH = /^\/trip-new\/([^/]+)$/;
 const getNewTripId = (): string | null => {
@@ -432,7 +433,7 @@ export default function App() {
       return (
         <Suspense fallback={null}>
           <ShellNew
-            currentPath={newPage === 'trip' ? '/trips-new' : window.location.pathname}
+            currentPath={newPage === 'trip' ? '/trips-new' : newPage === 'roadtrips' ? '/flights-new' : window.location.pathname}
             onNavigate={navigateFromShell}
             user={currentUser}
             isDark={isDarkMode}
@@ -448,6 +449,7 @@ export default function App() {
                 {newPage === 'atlas' ? <AtlasNew onTripClick={openTripNew} /> : null}
                 {newPage === 'trips' ? <TripsNew onTripClick={openTripNew} /> : null}
                 {newPage === 'flights' ? <FlightsNew onTripClick={openTripNew} /> : null}
+                {newPage === 'roadtrips' ? <RoadTripsNew onTripClick={openTripNew} /> : null}
                 {newPage === 'trip' && getNewTripId() ? (
                   <TripNew key={getNewTripId()!} tripId={getNewTripId()!} onBack={() => navigateFromShell('/trips-new')} onOpenOriginal={handleTripClick} />
                 ) : null}

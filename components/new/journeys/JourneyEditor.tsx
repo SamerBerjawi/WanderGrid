@@ -11,8 +11,8 @@ import { RpChip, RpSection, RpSheet } from '../ui';
 import { TripMenu } from '../trips/TripMenu';
 import { LEG_DATE, LegForm } from '../trips/LegForm';
 import { extractIata } from '../../../hooks/useFlightLog';
-import { durationBetween, eastwardShare, estimateMinutes, fromLog, isIndependent, journeyKm, localArrival, type JourneyRecord } from '../../../utils/journeysModel';
-import { errorMessage } from '../../../services/toast';
+import { MODE_SPEED_KMH, durationBetween, eastwardShare, elapsedMinutes, estimateMinutes, fromLog, isIndependent, journeyKm, localArrival, type JourneyRecord } from '../../../utils/journeysModel';
+import { errorMessage, toast } from '../../../services/toast';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -112,6 +112,21 @@ export const JourneyEditor: React.FC<{
             const destination = flight ? extractIata(leg.destination).toUpperCase() || leg.destination.trim() : leg.destination.trim();
             const arrivalDate = leg.arrivalDate || leg.departureDate;
             const minutes = flight ? (durationBetween(origin, destination, leg.departureDate, leg.departureTime || '00:00', arrivalDate, leg.arrivalTime || '00:00') ?? calculateDurationMinutes(origin, destination, leg.departureDate, leg.departureTime || '00:00', arrivalDate, leg.arrivalTime || '00:00')) : 0;
+            // Land and sea: the time is the wall-clock gap (no airport zones), the distance the one given, else the time at the mode's average speed, else the straight line.
+            if (!flight) {
+                // Zones for both ends (cached after the first time), so a crossing of a zone line is counted.
+                try {
+                    const { getCoordinates } = await import('../../../services/geocoding');
+                    const { ensureZone } = await import('../../../services/timezone');
+                    const [a, b] = await Promise.all([getCoordinates(origin), getCoordinates(destination)]);
+                    await Promise.all([ensureZone(origin, leg.originLat ?? a?.lat, leg.originLng ?? a?.lng), ensureZone(destination, leg.destLat ?? b?.lat, leg.destLng ?? b?.lng)]);
+                } catch { /* the clock gap is used */ }
+            }
+            const wall = flight ? 0 : elapsedMinutes(origin, destination, leg.departureDate, leg.departureTime || '00:00', arrivalDate, leg.arrivalTime || '00:00');
+            // The distance given, else the places (stretched for how winding the route is), else the time at the mode's average speed.
+            // A distance left over from other places is not kept when From or To changed.
+            const stale = Boolean(editing && (origin !== editing.flight.origin || destination !== editing.flight.destination) && leg.distance === editing.flight.distance);
+            const landKm = flight ? undefined : (stale ? 0 : leg.distance) || Math.round(journeyKm({ mode: leg.mode, origin, destination, originLat: leg.originLat, originLng: leg.originLng, destLat: leg.destLat, destLng: leg.destLng } as Transport)) || (wall ? Math.round((wall / 60) * (MODE_SPEED_KMH[leg.mode || ''] || 80)) : undefined);
             const payload: Transport = {
                 ...(editing?.flight ?? {}),
                 ...(leg as Transport),
@@ -128,7 +143,8 @@ export const JourneyEditor: React.FC<{
                 arrivalDate,
                 arrivalTime: leg.arrivalTime || '00:00',
                 cost: num(cost),
-                duration: minutes || leg.duration,
+                duration: flight ? minutes || leg.duration : wall || leg.duration,
+                ...(flight ? {} : { distance: landKm }),
                 actualDepartureTime: leg.actualDepartureTime || undefined,
                 actualArrivalTime: leg.actualArrivalTime || undefined,
                 passengers: trip && trip.participants.length > 1 ? leg.passengers : undefined,
@@ -139,6 +155,49 @@ export const JourneyEditor: React.FC<{
             const msg = errorMessage(e, "That didn't save. Try again.");
             setError(msg);
             throw e;
+        }
+    };
+
+    // Land and sea: the road distance and time from the routing service (cars, coaches), or an estimate from the places at the mode's average speed.
+    const [routing, setRouting] = useState(false);
+    const canRoute = !flight && Boolean(leg.origin?.trim() && leg.destination?.trim());
+    const calcRoute = async () => {
+        setError('');
+        setRouting(true);
+        try {
+            const [{ getCoordinates }, { estimateLeg, SOURCE_LABEL }] = await Promise.all([import('../../../services/geocoding'), import('../../../services/journeyEstimate')]);
+            const [a, b] = await Promise.all([getCoordinates(leg.origin!.trim()), getCoordinates(leg.destination!.trim())]);
+            if (!a || !b) throw new Error('Could not find both places on the map.');
+            const coords: [number, number][] = [[a.lng, a.lat]];
+            for (const w of leg.waypoints || []) {
+                if (w.coordinates) coords.push([w.coordinates.lng, w.coordinates.lat]);
+                else if (w.name) { const c = await getCoordinates(w.name); if (c) coords.push([c.lng, c.lat]); }
+            }
+            coords.push([b.lng, b.lat]);
+            const { ensureZone } = await import('../../../services/timezone');
+            await Promise.all([ensureZone(leg.origin!.trim(), a.lat, a.lng), ensureZone(leg.destination!.trim(), b.lat, b.lng)]);
+            const est = await estimateLeg(leg.mode, coords);
+            if (est.km <= 0) throw new Error("Couldn't work out the distance between these places.");
+            const minutes = est.minutes;
+            const patchBody: Partial<Transport> = { distance: est.km, duration: minutes, originLat: a.lat, originLng: a.lng, originGeoKey: leg.origin!.trim(), destLat: b.lat, destLng: b.lng, destGeoKey: leg.destination!.trim() };
+            if (leg.departureDate && leg.departureTime && minutes > 0) {
+                // The arrival on the destination's clock: its own time zone when both places are known.
+                const zoned = localArrival(leg.origin!.trim(), leg.destination!.trim(), leg.departureDate, leg.departureTime, minutes);
+                if (zoned) { patchBody.arrivalDate = zoned.date; patchBody.arrivalTime = zoned.time; }
+                else {
+                    const arr = new Date(new Date(`${leg.departureDate}T${leg.departureTime}:00`).getTime() + minutes * 60000);
+                    const pad = (n: number) => String(n).padStart(2, '0');
+                    patchBody.arrivalDate = `${arr.getFullYear()}-${pad(arr.getMonth() + 1)}-${pad(arr.getDate())}`;
+                    patchBody.arrivalTime = `${pad(arr.getHours())}:${pad(arr.getMinutes())}`;
+                }
+            }
+            const h = Math.floor(minutes / 60);
+            toast.info(`${est.km.toLocaleString('en-US')} km, ${h ? `${h} h ` : ''}${minutes % 60} min, ${SOURCE_LABEL[est.source]}.`);
+            patch(patchBody);
+        } catch (e) {
+            setError(errorMessage(e, "Couldn't work out the route."));
+        } finally {
+            setRouting(false);
         }
     };
 
@@ -187,7 +246,7 @@ export const JourneyEditor: React.FC<{
                 <>
                     <button type="button" onClick={onClose} className="inline-flex min-h-11 items-center rounded-full bg-rp-inset px-5 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted">Cancel</button>
                     <span className="flex flex-wrap items-center justify-end gap-2">
-                        {!editing && flight && onNextLeg ? (
+                        {!editing && onNextLeg ? (
                             <ParticleButton onClick={() => save(true)} variant="inset" pendingLabel="Saving" successLabel="Saved" errorLabel="Check the details">Save and add next leg</ParticleButton>
                         ) : null}
                         <ParticleButton onClick={() => save(false)} pendingLabel="Saving" successLabel="Saved" errorLabel="Check the details">{editing ? 'Save changes' : `Add ${noun}`}</ParticleButton>
@@ -232,6 +291,9 @@ export const JourneyEditor: React.FC<{
                             </div>
                         ) : undefined}
                     />
+                    {canRoute ? (
+                        <button type="button" onClick={() => void calcRoute()} disabled={routing} className="mt-1 inline-flex min-h-11 items-center gap-2 self-start rounded-full bg-rp-inset px-4 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted disabled:opacity-50">{routing ? 'Working it out' : leg.mode === 'Car Rental' || leg.mode === 'Personal Car' || leg.mode === 'Bus' ? 'Calculate route' : 'Estimate distance and time'}</button>
+                    ) : null}
                     {canEstimate ? (
                         <button type="button" onClick={estimate} className="mt-1 inline-flex min-h-11 items-center gap-2 self-start rounded-full bg-rp-inset px-4 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted">Estimate arrival time</button>
                     ) : null}

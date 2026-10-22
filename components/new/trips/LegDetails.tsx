@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import type { RoadTripWaypoint, Transport } from '../../../types';
-import { Airport, ArrowDown, ArrowUp, CaretDown, DoorOpen, Plus, Trash } from '../../ui/hugeicons';
+import { DndContext, KeyboardSensor, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Airport, ArrowDown, ArrowUp, CaretDown, DoorOpen, DotsSixVertical, Plus, Trash } from '../../ui/hugeicons';
 import { RP_FIELD, RpField } from '../fields';
 import { PlaceField } from '../PlaceField';
 import { RpChip, RpToggle } from '../ui';
@@ -31,6 +34,21 @@ const Group: React.FC<{ title: string; children: React.ReactNode }> = ({ title, 
     </div>
 );
 
+/** One stop's row: draggable by its grip (a mouse, a long press on touch, or the keyboard), with the up and down buttons as the other way. */
+const StopRow: React.FC<{ id: string; label: string; children: (grip: React.ReactNode) => React.ReactNode }> = ({ id, label, children }) => {
+    const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
+    const grip = (
+        <button type="button" ref={setActivatorNodeRef} aria-label={`Drag ${label} to reorder`} {...attributes} {...listeners} className="inline-flex size-11 cursor-grab touch-none items-center justify-center rounded-full text-rp-muted outline-none hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted active:cursor-grabbing">
+            <DotsSixVertical size={16} aria-hidden />
+        </button>
+    );
+    return (
+        <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={cn('rounded-rp-inset bg-rp-surface p-3', isDragging && 'relative z-raised rp-shadow-float')}>
+            {children(grip)}
+        </li>
+    );
+};
+
 /** Stops along a road leg: where, what kind, and whether they count as visited places. */
 const Waypoints: React.FC<{ leg: Partial<Transport>; patch: Patch }> = ({ leg, patch }) => {
     const stops = leg.waypoints || [];
@@ -43,12 +61,26 @@ const Waypoints: React.FC<{ leg: Partial<Transport>; patch: Patch }> = ({ leg, p
         [next[i], next[to]] = [next[to], next[i]];
         set(next);
     };
+    const sensors = useSensors(
+        useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+    const onDragEnd = (e: DragEndEvent) => {
+        if (!e.over || e.active.id === e.over.id) return;
+        const from = stops.findIndex(s => s.id === e.active.id);
+        const to = stops.findIndex(s => s.id === e.over!.id);
+        if (from >= 0 && to >= 0) set(arrayMove(stops, from, to));
+    };
     return (
         <Group title="Stops along the way">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext items={stops.map(s => s.id)} strategy={verticalListSortingStrategy}>
             <ul className="flex flex-col gap-2">
                 {stops.map((s, i) => (
-                    <li key={s.id} className="rounded-rp-inset bg-rp-surface p-3">
-                        <div className="flex items-start gap-2">
+                    <StopRow key={s.id} id={s.id} label={`stop ${i + 1}`}>
+                      {grip => (<>
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-2">
                             <div className="min-w-0 flex-1">
                                 <RpField label={`Stop ${i + 1}`}>
                                     {id => (
@@ -64,7 +96,8 @@ const Waypoints: React.FC<{ leg: Partial<Transport>; patch: Patch }> = ({ leg, p
                                     )}
                                 </RpField>
                             </div>
-                            <div className="flex shrink-0 pt-6">
+                            <div className="flex shrink-0 justify-end sm:pt-6">
+                                {grip}
                                 <button type="button" aria-label={`Move stop ${i + 1} up`} disabled={i === 0} onClick={() => move(i, -1)} className="inline-flex size-11 items-center justify-center rounded-full text-rp-muted outline-none hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted disabled:opacity-30"><ArrowUp size={16} aria-hidden /></button>
                                 <button type="button" aria-label={`Move stop ${i + 1} down`} disabled={i === stops.length - 1} onClick={() => move(i, 1)} className="inline-flex size-11 items-center justify-center rounded-full text-rp-muted outline-none hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted disabled:opacity-30"><ArrowDown size={16} aria-hidden /></button>
                                 <button type="button" aria-label={`Remove stop ${i + 1}`} onClick={() => set(stops.filter((_, j) => j !== i))} className="inline-flex size-11 items-center justify-center rounded-full text-rp-muted outline-none hover:text-rp-rust focus-visible:ring-2 focus-visible:ring-rp-muted"><Trash size={16} aria-hidden /></button>
@@ -74,9 +107,12 @@ const Waypoints: React.FC<{ leg: Partial<Transport>; patch: Patch }> = ({ leg, p
                             {STOP_TYPES.map(t => <RpChip key={t} selected={s.type === t} onClick={() => update(i, { type: t })}>{t}</RpChip>)}
                         </div>
                         <RpToggle label="Add to visited places" checked={s.addToVisited !== false} onChange={v => update(i, { addToVisited: v })} />
-                    </li>
+                      </>)}
+                    </StopRow>
                 ))}
             </ul>
+            </SortableContext>
+            </DndContext>
             <button
                 type="button"
                 onClick={() => set([...stops, { id: newId(), name: '', type: 'Stop', addToVisited: true }])}
@@ -95,6 +131,8 @@ export const LegDetails: React.FC<{ leg: Partial<Transport>; patch: Patch; open?
     const flight = mode === 'Flight';
     const rental = mode === 'Car Rental';
     const road = mode === 'Car Rental' || mode === 'Personal Car';
+    // Stops along the way suit every kind of journey but a flight: a ferry that calls at Mariehamn, a train through Basel.
+    const canStop = !flight;
     const seated = flight || mode === 'Train' || mode === 'Bus';
     const fields = leg.customFields || [];
     const setFields = (next: Array<{ key: string; value: string }>) => patch({ customFields: next.length ? next : undefined });
@@ -159,7 +197,7 @@ export const LegDetails: React.FC<{ leg: Partial<Transport>; patch: Patch; open?
                             {id => <textarea id={id} value={leg.notes || ''} onChange={e => patch({ notes: e.target.value })} rows={3} className={cn(RP_FIELD, 'resize-y py-3')} />}
                         </RpField>
                     </Group>
-                    {road ? <Waypoints leg={leg} patch={patch} /> : null}
+                    {canStop ? <Waypoints leg={leg} patch={patch} /> : null}
                     <Group title="Custom fields">
                         <ul className="flex flex-col gap-2">
                             {fields.map((f, i) => (

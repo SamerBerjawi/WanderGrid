@@ -25,19 +25,19 @@ const loadLand = () => {
     return landCache;
 };
 
-const RouteSvg: React.FC<{ land: FeatureCollection<Geometry> | null; routes: RouteLine[]; pins: { lng: number; lat: number }[]; marker?: { lng: number; lat: number }; track?: [number, number][]; width: number; height: number; label: string }> = ({ land, routes, pins, marker, track, width, height, label }) => {
+const RouteSvg: React.FC<{ land: FeatureCollection<Geometry> | null; routes: RouteLine[]; pins: { lng: number; lat: number }[]; marker?: { lng: number; lat: number }; track?: [number, number][]; width: number; height: number; label: string; maxZoom: number }> = ({ land, routes, pins, marker, track, width, height, label, maxZoom }) => {
     const { path, project, lines, points, flown } = useMemo(() => {
         const projection = geoNaturalEarth1();
         const pad = 14;
         const extent: [[number, number], [number, number]] = [[pad, pad], [width - pad, height - pad]];
-        const pts: [number, number][] = routes.flatMap(r => [r.from, r.to]);
+        const pts: [number, number][] = routes.flatMap(r => [r.from, ...(r.via || []), r.to]);
         if (marker) pts.push([marker.lng, marker.lat]);
         pins.forEach(p => pts.push([p.lng, p.lat]));
         const unique = new Set(pts.map(p => p.join(',')));
         // Frame what is flown; with one place (or none) show the whole world.
         if (unique.size >= 2) {
             // Fit the arcs themselves (they bulge past the end points), not just the airports.
-            const geometries: any[] = routes.map(r => ({ type: 'LineString', coordinates: [r.from, r.to] }));
+            const geometries: any[] = routes.map(r => ({ type: 'LineString', coordinates: r.path && r.path.length > 1 ? r.path : [r.from, ...(r.via || []), r.to] }));
             if (track && track.length > 1) geometries.push({ type: 'LineString', coordinates: track });
             if (marker) geometries.push({ type: 'Point', coordinates: [marker.lng, marker.lat] });
             pins.forEach(p => geometries.push({ type: 'Point', coordinates: [p.lng, p.lat] }));
@@ -46,18 +46,18 @@ const RouteSvg: React.FC<{ land: FeatureCollection<Geometry> | null; routes: Rou
         else projection.fitExtent(extent, { type: 'Sphere' });
         // A short route would zoom in to street level: never closer than a continent.
         const world = geoNaturalEarth1().fitExtent(extent, { type: 'Sphere' });
-        if (projection.scale() > world.scale() * 3.2) {
+        if (projection.scale() > world.scale() * maxZoom) {
             const center = projection.invert?.([width / 2, height / 2]);
-            projection.scale(world.scale() * 3.2);
+            projection.scale(world.scale() * maxZoom);
             if (center) { projection.rotate([-center[0], 0]); projection.center([0, center[1]]); projection.translate([width / 2, height / 2]); }
         }
         const p = geoPath(projection);
         const seen = new Map<string, [number, number]>();
-        routes.forEach(r => { seen.set(r.from.join(','), r.from); seen.set(r.to.join(','), r.to); });
+        routes.forEach(r => { seen.set(r.from.join(','), r.from); seen.set(r.to.join(','), r.to); (r.via || []).forEach(v => seen.set(v.join(','), v)); });
         return {
             path: p,
             project: projection,
-            lines: routes.map(r => ({ d: p({ type: 'LineString', coordinates: [r.from, r.to] }) || '', count: r.count, label: r.label })),
+            lines: routes.map(r => ({ d: p({ type: 'LineString', coordinates: r.path && r.path.length > 1 ? r.path : [r.from, ...(r.via || []), r.to] }) || '', count: r.count, label: r.label })),
             points: [...seen.values()],
             flown: track && track.length > 1 ? p({ type: 'LineString', coordinates: track }) || '' : '',
         };
@@ -88,13 +88,13 @@ const RouteSvg: React.FC<{ land: FeatureCollection<Geometry> | null; routes: Rou
     );
 };
 
-export const RoutesMap: React.FC<{ routes: RouteLine[]; /** Places that are not ends of a route: stays and stops, drawn as ochre dots. */ pins?: { lng: number; lat: number }[]; marker?: { lng: number; lat: number }; /** The route actually flown, as [longitude, latitude] pairs, drawn as a solid line over the planned arc. */ track?: [number, number][]; className?: string; label?: string }> = ({ routes, pins = EMPTY, marker, track, className, label }) => {
+export const RoutesMap: React.FC<{ routes: RouteLine[]; /** Places that are not ends of a route: stays and stops, drawn as ochre dots. */ pins?: { lng: number; lat: number }[]; marker?: { lng: number; lat: number }; /** The route actually flown, as [longitude, latitude] pairs, drawn as a solid line over the planned arc. */ track?: [number, number][]; className?: string; label?: string; /** How far in the map may zoom, as a multiple of the whole world; 3.2 keeps flights at continent level, short land and sea routes ask for more. */ maxZoom?: number }> = ({ routes, pins = EMPTY, marker, track, className, label, maxZoom = 3.2 }) => {
     const [land, setLand] = useState<FeatureCollection<Geometry> | null>(null);
     useEffect(() => { let live = true; loadLand().then(l => { if (live) setLand(l); }).catch(() => undefined); return () => { live = false; }; }, []);
     const summary = label ?? `Map of ${routes.length} ${routes.length === 1 ? 'route' : 'routes'}`;
     return (
         <div className={cn('relative w-full overflow-hidden', className)}>
-            <ParentSize className="h-full">{({ width, height }) => (width > 0 && height > 0 ? <RouteSvg land={land} routes={routes} pins={pins} marker={marker} track={track} width={width} height={height} label={summary} /> : null)}</ParentSize>
+            <ParentSize className="h-full">{({ width, height }) => (width > 0 && height > 0 ? <RouteSvg land={land} routes={routes} pins={pins} marker={marker} track={track} width={width} height={height} label={summary} maxZoom={maxZoom} /> : null)}</ParentSize>
         </div>
     );
 };
