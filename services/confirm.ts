@@ -1,11 +1,14 @@
-// In-app confirmation dialogs (UI-012): replaces window.confirm with the shared, styled, accessible Modal.
+// In-app confirmation dialogs (UI-012): replaces window.confirm with the shared dialog (components/ConfirmHost.tsx).
 //   if (!(await confirmDialog({ message: 'Delete this trip?', confirmLabel: 'Delete', danger: true }))) return;
 export interface ConfirmRequest {
   title?: string;
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** Destructive: asks for the Hold Button instead of a plain confirm button, and focuses Cancel first. */
   danger?: boolean;
+  /** Overrides the Hold Button (default: on when `danger`). */
+  hold?: boolean;
 }
 export interface PendingConfirm extends ConfirmRequest {
   id: number;
@@ -20,8 +23,8 @@ export const markConfirmHostMounted = (mounted: boolean) => { hostMounted = moun
 
 export function confirmDialog(request: ConfirmRequest | string): Promise<boolean> {
   const req = typeof request === 'string' ? { message: request } : request;
-  // Before the app shell (and its ConfirmHost) is mounted, fall back to the browser dialog.
-  if (!hostMounted || typeof window === 'undefined') return Promise.resolve(window.confirm(req.message));
+  // No host mounted (the sign-in screens have none): answer "no", the safe side of a confirmation. Never a native dialog.
+  if (!hostMounted || typeof window === 'undefined') return Promise.resolve(false);
   return new Promise((resolve) => {
     window.dispatchEvent(new CustomEvent<PendingConfirm>(CONFIRM_EVENT, { detail: { ...req, id: nextId++, resolve } }));
   });

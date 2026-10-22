@@ -1,144 +1,100 @@
 import React from 'react';
-import GlassPanel from '../glass/GlassPanel';
+import { cn } from '../../utils/cn';
 import { ViewState } from '../../types';
+import '../new/new.css';
 
 interface ViewSkeletonProps {
   view?: ViewState | string;
+  /** Fill the screen on the New canvas (the shell itself is still loading). */
+  fullScreen?: boolean;
 }
 
-export const ViewSkeleton: React.FC<ViewSkeletonProps> = ({ view = 'dashboard' }) => {
-  const isDashboard = view === 'dashboard';
+/** A placeholder block: a soft pulse in `rp-line` (still under reduced motion). */
+const Bone: React.FC<{ className?: string }> = ({ className }) => (
+  <div className={cn('animate-pulse rounded-full bg-rp-line/70 motion-reduce:animate-none', className)} />
+);
+
+const Card: React.FC<{ className?: string; children?: React.ReactNode }> = ({ className, children }) => (
+  <div className={cn('rounded-rp-card bg-rp-surface p-5 rp-shadow-rest sm:p-6', className)}>{children}</div>
+);
+
+/** Two-line page title and a primary action, as the New pages open (§1.2). */
+const Header: React.FC = () => (
+  <div className="flex items-end justify-between gap-4">
+    <div className="flex flex-col gap-2.5">
+      <Bone className="h-8 w-28 sm:h-9 sm:w-36" />
+      <Bone className="h-8 w-44 sm:h-9 sm:w-56" />
+    </div>
+    <Bone className="h-11 w-28 shrink-0" />
+  </div>
+);
+
+/**
+ * The Suspense fallback for lazy views, in the New language (decision 178): rp-surface cards on the
+ * canvas with pulsing bones in the shape of the page that is loading. It carries its own `rp-root`, so
+ * it also shows inside the old shell while an old page loads.
+ */
+export const ViewSkeleton: React.FC<ViewSkeletonProps> = ({ view = 'dashboard', fullScreen }) => {
+  const isDashboard = view === 'dashboard' || view === 'dashboard-new';
   const isMap = view === 'map' || view === 'atlas';
 
-  if (isMap) {
-    return (
-      <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
-        {/* Header Skeleton */}
-        <div className="w-full flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-black/10 dark:bg-white/10 animate-pulse" />
-            <div className="h-8 sm:h-12 w-48 sm:w-64 rounded-2xl bg-black/10 dark:bg-white/10 animate-pulse" />
-          </div>
-          <div className="h-10 w-28 rounded-2xl bg-black/10 dark:bg-white/10 animate-pulse" />
-        </div>
-        {/* Fullscreen Map Canvas Skeleton */}
-        <GlassPanel
-          className="wg-glass-card w-full h-[70vh] rounded-[28px] overflow-hidden bg-white/40 dark:bg-dark-card/40 flex items-center justify-center relative"
-          padding="24px"
-          overrides={{ borderRadius: 28 }}
-        >
-          <div className="flex flex-col items-center gap-3 text-light-text-secondary dark:text-dark-text-secondary animate-pulse">
-            <div className="w-12 h-12 rounded-2xl border-2 border-primary-500/30 border-t-primary-500 rounded-full animate-spin" />
-            <p className="text-xs font-bold uppercase tracking-wider">Rendering Cartographic Projection...</p>
-          </div>
-          <div className="absolute top-6 left-6 h-10 w-44 rounded-2xl bg-black/10 dark:bg-white/10 animate-pulse" />
-          <div className="absolute top-6 right-6 h-10 w-32 rounded-2xl bg-black/10 dark:bg-white/10 animate-pulse" />
-        </GlassPanel>
-      </div>
-    );
-  }
-
-  if (isDashboard) {
-    return (
-      <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
-        {/* Header Skeleton */}
-        <div className="w-full flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-black/10 dark:bg-white/10 animate-pulse" />
-            <div className="h-8 sm:h-12 w-48 sm:w-72 rounded-2xl bg-black/10 dark:bg-white/10 animate-pulse" />
-          </div>
-          <div className="h-11 w-32 rounded-full bg-black/10 dark:bg-white/10 animate-pulse" />
-        </div>
-
-        {/* 3 Metric Glass Tiles */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <GlassPanel
-              key={i}
-              className="wg-glass-card bg-white/50 dark:bg-dark-card/50"
-              padding="20px"
-              overrides={{ borderRadius: 24 }}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="h-4 w-24 rounded-lg bg-black/10 dark:bg-white/10 animate-pulse" />
-                <div className="w-8 h-8 rounded-xl bg-black/10 dark:bg-white/10 animate-pulse" />
-              </div>
-              <div className="h-8 w-32 rounded-xl bg-black/10 dark:bg-white/10 animate-pulse mb-2" />
-              <div className="h-3 w-40 rounded-lg bg-black/10 dark:bg-white/10 animate-pulse" />
-            </GlassPanel>
-          ))}
-        </div>
-
-        {/* Bento Grid Skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-8 flex flex-col gap-6">
-            <GlassPanel
-              className="wg-glass-card h-80 bg-white/50 dark:bg-dark-card/50"
-              padding="24px"
-              overrides={{ borderRadius: 28 }}
-            >
-              <div className="h-6 w-48 rounded-xl bg-black/10 dark:bg-white/10 animate-pulse mb-4" />
-              <div className="w-full h-56 rounded-2xl bg-black/5 dark:bg-white/5 animate-pulse" />
-            </GlassPanel>
-          </div>
-          <div className="lg:col-span-4 flex flex-col gap-6">
-            <GlassPanel
-              className="wg-glass-card h-80 bg-white/50 dark:bg-dark-card/50"
-              padding="24px"
-              overrides={{ borderRadius: 28 }}
-            >
-              <div className="h-6 w-36 rounded-xl bg-black/10 dark:bg-white/10 animate-pulse mb-4" />
-              <div className="space-y-3">
-                {[1, 2, 3].map((j) => (
-                  <div key={j} className="h-14 w-full rounded-2xl bg-black/5 dark:bg-white/5 animate-pulse" />
-                ))}
-              </div>
-            </GlassPanel>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Default: List / Feed View Skeleton (Flights, Planner, Trips, Settings)
   return (
-    <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
-      {/* Header Skeleton */}
-      <div className="w-full flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-black/10 dark:bg-white/10 animate-pulse" />
-          <div className="h-8 sm:h-12 w-48 sm:w-64 rounded-2xl bg-black/10 dark:bg-white/10 animate-pulse" />
+    <div
+      role="status"
+      aria-busy="true"
+      aria-label="Loading"
+      className={cn('rp-root mx-auto flex w-full max-w-[1680px] flex-col gap-5 px-1 pt-2 pb-16 sm:gap-6 sm:px-4 sm:pt-4 md:px-6 lg:px-8', fullScreen && 'min-h-screen max-w-none bg-rp-canvas')}
+    >
+      {fullScreen ? (
+        <div className="flex items-center justify-between gap-3 pt-2">
+          <Bone className="h-11 w-11 sm:w-40" />
+          <Bone className="hidden h-11 w-80 md:block" />
+          <Bone className="h-11 w-24" />
         </div>
-        <div className="h-11 w-32 rounded-full bg-black/10 dark:bg-white/10 animate-pulse" />
-      </div>
+      ) : null}
+      <Header />
 
-      {/* Floating Center Tabs Skeleton */}
-      <div className="flex justify-center w-full my-1">
-        <div className="h-12 w-72 rounded-full bg-black/10 dark:bg-white/10 animate-pulse" />
-      </div>
-
-      {/* Content Cards Skeleton */}
-      <div className="flex flex-col gap-4">
-        {[1, 2, 3, 4].map((k) => (
-          <GlassPanel
-            key={k}
-            className="wg-glass-card bg-white/50 dark:bg-dark-card/50"
-            padding="20px"
-            overrides={{ borderRadius: 24 }}
-          >
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4 flex-1">
-                <div className="w-12 h-12 rounded-2xl bg-black/10 dark:bg-white/10 animate-pulse shrink-0" />
-                <div className="space-y-2 flex-1 max-w-md">
-                  <div className="h-5 w-48 rounded-lg bg-black/10 dark:bg-white/10 animate-pulse" />
-                  <div className="h-3 w-32 rounded-lg bg-black/10 dark:bg-white/10 animate-pulse" />
+      {isMap ? (
+        <Card className="relative h-[60vh] overflow-hidden p-0 sm:p-0">
+          <Bone className="absolute top-5 left-5 h-11 w-44 rounded-full" />
+          <Bone className="absolute top-5 right-5 h-11 w-28" />
+          <div className="flex h-full items-center justify-center"><Bone className="size-24 opacity-60" /></div>
+        </Card>
+      ) : isDashboard ? (
+        <>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+            {[0, 1, 2].map((i) => (
+              <Card key={i} className="flex items-center gap-4 p-4 sm:p-5">
+                <Bone className="size-11 shrink-0" />
+                <div className="flex flex-1 flex-col gap-2.5">
+                  <Bone className="h-6 w-24" />
+                  <Bone className="h-3.5 w-36" />
                 </div>
-              </div>
-              <div className="h-8 w-24 rounded-full bg-black/10 dark:bg-white/10 animate-pulse shrink-0" />
-            </div>
-          </GlassPanel>
-        ))}
-      </div>
+              </Card>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+            <Card className="h-72 lg:col-span-8"><Bone className="h-5 w-40" /><Bone className="mt-5 h-44 w-full rounded-rp-inset" /></Card>
+            <Card className="h-72 lg:col-span-4"><Bone className="h-5 w-32" /><div className="mt-5 flex flex-col gap-3">{[0, 1, 2].map((j) => <Bone key={j} className="h-12 w-full rounded-rp-inset" />)}</div></Card>
+          </div>
+        </>
+      ) : (
+        <>
+          <Bone className="h-11 w-full max-w-sm self-start" />
+          <div className="flex flex-col gap-3">
+            {[0, 1, 2, 3].map((k) => (
+              <Card key={k} className="flex items-center gap-4 p-4 sm:p-5">
+                <Bone className="size-12 shrink-0 rounded-rp-inset" />
+                <div className="flex flex-1 flex-col gap-2.5">
+                  <Bone className="h-4 w-48 max-w-full" />
+                  <Bone className="h-3.5 w-32" />
+                </div>
+                <Bone className="hidden h-8 w-24 sm:block" />
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 };

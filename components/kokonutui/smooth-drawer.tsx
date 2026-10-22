@@ -27,6 +27,7 @@ import {
 import { Drawer } from "vaul";
 import { ArrowUp as ChevronUp } from "@/components/ui/hugeicons";
 import { cn } from "@/utils/cn";
+import { useSheetFlag } from "@/hooks/useOverlayA11y";
 
 export interface SmoothDrawerProps {
   open: boolean;
@@ -71,6 +72,7 @@ export default function SmoothDrawer({
   const detailsRef = useRef<HTMLDivElement>(null);
   const frame = useRef(0);
   const reduceMotion = useReducedMotion();
+  useSheetFlag(open);
 
   useEffect(() => {
     const measure = () => setViewportHeight(window.innerHeight);
@@ -87,10 +89,13 @@ export default function SmoothDrawer({
 
   // Vaul measures snap points from the top of the window, so the sheet is
   // given an explicit height and the peek point is offset by the gap above it.
-  const sheetHeight = Math.max(peekHeight, Math.min(MAX_SHEET_HEIGHT, viewportHeight - TOP_GAP));
+  // Without details there is nothing to expand: one snap point, and the sheet is only as tall as its peek
+  // (plus the home-bar inset). Used by the confirm dialog (components/ConfirmHost.tsx).
+  const single = !children;
+  const sheetHeight = single ? peekHeight : Math.max(peekHeight, Math.min(MAX_SHEET_HEIGHT, viewportHeight - TOP_GAP));
   const snapPoints = useMemo(
-    () => [`${peekHeight + Math.max(0, viewportHeight - sheetHeight)}px`, 1],
-    [viewportHeight, sheetHeight, peekHeight]
+    () => (single ? [1] : [`${peekHeight + Math.max(0, viewportHeight - sheetHeight)}px`, 1]),
+    [single, viewportHeight, sheetHeight, peekHeight]
   );
 
   const clearDragStyles = useCallback(() => {
@@ -129,7 +134,7 @@ export default function SmoothDrawer({
 
   return (
     <Drawer.Root
-      activeSnapPoint={snapPoints[expanded ? 1 : 0]}
+      activeSnapPoint={snapPoints[expanded && !single ? 1 : 0]}
       fadeFromIndex={0}
       onOpenChange={onOpenChange}
       open={open}
@@ -137,20 +142,20 @@ export default function SmoothDrawer({
       snapPoints={snapPoints}
     >
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-modal-backdrop bg-rp-ink/20" />
+        <Drawer.Overlay className="rp-root fixed inset-0 z-modal-backdrop bg-rp-canvas/50 backdrop-blur-xl" />
         <Drawer.Content
           aria-describedby={undefined}
           className="rp-root fixed inset-x-0 bottom-0 z-modal mx-auto flex w-full max-w-[440px] flex-col rounded-t-rp-card bg-rp-surface font-rp text-rp-ink outline-none rp-shadow-float"
           onPointerCancel={clearDragStyles}
           onPointerMove={handlePointerMove}
           onPointerUp={clearDragStyles}
-          style={{ height: sheetHeight }}
+          style={{ height: single ? `calc(${sheetHeight}px + env(safe-area-inset-bottom, 0px))` : sheetHeight }}
         >
           <div aria-hidden="true" className="flex h-6 shrink-0 items-center justify-center">
             <span className="h-1.5 w-10 rounded-full bg-rp-line" />
           </div>
 
-          <div className="shrink-0 px-5 pt-1">
+          <div className={cn("shrink-0 px-5 pt-1", single && "pb-5")}>
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <Drawer.Title className="font-medium text-lg text-rp-ink">{title}</Drawer.Title>
