@@ -25,32 +25,38 @@ const decodePolyline6 = (str: string): [number, number, number][] => {
     return out;
 };
 
-const memory = new Map<string, Promise<[number, number, number][] | null>>();
+export type FerryLine = { status: 'ok'; points: [number, number, number][] } | { status: 'none' } | { status: 'pending' };
+
+const memory = new Map<string, Promise<FerryLine>>();
 let unavailable = LOCAL_MODE;
 
 const POLL_MS = 1500;
-const MAX_POLLS = 24; // about 36 s: the first lookup of a line asks OpenStreetMap, later ones are instant
 
-/** The mapped ferry line through `coords` ([lng, lat]: from, any stops, to) as [lng, lat, 0] points, or null when there is none. */
-export const fetchFerryLine = (coords: [number, number][]): Promise<[number, number, number][] | null> => {
-    if (unavailable || coords.length < 2) return Promise.resolve(null);
+/**
+ * The mapped ferry line through `coords` ([lng, lat]: from, any stops, to). 'none' when no ferry is mapped (or the
+ * backend is not there), 'pending' when the server is still looking it up after `maxPolls` checks: ask again later,
+ * it keeps going meanwhile. The first lookup of a line asks OpenStreetMap; later ones are instant.
+ */
+export const fetchFerryLine = (coords: [number, number][], maxPolls = 24): Promise<FerryLine> => {
+    if (unavailable || coords.length < 2) return Promise.resolve({ status: 'none' });
     const key = coords.map(c => `${c[0].toFixed(4)},${c[1].toFixed(4)}`).join(';');
     const known = memory.get(key);
     if (known) return known;
-    const job = (async () => {
-        for (let i = 0; i <= MAX_POLLS; i++) {
+    const job = (async (): Promise<FerryLine> => {
+        for (let i = 0; i <= maxPolls; i++) {
             let res: Response;
             try {
                 res = await fetch('/api/proxy/routes/resolve', { method: 'POST', headers: { 'Content-Type': 'application/json', ...token() }, body: JSON.stringify({ routes: [{ id: 'ferry', mode: 'sea', coords }] }) });
-            } catch { unavailable = true; return null; }
-            if (!res.ok) { if (res.status === 401 || res.status === 404 || res.status >= 500) unavailable = res.status !== 401; return null; }
+            } catch { unavailable = true; return { status: 'none' }; }
+            if (!res.ok) { if (res.status === 404 || res.status >= 500) unavailable = true; return { status: 'none' }; }
             const r = (await res.json())?.results?.ferry;
-            if (r?.status === 'ok' && typeof r.geometry === 'string') { const pts = decodePolyline6(r.geometry); return pts.length > 2 ? pts : null; }
-            if (r?.status !== 'pending') return null; // none, or the server could not reach OpenStreetMap right now
+            if (r?.status === 'ok' && typeof r.geometry === 'string') { const pts = decodePolyline6(r.geometry); return pts.length > 2 ? { status: 'ok', points: pts } : { status: 'none' }; }
+            if (r?.status === 'none') return { status: 'none' };
+            if (r?.status === 'error') return { status: 'none' }; // OpenStreetMap could not be reached just now: not remembered, asked again on the next visit
             await new Promise(done => setTimeout(done, POLL_MS));
         }
-        return null;
-    })().then(pts => { if (!pts) memory.delete(key); return pts; });
+        return { status: 'pending' };
+    })().then(r => { if (r.status === 'pending') memory.delete(key); return r; });
     memory.set(key, job);
     return job;
 };

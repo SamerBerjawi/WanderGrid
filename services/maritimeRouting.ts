@@ -81,8 +81,8 @@ export async function fetchSeaRoute(
     endLat: number,
     endLng: number,
     waypoints?: any[],
-    /** Look for the mapped ferry line first (needs the backend); the map page draws many sea legs and leaves this off. */
-    useFerryLines = false
+    /** Look for the mapped ferry line first (needs the backend). true waits for the lookup; 'quick' gives up after a few seconds by throwing, so a caller that retries (the maps) can ask again once the server has it. */
+    useFerryLines: boolean | 'quick' = false
 ): Promise<[number, number, number][] | null> {
     // The stops along the way are part of the key: Stockholm to Helsinki direct is not Stockholm to Helsinki via Åland.
     const viaKey = (waypoints || []).map((w: any) => `${(w?.coordinates?.lat ?? w?.lat)?.toFixed?.(3)},${(w?.coordinates?.lng ?? w?.lng)?.toFixed?.(3)}`).join(';');
@@ -107,8 +107,9 @@ export async function fetchSeaRoute(
 
     // A mapped ferry line is the real thing; without one, the shipping lane or an arc below.
     if (useFerryLines) {
-        const line = await fetchFerryLine(legPoints);
-        if (line) { seaRouteCache.set(cacheKey, line); return line; }
+        const line = await fetchFerryLine(legPoints, useFerryLines === 'quick' ? 3 : 24);
+        if (line.status === 'ok') { seaRouteCache.set(cacheKey, line.points); return line.points; }
+        if (line.status === 'pending' && useFerryLines === 'quick') throw new Error('The ferry line is still being looked up');
     }
 
     const fullRoute: [number, number, number][] = [];
