@@ -152,3 +152,137 @@ export const journeyTotals = (items: JourneyRecord[], now = Date.now()): Journey
     }
     return { count: items.length, upcoming, km, minutes, airports: places.size, carriers: carriers.size, countries: countries.size };
 };
+
+/* ------------------------------------------------------------------ */
+/* Years, journeys (flights that belong together) and layovers         */
+/* ------------------------------------------------------------------ */
+
+export const yearOf = (r: JourneyRecord): string => (r.flight.departureDate || '').slice(0, 4) || 'Undated';
+
+export interface YearTotals { year: string; count: number; km: number; minutes: number }
+
+/** Flights, kilometres and time per year, oldest first, with the years in between that have none. */
+export const totalsByYear = (items: JourneyRecord[]): YearTotals[] => {
+    const map = new Map<string, YearTotals>();
+    for (const r of items) {
+        if (journeyStatus(r.flight).state === 'cancelled') continue;
+        const year = yearOf(r);
+        if (!/^\d{4}$/.test(year)) continue;
+        const row = map.get(year) ?? { year, count: 0, km: 0, minutes: 0 };
+        row.count += 1;
+        row.km += journeyKm(r.flight);
+        row.minutes += journeyMinutes(r.flight);
+        map.set(year, row);
+    }
+    const years = [...map.keys()].map(Number).sort((a, b) => a - b);
+    if (years.length === 0) return [];
+    const out: YearTotals[] = [];
+    for (let y = years[0]; y <= years[years.length - 1]; y++) out.push(map.get(String(y)) ?? { year: String(y), count: 0, km: 0, minutes: 0 });
+    return out;
+};
+
+/** Minutes between one leg's arrival and the next leg's departure when they meet at the same place; 0 otherwise. */
+export const layoverMinutes = (a: Transport, b: Transport): number => {
+    if (!a.destination || !b.origin || a.destination.trim().toUpperCase() !== b.origin.trim().toUpperCase()) return 0;
+    const gap = Math.floor((depMs(b) - arrMs(a)) / 60000);
+    return Number.isFinite(gap) && gap > 0 ? gap : 0;
+};
+
+/** Splits chronological legs into the way out and the way back: the turnaround is the longest stay before a leg that returns to the start. */
+export const splitLegs = (legs: JourneyRecord[]): { outbound: JourneyRecord[]; returns: JourneyRecord[] } => {
+    const sorted = [...legs].sort((a, b) => depMs(a.flight) - depMs(b.flight));
+    if (sorted.length < 2) return { outbound: sorted, returns: [] };
+    const home = sorted[0].flight.origin;
+    if (!sorted.some((r, i) => i > 0 && r.flight.destination === home)) return { outbound: sorted, returns: [] };
+    let best = 1;
+    let longest = -1;
+    for (let k = 1; k < sorted.length; k++) {
+        if (!sorted.slice(k).some(r => r.flight.destination === home)) continue;
+        const stay = depMs(sorted[k].flight) - arrMs(sorted[k - 1].flight);
+        if (stay > longest) { longest = stay; best = k; }
+    }
+    return { outbound: sorted.slice(0, best), returns: sorted.slice(best) };
+};
+
+export interface JourneyGroup {
+    id: string;
+    trip: Trip;
+    /** Chronological. */
+    legs: JourneyRecord[];
+    outbound: JourneyRecord[];
+    returns: JourneyRecord[];
+}
+
+export type JourneyUnit = { kind: 'single'; rec: JourneyRecord } | { kind: 'journey'; group: JourneyGroup };
+
+/**
+ * Flights that belong together: the flights of one trip, or independent flights saved on the same
+ * booking (same itinerary). Two or more make a journey; the rest stay single. The order of `items`
+ * is kept, each journey sitting where its first flight was.
+ */
+export const groupJourneys = (items: JourneyRecord[]): JourneyUnit[] => {
+    const keyOf = (r: JourneyRecord) => (isIndependent(r.trip.id) ? (r.flight.itineraryId ? `it:${r.flight.itineraryId}` : '') : `trip:${r.trip.id}`);
+    const buckets = new Map<string, JourneyRecord[]>();
+    for (const r of items) { const k = keyOf(r); if (k) buckets.set(k, [...(buckets.get(k) || []), r]); }
+    const seen = new Set<string>();
+    const out: JourneyUnit[] = [];
+    for (const r of items) {
+        const k = keyOf(r);
+        const list = k ? buckets.get(k)! : [];
+        if (list.length < 2) { out.push({ kind: 'single', rec: r }); continue; }
+        if (seen.has(k)) continue;
+        seen.add(k);
+        const legs = [...list].sort((a, b) => depMs(a.flight) - depMs(b.flight));
+        out.push({ kind: 'journey', group: { id: k, trip: r.trip, legs, ...(() => { const s = splitLegs(legs); return { outbound: s.outbound, returns: s.returns }; })() } });
+    }
+    return out;
+};
+
+/** The route of a journey as place codes: "AMS → JFK → AMS". */
+export const journeyRoute = (legs: JourneyRecord[]): string[] => {
+    const out: string[] = [];
+    legs.forEach((r, i) => {
+        if (i === 0) out.push(placeCode(r.flight.origin));
+        else if (placeCode(legs[i - 1].flight.destination) !== placeCode(r.flight.origin)) out.push(placeCode(r.flight.origin));
+        out.push(placeCode(r.flight.destination));
+    });
+    return out;
+};
+
+/** The two ends of a journey as [longitude, latitude], when both places are known. */
+export const journeyEnds = (t: Transport): { from: [number, number]; to: [number, number] } | undefined => {
+    const a = pointOf(t.origin, t.originLat, t.originLng);
+    const b = pointOf(t.destination, t.destLat, t.destLng);
+    return a && b ? { from: [a.lng, a.lat], to: [b.lng, b.lat] } : undefined;
+};
+
+export interface RouteLine { from: [number, number]; to: [number, number]; count: number; label: string }
+
+/** Distinct routes (either direction counts as one) with how often they were flown. */
+export const routeLines = (items: JourneyRecord[]): RouteLine[] => {
+    const map = new Map<string, RouteLine>();
+    for (const r of items) {
+        if (journeyStatus(r.flight).state === 'cancelled') continue;
+        const ends = journeyEnds(r.flight);
+        if (!ends) continue;
+        const a = placeCode(r.flight.origin), b = placeCode(r.flight.destination);
+        const key = [a, b].sort().join('-');
+        const row = map.get(key);
+        if (row) row.count += 1; else map.set(key, { ...ends, count: 1, label: `${a} to ${b}` });
+    }
+    return [...map.values()];
+};
+
+/** How far along a journey is, 0 to 1, by the clock; 0 before departure and 1 after arrival. */
+export const journeyProgress = (t: Transport, now = Date.now()): number => {
+    const dep = depMs(t), arr = arrMs(t);
+    if (!Number.isFinite(dep) || !Number.isFinite(arr) || arr <= dep) return now >= arr ? 1 : 0;
+    return Math.min(1, Math.max(0, (now - dep) / (arr - dep)));
+};
+
+/** True while a journey is under way, or leaves within `hours` (the time to start following it live). */
+export const isLiveWindow = (t: Transport, hours = 3, now = Date.now()): boolean => {
+    if (journeyStatus(t, now).state === 'cancelled') return false;
+    const dep = depMs(t), arr = arrMs(t);
+    return now >= dep - hours * 3_600_000 && now <= arr + 3_600_000;
+};

@@ -1,25 +1,27 @@
-import React, { useEffect, useState } from 'react';
-import type { FlightStatusResponse, Transport } from '../../../types';
-import { flightTracker } from '../../../services/flightTracker';
-import { dataService } from '../../../services/mockDb';
+import React, { useEffect, useMemo, useState } from 'react';
+import type { Transport } from '../../../types';
+import { useLiveFlight } from '../../../hooks/useLiveFlight';
 import ParticleButton from '../../kokonutui/particle-button';
 import { Broadcast, Check } from '../../ui/hugeicons';
 import { RpSection } from '../ui';
-import { errorMessage } from '../../../services/toast';
+import { RoutesMap } from './RoutesMap';
+import { FlightProgress } from './FlightProgress';
+import { isLiveWindow, journeyEnds } from '../../../utils/journeysModel';
 import { cn } from '../../../utils/cn';
 
 /**
- * Live status of a flight: asks the flight data engines (the free open radar first; AeroDataBox or
- * AviationStack when the workspace has a key) and shows the status, gates, terminals and times.
- * "Save to this flight" writes the actual times and gates back to the log.
+ * Live status of a flight. Within three hours of departure and until it has landed the panel follows the
+ * flight by itself (every minute, while the page is visible): status, a progress bar, gates, times and,
+ * when the engine has a transponder position, altitude, speed and a small still map with the aircraft.
+ * Outside that window "Track flight" asks once. "Save to this flight" writes the actual times, gates and
+ * aircraft back to the log.
  */
-
-type Provider = 'adsbdb' | 'aviationstack' | 'aerodatabox';
 
 const clock = (iso?: string) => {
     const t = (iso || '').split('T')[1];
     return t ? t.slice(0, 5) : '';
 };
+const at = (d: number | null) => (d ? new Date(d).toTimeString().slice(0, 5) : '');
 
 const STATE: Record<string, { label: string; tone: string }> = {
     scheduled: { label: 'Scheduled', tone: 'bg-rp-green text-rp-paper' },
@@ -41,48 +43,17 @@ export const TrackPanel: React.FC<{
     flight: Transport;
     onSave?: (patch: Partial<Transport>) => Promise<void>;
 }> = ({ flight, onSave }) => {
-    const [keys, setKeys] = useState<{ aviation: string; aero: string }>({ aviation: '', aero: '' });
-    const [provider, setProvider] = useState<Provider>('adsbdb');
-    const [data, setData] = useState<FlightStatusResponse | null>(null);
-    const [error, setError] = useState('');
+    const live = isLiveWindow(flight);
+    const { data, error, loading, updatedAt, refresh } = useLiveFlight(flight, live);
     const [saved, setSaved] = useState(false);
-
-    useEffect(() => {
-        let live = true;
-        dataService.getWorkspaceSettings().then(s => {
-            if (!live) return;
-            // The server masks paid keys, so a non-empty value (or the configured flag) means "set up".
-            const configured = (k: 'aviationStackApiKey' | 'aeroDataBoxApiKey') => s[k] || (s.configuredKeys?.[k] ? '••••••••' : '');
-            const aviation = configured('aviationStackApiKey');
-            const aero = configured('aeroDataBoxApiKey');
-            setKeys({ aviation, aero });
-            setProvider(aero ? 'aerodatabox' : aviation ? 'aviationstack' : 'adsbdb');
-        }).catch(() => undefined);
-        return () => { live = false; };
-    }, []);
-
-    // A different flight starts clean.
-    useEffect(() => { setData(null); setError(''); setSaved(false); }, [flight.id]);
-
-    const track = async () => {
-        setError('');
-        setSaved(false);
-        const key = provider === 'aerodatabox' ? keys.aero : provider === 'aviationstack' ? keys.aviation : '';
-        try {
-            const ident = `${flight.providerCode || ''}${flight.identifier || ''}`.replace(/\s/g, '') || flight.identifier;
-            if (!ident) throw new Error('Add the flight number first.');
-            setData(await flightTracker.getFlightStatus(key, ident, flight.departureDate, provider));
-        } catch (e) {
-            setData(null);
-            setError(errorMessage(e, "Couldn't reach the flight data. Try again."));
-            throw e;
-        }
-    };
+    useEffect(() => { setSaved(false); }, [flight.id]);
 
     const status = data ? STATE[data.flight_status || 'scheduled'] ?? STATE.scheduled : null;
     const depActual = clock(data?.departure.actual || data?.departure.estimated);
     const arrActual = clock(data?.arrival.actual || data?.arrival.estimated);
     const canSave = Boolean(onSave && data && (depActual || arrActual || data.departure.gate || data.arrival.gate || data.departure.terminal || data.arrival.terminal));
+    const position = data?.live && data.live.latitude != null ? { lat: data.live.latitude, lng: data.live.longitude } : undefined;
+    const ends = useMemo(() => journeyEnds(flight), [flight]);
 
     const save = async () => {
         if (!data || !onSave) return;
@@ -101,13 +72,33 @@ export const TrackPanel: React.FC<{
 
     return (
         <RpSection
-            title="Live status"
+            title={live ? 'Live' : 'Live status'}
             icon={Broadcast}
-            action={status ? <span className={cn('inline-flex min-h-6 items-center rounded-full px-2.5 text-2xs font-semibold', status.tone)}>{status.label}</span> : undefined}
+            action={
+                <span className="flex items-center gap-2">
+                    {live ? (
+                        <span className="flex items-center gap-1.5 text-2xs font-medium text-rp-muted">
+                            <span className={cn('size-2 rounded-full bg-rp-green', loading && 'animate-pulse')} aria-hidden />
+                            {updatedAt ? `Updated ${at(updatedAt)}` : 'Following'}
+                        </span>
+                    ) : null}
+                    {status ? <span className={cn('inline-flex min-h-6 items-center rounded-full px-2.5 text-2xs font-semibold', status.tone)}>{status.label}</span> : null}
+                </span>
+            }
         >
             <div className="flex flex-col gap-2 py-2">
+                {live ? <FlightProgress flight={flight} live={data?.live ?? undefined} /> : null}
+                {position && ends ? (
+                    <RoutesMap className="h-40 rounded-rp-inset bg-rp-surface" routes={[{ ...ends, count: 1, label: `${flight.origin} to ${flight.destination}` }]} marker={position} label="Where the aircraft is now" />
+                ) : null}
                 {data ? (
                     <div className="flex flex-col divide-y divide-rp-line">
+                        {data.live ? (
+                            <div className="py-1">
+                                <Row label="Altitude" value={data.live.is_ground ? 'On the ground' : data.live.altitude ? `${Math.round(data.live.altitude).toLocaleString('en-US')} ft` : undefined} />
+                                <Row label="Speed" value={data.live.speed_horizontal ? `${Math.round(data.live.speed_horizontal)} ${String(data.source || '').startsWith('adsb') ? 'kn' : 'km/h'}` : undefined} />
+                            </div>
+                        ) : null}
                         <div className="py-1">
                             <Row label="Departs" value={[clock(data.departure.scheduled), depActual && depActual !== clock(data.departure.scheduled) ? `now ${depActual}` : ''].filter(Boolean).join(' · ')} />
                             <Row label="Terminal and gate" value={[data.departure.terminal && `T${data.departure.terminal}`, data.departure.gate && `Gate ${data.departure.gate}`].filter(Boolean).join(' · ')} />
@@ -124,7 +115,7 @@ export const TrackPanel: React.FC<{
                 ) : null}
                 {error ? <p role="alert" className="text-sm text-rp-rust">{error}</p> : null}
                 <div className="flex flex-wrap items-center gap-2">
-                    <ParticleButton onClick={track} variant="inset" pendingLabel="Checking" successLabel="Updated" errorLabel="No result" icon={<Broadcast size={16} aria-hidden />}>
+                    <ParticleButton onClick={refresh} variant="inset" pendingLabel="Checking" successLabel="Updated" errorLabel="No result" icon={<Broadcast size={16} aria-hidden />}>
                         {data ? 'Check again' : 'Track flight'}
                     </ParticleButton>
                     {canSave ? (

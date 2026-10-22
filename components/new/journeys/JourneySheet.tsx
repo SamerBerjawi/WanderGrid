@@ -2,12 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { Carrier, Transport, Trip } from '../../../types';
 import SmoothDrawer from '../../kokonutui/smooth-drawer';
 import HoldButton from '../../kokonutui/hold-button';
-import { ArrowUpRight, MapTrifold, PencilSimple, Suitcase, Trash, X } from '../../ui/hugeicons';
+import { ArrowUpRight, MapTrifold, PencilSimple, Seat, Suitcase, Trash, X } from '../../ui/hugeicons';
 import { RpSection, RpSheet, useIsMobile } from '../ui';
 import { TripMenu } from '../trips/TripMenu';
 import { BoardingPass } from './BoardingPass';
 import { DelayChip, StatusPill } from './JourneyParts';
 import { TrackPanel } from './TrackPanel';
+import { SeatMap } from './SeatMap';
 import { formatDate } from '../../../utils/formatters';
 import { carrierLabel, isIndependent, journeyStatus, placeCode, type JourneyRecord } from '../../../utils/journeysModel';
 import { cn } from '../../../utils/cn';
@@ -100,6 +101,9 @@ export const JourneySheet: React.FC<{
                     </span>
                 </div>
             </RpSection>
+            {t.seatNumber && /\d+\s*[A-Za-z]/.test(t.seatNumber) ? (
+                <RpSection title="Seat" icon={Seat}><SeatMap t={t} /></RpSection>
+            ) : null}
             {t.mode === 'Flight' && status.state !== 'cancelled' ? (
                 <TrackPanel flight={t} onSave={onSaveDetails ? patch => onSaveDetails(shown, patch) : undefined} />
             ) : null}
