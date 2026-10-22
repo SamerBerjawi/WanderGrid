@@ -212,7 +212,10 @@ export const RpSheet: React.FC<RpSheetProps> = ({ open, onClose, title, subtitle
     useEffect(() => {
         if (!open || mobile) return;
         returnFocus.current = document.activeElement as HTMLElement | null;
-        const id = requestAnimationFrame(() => panelRef.current?.focus());
+        // Keep focus that is already inside the panel (an autofocused field); otherwise focus the panel.
+        const id = requestAnimationFrame(() => {
+            if (!panelRef.current?.contains(document.activeElement)) panelRef.current?.focus();
+        });
         const onKey = (e: KeyboardEvent) => {
             if (e.key === 'Escape' && !e.defaultPrevented) onClose();
         };

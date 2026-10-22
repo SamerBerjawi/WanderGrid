@@ -32,8 +32,9 @@ const GoldenSidebar = lazy(() => import('./components/golden/GoldenSidebar').the
 // Redesigned pages (UI_UX_DESIGN_REFERENCE.md §5.0): reached only at their own `-new` URLs, inside ShellNew.
 const ShellNew = lazy(() => import('./components/new/ShellNew').then(m => ({ default: m.ShellNew })));
 const MapNew = lazy(() => import('./views/new/MapNew').then(m => ({ default: m.MapNew })));
-type NewPage = 'map';
-const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map' };
+const AtlasNew = lazy(() => import('./views/new/AtlasNew').then(m => ({ default: m.AtlasNew })));
+type NewPage = 'map' | 'atlas';
+const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas' };
 const getNewPage = (): NewPage | null => {
     try { return NEW_PAGES[window.location.pathname] ?? null; } catch (e) { return null; }
 };
@@ -421,10 +422,12 @@ export default function App() {
             onLogout={() => handleLogout()}
             localMode={!dataService.isDatabaseMode()}
             fullBleed={newPage === 'map'}
+            hideBrandOnMobile={newPage === 'map'}
           >
             <AppErrorBoundary routeKey={`new-${newPage}`} onResetToDashboard={() => navigate(ViewState.DASHBOARD)}>
               <Suspense fallback={null}>
                 {newPage === 'map' ? <MapNew onTripClick={handleTripClick} isSidebarCollapsed={isSidebarCollapsed} onThemeChange={t => handleThemeChange(t)} /> : null}
+                {newPage === 'atlas' ? <AtlasNew onTripClick={handleTripClick} /> : null}
               </Suspense>
             </AppErrorBoundary>
           </ShellNew>
