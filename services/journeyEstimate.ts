@@ -68,7 +68,7 @@ export const estimateLeg = async (mode: TransportMode | string | undefined, coor
             const { fetchSeaRoute } = await import('./maritimeRouting');
             const first = coords[0];
             const last = coords[coords.length - 1];
-            const geometry = await fetchSeaRoute(first[1], first[0], last[1], last[0], coords.slice(1, -1).map(([lng, lat]) => ({ lat, lng })));
+            const geometry = await fetchSeaRoute(first[1], first[0], last[1], last[0], coords.slice(1, -1).map(([lng, lat]) => ({ lat, lng })), true);
             if (geometry && geometry.length > 2) {
                 const km = pathKm(geometry);
                 // The fallback curve between ports is the great circle itself: stretch it like any other estimate.

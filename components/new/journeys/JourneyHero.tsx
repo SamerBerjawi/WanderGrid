@@ -124,12 +124,16 @@ export const JourneyHero: React.FC<{ items: JourneyRecord[]; kind?: 'flight' | '
         const todo = flat.filter(r => r.sea && !lanes.has(laneKey(r)));
         if (todo.length === 0) return;
         void import('../../../services/maritimeRouting').then(async ({ fetchSeaRoute }) => {
-            const found = new Map<string, [number, number][]>();
-            for (const r of todo.slice(0, 30)) {
-                const g = await fetchSeaRoute(r.from[1], r.from[0], r.to[1], r.to[0], (r.via || []).map(([lng, lat]) => ({ lat, lng }))).catch(() => null);
-                found.set(laneKey(r), g && g.length > 2 ? g.map(([x, y]) => [x, y] as [number, number]) : []);
-            }
-            if (live) setLanes(prev => new Map([...prev, ...found]));
+            // A few at a time, each shown as soon as it is found: a ferry line the server has not looked up yet can take a while.
+            const queue = todo.slice(0, 30);
+            const worker = async () => {
+                for (let r = queue.shift(); r; r = queue.shift()) {
+                    const g = await fetchSeaRoute(r.from[1], r.from[0], r.to[1], r.to[0], (r.via || []).map(([lng, lat]) => ({ lat, lng })), true).catch(() => null);
+                    const path = g && g.length > 2 ? g.map(([x, y]) => [x, y] as [number, number]) : [];
+                    if (live) setLanes(prev => new Map(prev).set(laneKey(r), path));
+                }
+            };
+            await Promise.all([worker(), worker(), worker()]);
         });
         return () => { live = false; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -177,7 +181,7 @@ export const JourneyHero: React.FC<{ items: JourneyRecord[]; kind?: 'flight' | '
                 <div className="flex min-w-0 flex-col gap-2 px-1">
                     <p className="text-sm text-rp-muted"><span className="rp-tabular font-medium text-rp-ink">{routes.length}</span> {routes.length === 1 ? 'route' : 'routes'} between {land ? plural(totals.airports, 'place', 'places') : plural(totals.airports, 'airport', 'airports')}</p>
                     {routes.length > 0
-                        ? <RoutesMap routes={routes} maxZoom={land ? 14 : undefined} className="h-48 sm:h-60 lg:h-full lg:min-h-64" label={`Map of ${routes.length} routes between ${totals.airports} places`} />
+                        ? <RoutesMap routes={routes} maxZoom={land ? 40 : undefined} className="h-48 sm:h-60 lg:h-full lg:min-h-64" label={`Map of ${routes.length} routes between ${totals.airports} places`} />
                         : <p className="py-10 text-center text-sm text-rp-muted">{land ? 'No journeys with known places to draw.' : 'No flights with known airports to draw.'}</p>}
                 </div>
                 <div className="flex min-w-0 flex-col gap-2 px-1">

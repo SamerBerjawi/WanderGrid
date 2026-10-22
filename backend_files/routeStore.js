@@ -15,6 +15,7 @@
 
 const crypto = require('crypto');
 const { normalizeProfile, haversineKm } = require('./routeProxy');
+const { resolveFerryLine } = require('./ferryLines');
 
 // Rail graphs are split by gauge/service: a pair unreachable on one profile is often fine on another
 // (measured: Madrid-Barcelona, Amsterdam-Berlin, Rome-Venice, Sydney-Melbourne fail on all_tracks alone).
@@ -118,8 +119,8 @@ function parseSpec(raw) {
   if (!raw || typeof raw !== 'object') return { error: 'route must be an object' };
   const id = String(raw.id ?? '').slice(0, 200);
   if (!id) return { error: 'route id required' };
-  const mode = raw.mode === 'rail' ? 'rail' : raw.mode === 'road' ? 'road' : null;
-  if (!mode) return { id, error: "mode must be 'road' or 'rail'" };
+  const mode = raw.mode === 'rail' ? 'rail' : raw.mode === 'road' ? 'road' : raw.mode === 'sea' ? 'sea' : null;
+  if (!mode) return { id, error: "mode must be 'road', 'rail' or 'sea'" };
   if (!Array.isArray(raw.coords) || raw.coords.length < 2 || raw.coords.length > 25) {
     return { id, error: 'coords must hold 2-25 points' };
   }
@@ -132,7 +133,7 @@ function parseSpec(raw) {
     }
     coords.push([Math.round(lng * 1e4) / 1e4, Math.round(lat * 1e4) / 1e4]); // ~11 m: the cache granularity
   }
-  let profile = 'rail';
+  let profile = mode === 'sea' ? 'ferry' : 'rail';
   if (mode === 'road') {
     const p = normalizeProfile(raw.profile || 'car');
     if (!p) return { id, error: 'invalid profile' };
@@ -264,6 +265,15 @@ function createRouteService({ pool, fetchUpstream, now = Date.now, log = console
     return road.status === 'error' ? road : { status: 'none', reason: 'no_rail_connection' };
   }
 
+  /** A ferry line from OpenStreetMap; 'none' when no mapped ferry serves these places (the client then falls back to a shipping lane). */
+  async function resolveSea(spec) {
+    const r = await resolveFerryLine(spec.coords, fetchUpstream);
+    if (r.status === 'error') return { status: 'error', reason: 'upstream_unavailable' };
+    if (r.status !== 'ok') return { status: 'none', reason: 'no_ferry_line' };
+    const simple = simplify(r.coords);
+    return toResult(encodePolyline6(simple), r.km, 0, `© OpenStreetMap contributors · ferry line${r.names.length ? ` ${r.names.join(', ')}` : ''}`, 'ferry');
+  }
+
   async function persist(spec, result) {
     try {
       await pool.query(
@@ -289,7 +299,7 @@ function createRouteService({ pool, fetchUpstream, now = Date.now, log = console
     }
     let result;
     try {
-      result = spec.mode === 'rail' ? await resolveRail(spec) : await resolveRoad(spec);
+      result = spec.mode === 'rail' ? await resolveRail(spec) : spec.mode === 'sea' ? await resolveSea(spec) : await resolveRoad(spec);
     } catch (err) {
       log.error('[RouteStore] resolve failed:', err.message);
       result = { status: 'error', reason: 'internal' };
