@@ -8,6 +8,8 @@ export const NEW_PAGE_LINKS = [
     { path: '/map-new', label: 'Map (new)', short: 'Map new', icon: 'public' },
     { path: '/atlas-new', label: 'Atlas (new)', short: 'Atlas new', icon: 'explore' },
     { path: '/trips-new', label: 'Trips (new)', short: 'Trips new', icon: 'luggage' },
+    { path: '/flights-new', label: 'Flights (new)', short: 'Flights new', icon: 'flight' },
+    { path: '/roadtrips-new', label: 'Road trips (new)', short: 'Road trips new', icon: 'train' },
     { path: '/auth-new', label: 'Sign in (new)', short: 'Sign in new', icon: 'login' },
 ] as const;
 

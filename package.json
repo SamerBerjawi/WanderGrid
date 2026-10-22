@@ -1,14 +1,15 @@
 {
   "name": "wandergrid-v0.2",
   "private": true,
-  "version": "0.5-261022.2",
+  "version": "0.5-261022.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "bump-version": "node scripts/bump-version.cjs",
     "build": "node scripts/bump-version.cjs && vite build",
     "preview": "vite preview",
-    "lint:tokens": "node scripts/check-tokens.mjs"
+    "lint:tokens": "node scripts/check-tokens.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -53,11 +54,13 @@
     "@types/topojson-client": "^3.1.5",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.5.4",
+    "jsdom": "^26.1.0",
     "postcss": "^8.5.26",
     "puppeteer-core": "^25.12.0",
     "tailwindcss": "^3.4.19",
     "typescript": "~5.8.2",
     "vite": "^6.4.4",
-    "vite-plugin-pwa": "^1.3.0"
+    "vite-plugin-pwa": "^1.3.0",
+    "vitest": "^3.2.7"
   }
 }

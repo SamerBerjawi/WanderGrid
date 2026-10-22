@@ -1,0 +1,204 @@
+{
+ "data": {
+  "flightId": 1415374458,
+  "flightNote": {
+   "final": true,
+   "canceled": false,
+   "hasDepartedGate": true,
+   "hasDepartedRunway": true,
+   "landed": true,
+   "message": "The flight has landed",
+   "messageCode": "L",
+   "pastExpectedTakeOff": true,
+   "tracking": false,
+   "hasPositions": true,
+   "trackingUnavailable": false,
+   "phase": "Landed",
+   "hasActualRunwayDepartureTime": true,
+   "hasActualGateDepartureTime": true
+  },
+  "isTracking": false,
+  "isLanded": true,
+  "isScheduled": false,
+  "schedule": {
+   "scheduledDeparture": "2026-10-21T07:05:00.000",
+   "scheduledDepartureUTC": "2026-10-21T04:05:00.000Z",
+   "estimatedActualDepartureRunway": false,
+   "estimatedActualDepartureTitle": "Actual",
+   "estimatedActualDeparture": "2026-10-21T07:07:00.000",
+   "estimatedActualDepartureUTC": "2026-10-21T04:07:00.000Z",
+   "scheduledArrival": "2026-10-21T10:35:00.000",
+   "scheduledArrivalUTC": "2026-10-21T08:35:00.000Z",
+   "estimatedActualArrivalRunway": false,
+   "estimatedActualArrivalTitle": "Actual",
+   "estimatedActualArrival": "2026-10-21T10:30:00.000",
+   "estimatedActualArrivalUTC": "2026-10-21T08:30:00.000Z",
+   "graphXAxis": {
+    "dep": "2026-10-21T07:07:00.000",
+    "depUTC": "2026-10-21T04:07:00.000Z",
+    "arr": "2026-10-21T10:30:00.000",
+    "arrUTC": "2026-10-21T08:30:00.000Z"
+   },
+   "tookOff": "2026-10-21T07:07:00.000",
+   "landing": "2026-10-21T10:30:00.000",
+   "isLanded": true
+  },
+  "status": {
+   "statusCode": "L",
+   "status": "Arrived",
+   "color": "green",
+   "statusDescription": "On time",
+   "delay": {
+    "departure": {
+     "minutes": 2
+    },
+    "arrival": {
+     "minutes": 0
+    }
+   },
+   "delayStatus": {
+    "wording": "On time",
+    "minutes": 0
+   },
+   "lastUpdatedText": "Status Last Updated More Than 3 Hours Ago",
+   "finalStatus": "On Time",
+   "diverted": false
+  },
+  "resultHeader": {
+   "statusDescription": "On time",
+   "carrier": {
+    "name": "Middle East Airlines",
+    "fs": "ME"
+   },
+   "flightNumber": "215",
+   "status": "Arrived",
+   "diverted": false,
+   "color": "green",
+   "departureAirportFS": "BEY",
+   "arrivalAirportFS": "BRU",
+   "divertedAirport": null
+  },
+  "ticketHeader": {
+   "carrier": {
+    "name": "Middle East Airlines",
+    "fs": "ME"
+   },
+   "flightNumber": "215"
+  },
+  "departureAirport": {
+   "fs": "BEY",
+   "iata": "BEY",
+   "name": "Beirut Rafic Hariri International Airport",
+   "city": "Beirut",
+   "country": "LB",
+   "timeZoneRegionName": "Asia/Beirut",
+   "regionName": "Middle East",
+   "gate": null,
+   "terminal": null,
+   "times": {
+    "scheduled": {
+     "time": "7:05",
+     "ampm": "AM",
+     "time24": "07:05",
+     "timezone": "EEST"
+    },
+    "estimatedActual": {
+     "title": "Actual",
+     "time": "7:07",
+     "ampm": "AM",
+     "time24": "07:07",
+     "runway": false,
+     "timezone": "EEST"
+    }
+   },
+   "date": "2026-10-21T07:05:00.000"
+  },
+  "arrivalAirport": {
+   "fs": "BRU",
+   "iata": "BRU",
+   "name": "Brussels Airport",
+   "city": "Brussels",
+   "country": "BE",
+   "timeZoneRegionName": "Europe/Brussels",
+   "regionName": "Europe",
+   "gate": null,
+   "terminal": null,
+   "baggage": null,
+   "times": {
+    "scheduled": {
+     "time": "10:35",
+     "ampm": "AM",
+     "time24": "10:35",
+     "timezone": "CEST"
+    },
+    "estimatedActual": {
+     "title": "Actual",
+     "time": "10:30",
+     "ampm": "AM",
+     "time24": "10:30",
+     "runway": false,
+     "timezone": "CEST"
+    }
+   },
+   "date": "2026-10-21T10:35:00.000"
+  },
+  "additionalFlightInfo": {
+   "equipment": {
+    "iata": "32Q",
+    "name": "Airbus A321neo",
+    "title": "Actual"
+   },
+   "flightDuration": "4h 23m"
+  },
+  "positional": {
+   "departureAirportCode": "BEY",
+   "arrivalAirportCode": "BRU",
+   "divertedAirportCode": null,
+   "flexFlightStatus": "L",
+   "flexTrack": {
+    "flightId": 1415374458,
+    "carrierFsCode": "ME",
+    "flightNumber": "215",
+    "tailNumber": "T7-ME8",
+    "callsign": "MEA215",
+    "departureAirportFsCode": "BEY",
+    "arrivalAirportFsCode": "BRU",
+    "departureDate": {
+     "dateUtc": "2026-10-21T04:05:00.000Z",
+     "dateLocal": "2026-10-21T07:05:00.000"
+    },
+    "equipment": "32Q",
+    "delayMinutes": 2,
+    "bearing": 8.388977819820857,
+    "heading": 249.77968919222943,
+    "positions": [
+     {
+      "lon": 4.48176,
+      "lat": 50.889292,
+      "speedMph": 155,
+      "altitudeFt": 184,
+      "source": "derived",
+      "date": "2026-10-21T08:23:56.840Z",
+      "course": -110,
+      "vrateMps": -4,
+      "lastObserved": "2026-10-21T08:24:10.000Z"
+     },
+     {
+      "lon": 4.505008,
+      "lat": 50.894696,
+      "speedMph": 155,
+      "altitudeFt": 189,
+      "source": "derived",
+      "date": "2026-10-21T08:23:32.375Z",
+      "course": -110,
+      "vrateMps": -4,
+      "lastObserved": "2026-10-21T08:24:10.000Z"
+     }
+    ],
+    "irregularOperations": [],
+    "fleetAircraftId": 167146
+   }
+  },
+  "flightState": "historical"
+ }
+}

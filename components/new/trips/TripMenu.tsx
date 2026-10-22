@@ -117,7 +117,7 @@ export const TripMenu: React.FC<{
                             exit={{ opacity: 0, scale: 0.96 }}
                             transition={{ duration: 0.14, ease: [0.23, 1, 0.32, 1] }}
                             style={{ position: 'fixed', left: pos?.left ?? 0, top: pos?.top ?? 0, width: WIDTH }}
-                            className="rp-root z-popover origin-top-right rounded-rp-tile bg-rp-surface p-2 font-rp text-rp-ink rp-shadow-float"
+                            className="rp-root custom-scrollbar z-popover max-h-[min(26rem,calc(100dvh-1rem))] origin-top-right overflow-y-auto rounded-rp-tile bg-rp-surface p-2 font-rp text-rp-ink rp-shadow-float"
                         >
                             {items.map(item => (
                                 <React.Fragment key={item.id}>

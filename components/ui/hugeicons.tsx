@@ -14,9 +14,13 @@ import {
   AirplaneLanding01Icon,
   AirplaneTakeOff01Icon,
   Alert02Icon,
+  Notification01Icon,
+  NotificationOff01Icon,
   AlertCircleIcon,
   AnchorIcon,
   AntennaIcon,
+  LinkSquare02Icon,
+  Undo03Icon,
   ArchiveIcon,
   ArmchairIcon,
   ArrowDown01Icon,
@@ -43,6 +47,7 @@ import {
   Briefcase02Icon,
   Building03Icon,
   Building06Icon,
+  Leaf01Icon,
   Bus01Icon,
   Calendar03Icon,
   CalendarCheckIn01Icon,
@@ -141,6 +146,9 @@ import {
   SaturnIcon,
   Search01Icon,
   AirplaneSeatIcon,
+  BriefcaseConveyorBeltIcon,
+  DoorOpenIcon,
+  TicketsPlaneIcon,
   SecurityCheckIcon,
   SentIcon,
   Settings01Icon,
@@ -237,6 +245,8 @@ export const ArrowRight = make(ArrowRight01Icon, 'ArrowRight');
 export const ArrowSquareOut = make(SquareArrowUpRightIcon, 'ArrowSquareOut');
 export const ArrowUp = make(ArrowUp01Icon, 'ArrowUp');
 export const ArrowUpRight = make(ArrowUpRight01Icon, 'ArrowUpRight');
+export const LinkSquare = make(LinkSquare02Icon, 'LinkSquare');
+export const ArrowUndo = make(Undo03Icon, 'ArrowUndo');
 export const ArrowsClockwise = make(RefreshIcon, 'ArrowsClockwise');
 export const ArrowsIn = make(ArrowShrink02Icon, 'ArrowsIn');
 export const ArrowsMerge = make(GitMergeIcon, 'ArrowsMerge');
@@ -254,6 +264,7 @@ export const Ship = make(ShipIcon, 'Ship');
 export const BookOpen = make(BookOpen01Icon, 'BookOpen');
 export const Broadcast = make(AntennaIcon, 'Broadcast');
 export const Buildings = make(Building06Icon, 'Buildings');
+export const Leaf = make(Leaf01Icon, 'Leaf');
 export const Bus = make(Bus01Icon, 'Bus');
 export const Calendar = make(Calendar03Icon, 'Calendar');
 export const CalendarBlank = make(Calendar03Icon, 'CalendarBlank');
@@ -359,6 +370,9 @@ export const Receipt = make(Invoice01Icon, 'Receipt');
 export const RoadHorizon = make(RoadIcon, 'RoadHorizon');
 export const RocketLaunch = make(Rocket01Icon, 'RocketLaunch');
 export const Seat = make(AirplaneSeatIcon, 'Seat');
+export const BaggageClaim = make(BriefcaseConveyorBeltIcon, 'BaggageClaim');
+export const DoorOpen = make(DoorOpenIcon, 'DoorOpen');
+export const BookingTicket = make(TicketsPlaneIcon, 'BookingTicket');
 export const ShieldCheck = make(SecurityCheckIcon, 'ShieldCheck');
 export const ShoppingBag = make(ShoppingBag01Icon, 'ShoppingBag');
 export const SidebarSimple = make(SidebarLeftIcon, 'SidebarSimple');
@@ -396,6 +410,8 @@ export const UserCheck = make(UserCheck01Icon, 'UserCheck');
 export const UserCircle = make(UserCircleIcon, 'UserCircle');
 export const Users = make(UserMultipleIcon, 'Users');
 export const Warning = make(Alert02Icon, 'Warning');
+export const Bell = make(Notification01Icon, 'Bell');
+export const BellOff = make(NotificationOff01Icon, 'BellOff');
 export const WarningCircle = make(AlertCircleIcon, 'WarningCircle');
 export const Waves = make(WaveIcon, 'Waves');
 export const WifiHigh = make(Wifi01Icon, 'WifiHigh');

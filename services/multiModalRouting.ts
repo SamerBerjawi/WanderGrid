@@ -147,7 +147,9 @@ export function buildRouteKey(
         }
     }
     const wpStr = wpParts.length > 0 ? `_${wpParts.join(';')}` : '';
-    return `${cleanMode}_${startLat.toFixed(3)},${startLng.toFixed(3)}${wpStr}|${endLat.toFixed(3)},${endLng.toFixed(3)}`;
+    // Sea legs: a different key from the arcs cached before mapped ferry lines existed, so they are traced again.
+    const seaTag = /ferry|cruise|sea|boat|ship/.test(cleanMode) ? '#f' : '';
+    return `${cleanMode}_${startLat.toFixed(3)},${startLng.toFixed(3)}${wpStr}|${endLat.toFixed(3)},${endLng.toFixed(3)}${seaTag}`;
 }
 
 function decodePolyline6(str: string): [number, number, number][] {
@@ -756,7 +758,7 @@ export async function fetchMultiModalRoute(
             if (isSea) {
                 // searoute-js carries a large global shipping-lane network: load it only when a sea leg is drawn (PERF-004).
                 const { fetchSeaRoute } = await import('./maritimeRouting');
-                geom = await fetchSeaRoute(startLat, startLng, endLat, endLng, waypoints);
+                geom = await fetchSeaRoute(startLat, startLng, endLat, endLng, waypoints, 'quick');
             } else if (isTrain) {
                 geom = await fetchRailGeometry(startLat, startLng, endLat, endLng, waypoints);
                 if (!geom) {

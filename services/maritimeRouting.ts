@@ -2,6 +2,7 @@
 // Calculates real maritime shipping lanes and ferry channels using Eurostat Marnet network
 
 import searoute from 'searoute-js';
+import { fetchFerryLine } from './ferryLines';
 
 export interface SeaRouteResult {
     geometry: [number, number, number][];
@@ -79,9 +80,13 @@ export async function fetchSeaRoute(
     startLng: number,
     endLat: number,
     endLng: number,
-    waypoints?: any[]
+    waypoints?: any[],
+    /** Look for the mapped ferry line first (needs the backend). true waits for the lookup; 'quick' gives up after a few seconds by throwing, so a caller that retries (the maps) can ask again once the server has it. */
+    useFerryLines: boolean | 'quick' = false
 ): Promise<[number, number, number][] | null> {
-    const cacheKey = `sea_${startLat.toFixed(3)},${startLng.toFixed(3)}|${endLat.toFixed(3)},${endLng.toFixed(3)}`;
+    // The stops along the way are part of the key: Stockholm to Helsinki direct is not Stockholm to Helsinki via Åland.
+    const viaKey = (waypoints || []).map((w: any) => `${(w?.coordinates?.lat ?? w?.lat)?.toFixed?.(3)},${(w?.coordinates?.lng ?? w?.lng)?.toFixed?.(3)}`).join(';');
+    const cacheKey = `sea_${startLat.toFixed(3)},${startLng.toFixed(3)}|${endLat.toFixed(3)},${endLng.toFixed(3)}|${viaKey}${useFerryLines ? '|f' : ''}`;
     if (seaRouteCache.has(cacheKey)) {
         return seaRouteCache.get(cacheKey)!;
     }
@@ -99,6 +104,13 @@ export async function fetchSeaRoute(
         }
     }
     legPoints.push([endLng, endLat]);
+
+    // A mapped ferry line is the real thing; without one, the shipping lane or an arc below.
+    if (useFerryLines) {
+        const line = await fetchFerryLine(legPoints, useFerryLines === 'quick' ? 3 : 24);
+        if (line.status === 'ok') { seaRouteCache.set(cacheKey, line.points); return line.points; }
+        if (line.status === 'pending' && useFerryLines === 'quick') throw new Error('The ferry line is still being looked up');
+    }
 
     const fullRoute: [number, number, number][] = [];
 
