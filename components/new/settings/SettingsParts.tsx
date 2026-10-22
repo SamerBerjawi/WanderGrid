@@ -10,6 +10,9 @@ import { cn } from '../../../utils/cn';
 
 /** Small pieces shared by the settings panes: the card, the pane header, tiles, chips and two generic sheets. */
 
+/** A field sitting straight on a sheet (not inside an inset section) needs its own inset fill to show. */
+export const FIELD = cn(RP_FIELD, 'bg-rp-inset');
+
 export const card = 'rounded-rp-card bg-rp-surface rp-shadow-rest';
 
 export const GHOST_BTN =
@@ -64,13 +67,6 @@ export const StatusChip: React.FC<{ tone: keyof typeof CHIP_TONE; children: Reac
         {IconC ? <IconC size={12} aria-hidden /> : null}{children}
     </span>
 );
-
-/** Show only the end of a key: never the whole value. */
-export const maskKey = (value?: string) => {
-    const v = (value || '').trim();
-    if (!v) return '';
-    return v.length > 8 ? `•••• ${v.slice(-4)}` : '••••';
-};
 
 /** Runs a write, turning a failure into an error toast instead of an unhandled rejection. */
 export const attempt = async (run: () => Promise<unknown>, fallback = "That didn't save. Try again.") => {
@@ -130,7 +126,7 @@ export const TextSheet: React.FC<{
                         autoComplete="off"
                         onChange={e => setDraft(uppercase ? e.target.value.toUpperCase() : e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }}
-                        className={cn(RP_FIELD, mono && 'font-mono', uppercase && 'uppercase')}
+                        className={cn(FIELD, mono && 'font-mono', uppercase && 'uppercase')}
                     />
                 )}
             </RpField>
@@ -171,7 +167,7 @@ export const HoldSheet: React.FC<{
         >
             <div className="flex flex-col gap-3">
                 <div className="text-sm text-rp-muted">{children}</div>
-                {error ? <p role="alert" className="text-sm text-rp-rust">{error}</p> : null}
+                {error ? <p role="alert" className="text-sm break-words text-rp-rust">{error}</p> : null}
             </div>
         </RpSheet>
     );

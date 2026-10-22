@@ -7,12 +7,11 @@ import { StackPanel, type StackPage } from '../../kokonutui/stack-panel';
 import ParticleButton from '../../kokonutui/particle-button';
 import HoldButton from '../../kokonutui/hold-button';
 import { RpChip, RpSheet } from '../ui';
-import { RP_FIELD, RpField } from '../fields';
+import { RpField } from '../fields';
 import { ArrowSquareOut, Compass, Database, Eye, EyeSlash, Globe, MapsGlobal, Plugs, Pulse, Sparkle, Airplane, Key, WifiHigh, Cloud, Path, MapPin, Planet, type Icon } from '../../ui/hugeicons';
 import { cn } from '../../../utils/cn';
-import { card, CANCEL_BTN, maskKey, PaneHeader, StatusChip } from './SettingsParts';
-
-type KeyField = 'googleGeminiApiKey' | 'aviationStackApiKey' | 'aeroDataBoxApiKey' | 'openAipApiKey' | 'brandfetchApiKey' | 'cartoApiKey';
+import { keyInfo, countKeys, type KeyField } from '../../../utils/settingsModel';
+import { card, FIELD, CANCEL_BTN, PaneHeader, StatusChip } from './SettingsParts';
 
 interface KeyService {
     id: string;
@@ -44,14 +43,7 @@ const FREE_SERVICES: Array<{ id: KeylessProvider; label: string; purpose: string
 ];
 
 /** The state of one key: where it comes from and whether it is there at all. */
-const keyState = (settings: WorkspaceSettings, s: KeyService): { has: boolean; source: 'workspace' | 'env' | 'none'; tail: string } => {
-    if (s.secret) {
-        const source = settings.keySources?.[s.field as keyof NonNullable<WorkspaceSettings['keySources']>] ?? (settings.configuredKeys?.[s.field as keyof NonNullable<WorkspaceSettings['configuredKeys']>] ? 'workspace' : 'none');
-        return { has: source !== 'none', source, tail: '' };
-    }
-    const value = String(settings[s.field] || '');
-    return { has: Boolean(value), source: value ? 'workspace' : 'none', tail: maskKey(value) };
-};
+const keyState = (settings: WorkspaceSettings, s: KeyService) => keyInfo(settings, s.field);
 
 const ResultLine: React.FC<{ result?: TestResult; pending?: boolean }> = ({ result, pending }) => {
     if (pending) return <p className="text-sm text-rp-muted" role="status">Testing…</p>;
@@ -59,7 +51,7 @@ const ResultLine: React.FC<{ result?: TestResult; pending?: boolean }> = ({ resu
     return (
         <p role="status" className={cn('flex items-center gap-2 text-sm', result.success ? 'text-rp-green' : 'text-rp-rust')}>
             <span className={cn('size-2 shrink-0 rounded-full', result.success ? 'bg-rp-green' : 'bg-rp-rust')} aria-hidden />
-            <span className="min-w-0">{result.message}{result.latencyMs > 0 ? <span className="rp-tabular text-rp-muted"> · {result.latencyMs} ms</span> : null}</span>
+            <span className="min-w-0 break-words">{result.message}{result.latencyMs > 0 ? <span className="rp-tabular text-rp-muted"> · {result.latencyMs} ms</span> : null}</span>
         </p>
     );
 };
@@ -174,7 +166,7 @@ const KeySheet: React.FC<{
                                 placeholder={state.has ? 'Leave empty to keep the current key' : 'Paste your key'}
                                 autoComplete="off"
                                 spellCheck={false}
-                                className={cn(RP_FIELD, 'pr-12 font-mono')}
+                                className={cn(FIELD, 'pr-12 font-mono')}
                             />
                             <button type="button" aria-label={show ? 'Hide key' : 'Show key'} onClick={() => setShow(v => !v)} className="absolute top-0 right-0 flex size-11 items-center justify-center rounded-full text-rp-muted outline-none hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted">
                                 {show ? <EyeSlash size={16} aria-hidden /> : <Eye size={16} aria-hidden />}
@@ -210,7 +202,7 @@ const KeySheet: React.FC<{
                     )
                 ) : null}
 
-                {error ? <p role="alert" className="text-sm text-rp-rust">{error}</p> : null}
+                {error ? <p role="alert" className="text-sm break-words text-rp-rust">{error}</p> : null}
             </div>
         </RpSheet>
     );
@@ -242,7 +234,7 @@ export const IntegrationsPane: React.FC<{ data: SettingsData }> = ({ data }) => 
     };
 
     const states = KEY_SERVICES.map(s => ({ s, ...keyState(settings, s) }));
-    const connected = states.filter(x => x.has).length;
+    const connected = countKeys(settings).set;
     const chipFor = (id: string): React.ReactNode => {
         if (testing === id) return 'Testing…';
         const r = results[id];
@@ -301,7 +293,7 @@ export const IntegrationsPane: React.FC<{ data: SettingsData }> = ({ data }) => 
             {failed.length > 0 ? (
                 <ul className="mt-3 flex flex-col gap-1 px-1" aria-label="Failed tests">
                     {failed.map(([id, r]) => (
-                        <li key={id} className="text-sm text-rp-rust">{r.message}</li>
+                        <li key={id} className="text-sm break-words text-rp-rust">{[...KEY_SERVICES, ...FREE_SERVICES].find(x => x.id === id)?.label}: {r.message}</li>
                     ))}
                 </ul>
             ) : null}

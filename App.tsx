@@ -464,7 +464,7 @@ export default function App() {
       return (
         <Suspense fallback={null}>
           <ShellNew
-            currentPath={newPage === 'trip' ? '/trips-new' : newPage === 'roadtrips' ? '/flights-new' : newPage === 'member' ? '' : window.location.pathname}
+            currentPath={newPage === 'trip' ? '/trips-new' : newPage === 'roadtrips' ? '/flights-new' : newPage === 'member' || newPage === 'settings' ? '' : window.location.pathname}
             onNavigate={navigateFromShell}
             user={currentUser}
             isDark={isDarkMode}

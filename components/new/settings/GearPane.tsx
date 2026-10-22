@@ -4,12 +4,12 @@ import type { SettingsData } from '../../../hooks/useSettingsData';
 import { StackPanel, type StackPage, type StackRow } from '../../kokonutui/stack-panel';
 import ParticleButton from '../../kokonutui/particle-button';
 import { RpChip, RpEmpty, RpSheet } from '../ui';
-import { RP_FIELD, RpField } from '../fields';
+import { RpField } from '../fields';
 import { useUndoToast } from '../UndoToast';
 import { Backpack, Drop, DeviceMobile, DotsThreeCircle, FileText, FirstAid, Plus, TShirt, X, type Icon } from '../../ui/hugeicons';
 import { errorMessage, toast } from '../../../services/toast';
 import { cn } from '../../../utils/cn';
-import { card, CANCEL_BTN, PaneHeader } from './SettingsParts';
+import { card, FIELD, CANCEL_BTN, PaneHeader } from './SettingsParts';
 
 const CATEGORIES: Array<{ id: string; icon: Icon }> = [
     { id: 'Clothing', icon: TShirt },
@@ -65,7 +65,7 @@ const ItemSheet: React.FC<{ open: boolean; category: string; onClose: () => void
                             autoFocus
                             autoComplete="off"
                             onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }}
-                            className={RP_FIELD}
+                            className={FIELD}
                         />
                     )}
                 </RpField>

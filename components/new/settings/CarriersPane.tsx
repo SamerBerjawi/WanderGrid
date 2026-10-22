@@ -6,11 +6,11 @@ import { getCarrierName } from '../../../utils/flightData';
 import { errorMessage, toast } from '../../../services/toast';
 import ParticleButton from '../../kokonutui/particle-button';
 import { RpEmpty, RpLogo, RpSheet } from '../ui';
-import { RP_FIELD, RpField } from '../fields';
+import { RpField } from '../fields';
 import { useUndoToast } from '../UndoToast';
 import { Airplane, ArrowsClockwise, Globe, MagnifyingGlass, PencilSimple, Plus, Tag, Trash } from '../../ui/hugeicons';
 import { cn } from '../../../utils/cn';
-import { card, CANCEL_BTN, PaneHeader } from './SettingsParts';
+import { card, FIELD, CANCEL_BTN, PaneHeader } from './SettingsParts';
 
 const SHOWN = 8;
 
@@ -113,14 +113,14 @@ const CarrierSheet: React.FC<{
                     </div>
                 ) : null}
                 <RpField label="Name" icon={Airplane}>
-                    {id => <input id={id} value={name} onChange={e => setName(e.target.value)} placeholder="Delta Air Lines" autoComplete="off" autoFocus className={RP_FIELD} />}
+                    {id => <input id={id} value={name} onChange={e => setName(e.target.value)} placeholder="Delta Air Lines" autoComplete="off" autoFocus className={FIELD} />}
                 </RpField>
                 <div className="grid grid-cols-[6rem_1fr] gap-3">
                     <RpField label="Code" icon={Tag}>
-                        {id => <input id={id} value={code} onChange={e => setCode(e.target.value.toUpperCase())} maxLength={3} placeholder="DL" autoComplete="off" className={cn(RP_FIELD, 'font-mono uppercase')} />}
+                        {id => <input id={id} value={code} onChange={e => setCode(e.target.value.toUpperCase())} maxLength={3} placeholder="DL" autoComplete="off" className={cn(FIELD, 'font-mono uppercase')} />}
                     </RpField>
                     <RpField label="Website" icon={Globe}>
-                        {id => <input id={id} value={domain} onChange={e => setDomain(e.target.value)} placeholder="delta.com" autoComplete="off" inputMode="url" className={RP_FIELD} />}
+                        {id => <input id={id} value={domain} onChange={e => setDomain(e.target.value)} placeholder="delta.com" autoComplete="off" inputMode="url" className={FIELD} />}
                     </RpField>
                 </div>
                 {error ? <p role="alert" className="text-sm text-rp-rust">{error}</p> : null}

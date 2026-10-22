@@ -10,6 +10,7 @@ import { CarriersPane } from '../../components/new/settings/CarriersPane';
 import { DataPane } from '../../components/new/settings/DataPane';
 import { card, StatTile } from '../../components/new/settings/SettingsParts';
 import { Airplane, Backpack, Database, Gear, Plugs, Users, type Icon } from '../../components/ui/hugeicons';
+import { countKeys } from '../../utils/settingsModel';
 import { cn } from '../../utils/cn';
 
 /**
@@ -85,9 +86,7 @@ export const SettingsNew: React.FC<SettingsNewProps> = ({ theme, isDark, onTheme
     }
 
     const { settings, users } = data;
-    const keyFields = ['googleGeminiApiKey', 'aviationStackApiKey', 'aeroDataBoxApiKey', 'openAipApiKey'] as const;
-    const keysSet = keyFields.filter(k => settings.configuredKeys?.[k]).length + (settings.brandfetchApiKey ? 1 : 0) + (settings.cartoApiKey ? 1 : 0);
-    const fromHost = keyFields.filter(k => settings.keySources?.[k] === 'env').length;
+    const { set: keysSet, fromHost, total: keyTotal } = countKeys(settings);
     const gearCount = settings.masterPackingList?.length ?? 0;
     const carrierCount = settings.carriers?.length ?? 0;
     const admins = users.filter(u => u.role === 'Admin').length;
@@ -108,7 +107,7 @@ export const SettingsNew: React.FC<SettingsNewProps> = ({ theme, isDark, onTheme
 
                 <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
                     <StatTile tone="ink" icon={Users} value={users.length} unit={users.length === 1 ? 'member' : 'members'} sub={`${admins} ${admins === 1 ? 'admin' : 'admins'}`} />
-                    <StatTile tone="green" icon={Plugs} value={keysSet} unit={keysSet === 1 ? 'key' : 'keys'} sub={fromHost > 0 ? `${fromHost} from the host` : 'of 6 services'} />
+                    <StatTile tone="green" icon={Plugs} value={keysSet} unit={keysSet === 1 ? 'key' : 'keys'} sub={fromHost > 0 ? `${fromHost} from the host` : `of ${keyTotal} services`} />
                     <StatTile tone="mustard" icon={Backpack} value={gearCount} unit="gear" sub={`${carrierCount} ${carrierCount === 1 ? 'carrier' : 'carriers'}`} />
                 </div>
 

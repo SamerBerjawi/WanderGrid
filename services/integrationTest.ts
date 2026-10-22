@@ -62,7 +62,7 @@ export const testKeyed = async (service: KeyedService): Promise<TestResult> => {
         const r = await dataService.testApiKey(service);
         return { success: Boolean(r.success), latencyMs: r.latencyMs || 0, message: r.message || (r.success ? 'Operational' : 'Unavailable'), at: Date.now() };
     } catch (e) {
-        const message = e instanceof Error && e.message === 'API Route Not Found' ? 'Testing keys needs the server' : e instanceof Error && e.message ? e.message : 'Connection failed';
+        const message = e instanceof Error && /route not found/i.test(e.message) ? 'Testing a key needs the server' : e instanceof Error && e.message ? e.message : 'Connection failed';
         return { success: false, latencyMs: 0, message, at: Date.now() };
     }
 };

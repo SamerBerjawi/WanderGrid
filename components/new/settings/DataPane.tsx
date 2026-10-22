@@ -105,7 +105,7 @@ const BackupSheet: React.FC<{ open: boolean; data: SettingsData; onClose: () => 
                     ))}
                 </RpSection>
                 {percent !== null ? <Progress percent={percent} label="Reading your data" /> : null}
-                {error ? <p role="alert" className="text-sm text-rp-rust">{error}</p> : null}
+                {error ? <p role="alert" className="text-sm break-words text-rp-rust">{error}</p> : null}
             </div>
         </RpSheet>
     );
@@ -193,7 +193,7 @@ const RestoreSheet: React.FC<{ file: { name: string; state: any } | null; onClos
                             <span>Replacing overwrites your current {BACKUP_CATEGORIES.filter(c => sel[c.key]).map(c => CATEGORY_LABEL[c.key].toLowerCase()).join(', ') || 'data'}. Download a backup first if you may need it.</span>
                         </p>
                     ) : null}
-                    {error ? <p role="alert" className="text-sm text-rp-rust">{error}</p> : null}
+                    {error ? <p role="alert" className="text-sm break-words text-rp-rust">{error}</p> : null}
                 </div>
             ) : null}
         </RpSheet>
@@ -239,8 +239,8 @@ const RefreshSheet: React.FC<{ open: boolean; onClose: () => void; onDone: (mess
             <div className="flex flex-col gap-3">
                 {!available ? <p className="text-sm text-rp-muted">This needs the server. Local mode has no lists to refresh.</p> : null}
                 {percent !== null ? <Progress percent={percent} label="Refreshing" /> : null}
-                {message ? <p role="status" className="text-sm text-rp-green">{message}</p> : null}
-                {error ? <p role="alert" className="text-sm text-rp-rust">{error}</p> : null}
+                {message ? <p role="status" className="text-sm break-words text-rp-green">{message}</p> : null}
+                {error ? <p role="alert" className="text-sm break-words text-rp-rust">{error}</p> : null}
             </div>
         </RpSheet>
     );
