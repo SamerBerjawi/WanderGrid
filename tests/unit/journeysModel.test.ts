@@ -210,3 +210,19 @@ describe('passengers', () => {
         expect(byPassenger([record(flight('3', 'AMS', 'LHR', '2026-02-01', '10:00', '2026-02-01', '11:00'))])).toEqual([]);
     });
 });
+
+describe('manual grouping', () => {
+    it('keeps an "alone" flight out of detection and joins legs sharing a key', async () => {
+        const { groupJourneys } = await import('../../utils/journeysModel');
+        const a = flight('1', 'AMS', 'FRA', '2026-03-01', '08:00', '2026-03-01', '09:20', { confirmationCode: '' });
+        const b = flight('2', 'FRA', 'JFK', '2026-03-01', '11:00', '2026-03-01', '14:00', { confirmationCode: '' });
+        expect(groupJourneys([record(a), record(b)]).filter(u => u.kind === 'journey')).toHaveLength(1);
+        const apart = groupJourneys([record({ ...a, journeyKey: 'alone' }), record(b)]);
+        expect(apart.every(u => u.kind === 'single')).toBe(true);
+        const c = flight('3', 'JFK', 'SFO', '2026-06-01', '09:00', '2026-06-01', '12:00', { confirmationCode: '' });
+        const d = flight('4', 'LAX', 'AMS', '2026-06-20', '09:00', '2026-06-21', '04:00', { confirmationCode: '' });
+        const joined = groupJourneys([record({ ...c, journeyKey: 'j:x' }), record({ ...d, journeyKey: 'j:x' })]);
+        expect(joined).toHaveLength(1);
+        expect(joined[0].kind === 'journey' && joined[0].group.source).toBe('manual');
+    });
+});

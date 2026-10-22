@@ -676,6 +676,25 @@ export const useFlightLog = () => {
     refreshData();
   };
 
+  /** Sets or clears how flights are grouped by hand: `alone`, a shared `j:` key, or undefined for automatic. */
+  const setJourneyKey = async (records: FlightRecord[], key: string | undefined): Promise<void> => {
+    const ids = new Set(records.map(r => r.flight.id));
+    const upsertFlights: Transport[] = [];
+    const touched = new Map<string, Trip>();
+    for (const r of records) {
+      const next = { ...r.flight, journeyKey: key };
+      if (key === undefined) delete next.journeyKey;
+      if (isUnassigned(r.trip.id)) upsertFlights.push(next);
+      else {
+        const t = touched.get(r.trip.id) ?? (() => { const f = trips.find(x => x.id === r.trip.id); return f ? { ...f, transports: [...(f.transports || [])] } : undefined; })();
+        if (t) { t.transports = (t.transports || []).map(x => (x.id === next.id ? next : x)); touched.set(t.id, t); }
+      }
+    }
+    if (ids.size === 0) return;
+    await dataService.applyBatch({ upsertTrips: Array.from(touched.values()), upsertFlights });
+    refreshData();
+  };
+
   /**
    * Makes a trip from flights: named for where the first leg goes, spanning their dates, holding them. They
    * leave the independent list (or the trip they were on). Gives back the trip and a function that undoes it.
@@ -893,7 +912,7 @@ export const useFlightLog = () => {
     isEditing, setIsEditing, editingFlight, form, patchForm, openFlightForm, saveFlight, saveDraft, flightFormError, isSavingFlight,
     showManualFields, setShowManualFields, searchedFlights, setSearchedFlights, isRouteSearching, routeSearchError, searchRouteFlights, selectRouteFlight,
     // whole-record writes
-    saveJourney, assignJourneys, deleteJourneys, createTripFromFlights,
+    saveJourney, assignJourneys, setJourneyKey, deleteJourneys, createTripFromFlights,
     // derived
     filteredFlights, groupedFlights, groupedByYear, nextUpcomingFlight, metrics, uniqueYears, monthlyData,
   };

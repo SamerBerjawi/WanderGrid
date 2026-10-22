@@ -93,6 +93,8 @@ export interface Transport {
   isExitRow?: boolean;
   /** New pages: which of the trip's members flew this leg. Absent means everyone on the trip. */
   passengers?: string[];
+  /** New pages: overrides how the Flights page groups this leg. `alone` keeps it out of any journey; `j:<id>` joins every leg with the same key. */
+  journeyKey?: string;
   cost?: number;
   
   // Car Rental Specifics

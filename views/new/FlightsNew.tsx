@@ -177,6 +177,17 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
         { flight: rec.flight, tripId: isIndependent(rec.trip.id) ? 'unassigned' : rec.trip.id }
     );
 
+    // Grouping by hand: join flights as one journey, or say they are not one; both can be undone.
+    const regroup = (records: JourneyRecord[], key: string | undefined, message: string) => attempt(async () => {
+        const before = records.map(r => ({ rec: r, key: r.flight.journeyKey }));
+        await log.setJourneyKey(records, key);
+        undo.show(message, () => attempt(async () => {
+            for (const k of new Set(before.map(b => b.key))) await log.setJourneyKey(before.filter(b => b.key === k).map(b => b.rec), k);
+        }));
+    });
+    const joinJourney = (records: JourneyRecord[]) => regroup(records, `j:${Math.random().toString(36).slice(2, 9)}`, `Joined ${records.length} flights as one journey`);
+    const separate = (records: JourneyRecord[]) => regroup(records, 'alone', `${records.length} flights are separate now`);
+
     const assign = (records: JourneyRecord[], tripId: string) => attempt(async () => {
         const before = records.map(r => ({ rec: r, tripId: isIndependent(r.trip.id) ? 'unassigned' : r.trip.id }));
         await log.assignJourneys(records, tripId);
@@ -409,6 +420,15 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                                 ...tripChoices.slice(0, 30).map(t => ({ id: t.id, label: t.name, icon: Suitcase, onSelect: () => void assign(tickets, t.id).then(() => setSelected(new Set())) })),
                             ]}
                         />
+                        <TripMenu
+                            label="Group the selected flights"
+                            pill={{ label: 'Group', icon: Stack }}
+                            items={[
+                                { id: 'join', label: 'Join as one journey', icon: Stack, onSelect: () => { if (tickets.length >= 2) void joinJourney(tickets).then(() => setSelected(new Set())); } },
+                                { id: 'alone', label: 'Show separately', icon: X, onSelect: () => { if (tickets.length) void separate(tickets).then(() => setSelected(new Set())); } },
+                                { id: 'auto', label: 'Group automatically', icon: ArrowsClockwise, onSelect: () => { if (tickets.length) void regroup(tickets, undefined, 'Back to automatic grouping').then(() => setSelected(new Set())); } },
+                            ]}
+                        />
                         <button type="button" disabled={tickets.length === 0} onClick={() => setDeleting(tickets)} aria-label="Delete selected flights" className="inline-flex size-11 items-center justify-center rounded-full outline-none hover:bg-rp-on-ink/10 focus-visible:ring-2 focus-visible:ring-rp-paper disabled:opacity-40">
                             <Trash size={18} />
                         </button>
@@ -438,6 +458,8 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                 onRenameTrip={(tripId, name) => attempt(async () => { const t = log.trips.find(x => x.id === tripId); if (t) await dataService.updateTrip({ ...t, name }); })}
                 onTakeOff={rec => void assign([rec], 'unassigned')}
                 onCreateTrip={group => { setTimelineId(null); void makeTrip(group.legs); }}
+                onSeparate={group => { setTimelineId(null); void separate(group.legs); }}
+                onAuto={group => { setTimelineId(null); void regroup(group.legs, undefined, 'Back to automatic grouping'); }}
                 brandfetchApiKey={brandfetchApiKey}
             />
             <JourneyEditor

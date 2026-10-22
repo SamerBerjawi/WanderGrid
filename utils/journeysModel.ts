@@ -269,7 +269,7 @@ export interface JourneyGroup {
     /** Changes of plane inside a leg of the journey (connections of 24 hours or less). */
     stops: number;
     /** Where the group came from: a trip, a shared booking or itinerary, or found by matching the flights up. */
-    source: 'trip' | 'booking' | 'detected';
+    source: 'trip' | 'booking' | 'detected' | 'manual';
 }
 
 export type JourneyUnit = { kind: 'single'; rec: JourneyRecord } | { kind: 'journey'; group: JourneyGroup };
@@ -360,8 +360,14 @@ export const groupJourneys = (items: JourneyRecord[]): JourneyUnit[] => {
         if (r.flight.itineraryId) return { key: `it:${r.flight.itineraryId}`, source: 'booking' };
         return null;
     };
+    // Choices made by hand come first: "alone" legs stay single, and legs sharing a `j:` key form one journey.
+    const manual = new Map<string, JourneyRecord[]>();
+    for (const r of items) { const k = r.flight.journeyKey; if (k?.startsWith('j:')) manual.set(k, [...(manual.get(k) || []), r]); }
+    const joined = new Set<string>();
+    for (const list of manual.values()) if (list.length >= 2) list.forEach(r => joined.add(r.flight.id));
+    const pool = items.filter(r => r.flight.journeyKey !== 'alone' && !joined.has(r.flight.id));
     const buckets = new Map<string, { list: JourneyRecord[]; source: JourneyGroup['source'] }>();
-    for (const r of items) {
+    for (const r of pool) {
         const k = keyOf(r);
         if (k) { const b = buckets.get(k.key) ?? { list: [], source: k.source }; b.list.push(r); buckets.set(k.key, b); }
     }
@@ -373,7 +379,12 @@ export const groupJourneys = (items: JourneyRecord[]): JourneyUnit[] => {
         b.list.forEach(r => placed.add(r.flight.id));
         groups.push({ id, list: b.list, source: b.source, trip: b.list[0].trip });
     }
-    const loose = items.filter(r => isIndependent(r.trip.id) && !placed.has(r.flight.id));
+    for (const [id, list] of manual) {
+        if (list.length < 2) continue;
+        list.forEach(r => placed.add(r.flight.id));
+        groups.push({ id, list, source: 'manual', trip: list[0].trip });
+    }
+    const loose = pool.filter(r => isIndependent(r.trip.id) && !placed.has(r.flight.id));
     for (const list of detect(loose)) {
         const sorted = [...list].sort((a, b) => depMs(a.flight) - depMs(b.flight));
         list.forEach(r => placed.add(r.flight.id));
