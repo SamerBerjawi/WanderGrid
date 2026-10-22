@@ -586,7 +586,6 @@ The view inventory below lists which **features** each New page inherits, and su
 | 18 | Map toolbar on phones (Atlas review 2) | On phones the map tool dock sits at the top, in the header row beside the theme toggle and avatar (the brand pill is hidden there); the view selector stays at the bottom, above the tab bar |
 | 19 | Basemap labels (Atlas review 2) | Every vector basemap uses the Streets label density by zoom: countries to z9 (smaller from z2), states z5–8, cities z3+, towns z6+, villages z9+, other places z8+, no continent labels |
 | 20 | Route colours on the New map | Default route colour is **Transport**: flights rust, rail ink (near-black on light basemaps, near-white on dark), road green, sea dashed in mustard (ochre on light basemaps). No legend. Gradient, Frequency and Status stay in Map settings. Stored as a New-map setting so the original map keeps its own choice |
-| 21 | Route colours, revised (MapNew review, 2026-10-21) | Supersedes 20. Flights take a **regional colour gradient** (origin region blending into the destination's) or **Frequency**; land and sea legs keep one colour each; past, upcoming and planning show in opacity, not colour. The "Transport" colour mode is gone |
 | 21 | Atlas world map cities (Atlas review 3) | The world map can mark cities (those with coordinates) as rust dots, hover label, click opens the city; a Cities toggle in the map header shows or hides them (on by default, remembered). The country sheet shows what the log holds for the country (trips with dates that open the trip, flights landing there, road trips, last visit). Adding a city rejects text the geocoder can't place, with the error inside the popover |
 | 22 | TripsNew page (Trips build) | One-line title "Trips", three tiles (Trips coming green, Days away ink, Places mustard), then the toolbar (Board / List toggle, search, New trip), year chips and an Archived chip. The board has three columns: **Planned** (mustard), **Confirmed** (green), **Past** (ink dot), each with its count and total days and a "+" that starts a trip in that status. Desktop shows all three, tablets scroll sideways, phones show one column at a time through Swipe Tabs whose selected pill takes the column's colour |
 | 23 | Changing status | Drag a card to another column (mouse, or a long press on touch). The "···" menu offers Move to… for keyboard and phones. Every move shows the ink Undo toast. A trip whose dates have passed stays in Past until its dates are edited |
@@ -610,3 +609,92 @@ The view inventory below lists which **features** each New page inherits, and su
 | 41 | Leave and privacy | Basics has **Leave** (No leave, or one of the workspace's leave types; shown only when the workspace has leave types) and **Who can see it** (Private or Public). With two or more leave types, **Split across leave types** turns the chips into rows: a leave-type menu, a days field (halves allowed) and, for a trip that crosses a year, "Any year" or a year chip. **Add a type** adds a row with the days still unassigned, and a line shows "N of M days assigned" (rust when over; it is a hint, not a block, because weekends and holidays may not count). The first row is the trip's main leave type. Switching the split off keeps that type and drops the split |
 | 42 | Cancelled trips | **Cancel trip** is in the trip menu (with Undo). Cancelled trips leave the board and appear under a **Cancelled** chip, listed with "Cancelled" in the When column; their menu offers **Restore as Planned**, Duplicate, Edit and Delete. The chip disappears when none are left |
 | 43 | Sorting and duplicating | **Sort: Date** is a pill at the end of the filter row: Date (the board's own order), Name, Destination, Longest first, Most expensive. It applies to columns, rows, list, Archived and Cancelled, and is remembered. **Duplicate** (trip menu) makes a Planned copy named "… (copy)" with new ids for every leg, stay and activity, with Undo |
+| 44 | Route colours, revised (MapNew review, 2026-10-21) | Supersedes 20. Flights take a **regional colour gradient** (origin region blending into the destination's) or **Frequency**; land and sea legs keep one colour each; past, upcoming and planning show in opacity, not colour. The "Transport" colour mode is gone |
+| 45 | TripNew page (Trip build) | One trip at `/trip-new/:id`, opened from the Trips page. A header card in the trip's status colour (ink while travelling, mustard planned, green confirmed, white past) with icon, dates, name, first three cities, total cost or countdown, the four-step status bar, members and the primary "Move to …" action; then four count tiles (Days ink, Transport rust, Stays mustard, Activities green) and **Swipe Tabs** whose selected pill takes the section's accent: Itinerary mustard, Bookings rust, Costs green, Gear and Notes ink |
+| 46 | TripNew sections | **Itinerary** is day by day (each leg on its departure and arrival day, each stay on check-in and check-out, activities by time) with logos and costs; **Bookings** lists every leg and stay with logos, references and an edit button; **Costs** shows the total, per person, per day and a transport / stays / activities breakdown with bars (no chart library yet); **Gear** is the packing list with progress and categories; **Notes** saves with a Particle Button. Every edit of legs, stays and activities opens the Trips edit sheet on the matching step |
+| 47 | TripNew not yet carried over | AI guide, weather, route map, the old calendar and table sub-views, flight import and ICS export from the old trip page. The old page's "delete all stays" bug (it ignores which stay was chosen) is not repeated |
+| 48 | TripNew Canvas | **Canvas** is a tab beside Itinerary: the whole plan on one grid, a row per day (two half-day slots each) with Transport, Stay and Activities side by side. A stay is one bar from its check-in afternoon to its check-out morning; unbooked nights show a dashed "No stay booked" bar (the arrival morning and departure afternoon don't count). Every chip and "Add" opens the trip sheet on its step. Phones stack one card per day. The tab pill is green; Costs, Gear and Notes are ink |
+| 49 | From and To on transport | Both are **place search fields** with suggestions, tuned to the kind of transport: Flight searches airports first (the field keeps the IATA code, e.g. AMS), Train and Bus stations, Cruise and Ferry ports, Car rental and Own car cities. Suggestions show an icon for the kind of place, its region and the IATA code; the To field ranks places near the trip's destination first. A picked place saves its exact coordinates on the leg (a green tick shows it is on the map); typed free text still works and is looked up on save as before. Coordinates are kept for the same text, so a save no longer looks every leg up again |
+| 50 | Transport mode accents | Each kind of transport has its own colour and icon, used for its icon, mode chip, logo fallback, IATA pill and map leg: **Flight rust, Train green, Bus ochre, Car rental ink, Own car plum, Cruise navy, Ferry sea**. Plum, navy and sea are new accent tokens (`rp-plum`, `rp-navy`, `rp-sea`), added because the original four accents cannot tell seven modes apart; use them only for modes and the Map tab. Ferry (ferry boat) and Cruise (ship) have different icons |
+| 51 | Leg details and road-trip stops | The transport editor has a folded **More details** section: class, seat type, exit row, terminals and gates, aircraft registration (flights); vehicle, pick-up and drop-off (car rental); distance (worked out from the two places when empty), website, notes and custom fields. Car legs also take **stops along the way** (place search, kind, "Add to visited places"), which are added to the Atlas when saved, and only for legs whose stops changed. Removing a leg hands its price to another leg of the same booking |
+| 52 | TripNew map | The trip on the New map engine (route-and-pins mode): legs as routes, airports, stays and stops as pins, framed to fit. Since decision 58 it is in the header card, and the tab beside it is the route planner (decision 56) |
+| 53 | TripNew header stats and budget | Six tiles: Days, Nights booked (with "of N"), km travelled, Transport (with excursions), Stays, Activities. **Costs** has a target budget: type it once; a bar shows spent against it, green while under and rust with "$N over" when above |
+| 54 | Canvas drag and drop | Activities, transport legs and stays can be dragged to another day (mouse, a long press on touch, or the keyboard). A leg or stay keeps its length and moves as a whole; each move saves at once and shows Undo. Stays that share nights sit side by side |
+| 55 | TripNew in production | `/trip-new/:id` is served by the same app shell as the other New pages. Trips opened from the Trips, Map and Atlas pages go to TripNew (a flight with no trip still goes to Flights); the trip menu keeps **Open trip** for the original page. Nothing outside the New pages links to a `-new` URL |
+| 56 | Route planner (TripNew, Route tab) | Replaces the earlier "route stops" list. The route is a **main journey** of legs (from, to, day, how: own car, rental, train, bus, ferry, cruise) that start where the last one ended, plus **day trips** from the places on the way. Under each stop: how many nights, its weather, and "Day trip from Amsterdam". A day trip (Amsterdam to Delft) has a day, a way of travelling and "Come back the same day", which adds the return leg. Each leg shows distance and time (estimated from the places: about 72 km, 54 min), and saving writes ordinary transports (tagged so the original trip page still reads them, day trips as excursions sharing one booking) and the trip's stops, so the whole journey shows on the map, the canvas and the itinerary. Flights stay under Bookings |
+| 57 | Weather | A small pill with an icon and the temperature: the day's high and low when the day is within the next two weeks, otherwise how it is there now. Shown at every stop and day trip in the planner, on the route stops in the trip header, and on a place in the Map page. Open-Meteo, no key, cached for 30 minutes, silent when unavailable |
+| 58 | Trip map in the header | The map sits in the trip's header card (beside the title on wide screens, below it on phones), on a **plain light or dark basemap** that follows the theme, with no overlays or animation; the person's own map settings stay on the Map page. Place names are in proper case everywhere (Paris, not PARIS; airport codes stay as codes) |
+| 59 | Compact trip header and three tiles | The header is one tight card: dates and actions on the first line, name and total cost on the second, the stops with their weather, a thin status bar, then members and the main action, with the map beside it (about 15rem tall). The numbers are **three tiles**: Days (with nights booked), km (with legs and excursions), Stays (with activities). The tiles are filled with their accent (Days ink, km green, Stays mustard), with a tick on the nights line when every night has a bed. Supersedes the six tiles of decision 53 |
+
+---
+
+## 8. Review adjustments: what the user changed after MapNew, AtlasNew and TripsNew were built
+
+These come from the user's review rounds on the first three New pages (2026-10-18 to 2026-10-21; PRs #17, #18, #19). Each item is a standing rule for the pages that follow (PlannerNew, TripNew, FlightsNew and the rest). Where an item changes something written earlier in this document, it says so. Items marked ◆ also have a row in the decisions log (§7).
+
+### 8.1 Colour: use the accents, in moderation
+
+- **The first build was too monotone.** Add accent colours from the palette, but not excessively: one accent per meaning, never decoration.
+- **Fill the surface, not only the icon.** On the Trips board the Planned (mustard) and Confirmed (green) tiles are tinted with their accent. The Ongoing tile stays ink. A tinted icon alone read as too timid.
+- **Selected pills take the accent of what they select.** Map view pills: All ink, Flights rust, Land & sea green, Scratch mustard. Atlas tabs fill with the accent of the list (Countries green and so on), as on the Map. The colour fades as the pill slides. ◆15
+- **Inactive tab icons carry their accent colour** (Map: flights rust, land & sea green, scratch ochre; Atlas the same).
+- **Stat tiles get accent icons in filled circles** (Atlas: Countries green, Cities ink, Wishlist mustard, Layovers rust).
+- **Toggles turn green when on.**
+- **Transport and accommodation icons use different accents:** transport rust, stays ochre.
+- **Mustard is too faint for icons or lines on light surfaces.** Use `rp-ochre` there (3.8:1) and keep mustard on dark surfaces. Sea routes follow the same rule. ◆20
+- **Contrast between canvas and containers must hold in both themes.** Trips lanes were distinct in dark mode but merged with the background in light mode; light mode needs its own lane fill. Check every container against the canvas in light *and* dark.
+
+### 8.2 Chrome: nav, tab bar, tool dock
+
+- **Light in light mode, dark in dark mode** for the mobile tab bar and the tool dock (they use `rp-surface`; ink was flipped). ◆15
+- **The desktop/tablet menu bar is the exception:** ink pills, dark in light mode and light in dark mode, with no brighter backdrop or shadow behind the row. ◆16
+- **The menu stays centred** between the brand and the right-hand buttons. A phone-only layout fix must not leak to larger screens (a stray auto margin once pushed it left).
+- **No dark hairline borders on floating chrome.** The brand button, theme switch, avatar, view tabs, totals pill, tab bar and dock use a soft shadow instead of the dark-mode border that surfaces normally get.
+- **Hover must not flash rectangles.** Hover only changes text colour. The pieces joining nav tabs stay constant, and tabs only separate on page change.
+- **Page icons in the desktop menu bar** from 1024px up; text-only on tablets so it still fits.
+- **The selected tool in the dock is a round ink plate**, matching the pill shape.
+- **Mobile tab names:** icon and count on every tab; only the active tab shows its name.
+
+### 8.3 Icons and logos
+
+- **Icon-only is not enough where meaning is ambiguous.** Use clear, specific Hugeicons: Fit all `Maximize01`, full screen `ArrowExpand` / exit `ArrowShrink`, map settings `Settings04`, Map tab `MapsGlobal01`, airports only `Airport02`, runway detail `EditRoad`, group nearby airports `SquaresUnite`. For a page's modes reuse the icon the old page used (Land & sea: mountain).
+- **Status chips carry icons everywhere a status appears** (chips, badges, pickers, legends): Visited check-circle, Live here house, Lived here history clock, Layover landing plane, Wishlist heart, Clear x-circle. Atlas and the scratch map share this one set. Planned, Confirmed, Ongoing and Past on Trips get icons too.
+- **When no logo is known, show the mode's default icon** (for example the ferry icon for an unknown ferry or cruise operator; the same for stays). It applies to every use of `RpLogo`, including the Map's detail sheet.
+- **Icons are searchable and customisable:** the Trips icon finder searches the whole Hugeicons set; use it for any user-chosen icon.
+
+### 8.4 Layout and density
+
+- **No wasted space in stat tiles.** When the stats sit above the content, each tile is a compact row (icon beside number). Beside a map they keep the larger stacked layout. Make key counts prominent.
+- **Page titles are one line, each word capitalised** ("Travel Atlas").
+- **Page toolbar.** Trips and Atlas have a toolbar that holds the view toggle, search and the "New" button. Do the same on later list pages.
+- **Map:** view selector at the bottom, totals top left, search at the top; on phones the tool dock moves into the header row and the brand pill is hidden. ◆17 ◆18
+- **Atlas:** the map takes half the width with the stats beside it (stats first on phones).
+- **Cap long lists.** Past trips show the 5 most recent with a fade and "Show all N", then expand grouped by year (the current year open, older years collapsed). The cap lifts while a search or filter is active. Never give a lane its own scroll area.
+- **Rows layouts wrap onto several lines**, they do not scroll horizontally.
+- **Show the first 3 of anything long, then "+N"** (cities, transports, stays) in cards, modals and list rows. List rows show more detail than board cards but still limit destinations.
+- **Don't show "N days ago" on past items.**
+- **Forms with several concerns become steps.** New trip is a three-step flow: 1. Trip basics, 2. Transport, 3. Stays.
+- **Detail modals follow the reference video, not a gimmick component.** The first trip detail used a KokonutUI card stack and was rejected; it was rebuilt as a clean modal showing transport and stays with logos, costs and dates.
+
+### 8.5 Motion and numbers
+
+- **Changing numbers roll.** When the selection changes (another route, another airport) the values animate with NumberFlow, like the totals pill; dates slide.
+- **Route animation speed is constant** (2,200 km/s), so longer routes take longer to draw. All routes start together; the loop restarts after the longest.
+- **Basemap labels** use Streets' density on every vector basemap. ◆19
+
+### 8.6 Map-specific
+
+- **Route colours by transport**, no legend. ◆20
+- **Settings sheet:** each tab is only as tall as its content, Reset sits right below it and is reachable on mobile; sliders adjust without switching tab; rows are label-left, options-right on desktop and label-over-options on mobile.
+- **Basemap picker:** previews fill the card with the name on a soft shade, grouped Auto / Light / Dark; picking a dark basemap switches the app to dark and a light one to light (one way only).
+- **Relief shading follows the basemap lightness**, not the app theme. The globe glow matches the basemap (warm haze on light, blue glow and faint stars on dark). Flights on the globe are elevated arcs, hidden behind the horizon.
+
+### 8.7 Feature parity on Trips (nothing the old page did is lost silently)
+
+Editing legs, stays and activities; destination lookup with coordinates; leave entitlement, leave allocation (including a split across leave types) and Private/Public; cancelled trips (viewable and restorable); sort options; duplicate trip; Undo on archive; Hold Button on delete. The leave split is stored on the trip but does not yet change balances anywhere in the app.
+
+### 8.8 How the user reviews
+
+- Decisions are made in short numbered lists after looking at the running page. Expect 5–13 small changes per round, often with screenshots.
+- The user asks for a commit after each round ("Commit these changes on feat/…").
+- Every round is checked at 375, 768, 1024 and 1440 in light and dark, with `tsc`, `lint:tokens` and the §6 grep, and anything not seen on screen is stated.

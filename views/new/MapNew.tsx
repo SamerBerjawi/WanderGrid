@@ -22,6 +22,7 @@ import { MapDetailSheet, type MapSelection } from '../../components/new/map/MapD
 import { RpEmpty, useIsMobile } from '../../components/new/ui';
 import { cn } from '../../utils/cn';
 import { MAP_PATH, readMapLink } from '../../utils/mapLinks';
+import { formatProperLocationName } from '../../services/geocoding';
 
 /**
  * MapNew (UI_UX_DESIGN_REFERENCE.md §5.0): the redesigned map at /map-new. Features come from the
@@ -388,7 +389,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                     className="pointer-events-none absolute z-tooltip -translate-x-1/2 -translate-y-[calc(100%+12px)] whitespace-nowrap rounded-full bg-rp-ink px-3 py-1.5 text-xs font-medium text-rp-on-ink rp-shadow-raised"
                     style={{ left: hover.x, top: hover.y }}
                 >
-                    {hover.kind === 'route' ? `${hover.route.origin} → ${hover.route.destination} · ${hover.route.count}×`
+                    {hover.kind === 'route' ? `${formatProperLocationName(hover.route.origin)} → ${formatProperLocationName(hover.route.destination)} · ${hover.route.count}×`
                         : hover.kind === 'place' ? `${hover.place.label} · ${hover.place.count}`
                         : hover.kind === 'pin' ? hover.name
                         : hover.name}

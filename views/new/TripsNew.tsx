@@ -271,6 +271,7 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
                                 label="Trip status"
                                 className="w-full"
                                 stretch
+                                compact
                                 listClassName="bg-rp-surface rp-shadow-soft"
                                 activeColor={STAGE_PILL[stage].bg}
                                 activeTextColor={STAGE_PILL[stage].text}

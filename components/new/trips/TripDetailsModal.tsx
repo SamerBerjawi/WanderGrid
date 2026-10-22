@@ -10,7 +10,8 @@ import {
 } from '../../ui/hugeicons';
 import { RpLogo, useIsMobile } from '../ui';
 import { stayIcon } from './stayIcon';
-import { STAY_ACCENT, TRANSPORT_ACCENT } from './accents';
+import { STAY_ACCENT } from './accents';
+import { MODE_LOOKS, modeLook } from './transportModes';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -22,11 +23,11 @@ import { cn } from '../../../utils/cn';
 
 export interface TripOrigin { x: number; y: number; width: number }
 
-type Look = 'ink' | TripBucket;
-interface Skin {
+export type Look = 'ink' | TripBucket;
+export interface Skin {
     card: string; muted: string; panel: string; line: string; bar: string; track: string; outline: string; primary: string; ring: string;
 }
-const SKINS: Record<Look, Skin> = {
+export const SKINS: Record<Look, Skin> = {
     ink: {
         card: 'bg-rp-ink text-rp-on-ink', muted: 'text-rp-on-ink/70', panel: 'bg-rp-on-ink/10', line: 'border-rp-on-ink/15', bar: 'bg-rp-mustard', track: 'bg-rp-on-ink/20',
         outline: 'border-rp-on-ink/40 text-rp-on-ink hover:bg-rp-on-ink/10', primary: 'bg-rp-mustard text-rp-on-mustard hover:bg-rp-mustard/90', ring: 'border-rp-on-ink/30 hover:bg-rp-on-ink/10',
@@ -45,21 +46,21 @@ const SKINS: Record<Look, Skin> = {
     },
 };
 
-const STEPS = ['Planned', 'Confirmed', 'Travelling', 'Done'] as const;
-const MODE_ICON: Record<string, Icon> = { Flight: Airplane, Train, Bus, 'Car Rental': Car, 'Personal Car': CarProfile, Cruise: Boat, Ferry: Boat };
+export const STEPS = ['Planned', 'Confirmed', 'Travelling', 'Done'] as const;
+export const MODE_ICON: Record<string, Icon> = Object.fromEntries(MODE_LOOKS.map(m => [m.mode, m.icon]));
 const SHOW = 3;
 
-const when = (date?: string, time?: string) => (date ? [formatDate(date, 'short'), time].filter(Boolean).join(' ') : '');
-const money = (n?: number) => (n != null && n > 0 ? formatCurrency(n) : undefined);
-const initials = (name?: string) => (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]!.toUpperCase()).join('');
-const nights = (a?: string, b?: string) => {
+export const when = (date?: string, time?: string) => (date ? [formatDate(date, 'short'), time].filter(Boolean).join(' ') : '');
+export const money = (n?: number) => (n != null && n > 0 ? formatCurrency(n) : undefined);
+export const initials = (name?: string) => (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]!.toUpperCase()).join('');
+export const nights = (a?: string, b?: string) => {
     if (!a || !b) return undefined;
     const n = Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000);
     return n > 0 ? `${n} ${n === 1 ? 'night' : 'nights'}` : undefined;
 };
 
 /** The next status the primary button offers, or null when the trip is already done. */
-const nextMove = (bucket: TripBucket): { to: TripBucket; label: string } | null =>
+export const nextMove = (bucket: TripBucket): { to: TripBucket; label: string } | null =>
     bucket === 'planned' ? { to: 'confirmed', label: 'Move to Confirmed' } : bucket === 'confirmed' ? { to: 'past', label: 'Mark as done' } : null;
 
 /* ------------------------------------------------------------------ */
@@ -216,7 +217,7 @@ const Body: React.FC<{
                             <Row
                                 key={t.id}
                                 skin={skin}
-                                logo={<RpLogo name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={Mode} iconClassName={TRANSPORT_ACCENT} />}
+                                logo={<RpLogo name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={Mode} iconClassName={modeLook(t.mode).text} />}
                                 title={`${t.origin} → ${t.destination}`}
                                 meta={[t.provider, t.identifier, when(t.departureDate, t.departureTime)].filter(Boolean).join(' · ')}
                                 cost={money(t.cost)}
