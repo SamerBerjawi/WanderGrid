@@ -16,7 +16,7 @@ import { cn } from '../../../utils/cn';
 
 const Field: React.FC<{ label: string; value?: React.ReactNode; icon?: Icon; onFill?: boolean; className?: string }> = ({ label, value, icon: IconC, onFill, className }) => (
     <div className={cn('flex min-w-0 flex-col', className)}>
-        <dt className={cn('flex items-center gap-1 text-2xs', onFill ? 'opacity-70' : 'text-rp-muted')}>{IconC ? <IconC size={12} aria-hidden /> : null}{label}</dt>
+        <dt className={cn('flex items-center gap-1 text-2xs', onFill ? 'opacity-70' : 'text-rp-muted')}>{IconC ? <IconC size={12} className={onFill ? undefined : 'text-rp-ochre'} aria-hidden /> : null}{label}</dt>
         <dd className="rp-tabular truncate text-sm font-medium">{value || '—'}</dd>
     </div>
 );
@@ -24,8 +24,8 @@ const Field: React.FC<{ label: string; value?: React.ReactNode; icon?: Icon; onF
 /** Terminal and gate, each with its icon. */
 const gate = (terminal?: string, g?: string): React.ReactNode => (terminal || g ? (
     <span className="inline-flex items-center gap-2">
-        {terminal ? <span className="inline-flex items-center gap-1"><Airport size={13} aria-hidden /><span className="sr-only">Terminal </span>{terminal}</span> : null}
-        {g ? <span className="inline-flex items-center gap-1"><DoorOpen size={13} aria-hidden /><span className="sr-only">Gate </span>{g}</span> : null}
+        {terminal ? <span className="inline-flex items-center gap-1"><Airport size={13} className="text-rp-ochre" aria-hidden /><span className="sr-only">Terminal </span>{terminal}</span> : null}
+        {g ? <span className="inline-flex items-center gap-1"><DoorOpen size={13} className="text-rp-ochre" aria-hidden /><span className="sr-only">Gate </span>{g}</span> : null}
     </span>
 ) : undefined);
 

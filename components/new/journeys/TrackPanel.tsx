@@ -34,7 +34,7 @@ const STATE: Record<string, { label: string; tone: string }> = {
 
 const Row: React.FC<{ label: string; value?: React.ReactNode; icon?: Icon }> = ({ label, value, icon: IconC }) => (
     <div className="flex min-h-9 items-center justify-between gap-3 text-sm">
-        <span className="flex items-center gap-1.5 text-rp-muted">{IconC ? <IconC size={14} aria-hidden /> : null}{label}</span>
+        <span className="flex items-center gap-1.5 text-rp-muted">{IconC ? <IconC size={14} className="text-rp-ochre" aria-hidden /> : null}{label}</span>
         <span className="rp-tabular text-right font-medium text-rp-ink">{value || '—'}</span>
     </div>
 );
@@ -42,8 +42,8 @@ const Row: React.FC<{ label: string; value?: React.ReactNode; icon?: Icon }> = (
 /** Terminal and gate on one line, each with its icon. */
 const terminalGate = (terminal?: string, gate?: string): React.ReactNode => (terminal || gate ? (
     <span className="inline-flex items-center gap-3">
-        {terminal ? <span className="inline-flex items-center gap-1"><Airport size={14} aria-hidden /><span className="sr-only">Terminal </span>{terminal}</span> : null}
-        {gate ? <span className="inline-flex items-center gap-1"><DoorOpen size={14} aria-hidden /><span className="sr-only">Gate </span>{gate}</span> : null}
+        {terminal ? <span className="inline-flex items-center gap-1"><Airport size={14} className="text-rp-ochre" aria-hidden /><span className="sr-only">Terminal </span>{terminal}</span> : null}
+        {gate ? <span className="inline-flex items-center gap-1"><DoorOpen size={14} className="text-rp-ochre" aria-hidden /><span className="sr-only">Gate </span>{gate}</span> : null}
     </span>
 ) : undefined);
 

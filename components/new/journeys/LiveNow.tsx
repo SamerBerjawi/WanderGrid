@@ -28,8 +28,8 @@ export const LiveNow: React.FC<{ items: JourneyRecord[]; onOpen: (r: JourneyReco
     const door = data?.departure.gate;
     const gate = terminal || door ? (
         <span className="inline-flex items-center gap-3">
-            {terminal ? <span className="inline-flex items-center gap-1"><Airport size={14} aria-hidden /><span className="sr-only">Terminal </span>{terminal}</span> : null}
-            {door ? <span className="inline-flex items-center gap-1"><DoorOpen size={14} aria-hidden /><span className="sr-only">Gate </span>{door}</span> : null}
+            {terminal ? <span className="inline-flex items-center gap-1"><Airport size={14} className="text-rp-mustard dark:text-rp-on-ink" aria-hidden /><span className="sr-only">Terminal </span>{terminal}</span> : null}
+            {door ? <span className="inline-flex items-center gap-1"><DoorOpen size={14} className="text-rp-mustard dark:text-rp-on-ink" aria-hidden /><span className="sr-only">Gate </span>{door}</span> : null}
         </span>
     ) : null;
     return (

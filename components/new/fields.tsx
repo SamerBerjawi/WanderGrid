@@ -10,7 +10,7 @@ export const RpField: React.FC<{ label: string; icon?: Icon; error?: string; chi
     const id = useId();
     return (
         <div className="flex flex-col gap-1.5 py-1.5">
-            <label htmlFor={id} className="flex items-center gap-1.5 text-xs text-rp-muted">{IconC ? <IconC size={14} aria-hidden /> : null}{label}</label>
+            <label htmlFor={id} className="flex items-center gap-1.5 text-xs text-rp-muted">{IconC ? <IconC size={14} className="text-rp-ochre" aria-hidden /> : null}{label}</label>
             {children(id)}
             {error ? <p role="alert" className="text-xs text-rp-rust">{error}</p> : null}
         </div>
