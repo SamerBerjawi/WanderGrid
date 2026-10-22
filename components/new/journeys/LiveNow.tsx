@@ -4,9 +4,9 @@ import { useLiveFlight } from '../../../hooks/useLiveFlight';
 import { CarrierCell, StatusPill } from './JourneyParts';
 import { FlightProgress } from './FlightProgress';
 import { formatDate } from '../../../utils/formatters';
-import { isLiveWindow, journeyStatus, type JourneyRecord } from '../../../utils/journeysModel';
+import { isIndependent, isLiveWindow, journeyStatus, type JourneyRecord } from '../../../utils/journeysModel';
 import { getFlightDepartureUtcDate } from '../../../utils/flightData';
-import { Airport, DoorOpen } from '../../ui/hugeicons';
+import { Airport, DoorOpen, Suitcase } from '../../ui/hugeicons';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -51,6 +51,9 @@ export const LiveNow: React.FC<{ items: JourneyRecord[]; onOpen: (r: JourneyReco
                 </span>
             </span>
             <FlightProgress flight={t} candidate={candidate} tone="onInk" />
+            {!isIndependent(rec.trip.id) ? (
+                <span className="inline-flex items-center justify-center gap-1.5 text-xs text-rp-on-ink/70"><Suitcase size={14} aria-hidden /> {rec.trip.name}{rec.trip.startDate ? ` · ${formatDate(rec.trip.startDate, 'short')} – ${formatDate(rec.trip.endDate || rec.trip.startDate, 'short')}` : ''}</span>
+            ) : null}
             <span className="rp-tabular text-center text-xs text-rp-on-ink/70 sm:hidden">{formatDate(t.departureDate, 'short')}{gate ? <> · {gate}</> : null}</span>
         </button>
     );

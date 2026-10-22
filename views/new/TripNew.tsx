@@ -9,6 +9,8 @@ import { errorMessage, toast } from '../../services/toast';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import { RpEmpty } from '../../components/new/ui';
 import NumberFlow from '@number-flow/react';
+import { openNewPage } from '../../components/new/devLinks';
+import { NextFlight } from '../../components/new/journeys/NextFlight';
 import { RpHugeicon } from '../../components/new/RpHugeicon';
 import { useUndoToast } from '../../components/new/UndoToast';
 import { TripMenu } from '../../components/new/trips/TripMenu';
@@ -283,6 +285,8 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
                         </Suspense>
                     </div>
                 </header>
+
+                <NextFlight records={(trip.transports || []).filter(t => t.mode === 'Flight').map(f => ({ flight: f, trip }))} brandfetchApiKey={data.brandfetchApiKey} showTrip={false} onOpen={() => openNewPage('/flights-new')} />
 
                 <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
                     <StatTile
