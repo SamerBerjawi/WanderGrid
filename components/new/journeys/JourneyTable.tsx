@@ -6,7 +6,7 @@ import { modeLook } from '../trips/transportModes';
 import { CarrierCell, DelayChip, StatusPill } from './JourneyParts';
 import { formatDate } from '../../../utils/formatters';
 import {
-    formatMinutes, groupJourneys, isIndependent, journeyKm, journeyMinutes, journeyRoute, journeyStatus, placeCode, placeName, yearOf,
+    formatMinutes, groupJourneys, isIndependent, layoverMinutes, journeyKm, journeyMinutes, journeyRoute, journeyStatus, placeCode, placeName, yearOf,
     type JourneyGroup, type JourneyRecord, type JourneySortKey,
 } from '../../../utils/journeysModel';
 import { cn } from '../../../utils/cn';
@@ -159,6 +159,22 @@ const Row: React.FC<RowProps> = ({ rec, now, selectedId, onOpen, menu, selecting
     );
 };
 
+/** The wait between two legs of a journey: a layover for a connection, a stay for a longer gap. */
+const GapRow: React.FC<{ a: JourneyRecord; b: JourneyRecord }> = ({ a, b }) => {
+    const mins = layoverMinutes(a.flight, b.flight);
+    if (mins <= 0) return null;
+    const stay = mins > 24 * 60;
+    const days = Math.round(mins / 1440);
+    const place = placeName(a.flight.destination) || placeCode(a.flight.destination);
+    return (
+        <div role="row" className="ml-3 flex min-h-9 items-center border-l-2 border-dashed border-rp-line pl-3 sm:ml-5">
+            <span role="cell" className={cn('rp-tabular inline-flex min-h-6 items-center rounded-full px-2.5 text-2xs font-semibold', stay ? 'bg-rp-mustard text-rp-on-mustard' : 'bg-rp-inset text-rp-muted')}>
+                {stay ? `${days} ${days === 1 ? 'day' : 'days'} in ${place}` : `Layover ${formatMinutes(mins)} in ${placeCode(a.flight.destination)}`}
+            </span>
+        </div>
+    );
+};
+
 /** The header row of a journey (flights that belong together): its route, dates, totals and status. Opens its legs. */
 const JourneyHeader: React.FC<{ group: JourneyGroup; open: boolean; onToggle: () => void; onTimeline: (g: JourneyGroup) => void; now: number }> = ({ group, open, onToggle, onTimeline, now }) => {
     const first = group.legs[0].flight;
@@ -168,7 +184,10 @@ const JourneyHeader: React.FC<{ group: JourneyGroup; open: boolean; onToggle: ()
     const states = group.legs.map(r => journeyStatus(r.flight, now));
     const state = states.some(s => s.state === 'travelling') ? states.find(s => s.state === 'travelling')! : states.find(s => s.state === 'scheduled') ?? states[states.length - 1];
     const route = journeyRoute(group.legs).join(' → ');
-    const name = isIndependent(group.trip.id) ? 'One booking' : group.trip.name;
+    const name = group.source === 'trip' ? group.trip.name : group.source === 'booking' ? 'One booking' : 'Found by matching';
+    const waits = group.legs.slice(1).map((r, i) => layoverMinutes(group.legs[i].flight, r.flight)).filter(m => m > 0 && m <= 24 * 60);
+    const kind = group.shape === 'round-trip' ? 'Round trip' : group.shape === 'multi-city' ? 'Multi-city' : group.stops > 0 ? `${group.stops} ${group.stops === 1 ? 'stop' : 'stops'}` : 'Connection';
+    const layover = waits.length ? ` · ${formatMinutes(waits.reduce((n, m) => n + m, 0))} layover` : '';
     return (
         <div role="row" className={cn('group/row relative flex items-center gap-3 rounded-rp-inset border-t border-rp-line px-3 py-2.5 first:border-t-0 md:py-1.5', GRID_MD, GRID_LG, 'bg-rp-inset/50 hover:bg-rp-inset')}>
             <div role="cell" className="min-w-0 md:col-span-2">
@@ -176,7 +195,7 @@ const JourneyHeader: React.FC<{ group: JourneyGroup; open: boolean; onToggle: ()
                     <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-rp-ink text-rp-on-ink"><Stack size={16} aria-hidden /></span>
                     <span className="flex min-w-0 flex-col">
                         <span className="rp-tabular truncate text-sm font-semibold text-rp-ink">{route}</span>
-                        <span className="truncate text-xs text-rp-muted">{group.legs.length} flights · {name}</span>
+                        <span className="truncate text-xs text-rp-muted">{kind}{layover} · {group.legs.length} flights · {name}</span>
                     </span>
                     <CaretDown size={16} className={cn('shrink-0 text-rp-muted transition-transform duration-150', open && 'rotate-180')} aria-hidden />
                 </button>
@@ -272,7 +291,12 @@ export const JourneyTable: React.FC<{
             return (
                 <React.Fragment key={u.group.id}>
                     <JourneyHeader group={u.group} open={open} onToggle={() => setJourneyToggled(t => ({ ...t, [u.group.id]: !open }))} onTimeline={g => onTimeline?.(g)} now={now} />
-                    {open ? u.group.legs.map(rec => <Row key={rec.flight.id} rec={rec} {...rowProps} nested />) : null}
+                    {open ? u.group.legs.map((rec, i) => (
+                        <React.Fragment key={rec.flight.id}>
+                            {i > 0 ? <GapRow a={u.group.legs[i - 1]} b={rec} /> : null}
+                            <Row rec={rec} {...rowProps} nested />
+                        </React.Fragment>
+                    )) : null}
                 </React.Fragment>
             );
         });

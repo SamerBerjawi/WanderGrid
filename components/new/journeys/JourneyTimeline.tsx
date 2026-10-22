@@ -110,9 +110,11 @@ export const JourneyTimeline: React.FC<{
     onRenameTrip?: (tripId: string, name: string) => Promise<void> | void;
     /** Take one flight off its trip (it stays in the log). */
     onTakeOff?: (record: JourneyRecord) => void;
+    /** Make a trip of flights that are on no trip yet. */
+    onCreateTrip?: (group: JourneyGroup) => void;
     brandfetchApiKey?: string;
     carriers?: Carrier[];
-}> = ({ group, onClose, onOpenLeg, onOpenTrip, onRenameTrip, onTakeOff, brandfetchApiKey, carriers }) => {
+}> = ({ group, onClose, onOpenLeg, onOpenTrip, onRenameTrip, onTakeOff, onCreateTrip, brandfetchApiKey, carriers }) => {
     const mobile = useIsMobile();
     const kept = React.useRef(group);
     if (group) kept.current = group;
@@ -130,7 +132,7 @@ export const JourneyTimeline: React.FC<{
     const title = journeyRoute(g.legs).join(' → ');
     const first = g.legs[0].flight;
     const last = g.legs[g.legs.length - 1].flight;
-    const subtitle = `${formatDate(first.departureDate, 'short')}${last.departureDate !== first.departureDate ? ` – ${formatDate(last.departureDate, 'short-with-year')}` : `, ${new Date(first.departureDate).getFullYear()}`} · ${g.legs.length} flights`;
+    const subtitle = `${formatDate(first.departureDate, 'short')}${last.departureDate !== first.departureDate ? ` – ${formatDate(last.departureDate, 'short-with-year')}` : `, ${new Date(first.departureDate).getFullYear()}`} · ${g.legs.length} flights · ${g.shape === 'round-trip' ? 'round trip' : g.shape === 'multi-city' ? 'multi-city' : g.stops > 0 ? `${g.stops} ${g.stops === 1 ? 'stop' : 'stops'}` : 'connection'}`;
     const turn = g.outbound.length && g.returns.length ? layoverMinutes(g.outbound[g.outbound.length - 1].flight, g.returns[0].flight) : 0;
 
     const body = (
@@ -147,6 +149,14 @@ export const JourneyTimeline: React.FC<{
                     {turn > 0 ? <p className="rp-tabular -my-2 text-center text-xs text-rp-muted">{Math.round(turn / 1440) >= 1 ? `${Math.round(turn / 1440)} ${Math.round(turn / 1440) === 1 ? 'day' : 'days'} away` : `${formatMinutes(turn)} before the way back`}</p> : null}
                     <Section title="Way back" legs={g.returns} onOpen={onOpenLeg} onRemove={remove} brandfetchApiKey={brandfetchApiKey} carriers={carriers} />
                 </>
+            ) : null}
+            {!onTrip && onCreateTrip ? (
+                <RpSection title="Trip" icon={Suitcase}>
+                    <div className="flex min-h-11 items-center justify-between gap-3 py-1">
+                        <span className="min-w-0 truncate text-sm text-rp-muted">{g.source === 'detected' ? 'Matched by airports and dates' : 'Not on a trip'}</span>
+                        <button type="button" onClick={() => onCreateTrip(g)} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-rp-ink px-4 text-sm font-medium text-rp-on-ink outline-none hover:bg-rp-ink/90 focus-visible:ring-2 focus-visible:ring-rp-muted"><Suitcase size={16} aria-hidden /> Create trip</button>
+                    </div>
+                </RpSection>
             ) : null}
             {onTrip ? (
                 <RpSection title="Trip" icon={Suitcase}>

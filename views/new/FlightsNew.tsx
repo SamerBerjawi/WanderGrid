@@ -48,7 +48,7 @@ const SORT_KEY = 'wandergrid_flights_new_sort';
 const NEW_FLIGHT_EVENT = 'rp:new-flight';
 const NOUN = { one: 'Flight', many: 'flights' };
 
-const readGroup = (): JourneyGrouping => { try { const v = localStorage.getItem(GROUP_KEY); return v === 'year' || v === 'journey' ? v : 'none'; } catch { return 'none'; } };
+const readGroup = (): JourneyGrouping => { try { const v = localStorage.getItem(GROUP_KEY); return v === 'year' || v === 'none' ? v : 'journey'; } catch { return 'journey'; } };
 const readSort = (): { key: JourneySortKey; asc: boolean } => {
     try {
         const [key, dir] = (localStorage.getItem(SORT_KEY) || '').split(':');
@@ -431,6 +431,7 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                 onOpenTrip={onTripClick ? id => { setTimelineId(null); onTripClick(id); } : undefined}
                 onRenameTrip={(tripId, name) => attempt(async () => { const t = log.trips.find(x => x.id === tripId); if (t) await dataService.updateTrip({ ...t, name }); })}
                 onTakeOff={rec => void assign([rec], 'unassigned')}
+                onCreateTrip={group => { setTimelineId(null); void makeTrip(group.legs); }}
                 brandfetchApiKey={brandfetchApiKey}
             />
             <JourneyEditor

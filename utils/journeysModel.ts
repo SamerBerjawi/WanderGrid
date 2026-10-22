@@ -214,6 +214,9 @@ export const splitLegs = (legs: JourneyRecord[]): { outbound: JourneyRecord[]; r
     return { outbound: sorted.slice(0, best), returns: sorted.slice(best) };
 };
 
+/** What a journey is: one-way flights joined by connections, there and back, or several cities. */
+export type JourneyShape = 'connection' | 'round-trip' | 'multi-city';
+
 export interface JourneyGroup {
     id: string;
     trip: Trip;
@@ -221,29 +224,131 @@ export interface JourneyGroup {
     legs: JourneyRecord[];
     outbound: JourneyRecord[];
     returns: JourneyRecord[];
+    shape: JourneyShape;
+    /** Changes of plane inside a leg of the journey (connections of 24 hours or less). */
+    stops: number;
+    /** Where the group came from: a trip, a shared booking or itinerary, or found by matching the flights up. */
+    source: 'trip' | 'booking' | 'detected';
 }
 
 export type JourneyUnit = { kind: 'single'; rec: JourneyRecord } | { kind: 'journey'; group: JourneyGroup };
 
+/** The longest wait that still counts as a connection, and the longest stay between legs of one multi-city or return journey. */
+const CONNECTION_MS = 24 * 3_600_000;
+const STAY_MS = 21 * 86_400_000;
+const SAME = (a: string, b: string) => placeCode(a) === placeCode(b);
+
 /**
- * Flights that belong together: the flights of one trip, or independent flights saved on the same
- * booking (same itinerary). Two or more make a journey; the rest stay single. The order of `items`
- * is kept, each journey sitting where its first flight was.
+ * Finds the journeys among flights that are on no trip and share no booking. Starting from the earliest
+ * unplaced flight, the next leg is the first later flight that leaves from where the last one landed:
+ * within 24 hours it is a connection; within three weeks it is a stay, and the chain is kept only if it
+ * gets back to where it began (a return, or a multi-city loop). A chain that never gets home keeps just
+ * its connections.
+ */
+const detect = (flights: JourneyRecord[]): JourneyRecord[][] => {
+    const left = [...flights].sort((a, b) => depMs(a.flight) - depMs(b.flight));
+    const used = new Set<string>();
+    const out: JourneyRecord[][] = [];
+    const nextLeg = (last: JourneyRecord, maxGap: number): JourneyRecord | undefined =>
+        left.find(c => {
+            if (used.has(c.flight.id) || c.flight.id === last.flight.id) return false;
+            if (!SAME(c.flight.origin, last.flight.destination)) return false;
+            const gap = depMs(c.flight) - arrMs(last.flight);
+            return gap >= 0 && gap <= maxGap;
+        });
+    for (const first of left) {
+        if (used.has(first.flight.id)) continue;
+        const take = (list: JourneyRecord[]) => { list.forEach(r => used.add(r.flight.id)); out.push(list); };
+        // Everything reachable within a stay, to see whether it gets home.
+        const chain = [first];
+        used.add(first.flight.id);
+        let guard = 0;
+        while (guard++ < 12) {
+            const n = nextLeg(chain[chain.length - 1], STAY_MS);
+            if (!n) break;
+            chain.push(n);
+            used.add(n.flight.id);
+            if (SAME(n.flight.destination, first.flight.origin)) break;
+        }
+        chain.forEach(r => used.delete(r.flight.id));
+        const home = chain.length > 1 && SAME(chain[chain.length - 1].flight.destination, first.flight.origin);
+        if (home) { take(chain); continue; }
+        // No way home: only the connections stay together.
+        const conn = [first];
+        used.add(first.flight.id);
+        for (;;) {
+            const n = nextLeg(conn[conn.length - 1], CONNECTION_MS);
+            if (!n) break;
+            conn.push(n);
+            used.add(n.flight.id);
+        }
+        conn.forEach(r => used.delete(r.flight.id));
+        take(conn);
+    }
+    return out.filter(g => g.length > 1);
+};
+
+/** Shape and stop count of a chronological set of legs. */
+const describe = (legs: JourneyRecord[]): { shape: JourneyShape; stops: number; outbound: JourneyRecord[]; returns: JourneyRecord[] } => {
+    const s = splitLegs(legs);
+    const home = legs.length > 1 && SAME(legs[legs.length - 1].flight.destination, legs[0].flight.origin);
+    let stops = 0;
+    legs.forEach((r, i) => { if (i > 0 && SAME(r.flight.origin, legs[i - 1].flight.destination) && depMs(r.flight) - arrMs(legs[i - 1].flight) <= CONNECTION_MS) stops += 1; });
+    // Where the person stayed: a leg's destination when the next leg leaves later than a connection (or there is no next leg).
+    const stays = new Set<string>();
+    legs.forEach((r, i) => {
+        const next = legs[i + 1];
+        const connects = next && SAME(next.flight.origin, r.flight.destination) && depMs(next.flight) - arrMs(r.flight) <= CONNECTION_MS;
+        const end = placeCode(r.flight.destination);
+        if (!connects && end !== placeCode(legs[0].flight.origin)) stays.add(end);
+    });
+    const shape: JourneyShape = stays.size >= 2 ? 'multi-city' : home && s.returns.length ? 'round-trip' : 'connection';
+    return { shape, stops, outbound: s.outbound, returns: s.returns };
+};
+
+/**
+ * Flights that belong together, so a journey reads as one row: the flights of one trip; independent flights
+ * on the same booking (itinerary or confirmation code); and, for the rest, connections, returns and
+ * multi-city journeys found by matching airports and dates (see `detect`). Two or more make a journey; the
+ * rest stay single. The order of `items` is kept, each journey sitting where its first flight was.
  */
 export const groupJourneys = (items: JourneyRecord[]): JourneyUnit[] => {
-    const keyOf = (r: JourneyRecord) => (isIndependent(r.trip.id) ? (r.flight.itineraryId ? `it:${r.flight.itineraryId}` : '') : `trip:${r.trip.id}`);
-    const buckets = new Map<string, JourneyRecord[]>();
-    for (const r of items) { const k = keyOf(r); if (k) buckets.set(k, [...(buckets.get(k) || []), r]); }
+    const keyOf = (r: JourneyRecord): { key: string; source: JourneyGroup['source'] } | null => {
+        if (!isIndependent(r.trip.id)) return { key: `trip:${r.trip.id}`, source: 'trip' };
+        if (r.flight.confirmationCode?.trim()) return { key: `pnr:${r.flight.confirmationCode.trim().toUpperCase()}`, source: 'booking' };
+        if (r.flight.itineraryId) return { key: `it:${r.flight.itineraryId}`, source: 'booking' };
+        return null;
+    };
+    const buckets = new Map<string, { list: JourneyRecord[]; source: JourneyGroup['source'] }>();
+    for (const r of items) {
+        const k = keyOf(r);
+        if (k) { const b = buckets.get(k.key) ?? { list: [], source: k.source }; b.list.push(r); buckets.set(k.key, b); }
+    }
+    // Booking groups of one flight don't count: those flights go on to the matching step.
+    const placed = new Set<string>();
+    const groups: { id: string; list: JourneyRecord[]; source: JourneyGroup['source']; trip: Trip }[] = [];
+    for (const [id, b] of buckets) {
+        if (b.list.length < 2) continue;
+        b.list.forEach(r => placed.add(r.flight.id));
+        groups.push({ id, list: b.list, source: b.source, trip: b.list[0].trip });
+    }
+    const loose = items.filter(r => isIndependent(r.trip.id) && !placed.has(r.flight.id));
+    for (const list of detect(loose)) {
+        const sorted = [...list].sort((a, b) => depMs(a.flight) - depMs(b.flight));
+        list.forEach(r => placed.add(r.flight.id));
+        groups.push({ id: `auto:${sorted[0].flight.id}`, list, source: 'detected', trip: sorted[0].trip });
+    }
+    const byFlight = new Map<string, typeof groups[number]>();
+    groups.forEach(g => g.list.forEach(r => byFlight.set(r.flight.id, g)));
     const seen = new Set<string>();
     const out: JourneyUnit[] = [];
     for (const r of items) {
-        const k = keyOf(r);
-        const list = k ? buckets.get(k)! : [];
-        if (list.length < 2) { out.push({ kind: 'single', rec: r }); continue; }
-        if (seen.has(k)) continue;
-        seen.add(k);
-        const legs = [...list].sort((a, b) => depMs(a.flight) - depMs(b.flight));
-        out.push({ kind: 'journey', group: { id: k, trip: r.trip, legs, ...(() => { const s = splitLegs(legs); return { outbound: s.outbound, returns: s.returns }; })() } });
+        const g = byFlight.get(r.flight.id);
+        if (!g) { out.push({ kind: 'single', rec: r }); continue; }
+        if (seen.has(g.id)) continue;
+        seen.add(g.id);
+        const legs = [...g.list].sort((a, b) => depMs(a.flight) - depMs(b.flight));
+        out.push({ kind: 'journey', group: { id: g.id, trip: g.trip, legs, source: g.source, ...describe(legs) } });
     }
     return out;
 };
