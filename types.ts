@@ -91,6 +91,8 @@ export interface Transport {
   seatNumber?: string;
   seatType?: 'Window' | 'Aisle' | 'Middle';
   isExitRow?: boolean;
+  /** New pages: which of the trip's members flew this leg. Absent means everyone on the trip. */
+  passengers?: string[];
   cost?: number;
   
   // Car Rental Specifics

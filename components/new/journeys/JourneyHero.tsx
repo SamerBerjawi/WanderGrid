@@ -3,9 +3,9 @@ import { cn } from '../../../utils/cn';
 import NumberFlow from '@number-flow/react';
 import { BarChart } from '../../bklit/bar-chart';
 import { RoutesMap } from './RoutesMap';
-import { Airplane, ArrowUpRight, Buildings, Clock, CurrencyDollar, Globe, Seat, Tree, type Icon } from '../../ui/hugeicons';
+import { Airplane, ArrowUpRight, Buildings, Clock, CurrencyDollar, Globe, Seat, Tree, Users, type Icon } from '../../ui/hugeicons';
 import { getActiveCurrency, formatCurrency } from '../../../utils/formatters';
-import { aroundTheWorld, byAirport, byCarrier, byClass, journeyTotals, mostFlownRoute, routeLines, totalCo2, totalsByYear, yearChange, type JourneyRecord, type Tally } from '../../../utils/journeysModel';
+import { aroundTheWorld, byAirport, byCarrier, byClass, byPassenger, journeyTotals, mostFlownRoute, routeLines, totalCo2, totalsByYear, yearChange, type JourneyRecord, type Tally } from '../../../utils/journeysModel';
 
 /**
  * The hero card of the Flights page, holding every number: three totals (flights, kilometres, hours in
@@ -96,6 +96,7 @@ export const JourneyHero: React.FC<{ items: JourneyRecord[] }> = ({ items }) => 
     const earth = aroundTheWorld(totals.km);
     const carriers = useMemo(() => byCarrier(items), [items]);
     const airports = useMemo(() => byAirport(items), [items]);
+    const people = useMemo(() => byPassenger(items), [items]);
     const classes = useMemo(() => byClass(items).filter(c => c.key !== 'Unknown'), [items]);
     const topRoute = useMemo(() => mostFlownRoute(items), [items]);
     const co2 = useMemo(() => totalCo2(items), [items]);
@@ -173,6 +174,8 @@ export const JourneyHero: React.FC<{ items: JourneyRecord[] }> = ({ items }) => 
                     note={co2 > 0 && totals.count > 0 ? `${tonnes(Math.round(co2 / totals.count))} a flight · ${tonnes(Math.round(co2 / Math.max(1, years.filter(y => y.count > 0).length)))} a year` : undefined}
                 />
             </div>
+
+            {people.length > 0 ? <Breakdown title="Who flew" icon={Users} rows={people} unit="flights" /> : null}
 
             <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
                 <Breakdown title="Airlines" icon={Buildings} rows={carriers} unit="flights" />

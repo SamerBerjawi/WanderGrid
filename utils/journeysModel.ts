@@ -474,6 +474,16 @@ export const byCarrier = (items: JourneyRecord[]): Tally[] =>
 export const byAirport = (items: JourneyRecord[]): Tally[] =>
     tally(items, r => [r.flight.origin, r.flight.destination].filter(p => p?.trim()).map(p => ({ key: placeCode(p), label: `${placeCode(p)} ${placeName(p)}`.trim() })));
 
+/** Who flew a leg: the people marked on it, else everyone on its trip. */
+export const passengersOf = (r: JourneyRecord): string[] =>
+    r.flight.passengers ?? (isIndependent(r.trip.id) ? [] : r.trip.participants || []);
+
+/** Flights per person, most flown first; empty when fewer than two people appear anywhere. */
+export const byPassenger = (items: JourneyRecord[]): Tally[] => {
+    const rows = tally(items, r => passengersOf(r).filter(n => n?.trim()).map(n => ({ key: n.trim().toLowerCase(), label: n.trim() })));
+    return rows.length >= 2 ? rows : [];
+};
+
 /** Flights per cabin class. */
 export const byClass = (items: JourneyRecord[]): Tally[] =>
     tally(items, r => [{ key: r.flight.travelClass || 'Unknown', label: r.flight.travelClass || 'No class' }]);

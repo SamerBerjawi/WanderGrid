@@ -197,3 +197,16 @@ describe('stats: CO₂, most flown route, year change', () => {
         expect(yearChange(years, 'count', '2025')).toBeNull();
     });
 });
+
+describe('passengers', () => {
+    it('defaults to everyone on the trip and respects a marked list', async () => {
+        const { passengersOf, byPassenger } = await import('../../utils/journeysModel');
+        const trip = { ...tripOf('t'), participants: ['Sam', 'Anna'] };
+        const all = record(flight('1', 'AMS', 'JFK', '2026-01-01', '10:00', '2026-01-01', '12:00'), trip);
+        const some = record(flight('2', 'JFK', 'AMS', '2026-01-09', '10:00', '2026-01-09', '22:00', { passengers: ['Sam'] }), trip);
+        expect(passengersOf(all)).toEqual(['Sam', 'Anna']);
+        expect(passengersOf(some)).toEqual(['Sam']);
+        expect(byPassenger([all, some]).map(r => [r.label, r.count])).toEqual([['Sam', 2], ['Anna', 1]]);
+        expect(byPassenger([record(flight('3', 'AMS', 'LHR', '2026-02-01', '10:00', '2026-02-01', '11:00'))])).toEqual([]);
+    });
+});
