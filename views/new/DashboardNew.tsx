@@ -4,7 +4,7 @@ import { useDashboardData } from '../../hooks/useDashboardData';
 import { WidgetGrid, type WidgetGridItem, type WidgetLayoutItem } from '../../components/kokonutui/bento-grid';
 import type { DockTool } from '../../components/kokonutui/tool-dock';
 import { RpPageToolbar } from '../../components/new/PageToolbar';
-import { RpEmpty } from '../../components/new/ui';
+import { RpEmpty, useIsMobile } from '../../components/new/ui';
 import { openNewPage } from '../../components/new/devLinks';
 import {
     LeaveWidget, MetricWidget, NextWidget, PassportWidget, RecentWidget, UpcomingWidget, WhereNextWidget, YearsWidget, nextTone,
@@ -12,7 +12,7 @@ import {
 import {
     Airplane, ArrowCounterClockwise, ChartBar, ClockCounterClockwise, Compass, Globe, IdentificationCard, Moon, Path, Plus, SunHorizon, Suitcase, type Icon,
 } from '../../components/ui/hugeicons';
-import { ORBIT_KM, leaveByType, type LeaveUse } from '../../utils/dashboardModel';
+import { ORBIT_KM, leaveByType, leaveTrips, type LeaveTrip, type LeaveUse } from '../../utils/dashboardModel';
 import { cn } from '../../utils/cn';
 
 /**
@@ -30,17 +30,31 @@ interface DashboardNewProps {
 
 const LAYOUT_KEY = 'wandergrid_dashboard_new_layout_v1';
 
-/** Default order (also the phone order) and spans. Heights are in grid rows. */
-const DEFAULT_LAYOUT: WidgetLayoutItem[] = [
+/**
+ * Default order (also the phone order) and spans. On a wide screen the grid packs gaps with later widgets:
+ * Passport fills the space beside Up next, and Where next sits beside By year. Tablets get wider spans.
+ */
+const DESKTOP_LAYOUT: WidgetLayoutItem[] = [
     { id: 'next', span: 3 },
+    { id: 'upcoming', span: 6 },
     { id: 'passport', span: 3 },
     { id: 'metric', span: 4 },
     { id: 'leave', span: 2 },
-    { id: 'upcoming', span: 6 },
     { id: 'years', span: 3 },
     { id: 'wherenext', span: 3 },
     { id: 'recent', span: 6 },
 ];
+const TABLET_LAYOUT: WidgetLayoutItem[] = [
+    { id: 'next', span: 3 },
+    { id: 'upcoming', span: 6 },
+    { id: 'passport', span: 3 },
+    { id: 'metric', span: 6 },
+    { id: 'leave', span: 3 },
+    { id: 'years', span: 3 },
+    { id: 'wherenext', span: 3 },
+    { id: 'recent', span: 3 },
+];
+const defaultLayout = () => (typeof window !== 'undefined' && window.innerWidth < 1024 ? TABLET_LAYOUT : DESKTOP_LAYOUT);
 
 const sessionUserId = (): string | null => {
     try { return JSON.parse(localStorage.getItem('wandergrid_session_user') || 'null')?.id ?? null; } catch { return null; }
@@ -55,7 +69,7 @@ const readLayout = (userId: string | null): WidgetLayoutItem[] => {
             if (ok.length) return ok;
         }
     } catch { /* unreadable or blocked storage: use the default */ }
-    return DEFAULT_LAYOUT;
+    return defaultLayout();
 };
 
 const writeLayout = (userId: string | null, layout: WidgetLayoutItem[] | null) => {
@@ -93,12 +107,13 @@ const WidgetIcon: React.FC<{ icon: Icon }> = ({ icon: IconC }) => <IconC size={1
 
 export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMemberClick }) => {
     const data = useDashboardData();
+    const mobile = useIsMobile();
     const userId = sessionUserId();
     const [layout, setLayout] = useState<WidgetLayoutItem[]>(() => readLayout(userId));
     const [memberId, setMemberId] = useState<string | null>(userId);
 
     const changeLayout = useCallback((next: WidgetLayoutItem[]) => { setLayout(next); writeLayout(userId, next); }, [userId]);
-    const resetLayout = useCallback(() => { setLayout(DEFAULT_LAYOUT); writeLayout(userId, null); }, [userId]);
+    const resetLayout = useCallback(() => { setLayout(defaultLayout()); writeLayout(userId, null); }, [userId]);
 
     const openTrip = useCallback((id: string) => onTripClick?.(id), [onTripClick]);
 
@@ -106,17 +121,17 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
     const member = data.users.find(u => u.id === memberId) ?? data.users.find(u => u.id === userId) ?? data.users[0];
     const year = Number(data.today.slice(0, 4));
     const leave = useMemo(() => {
-        if (!member) return { use: [] as LeaveUse[], allowance: 0 };
+        if (!member) return { use: [] as LeaveUse[], trips: [] as LeaveTrip[], allowance: 0 };
         let use = leaveByType(data.trips, data.types, member, year);
         // Days logged on the member without a trip behind them still count as taken.
         if (!use.length && (member.takenLeave || 0) > 0) use = [{ entitlementId: 'taken', name: 'Taken', accent: 'rust', days: member.takenLeave }];
-        return { use, allowance: member.leaveBalance || member.allowance || 0 };
+        return { use, trips: leaveTrips(data.trips, member, year), allowance: member.leaveBalance || member.allowance || 0 };
     }, [member, data.trips, data.types, year]);
 
     const nextTrip = data.next?.trip;
     const items = useMemo<WidgetGridItem[]>(() => [
         {
-            id: 'next', title: 'Up next', icon: <WidgetIcon icon={Airplane} />, defaultSpan: 3, rows: 2, narrowRows: 3,
+            id: 'next', title: 'Up next', icon: <WidgetIcon icon={Airplane} />, defaultSpan: 3, rows: 2, narrowRows: 2,
             tone: nextTone(data), onOpen: nextTrip ? () => openTrip(nextTrip.id) : undefined, openLabel: nextTrip ? `Open ${nextTrip.name}` : undefined,
             render: size => <NextWidget data={data} size={size} onTripClick={openTrip} />,
         },
@@ -126,18 +141,18 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
             render: size => <PassportWidget data={data} size={size} />,
         },
         {
-            id: 'metric', title: 'Travel over time', icon: <WidgetIcon icon={ChartBar} />, defaultSpan: 4, rows: 3, narrowRows: 4, interactive: true,
+            id: 'metric', title: 'Travel over time', icon: <WidgetIcon icon={ChartBar} />, defaultSpan: 4, rows: span => (span >= 5 ? 3 : 4), narrowRows: 4, interactive: true,
             render: size => <MetricWidget data={data} size={size} />,
         },
         {
-            id: 'leave', title: `Leave ${year}`, icon: <WidgetIcon icon={SunHorizon} />, defaultSpan: 2, rows: 3, narrowRows: 4, interactive: true,
+            id: 'leave', title: `Leave ${year}`, icon: <WidgetIcon icon={SunHorizon} />, defaultSpan: 2, rows: 4, narrowRows: 4, interactive: true,
             onOpen: member ? () => (onMemberClick ? onMemberClick(member.id) : openNewPage('/calendar')) : undefined, openLabel: member ? `Open ${member.name}` : undefined,
             render: () => (
-                <LeaveWidget users={data.users} memberId={member?.id ?? ''} onMember={setMemberId} use={leave.use} allowance={leave.allowance} year={year} />
+                <LeaveWidget users={data.users} memberId={member?.id ?? ''} onMember={setMemberId} use={leave.use} trips={leave.trips} allowance={leave.allowance} year={year} onTripClick={openTrip} />
             ),
         },
         {
-            id: 'upcoming', title: 'Upcoming trips', icon: <WidgetIcon icon={Suitcase} />, defaultSpan: 6, rows: 2, narrowRows: 3, interactive: true,
+            id: 'upcoming', title: 'Upcoming trips', icon: <WidgetIcon icon={Suitcase} />, defaultSpan: 6, rows: 2, narrowRows: 3, interactive: true, flush: mobile && data.upcoming.length >= 3,
             onOpen: () => openNewPage('/trips-new'), openLabel: 'Open Trips',
             render: size => <UpcomingWidget data={data} size={size} onTripClick={openTrip} />,
         },
@@ -151,14 +166,15 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
             render: () => <WhereNextWidget data={data} />,
         },
         {
-            id: 'recent', title: 'Recent trips', icon: <WidgetIcon icon={ClockCounterClockwise} />, defaultSpan: 6, rows: 2, narrowRows: 3,
+            id: 'recent', title: 'Recent trips', icon: <WidgetIcon icon={ClockCounterClockwise} />, defaultSpan: 6, rows: span => (span >= 5 ? 2 : 4), narrowRows: 3,
             onOpen: () => openNewPage('/trips-new'), openLabel: 'Open Trips',
             render: size => <RecentWidget data={data} size={size} onTripClick={openTrip} />,
         },
-    ], [data, nextTrip, member, leave, year, openTrip, onMemberClick]);
+    ], [data, nextTrip, member, leave, year, openTrip, onMemberClick, mobile]);
 
+    // On phones the tab bar's "+" starts a trip.
     const tools: DockTool[] = [
-        { id: 'new', label: 'New trip', icon: Plus as any, action: () => openNewPage('/trips-new?new=1') },
+        ...(mobile ? [] : [{ id: 'new', label: 'New trip', icon: Plus as any, action: () => openNewPage('/trips-new?new=1') }]),
         { id: 'reset', label: 'Reset layout', icon: ArrowCounterClockwise as any, action: resetLayout },
     ];
 
@@ -187,11 +203,25 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
                     <Tile icon={Globe} tone="mustard" value={data.countries.length} unit={data.countries.length === 1 ? 'country' : 'countries'} sub={`${data.cities.length} ${data.cities.length === 1 ? 'city' : 'cities'} · ${data.worldShare}% of the world`} />
                 </div>
 
+                {!data.loading && data.isEmpty ? (
+                    <section className="flex flex-col gap-4 rounded-rp-card bg-rp-mustard p-6 text-rp-on-mustard rp-shadow-rest sm:flex-row sm:items-center sm:justify-between sm:p-8" aria-label="Get started">
+                        <div className="min-w-0">
+                            <h2 className="text-2xl font-medium tracking-tight sm:text-3xl">Start your first trip</h2>
+                            <p className="mt-1 text-sm opacity-80">Add a trip, a flight or the places you have been, and this page fills in.</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <button type="button" onClick={() => openNewPage('/trips-new?new=1')} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-on-mustard px-5 text-sm font-medium text-rp-mustard outline-none focus-visible:ring-2 focus-visible:ring-rp-on-mustard focus-visible:ring-offset-2 focus-visible:ring-offset-rp-mustard"><Plus size={16} aria-hidden />Plan a trip</button>
+                            <button type="button" onClick={() => openNewPage('/atlas-new')} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-on-mustard/10 px-5 text-sm font-medium outline-none hover:bg-rp-on-mustard/15 focus-visible:ring-2 focus-visible:ring-rp-on-mustard"><Globe size={16} aria-hidden />Add places</button>
+                            <button type="button" onClick={() => openNewPage('/flights')} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-on-mustard/10 px-5 text-sm font-medium outline-none hover:bg-rp-on-mustard/15 focus-visible:ring-2 focus-visible:ring-rp-on-mustard"><Airplane size={16} aria-hidden />Log a flight</button>
+                        </div>
+                    </section>
+                ) : null}
+
                 {data.loading ? (
                     <div className="grid gap-4 sm:grid-cols-2" aria-busy="true" aria-label="Loading">
                         {[0, 1, 2, 3].map(i => <div key={i} className="h-56 animate-pulse rounded-rp-card bg-rp-surface rp-shadow-rest" />)}
                     </div>
-                ) : (
+                ) : data.isEmpty ? null : (
                     <WidgetGrid items={items} layout={layout} onLayoutChange={changeLayout} rowHeight={160} />
                 )}
             </div>

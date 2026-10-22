@@ -1,4 +1,4 @@
-import React, { useMemo, useState, type ReactNode } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import NumberFlow from '@number-flow/react';
 import type { Trip, User, VisitedItem } from '../../../types';
 import type { DashboardData } from '../../../hooks/useDashboardData';
@@ -15,7 +15,7 @@ import { openNewPage } from '../devLinks';
 import { Airplane, ArrowUpRight, Check, Clock, Suitcase } from '../../ui/hugeicons';
 import { formatCurrency, formatDate, formatDateRange, getActiveCurrency } from '../../../utils/formatters';
 import { destinationLabel, bucketOf, timingOf, tripCost } from '../../../utils/tripsModel';
-import { rankOf, type LeaveUse } from '../../../utils/dashboardModel';
+import { rankOf, type LeaveTrip, type LeaveUse } from '../../../utils/dashboardModel';
 import { regionOf } from '../../../utils/atlasModel';
 import { cn } from '../../../utils/cn';
 
@@ -32,6 +32,21 @@ const km = (n: number) => `${Math.round(n).toLocaleString('en-US')} km`;
 
 /** The fade that closes a capped list, over the card's own surface. */
 const FADE = 'pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-rp-surface to-transparent';
+
+/** The width of an element, kept current. */
+const useWidth = <T extends HTMLElement>(): [React.RefObject<T>, number] => {
+    const ref = useRef<T>(null);
+    const [width, setWidth] = useState(0);
+    useLayoutEffect(() => {
+        const el = ref.current;
+        if (!el) return;
+        const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+        ro.observe(el);
+        setWidth(el.clientWidth);
+        return () => ro.disconnect();
+    }, []);
+    return [ref as React.RefObject<T>, width];
+};
 
 /* ---------------------------------- next ---------------------------------- */
 
@@ -179,7 +194,7 @@ export const UpcomingWidget: React.FC<{ data: DashboardData; size: WidgetSize; o
     }
     if (mobile && trips.length >= 3) {
         return (
-            <div className="-mx-5 -mt-2 h-full">
+            <div className="h-full">
                 <MomentumRail
                     title=""
                     eyebrow={`${plural(trips.length, 'trip')} · ${trips.filter(t => bucketOf(t, data.today) === 'confirmed').length} confirmed`}
@@ -196,12 +211,18 @@ export const UpcomingWidget: React.FC<{ data: DashboardData; size: WidgetSize; o
             </ul>
         );
     }
-    const cap = size === 'l' ? 6 : 3;
-    const shown = trips.slice(0, cap);
+    return <UpcomingTiles trips={trips} today={data.today} onTripClick={onTripClick} />;
+};
+
+/** Tiles in one row, as many as fit (about 165px each); the rest are behind Show all. */
+const UpcomingTiles: React.FC<{ trips: Trip[]; today: string; onTripClick: (id: string) => void }> = ({ trips, today, onTripClick }) => {
+    const [ref, width] = useWidth<HTMLDivElement>();
+    const cols = Math.max(2, Math.min(6, Math.floor((width + 12) / 177)));
+    const shown = trips.slice(0, cols);
     return (
-        <div className="relative h-full">
-            <ul className={cn('grid gap-3', size === 'l' ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6' : 'grid-cols-1 sm:grid-cols-3')}>
-                {shown.map(t => <TripTile key={t.id} trip={t} today={data.today} onClick={() => onTripClick(t.id)} />)}
+        <div ref={ref} className="relative h-full">
+            <ul className="grid h-full grid-rows-1 gap-3" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+                {shown.map(t => <TripTile key={t.id} trip={t} today={today} onClick={() => onTripClick(t.id)} />)}
             </ul>
             {trips.length > shown.length ? (
                 <>
@@ -266,6 +287,7 @@ const PERIODS = [{ days: 90, label: '3M' }, { days: 180, label: '6M' }, { days: 
 
 /** Distance, nights or spend over time with trips pinned as events: the Metric Card. */
 export const MetricWidget: React.FC<{ data: DashboardData; size: WidgetSize }> = ({ data, size }) => {
+    const mobile = useIsMobile();
     const [metric, setMetric] = useState<MetricId>('distance');
     const series = data.series[metric];
     const empty = useMemo(() => !series.data.some(d => d.parts.some(p => p > 0)), [series]);
@@ -317,7 +339,7 @@ export const MetricWidget: React.FC<{ data: DashboardData; size: WidgetSize }> =
             formatValue={config.text}
             smoothing={p => Math.max(1, Math.round(p / 18))}
             accent={config.accent}
-            breakdownColumns={size === 'l' || size === 'm' ? 2 : 1}
+            breakdownColumns={!mobile && size !== 's' ? 2 : 1}
         />
     );
 };
@@ -367,9 +389,11 @@ export const LeaveWidget: React.FC<{
     memberId: string;
     onMember: (id: string) => void;
     use: LeaveUse[];
+    trips: LeaveTrip[];
     allowance: number;
     year: number;
-}> = ({ users, memberId, onMember, use, allowance, year }) => {
+    onTripClick: (id: string) => void;
+}> = ({ users, memberId, onMember, use, trips, allowance, year, onTripClick }) => {
     const booked = use.reduce((n, u) => n + u.days, 0);
     const left = Math.max(0, allowance - booked);
     const categories = useMemo<SpendingCategory[]>(() => [
@@ -402,12 +426,25 @@ export const LeaveWidget: React.FC<{
             {categories.length === 0 ? (
                 <RpEmpty title="No leave booked">Give a trip a leave type to see it here.</RpEmpty>
             ) : (
-                <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none]">
+                <div className="relative min-h-0 flex-1 overflow-hidden">
                     <SpendingRing
                         categories={categories}
                         format={days}
-                        caption={allowance > 0 ? (c, total) => (c.name === 'Left' ? `of ${allowance} days in ${year}` : `${days(booked)} booked of ${allowance}`) : undefined}
+                        caption={allowance > 0 ? (c) => (c.name === 'Left' ? `of ${allowance} days in ${year}` : `${days(booked)} booked of ${allowance}`) : undefined}
                     />
+                    {trips.length ? (
+                        <ul className="mt-3 flex flex-col gap-1">
+                            {trips.slice(0, 3).map(({ trip, days: n }) => (
+                                <li key={trip.id}>
+                                    <button type="button" onClick={() => onTripClick(trip.id)} className="flex min-h-11 w-full items-center gap-2 rounded-xl px-2 text-left text-xs outline-none hover:bg-rp-inset/60 focus-visible:ring-2 focus-visible:ring-rp-muted">
+                                        <span className="min-w-0 flex-1 truncate font-medium text-rp-ink">{trip.name}</span>
+                                        <span className="shrink-0 text-rp-muted">{formatDate(trip.startDate, 'short')}</span>
+                                        <span className="rp-tabular w-9 shrink-0 text-right text-rp-ink">{days(n)}</span>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : null}
                 </div>
             )}
         </div>

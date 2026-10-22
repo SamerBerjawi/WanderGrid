@@ -1,6 +1,6 @@
 import type { EntitlementType, Trip, User } from '../types';
 import { calculateDistance, getCoordinatesSync } from '../services/geocoding';
-import { destinationsOf, isTravelling, tripCost, tripDays } from './tripsModel';
+import { destinationsOf, isTravelling } from './tripsModel';
 
 /**
  * Pure logic for the New Dashboard (UI_UX_DESIGN_REFERENCE.md §5.2 rows 2 and 14): what was travelled
@@ -284,7 +284,6 @@ export const tripsPlace = (trip: Trip, max = 2): string => {
     return all.length <= max ? all.join(' · ') : `${all.slice(0, max).join(' · ')} · +${all.length - max}`;
 };
 
-export { tripCost, tripDays };
 
 /* ---------------------------------- rank ---------------------------------- */
 
@@ -340,4 +339,29 @@ export const leaveByType = (trips: Trip[], types: EntitlementType[], user: Pick<
         const type = types.find(e => e.id === id);
         return { entitlementId: id, name: type?.name || 'Leave', accent: type ? ENTITLEMENT_ACCENT[type.color] : 'muted', days: n };
     }).sort((a, b) => b.days - a.days);
+};
+
+export interface LeaveTrip {
+    trip: Trip;
+    days: number;
+}
+
+/** The trips that use a member's leave in a year, soonest first, with the days each one takes. */
+export const leaveTrips = (trips: Trip[], user: Pick<User, 'id'>, year: number): LeaveTrip[] => {
+    const out: LeaveTrip[] = [];
+    trips.forEach(t => {
+        if (t.status === 'Cancelled' || !t.participants?.includes(user.id)) return;
+        const startYear = Number((t.startDate || '').slice(0, 4));
+        let n = 0;
+        if (t.allocations?.length) {
+            n = t.allocations.filter(a => (a.targetYear ?? startYear) === year).reduce((sum, a) => sum + a.days, 0);
+        } else if (t.entitlementId) {
+            const excluded = new Set(t.excludedDates || []);
+            for (let day = t.startDate; day <= (t.endDate || t.startDate); day = addDays(day, 1)) {
+                if (day.startsWith(String(year)) && !excluded.has(day)) n += 1;
+            }
+        }
+        if (n > 0) out.push({ trip: t, days: n });
+    });
+    return out.sort((a, b) => a.trip.startDate.localeCompare(b.trip.startDate));
 };

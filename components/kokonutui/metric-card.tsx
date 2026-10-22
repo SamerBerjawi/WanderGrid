@@ -42,8 +42,8 @@ const SAMPLES = 90;
 const MORPH_MS = 420;
 const SNAP_PX = 6;
 
-// Swatches for the breakdown. The charted segment takes the first.
-const SWATCH_CLASSES = ["bg-rp-ink", "bg-rp-muted", "bg-rp-line", "bg-rp-inset"];
+// Swatches for the breakdown, one accent per segment. The charted segment takes the card's accent.
+const SWATCH_CLASSES = ["bg-rp-ink", "bg-rp-rust", "bg-rp-ochre", "bg-rp-sea"];
 
 export interface MetricPoint {
   /** YYYY-MM-DD */
@@ -279,6 +279,7 @@ function Breakdown({
   label,
   format,
   columns,
+  accentSwatch,
   onChoose,
 }: {
   segments: string[];
@@ -287,10 +288,11 @@ function Breakdown({
   label: string;
   format: (value: number) => string;
   columns: 1 | 2;
+  accentSwatch: string;
   onChoose: (index: number) => void;
 }) {
   const partsTotal = sum(parts);
-  const swatch = (i: number) => SWATCH_CLASSES[focus === i ? 0 : i % SWATCH_CLASSES.length];
+  const swatch = (i: number) => (focus === i ? accentSwatch : SWATCH_CLASSES[i % SWATCH_CLASSES.length]);
   return (
     <div className="mt-4 border-rp-line border-t pt-4">
       <div aria-hidden className="flex h-1.5 gap-0.5">
@@ -764,6 +766,7 @@ export function MetricCard({
 
       <Breakdown
         focus={focus}
+        accentSwatch={DOT_FILL[accent]}
         columns={breakdownColumns}
         format={formatValue}
         label={label}

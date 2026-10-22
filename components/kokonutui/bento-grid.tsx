@@ -53,12 +53,14 @@ export interface WidgetGridItem {
   render: (size: WidgetSize) => ReactNode;
   /** Span used when no layout is given. Defaults to 2. */
   defaultSpan?: number;
-  /** Grid rows the widget fills on the wide grid. Defaults to 1. */
-  rows?: number;
+  /** Grid rows the widget fills on the wide grid, or a function of its column span. Defaults to 1. */
+  rows?: number | ((span: number) => number);
   /** Grid rows the widget fills in the single narrow column. Defaults to `rows`. */
   narrowRows?: number;
   /** Fill of the card. Defaults to the plain surface. */
   tone?: WidgetTone;
+  /** The body runs edge to edge across the card (a rail that peeks past the padding). */
+  flush?: boolean;
   /** The widget has its own pointer gestures: only the grip lifts it. */
   interactive?: boolean;
   /** Shows an up-right arrow in the header that opens the widget's page. */
@@ -433,6 +435,13 @@ const TONE_CLASS: Record<WidgetTone, string> = {
   mustard: "bg-rp-mustard",
   rust: "bg-rp-rust",
 };
+const TONE_HOVER: Record<WidgetTone, string> = {
+  surface: "hover:bg-rp-inset",
+  ink: "hover:bg-rp-on-ink/15",
+  green: "hover:bg-rp-paper/20",
+  mustard: "hover:bg-rp-on-mustard/15",
+  rust: "hover:bg-rp-paper/20",
+};
 const TONE_TEXT: Record<WidgetTone, string> = {
   surface: "text-rp-ink",
   ink: "text-rp-on-ink",
@@ -501,7 +510,8 @@ function WidgetCell({
   };
 
   const tone = item.tone ?? "surface";
-  const rows = narrow ? (item.narrowRows ?? item.rows ?? 1) : (item.rows ?? 1);
+  const wideRows = typeof item.rows === "function" ? item.rows(span) : (item.rows ?? 1);
+  const rows = narrow ? (item.narrowRows ?? wideRows) : wideRows;
   const filled = tone !== "surface";
 
   return (
@@ -554,7 +564,7 @@ function WidgetCell({
                 aria-label={item.openLabel ?? `Open ${item.title}`}
                 className={cn(
                   "flex size-11 shrink-0 items-center justify-center rounded-full outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-rp-muted",
-                  filled ? "hover:bg-white/15" : "text-rp-muted hover:bg-rp-inset hover:text-rp-ink"
+                  filled ? TONE_HOVER[tone] : "text-rp-muted hover:bg-rp-inset hover:text-rp-ink"
                 )}
                 data-no-press
                 onClick={item.onOpen}
@@ -570,7 +580,7 @@ function WidgetCell({
               className={cn(
                 "flex size-11 shrink-0 cursor-grab touch-none items-center justify-center rounded-full outline-none",
                 "transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-rp-muted",
-                filled ? "hover:bg-white/15" : "text-rp-muted hover:bg-rp-inset hover:text-rp-ink",
+                filled ? TONE_HOVER[tone] : "text-rp-muted hover:bg-rp-inset hover:text-rp-ink",
                 lifted && "cursor-grabbing bg-rp-inset text-rp-ink"
               )}
               data-no-press
@@ -585,7 +595,7 @@ function WidgetCell({
           </div>
         </div>
 
-        <div className="relative min-h-0 flex-1" data-no-press={item.interactive ? "" : undefined}>
+        <div className={cn("relative min-h-0 flex-1", item.flush && "-mx-5")} data-no-press={item.interactive ? "" : undefined}>
           <AnimatePresence initial={false}>
             <motion.div
               animate={{ opacity: 1 }}
@@ -655,8 +665,8 @@ export function WidgetGrid({
   const [narrow, setNarrow] = useState(() => typeof window !== "undefined" && window.innerWidth < NARROW_BELOW);
   const [liftedId, setLiftedId] = useState<string | null>(null);
   const [resizingId, setResizingId] = useState<string | null>(null);
-  // Last cell hovered or keyboard-focused; it stays lit while others dim.
-  const [pointedId, setPointedId] = useState<string | null>(null);
+  // Last cell hovered or keyboard-focused (kept from upstream; it no longer dims the others).
+  const [, setPointedId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
 
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -1313,7 +1323,8 @@ export function WidgetGrid({
     [engine, onResizeUp, removeDragListeners]
   );
 
-  const activeId = liftedId ?? resizingId ?? pointedId;
+  // Upstream also dims the others while one is hovered; on a dashboard that is noise, so only a lift or a resize does.
+  const activeId = liftedId ?? resizingId;
   const columnCount = narrow ? NARROW_COLUMNS : COLUMNS;
 
   // While a cell is held or resized, a dot sits at every gutter crossing
