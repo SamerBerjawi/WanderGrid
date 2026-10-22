@@ -3,8 +3,9 @@ import { cn } from '../../../utils/cn';
 import NumberFlow from '@number-flow/react';
 import { BarChart } from '../../bklit/bar-chart';
 import { RoutesMap } from './RoutesMap';
-import { Airplane, Buildings, Clock, CurrencyDollar, Globe, Seat, type Icon } from '../../ui/hugeicons';
+import { Airplane, Buildings, Clock, CurrencyDollar, Globe, Leaf, Seat, type Icon } from '../../ui/hugeicons';
 import { getActiveCurrency, formatCurrency } from '../../../utils/formatters';
+import { footprintOf, formatKg, treeYears } from '../../../utils/footprint';
 import { aroundTheWorld, byAirport, byCarrier, byClass, byMode, journeyTotals, routeLines, totalsByYear, type JourneyRecord, type Tally } from '../../../utils/journeysModel';
 
 /**
@@ -68,13 +69,41 @@ const Breakdown: React.FC<{ title: string; icon: Icon; rows: Tally[]; unit: stri
                 <ul className="flex flex-col gap-2">
                     {top.map(r => (
                         <li key={r.key} className="flex flex-col gap-1">
-                            <span className="flex items-baseline justify-between gap-2 text-sm"><span className="truncate text-rp-ink">{r.label}</span><span className="rp-tabular shrink-0 font-medium text-rp-ink">{r.count}<span className="font-normal text-rp-muted"> {unit}</span></span></span>
+                            <span className="flex items-baseline justify-between gap-2 text-sm"><span className="truncate text-rp-ink">{r.label}</span><span className="rp-tabular shrink-0 font-medium text-rp-ink">{r.count}<span className="font-normal text-rp-muted"> {r.count === 1 && unit.endsWith('s') && unit !== 'visits' ? unit.slice(0, -1) : r.count === 1 && unit === 'visits' ? 'visit' : unit}</span></span></span>
                             <span className="h-1.5 rounded-full bg-rp-line"><span className="block h-full rounded-full bg-rp-ink" style={{ width: `${(r.count / max) * 100}%` }} /></span>
                         </li>
                     ))}
                 </ul>
             )}
             {rows.length > top.length ? <p className="rp-tabular text-xs text-rp-muted">+{rows.length - top.length} more</p> : null}
+        </div>
+    );
+};
+
+/** Footprint: the total, what makes it up (mode for land and sea, cabin for flights), and for land what flying would have added. */
+const FootprintStrip: React.FC<{ items: JourneyRecord[]; land: boolean }> = ({ items, land }) => {
+    const fp = useMemo(() => footprintOf(items, land ? 'mode' : 'cabin'), [items, land]);
+    if (fp.totalKg <= 0) return null;
+    const top = fp.rows[0].kg;
+    return (
+        <div className="flex flex-col gap-3 rounded-rp-inset bg-rp-inset/60 p-3 sm:p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <p className="flex items-center gap-1.5 text-xs font-medium text-rp-muted"><Leaf size={14} className="text-rp-green" aria-hidden /> Carbon footprint, per traveller</p>
+                <p className="text-xs text-rp-muted">An estimate from distance{land ? ' and mode' : ', length and cabin'}{land ? '' : '; without the extra warming at altitude'}</p>
+            </div>
+            <p className="flex flex-wrap items-baseline gap-x-2">
+                <span className="rp-tabular text-2xl font-semibold text-rp-ink">{formatKg(fp.totalKg)}</span>
+                <span className="text-sm text-rp-muted">CO₂e{treeYears(fp.totalKg) > 0 ? ` · about ${treeYears(fp.totalKg).toLocaleString('en-US')} tree-years to absorb` : ''}</span>
+            </p>
+            <ul className="grid gap-2 sm:grid-cols-3">
+                {fp.rows.slice(0, 3).map(r => (
+                    <li key={r.key} className="flex flex-col gap-1">
+                        <span className="flex items-baseline justify-between gap-2 text-sm"><span className="truncate text-rp-ink">{r.label}</span><span className="rp-tabular shrink-0 font-medium text-rp-ink">{formatKg(r.kg)}</span></span>
+                        <span className="h-1.5 rounded-full bg-rp-line"><span className="block h-full rounded-full bg-rp-green" style={{ width: `${(r.kg / top) * 100}%` }} /></span>
+                    </li>
+                ))}
+            </ul>
+            {land && fp.savedVsFlyingKg > 0 ? <p className="text-sm text-rp-green">About {formatKg(fp.savedVsFlyingKg)} less than flying the same distances.</p> : null}
         </div>
     );
 };
@@ -149,6 +178,7 @@ export const JourneyHero: React.FC<{ items: JourneyRecord[]; kind?: 'flight' | '
                 <Breakdown title={land ? 'Places' : 'Airports'} icon={Airplane} rows={airports} unit="visits" />
                 {land ? <Breakdown title="Mode" icon={Airplane} rows={modes} unit="journeys" /> : <Breakdown title="Cabin class" icon={Seat} rows={classes} unit="flights" />}
             </div>
+            <FootprintStrip items={items} land={land} />
         </section>
     );
 };

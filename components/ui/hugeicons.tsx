@@ -45,6 +45,7 @@ import {
   Briefcase02Icon,
   Building03Icon,
   Building06Icon,
+  Leaf01Icon,
   Bus01Icon,
   Calendar03Icon,
   CalendarCheckIn01Icon,
@@ -260,6 +261,7 @@ export const Ship = make(ShipIcon, 'Ship');
 export const BookOpen = make(BookOpen01Icon, 'BookOpen');
 export const Broadcast = make(AntennaIcon, 'Broadcast');
 export const Buildings = make(Building06Icon, 'Buildings');
+export const Leaf = make(Leaf01Icon, 'Leaf');
 export const Bus = make(Bus01Icon, 'Bus');
 export const Calendar = make(Calendar03Icon, 'Calendar');
 export const CalendarBlank = make(Calendar03Icon, 'CalendarBlank');

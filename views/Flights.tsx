@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { footprintKg } from '../utils/footprint';
 import { isEscapeForOverlay } from '../hooks/useEscapeKey';
 import { toast } from '../services/toast';
 import { confirmDialog } from '../services/confirm';
@@ -402,7 +403,7 @@ const BundleJourneyTimeline: React.FC<BundleJourneyTimelineProps> = React.memo((
     journeyColorTag = "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20";
   }
 
-  const co2Estimate = Math.round((totalDuration / 60) * 125);
+  const co2Estimate = Math.round(allFlights.reduce((sum, f) => sum + footprintKg(f), 0));
 
   return (
     <div className="mb-6 flex flex-col gap-4 group/timeline select-none">

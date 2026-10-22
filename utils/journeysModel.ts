@@ -489,10 +489,6 @@ export const MODE_SPEED_KMH: Record<string, number> = { Train: 120, Bus: 70, 'Ca
 export const estimateMinutesFor = (mode: string | undefined, km: number): number =>
     km > 0 ? Math.round((km / (MODE_SPEED_KMH[mode || ''] || 80)) * 60) : 0;
 
-/** Kilograms of CO2 per km by mode (rail lowest): the footprint figures the old Road trips page showed. */
-export const MODE_CO2_G_PER_KM: Record<string, number> = { Train: 14, Bus: 28, 'Car Rental': 120, 'Personal Car': 125, Cruise: 120, Ferry: 120, Flight: 150 };
-export const journeyCo2Kg = (t: Transport): number => Math.round((journeyKm(t) * (MODE_CO2_G_PER_KM[t.mode] ?? 100)) / 1000);
-
 /** Journeys per mode, most used first. */
 export const byMode = (items: JourneyRecord[]): Tally[] =>
     tally(items, r => [{ key: r.flight.mode, label: r.flight.mode }]);
