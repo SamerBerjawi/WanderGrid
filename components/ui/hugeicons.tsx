@@ -107,6 +107,7 @@ import {
   HourglassIcon,
   IdIcon,
   Idea01Icon,
+  Infinity01Icon,
   InformationCircleIcon,
   Invoice01Icon,
   KanbanIcon,
@@ -338,6 +339,7 @@ export const Hourglass = make(HourglassIcon, 'Hourglass');
 export const House = make(Home01Icon, 'House');
 export const IdentificationCard = make(IdIcon, 'IdentificationCard');
 export const Info = make(InformationCircleIcon, 'Info');
+export const InfinityMark = make(Infinity01Icon, 'InfinityMark');
 export const Kanban = make(KanbanIcon, 'Kanban');
 export const Key = make(Key01Icon, 'Key');
 export const Lightbulb = make(Idea01Icon, 'Lightbulb');
