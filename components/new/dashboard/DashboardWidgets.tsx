@@ -39,19 +39,24 @@ const km = (n: number) => `${Math.round(n).toLocaleString('en-US')} km`;
 /** The fade that closes a capped list, over the card's own surface. */
 const FADE = 'pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-rp-surface to-transparent';
 
-/** The width of an element, kept current. */
-const useWidth = <T extends HTMLElement>(): [React.RefObject<T>, number] => {
+/** The size of an element, kept current. */
+const useSize = <T extends HTMLElement>(): [React.RefObject<T>, { width: number; height: number }] => {
     const ref = useRef<T>(null);
-    const [width, setWidth] = useState(0);
+    const [size, setSize] = useState({ width: 0, height: 0 });
     useLayoutEffect(() => {
         const el = ref.current;
         if (!el) return;
-        const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+        const read = () => setSize(prev => (prev.width === el.clientWidth && prev.height === el.clientHeight ? prev : { width: el.clientWidth, height: el.clientHeight }));
+        const ro = new ResizeObserver(read);
         ro.observe(el);
-        setWidth(el.clientWidth);
+        read();
         return () => ro.disconnect();
     }, []);
-    return [ref as React.RefObject<T>, width];
+    return [ref as React.RefObject<T>, size];
+};
+const useWidth = <T extends HTMLElement>(): [React.RefObject<T>, number] => {
+    const [ref, size] = useSize<T>();
+    return [ref, size.width];
 };
 
 /* ---------------------------------- next ---------------------------------- */
@@ -566,6 +571,12 @@ const ROUTE_STROKE: Record<string, string> = {
 export const MapWidget: React.FC<{ data: DashboardData }> = ({ data }) => {
     const [world, setWorld] = useState<FeatureCollection<Geometry, ChoroplethFeatureProperties> | null>(null);
     const [failed, setFailed] = useState(false);
+    const [boxRef, box] = useSize<HTMLDivElement>();
+    // The world is 2:1 and its land fills about 84% of the height (no Antarctica): scale so it fills the box.
+    const cover = useMemo(() => {
+        const w = Math.max(box.width, box.height * 2 * 1.18);
+        return { w, h: w / 2 };
+    }, [box.width, box.height]);
     useEffect(() => {
         let alive = true;
         loadWorld().then(fc => { if (alive) setWorld(fc); }).catch(() => { if (alive) setFailed(true); });
@@ -583,18 +594,22 @@ export const MapWidget: React.FC<{ data: DashboardData }> = ({ data }) => {
 
     return (
         <div className="flex h-full flex-col gap-2">
-            <div className="relative min-h-0 flex-1 overflow-hidden rounded-rp-inset bg-rp-inset/50">
-                {world ? (
-                    <ChoroplethChart data={world} aspectRatio="2 / 1" scaleRatio={1 / 6.4} offsetY={0} animationDuration={0} zoomEnabled={false} center={[10, 25]} className="text-rp-ink">
-                        <ChoroplethFeature
-                            getFeatureColor={f => (visited.has(featureCode(f)) ? 'rgb(var(--rp-green))' : 'rgb(var(--rp-line))')}
-                            stroke="rgb(var(--rp-surface))"
-                            strokeWidth={0.4}
-                            fadedOpacity={1}
-                        />
-                        <ChoroplethRoutes routes={routes} />
-                    </ChoroplethChart>
-                ) : (
+            <div ref={boxRef} className="relative min-h-0 flex-1 overflow-hidden rounded-rp-inset bg-rp-inset/50">
+                {world && box.width > 0 ? (
+                    // The map covers the box: as wide as the box needs, or as tall (the map is 2:1), centred, so
+                    // resizing the widget in either direction never leaves empty space.
+                    <div className="absolute" style={{ width: cover.w, height: cover.h, left: (box.width - cover.w) / 2, top: (box.height - cover.h) / 2 }}>
+                        <ChoroplethChart data={world} aspectRatio="2 / 1" scaleRatio={1 / 5.6} offsetY={0} animationDuration={0} zoomEnabled={false} center={[10, 20]} className="text-rp-ink">
+                            <ChoroplethFeature
+                                getFeatureColor={f => (visited.has(featureCode(f)) ? 'rgb(var(--rp-green))' : 'rgb(var(--rp-line))')}
+                                stroke="rgb(var(--rp-surface))"
+                                strokeWidth={0.4}
+                                fadedOpacity={1}
+                            />
+                            <ChoroplethRoutes routes={routes} />
+                        </ChoroplethChart>
+                    </div>
+                ) : world ? null : (
                     <div className="flex h-full min-h-32 items-center justify-center text-sm text-rp-muted">{failed ? "Couldn't load the map." : <span className="sr-only">Loading the map</span>}</div>
                 )}
             </div>

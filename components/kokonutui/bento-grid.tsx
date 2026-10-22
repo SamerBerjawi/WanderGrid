@@ -74,6 +74,8 @@ export interface WidgetLayoutItem {
   id: string;
   /** Width in columns of the 6-column grid (2 to 6). */
   span: number;
+  /** Height in grid rows (1 to 8). Left out, the widget's own `rows` apply. Width and height resize independently. */
+  rows?: number;
 }
 
 export interface WidgetGridProps {
@@ -134,6 +136,8 @@ interface PressState {
 const COLUMNS = 6;
 const NARROW_COLUMNS = 1;
 const MIN_SPAN = 2;
+const MIN_ROWS = 2;
+const MAX_ROWS = 8;
 const GAP = 16;
 /** Below this container width the grid is one column. */
 const NARROW_BELOW = 640;
@@ -162,6 +166,10 @@ function clampSpan(span: number) {
   return Math.min(COLUMNS, Math.max(MIN_SPAN, Math.round(span)));
 }
 
+function clampRows(rows: number) {
+  return Math.min(MAX_ROWS, Math.max(MIN_ROWS, Math.round(rows)));
+}
+
 /** In the narrow layout every widget takes the one column. */
 function narrowSpan(_span: number) {
   return 1;
@@ -177,7 +185,11 @@ function normalizeLayout(
   for (const entry of layout) {
     if (known.has(entry.id) && !seen.has(entry.id)) {
       seen.add(entry.id);
-      out.push({ id: entry.id, span: clampSpan(entry.span) });
+      out.push({
+        id: entry.id,
+        span: clampSpan(entry.span),
+        ...(entry.rows ? { rows: clampRows(entry.rows) } : {}),
+      });
     }
   }
   for (const item of items) {
@@ -460,6 +472,8 @@ const TONE_TEXT: Record<WidgetTone, string> = {
 interface CellProps {
   item: WidgetGridItem;
   span: number;
+  /** Height set by resizing, in rows. */
+  rowsSet?: number;
   narrow: boolean;
   lifted: boolean;
   dimmed: boolean;
@@ -485,6 +499,7 @@ interface CellProps {
 function WidgetCell({
   item,
   span,
+  rowsSet,
   narrow,
   lifted,
   dimmed,
@@ -530,7 +545,7 @@ function WidgetCell({
 
   const tone = item.tone ?? "surface";
   const wideRows = typeof item.rows === "function" ? item.rows(span) : (item.rows ?? 1);
-  const rows = narrow ? (item.narrowRows ?? wideRows) : wideRows;
+  const rows = rowsSet ?? (narrow ? (item.narrowRows ?? wideRows) : wideRows);
   const filled = tone !== "surface";
 
   return (
@@ -654,12 +669,12 @@ function WidgetCell({
         </div>
       </div>
 
-      {narrow ? null : (
+      {(
         <button
-          aria-label={`Resize ${item.title}, ${shownSpan} of ${columns} columns`}
+          aria-label={`Resize ${item.title}, ${narrow ? "" : `${shownSpan} of ${columns} columns, `}${rows} ${rows === 1 ? "row" : "rows"} high`}
           className={cn(
-            "absolute right-0 bottom-0 flex size-11 cursor-ew-resize touch-none items-end justify-end rounded-br-rp-card p-3 outline-none",
-            "opacity-0 transition-opacity duration-150 focus-visible:opacity-100 group-hover/cell:opacity-100",
+            "absolute right-0 bottom-0 flex size-11 cursor-nwse-resize touch-none items-end justify-end rounded-br-rp-card p-3 outline-none",
+            "opacity-0 transition-opacity duration-150 focus-visible:opacity-100 group-hover/cell:opacity-100 [@media(hover:none)]:opacity-60",
             "focus-visible:ring-2 focus-visible:ring-rp-muted",
             filled ? "text-current" : "text-rp-muted hover:text-rp-ink"
           )}
@@ -731,7 +746,9 @@ export function WidgetGrid({
   const dragRef = useRef<DragState | null>(null);
   const pressRef = useRef<PressState | null>(null);
   const resizeIdRef = useRef<string | null>(null);
-  const resizeStartRef = useRef<{ x: number; span: number } | null>(null);
+  const resizeStartRef = useRef<{ x: number; y: number; span: number; rows: number } | null>(null);
+  const rowHeightRef = useRef(rowHeight);
+  rowHeightRef.current = rowHeight;
   const reorderingRef = useRef(false);
   const narrowRef = useRef(false);
   const layoutRef = useRef(current);
@@ -1120,56 +1137,70 @@ export function WidgetGrid({
 
   /* -------------------------------- resize -------------------------------- */
 
-  const spanText = useCallback((span: number) => {
+  const sizeText = useCallback((span: number, rows: number) => {
     const isNarrow = narrowRef.current;
-    const shown = isNarrow ? narrowSpan(span) : span;
-    const cols = isNarrow ? NARROW_COLUMNS : COLUMNS;
-    return `${shown} of ${cols} columns, ${SIZE_LABEL[sizeForSpan(span, isNarrow)]}`;
+    const high = `${rows} ${rows === 1 ? "row" : "rows"} high`;
+    if (isNarrow) {
+      return high;
+    }
+    return `${span} of ${COLUMNS} columns, ${SIZE_LABEL[sizeForSpan(span, false)]}, ${high}`;
   }, []);
 
-  const applySpan = useCallback(
-    (id: string, span: number) => {
+  /** The height an entry shows: what was set, else the widget's own. */
+  const rowsOf = useCallback((entry: WidgetLayoutItem) => {
+    if (entry.rows) {
+      return entry.rows;
+    }
+    const item = latest.current.itemsById.get(entry.id);
+    const wide = typeof item?.rows === "function" ? item.rows(entry.span) : (item?.rows ?? 1);
+    return narrowRef.current ? (item?.narrowRows ?? wide) : wide;
+  }, []);
+
+  const applySize = useCallback(
+    (id: string, span: number, rows: number) => {
       const list = layoutRef.current;
       const entry = list.find((c) => c.id === id);
-      if (!entry || entry.span === span) {
+      if (!entry || (entry.span === span && rowsOf(entry) === rows)) {
         return;
       }
       commit(
-        list.map((c) => (c.id === id ? { ...c, span } : c)),
+        list.map((c) => (c.id === id ? { ...c, span, rows } : c)),
         id
       );
-      announce(`${titleOf(id)} resized to ${spanText(span)}.`);
+      announce(`${titleOf(id)} resized to ${sizeText(span, rows)}.`);
     },
-    [announce, commit, spanText, titleOf]
+    [announce, commit, rowsOf, sizeText, titleOf]
   );
 
   /**
-   * Whole-column span from how far the handle moved since the press. Using the
-   * delta (not the cell's left edge) keeps it stable when the cell wraps rows.
-   * Narrow grids only toggle between half and full width.
+   * Width and height from how far the handle moved since the press, each on its own axis: whole
+   * columns across, whole rows down. Using the delta (not the cell's edges) keeps it stable when
+   * the cell wraps rows. A narrow grid has one column, so only the height changes.
    */
-  const spanFromPointer = useCallback((clientX: number) => {
+  const sizeFromPointer = useCallback((clientX: number, clientY: number) => {
     const start = resizeStartRef.current;
     const grid = gridRef.current;
     if (!(start && grid)) {
       return null;
     }
     const isNarrow = narrowRef.current;
-    const cols = isNarrow ? NARROW_COLUMNS : COLUMNS;
-    const colW = (grid.clientWidth + GAP) / cols;
-    const steps = Math.round((clientX - start.x) / colW);
-    return isNarrow ? null : clampSpan(start.span + steps);
+    const colW = (grid.clientWidth + GAP) / COLUMNS;
+    const rowH = rowHeightRef.current + GAP;
+    return {
+      span: isNarrow ? start.span : clampSpan(start.span + Math.round((clientX - start.x) / colW)),
+      rows: clampRows(start.rows + Math.round((clientY - start.y) / rowH)),
+    };
   }, []);
 
   const onResizeMove = useCallback(
     (e: globalThis.PointerEvent) => {
       const id = resizeIdRef.current;
-      const span = spanFromPointer(e.clientX);
-      if (id && span !== null) {
-        applySpan(id, span);
+      const size = sizeFromPointer(e.clientX, e.clientY);
+      if (id && size) {
+        applySize(id, size.span, size.rows);
       }
     },
-    [applySpan, spanFromPointer]
+    [applySize, sizeFromPointer]
   );
 
   const onResizeUp = useCallback(() => {
@@ -1188,37 +1219,37 @@ export function WidgetGrid({
       e.preventDefault();
       cancelPress();
       resizeIdRef.current = id;
+      const entry = layoutRef.current.find((c) => c.id === id);
       resizeStartRef.current = {
         x: e.clientX,
-        span: layoutRef.current.find((c) => c.id === id)?.span ?? MIN_SPAN,
+        y: e.clientY,
+        span: entry?.span ?? MIN_SPAN,
+        rows: entry ? rowsOf(entry) : 1,
       };
       setResizingId(id);
       window.addEventListener("pointermove", onResizeMove);
       window.addEventListener("pointerup", onResizeUp);
       window.addEventListener("pointercancel", onResizeUp);
     },
-    [cancelPress, onResizeMove, onResizeUp]
+    [cancelPress, onResizeMove, onResizeUp, rowsOf]
   );
 
+  /** Left and right change the width, up and down the height. */
   const onResizeKeyDown = useCallback(
     (e: KeyboardEvent<HTMLButtonElement>, id: string) => {
       const entry = layoutRef.current.find((c) => c.id === id);
-      let delta = 0;
-      if (e.key === "ArrowRight" || e.key === "ArrowUp") {
-        delta = 1;
-      } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
-        delta = -1;
-      }
-      if (!entry || delta === 0) {
+      const wide = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+      const high = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
+      if (!entry || (wide === 0 && high === 0)) {
         return;
       }
       e.preventDefault();
-      if (narrowRef.current) {
+      if (narrowRef.current && wide !== 0) {
         return;
       }
-      applySpan(id, clampSpan(entry.span + delta));
+      applySize(id, clampSpan(entry.span + wide), clampRows(rowsOf(entry) + high));
     },
-    [applySpan]
+    [applySize, rowsOf]
   );
 
   /* ------------------------------- keyboard ------------------------------- */
@@ -1497,6 +1528,7 @@ export function WidgetGrid({
               onPressStart={(e) => startPress(e, id)}
               onResizeKeyDown={(e) => onResizeKeyDown(e, id)}
               onResizePointerDown={(e) => startResize(e, id)}
+              rowsSet={entry.rows}
               span={entry.span}
             />
           );
