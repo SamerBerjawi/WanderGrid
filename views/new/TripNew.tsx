@@ -281,8 +281,8 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
                         </div>
                     </div>
                     <div className="p-3 pt-0 lg:p-3 lg:pl-0">
-                        <Suspense fallback={<div className="h-36 animate-pulse rounded-rp-tile bg-rp-on-ink/10 sm:h-52 lg:h-full lg:min-h-[15rem]" aria-busy="true" />}>
-                            <TripHeroMap trip={trip} mapRef={mapRef} className="h-36 rounded-rp-tile sm:h-52 lg:h-full lg:min-h-[15rem]" />
+                        <Suspense fallback={<div className="h-44 animate-pulse rounded-rp-tile bg-rp-on-ink/10 sm:h-72 lg:h-full lg:min-h-[15rem]" aria-busy="true" />}>
+                            <TripHeroMap trip={trip} mapRef={mapRef} className="h-44 rounded-rp-tile sm:h-72 lg:h-full lg:min-h-[15rem]" />
                         </Suspense>
                     </div>
                 </header>
