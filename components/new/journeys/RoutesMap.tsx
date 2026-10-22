@@ -37,7 +37,7 @@ const RouteSvg: React.FC<{ land: FeatureCollection<Geometry> | null; routes: Rou
         // Frame what is flown; with one place (or none) show the whole world.
         if (unique.size >= 2) {
             // Fit the arcs themselves (they bulge past the end points), not just the airports.
-            const geometries: any[] = routes.map(r => ({ type: 'LineString', coordinates: [r.from, r.to] }));
+            const geometries: any[] = routes.map(r => ({ type: 'LineString', coordinates: r.path && r.path.length > 1 ? r.path : [r.from, r.to] }));
             if (marker) geometries.push({ type: 'Point', coordinates: [marker.lng, marker.lat] });
             pins.forEach(p => geometries.push({ type: 'Point', coordinates: [p.lng, p.lat] }));
             projection.fitExtent(extent, { type: 'GeometryCollection', geometries });
@@ -56,7 +56,7 @@ const RouteSvg: React.FC<{ land: FeatureCollection<Geometry> | null; routes: Rou
         return {
             path: p,
             project: projection,
-            lines: routes.map(r => ({ d: p({ type: 'LineString', coordinates: [r.from, r.to] }) || '', count: r.count, label: r.label })),
+            lines: routes.map(r => ({ d: p({ type: 'LineString', coordinates: r.path && r.path.length > 1 ? r.path : [r.from, r.to] }) || '', count: r.count, label: r.label })),
             points: [...seen.values()],
         };
     }, [routes, pins, marker, width, height]);

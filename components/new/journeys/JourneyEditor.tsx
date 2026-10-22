@@ -11,7 +11,7 @@ import { RpSection, RpSheet } from '../ui';
 import { TripMenu } from '../trips/TripMenu';
 import { LEG_DATE, LegForm } from '../trips/LegForm';
 import { extractIata } from '../../../hooks/useFlightLog';
-import { MODE_SPEED_KMH, estimateMinutes, fromLog, isIndependent, journeyKm, localArrival, type JourneyRecord } from '../../../utils/journeysModel';
+import { MODE_SPEED_KMH, elapsedMinutes, estimateMinutes, fromLog, isIndependent, journeyKm, localArrival, type JourneyRecord } from '../../../utils/journeysModel';
 import { toast } from '../../../services/toast';
 import { errorMessage } from '../../../services/toast';
 import { cn } from '../../../utils/cn';
@@ -114,7 +114,16 @@ export const JourneyEditor: React.FC<{
             const arrivalDate = leg.arrivalDate || leg.departureDate;
             const minutes = flight ? calculateDurationMinutes(origin, destination, leg.departureDate, leg.departureTime || '00:00', arrivalDate, leg.arrivalTime || '00:00') : 0;
             // Land and sea: the time is the wall-clock gap (no airport zones), the distance the one given, else the time at the mode's average speed, else the straight line.
-            const wall = flight ? 0 : Math.max(0, Math.round((Date.parse(`${arrivalDate}T${leg.arrivalTime || '00:00'}:00Z`) - Date.parse(`${leg.departureDate}T${leg.departureTime || '00:00'}:00Z`)) / 60000));
+            if (!flight) {
+                // Zones for both ends (cached after the first time), so a crossing of a zone line is counted.
+                try {
+                    const { getCoordinates } = await import('../../../services/geocoding');
+                    const { ensureZone } = await import('../../../services/timezone');
+                    const [a, b] = await Promise.all([getCoordinates(origin), getCoordinates(destination)]);
+                    await Promise.all([ensureZone(origin, leg.originLat ?? a?.lat, leg.originLng ?? a?.lng), ensureZone(destination, leg.destLat ?? b?.lat, leg.destLng ?? b?.lng)]);
+                } catch { /* the clock gap is used */ }
+            }
+            const wall = flight ? 0 : elapsedMinutes(origin, destination, leg.departureDate, leg.departureTime || '00:00', arrivalDate, leg.arrivalTime || '00:00');
             // The distance given, else the places (stretched for how winding the route is), else the time at the mode's average speed.
             // A distance left over from other places is not kept when From or To changed.
             const stale = Boolean(editing && (origin !== editing.flight.origin || destination !== editing.flight.destination) && leg.distance === editing.flight.distance);
@@ -165,19 +174,25 @@ export const JourneyEditor: React.FC<{
                 else if (w.name) { const c = await getCoordinates(w.name); if (c) coords.push([c.lng, c.lat]); }
             }
             coords.push([b.lng, b.lat]);
+            const { ensureZone } = await import('../../../services/timezone');
+            await Promise.all([ensureZone(leg.origin!.trim(), a.lat, a.lng), ensureZone(leg.destination!.trim(), b.lat, b.lng)]);
             const est = await estimateLeg(leg.mode, coords);
             if (est.km <= 0) throw new Error("Couldn't work out the distance between these places.");
             const minutes = est.minutes;
             const patchBody: Partial<Transport> = { distance: est.km, duration: minutes, originLat: a.lat, originLng: a.lng, originGeoKey: leg.origin!.trim(), destLat: b.lat, destLng: b.lng, destGeoKey: leg.destination!.trim() };
             if (leg.departureDate && leg.departureTime && minutes > 0) {
-                const dep = new Date(`${leg.departureDate}T${leg.departureTime}:00`);
-                const arr = new Date(dep.getTime() + minutes * 60000);
-                const pad = (n: number) => String(n).padStart(2, '0');
-                patchBody.arrivalDate = `${arr.getFullYear()}-${pad(arr.getMonth() + 1)}-${pad(arr.getDate())}`;
-                patchBody.arrivalTime = `${pad(arr.getHours())}:${pad(arr.getMinutes())}`;
+                // The arrival on the destination's clock: its own time zone when both places are known.
+                const zoned = localArrival(leg.origin!.trim(), leg.destination!.trim(), leg.departureDate, leg.departureTime, minutes);
+                if (zoned) { patchBody.arrivalDate = zoned.date; patchBody.arrivalTime = zoned.time; }
+                else {
+                    const arr = new Date(new Date(`${leg.departureDate}T${leg.departureTime}:00`).getTime() + minutes * 60000);
+                    const pad = (n: number) => String(n).padStart(2, '0');
+                    patchBody.arrivalDate = `${arr.getFullYear()}-${pad(arr.getMonth() + 1)}-${pad(arr.getDate())}`;
+                    patchBody.arrivalTime = `${pad(arr.getHours())}:${pad(arr.getMinutes())}`;
+                }
             }
             const h = Math.floor(minutes / 60);
-            toast.info(`${est.km.toLocaleString('en-US')} km, ${h ? `${h} h ` : ''}${minutes % 60} min, ${SOURCE_LABEL[est.source]}. Times are local to the departure place.`);
+            toast.info(`${est.km.toLocaleString('en-US')} km, ${h ? `${h} h ` : ''}${minutes % 60} min, ${SOURCE_LABEL[est.source]}.`);
             patch(patchBody);
         } catch (e) {
             setError(errorMessage(e, "Couldn't work out the route."));

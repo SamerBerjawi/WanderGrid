@@ -1,5 +1,6 @@
 import type { Transport, Trip } from '../types';
 import { calculateDistance, getCoordinatesSync } from '../services/geocoding';
+import { knownZone } from '../services/timezone';
 import { getAirportTimezone, getCarrierName, getCityName, getFlightArrivalUtcDate, getFlightDepartureUtcDate, getFlightStatusTags, parseLocalDateInTimezone } from './flightData';
 
 /**
@@ -382,7 +383,8 @@ export const journeyEnds = (t: Transport): { from: [number, number]; to: [number
     return a && b ? { from: [a.lng, a.lat], to: [b.lng, b.lat] } : undefined;
 };
 
-export interface RouteLine { from: [number, number]; to: [number, number]; count: number; label: string }
+/** `sea` marks a ferry or cruise route (drawn along its shipping lane); `path` is that lane once found. */
+export interface RouteLine { from: [number, number]; to: [number, number]; count: number; label: string; sea?: boolean; path?: [number, number][] }
 
 /** Distinct routes (either direction counts as one) with how often they were flown. */
 export const routeLines = (items: JourneyRecord[]): RouteLine[] => {
@@ -394,7 +396,7 @@ export const routeLines = (items: JourneyRecord[]): RouteLine[] => {
         const a = placeCode(r.flight.origin, r.flight.mode), b = placeCode(r.flight.destination, r.flight.mode);
         const key = [a, b].sort().join('-');
         const row = map.get(key);
-        if (row) row.count += 1; else map.set(key, { ...ends, count: 1, label: `${a} to ${b}` });
+        if (row) row.count += 1; else map.set(key, { ...ends, count: 1, label: `${a} to ${b}`, sea: r.flight.mode === 'Ferry' || r.flight.mode === 'Cruise' });
     }
     return [...map.values()];
 };
@@ -465,7 +467,7 @@ export const fromLog = (items: JourneyRecord[], flightNumber: string): Transport
     return same[0] ?? null;
 };
 
-const zoneOf = (iata: string): string | undefined => getAirportTimezone(iata.trim().toUpperCase()) || getCoordinatesSync(iata)?.tz;
+const zoneOf = (iata: string): string | undefined => getAirportTimezone(iata.trim().toUpperCase()) || getCoordinatesSync(iata)?.tz || knownZone(iata);
 
 /**
  * Local arrival date and time at the destination for a flight that leaves at a local time and takes
@@ -479,6 +481,23 @@ export const localArrival = (origin: string, destination: string, date: string, 
     const parts = new Intl.DateTimeFormat('en-CA', { timeZone: to, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(leaves + minutes * 60000));
     const get = (t: string) => parts.find(p => p.type === t)?.value || '';
     return { date: `${get('year')}-${get('month')}-${get('day')}`, time: `${get('hour')}:${get('minute')}` };
+};
+
+/**
+ * Minutes that really pass between a local departure and a local arrival, using the time zone of each
+ * place when both are known (a train from London to Paris arrives an hour "later" on the clock), and
+ * the plain clock gap when not.
+ */
+export const elapsedMinutes = (origin: string, destination: string, depDate: string, depTime: string, arrDate: string, arrTime: string): number => {
+    const clock = (Date.parse(`${arrDate}T${arrTime || '00:00'}:00Z`) - Date.parse(`${depDate}T${depTime || '00:00'}:00Z`)) / 60000;
+    if (!Number.isFinite(clock)) return 0;
+    const from = zoneOf(origin), to = zoneOf(destination);
+    if (from && to && from !== to) {
+        const dep = parseLocalDateInTimezone(depDate, depTime || '00:00', from).getTime();
+        const arr = parseLocalDateInTimezone(arrDate, arrTime || '00:00', to).getTime();
+        if (Number.isFinite(dep) && Number.isFinite(arr)) return Math.max(0, Math.round((arr - dep) / 60000));
+    }
+    return Math.max(0, Math.round(clock));
 };
 
 /* ------------------------------------------------------------------ */
