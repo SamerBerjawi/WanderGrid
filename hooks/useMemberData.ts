@@ -9,6 +9,15 @@ export const readSessionUser = (): { id?: string; role?: string } | null => {
     try { return JSON.parse(localStorage.getItem('wandergrid_session_user') || 'null'); } catch { return null; }
 };
 
+/** The countries a trip visits: from the geocoded places, else the last part of "City, Country". */
+export const countriesOf = (trip: Trip): string[] => {
+    const geocoded = [trip.coordinates?.country, ...(trip.locations || []).map(l => l.coordinates?.country)].filter((c): c is string => Boolean(c));
+    const names = geocoded.length > 0
+        ? geocoded
+        : [trip.location, ...(trip.locations || []).map(l => l.name)].map(t => (t || '').split(',').map(x => x.trim()).filter(Boolean)).filter(parts => parts.length > 1).map(parts => parts[parts.length - 1]);
+    return Array.from(new Set(names));
+}
+
 export interface MemberTrip { trip: Trip; bucket: TripBucket; travelling: boolean }
 
 /**
@@ -78,6 +87,12 @@ export const useMemberData = (memberId: string) => {
                 if (!prev || end > prev) lastVisit.set(name, end);
             });
         });
+        const lastCountry = new Map<string, string>();
+        past.forEach(({ trip }) => {
+            const end = trip.endDate || trip.startDate || '';
+            countriesOf(trip).forEach(name => { if (end > (lastCountry.get(name) || '')) lastCountry.set(name, end); });
+        });
+        const countries = [...lastCountry.entries()].map(([name, date]) => ({ name, date })).sort((a, b) => b.date.localeCompare(a.date));
         const places = [...lastVisit.entries()].map(([name, date]) => ({ name, date })).sort((a, b) => b.date.localeCompare(a.date));
         return {
             trips: live.length,
@@ -85,6 +100,7 @@ export const useMemberData = (memberId: string) => {
             daysAway: past.reduce((sum, r) => sum + tripDays(r.trip), 0),
             flights: live.reduce((n, r) => n + (r.trip.transports || []).filter(x => x.mode === 'Flight').length, 0),
             places,
+            countries,
         };
     }, [memberTrips]);
 

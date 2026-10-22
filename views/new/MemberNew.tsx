@@ -286,7 +286,7 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                     {activeTab === 'overview' ? (
                         <PassportCard
                             member={member}
-                            places={data.stats.places}
+                            countries={data.stats.countries}
                             status={passport}
                             reveal={reveal}
                             onToggleReveal={() => setReveal(v => !v)}

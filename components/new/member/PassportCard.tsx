@@ -7,7 +7,7 @@ import { initials } from '../trips/TripDetailsModal';
 
 /**
  * A passport-style overview of a member: the identity page (photo, names, nationality, dates, number)
- * under a navy cover strip, then a page of stamps, one per place they have been to. The stamps are the
+ * under a navy cover strip, then a page of stamps, one per country they have been to. The stamps are the
  * member's finished trips; nothing here is a travel document.
  */
 
@@ -29,17 +29,17 @@ const Field: React.FC<{ label: string; children: React.ReactNode; className?: st
 
 export const PassportCard: React.FC<{
     member: User;
-    places: Array<{ name: string; date: string }>;
+    countries: Array<{ name: string; date: string }>;
     status: { label: string; className: string } | null;
     reveal: boolean;
     onToggleReveal: () => void;
     onEdit?: () => void;
-}> = ({ member, places, status, reveal, onToggleReveal, onEdit }) => {
+}> = ({ member, countries, status, reveal, onToggleReveal, onEdit }) => {
     const parts = member.name.trim().split(/\s+/);
     const surname = parts.length > 1 ? parts[parts.length - 1] : '';
     const given = parts.length > 1 ? parts.slice(0, -1).join(' ') : member.name;
     const number = member.passportNumber ? (reveal ? member.passportNumber : `•••• ${member.passportNumber.slice(-4)}`) : '';
-    const shown = places.slice(0, STAMPS_SHOWN);
+    const shown = countries.slice(0, STAMPS_SHOWN);
 
     return (
         <div className="overflow-hidden rounded-rp-card bg-rp-surface rp-shadow-rest">
@@ -81,7 +81,7 @@ export const PassportCard: React.FC<{
             <div className="border-t border-dashed border-rp-line p-4 sm:p-5">
                 <h3 className="mb-3 text-2xs uppercase tracking-wider text-rp-muted">Stamps</h3>
                 {shown.length === 0 ? (
-                    <p className="text-sm text-rp-muted">No stamps yet. Finished trips leave one here.</p>
+                    <p className="text-sm text-rp-muted">No stamps yet. A finished trip leaves one per country.</p>
                 ) : (
                     <ul className="flex flex-wrap gap-3">
                         {shown.map((p, i) => (
@@ -90,7 +90,7 @@ export const PassportCard: React.FC<{
                                 <span className="rp-tabular text-xs">{formatDate(p.date, 'month-year')}</span>
                             </li>
                         ))}
-                        {places.length > STAMPS_SHOWN ? <li className="flex min-h-16 items-center px-2 text-sm text-rp-muted">+{places.length - STAMPS_SHOWN} more</li> : null}
+                        {countries.length > STAMPS_SHOWN ? <li className="flex min-h-16 items-center px-2 text-sm text-rp-muted">+{countries.length - STAMPS_SHOWN} more</li> : null}
                     </ul>
                 )}
             </div>
