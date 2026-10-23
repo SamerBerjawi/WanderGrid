@@ -12,7 +12,6 @@ import type { DockTool } from '../../components/kokonutui/tool-dock';
 import { RpPageToolbar } from '../../components/new/PageToolbar';
 import { CityQuickAddSheet } from '../../components/new/atlas/AtlasSheets';
 import { FindNamesSheet } from '../../components/new/atlas/NamePlaceSheets';
-import { isUnknownPlaceName } from '../../services/cityRegistry';
 import { RpEmpty } from '../../components/new/ui';
 import { AtlasMap } from '../../components/new/atlas/AtlasMap';
 import { CityTile, CountryTile, FlagArt, RegionHeading, RpChipLabel, RpKpi } from '../../components/new/atlas/AtlasParts';
@@ -280,7 +279,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = ({ onTripClick }) => {
                                 counts={toneCounts}
                                 onCountryClick={(code, name) => openCountry(code, name)}
                                 cities={showCities ? mapCities : undefined}
-                                onCityClick={id => { const c = data.cities.find(x => x.id === id); if (c && (data.storedIds.has(id) || isUnknownPlaceName(c.name))) setCity(c); }}
+                                onCityClick={id => { const c = data.cities.find(x => x.id === id); if (c) setCity(c); }}
                             />
                         </section>
                         <div className="order-first grid grid-cols-2 gap-3 md:grid-cols-4 lg:order-none lg:grid-cols-2 lg:gap-6">
@@ -501,7 +500,7 @@ const CityGroups: React.FC<{
                 title="Cities"
                 groups={groups}
                 // Places that come from trips can't be edited here, so only stored cities open.
-                onSelect={id => { const item = byId.get(id); if (item && (storedIds.has(id) || isUnknownPlaceName(item.name))) onOpen(item); }}
+                onSelect={id => { const item = byId.get(id); if (item) onOpen(item); }}
                 toItem={(c, region) => ({
                     id: c.id,
                     title: c.name,
@@ -520,7 +519,7 @@ const CityGroups: React.FC<{
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         {group.items.map(item => {
                             const stored = storedIds.has(item.id);
-                            return <CityTile key={item.id} item={item} derived={!stored} onClick={stored || isUnknownPlaceName(item.name) ? () => onOpen(item) : undefined} />;
+                            return <CityTile key={item.id} item={item} derived={!stored} onClick={() => onOpen(item)} />;
                         })}
                     </div>
                 </section>

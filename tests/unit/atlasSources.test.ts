@@ -71,8 +71,22 @@ describe('findCitySources', () => {
         const other = findCitySources({ name: 'Unknown', ...FAR }, rec).map(s => s.kind).sort();
         expect(other).toEqual(['transport.origin', 'trip.stop']);
     });
-    it('a named city has no sources to rewrite', () => {
-        expect(findCitySources({ name: 'Porto', ...PORTO }, rec)).toEqual([]);
+    it('a named city is found by its name, and a flight by its airport code', () => {
+        const named = records({
+            trips: [trip('t9', { location: 'Amsterdam, Netherlands', coordinates: { lat: 52.37, lng: 4.9, countryCode: 'NL' } as any })],
+            flights: [{ id: 'f9', destination: 'NRT', destLat: 35.77, destLng: 140.39 }],
+            visited: [{ id: 'v9', type: 'city', code: 'Amsterdam', name: 'Amsterdam', countryCode: 'NL' } as VisitedItem],
+        });
+        expect(findCitySources({ name: 'Amsterdam', countryCode: 'NL' }, named).map(s => s.kind).sort()).toEqual(['trip.location', 'visited']);
+        const nrt = findCitySources({ name: 'Nrt' }, named);
+        expect(nrt.map(s => s.kind)).toEqual(['flight.destCity']);
+        const plan = planNameWriteBack([{ sources: nrt, city: 'Tokyo', display: 'Tokyo, Japan', country: { code: 'JP', name: 'Japan' }, replace: true, lat: 35.68, lng: 139.69 }], { trips: [], flights: named.flights, visited: [] });
+        expect(plan.flights[0]).toMatchObject({ destCity: 'Tokyo', destination: 'NRT' });
+        expect(plan.visited[0]).toMatchObject({ name: 'Tokyo', countryCode: 'JP', lat: 35.68 });
+    });
+    it('does not match a same-named city in another country', () => {
+        const r = records({ trips: [trip('t8', { location: 'Springfield', coordinates: { lat: 1, lng: 1, countryCode: 'GB' } as any })] });
+        expect(findCitySources({ name: 'Springfield', countryCode: 'US' }, r)).toEqual([]);
     });
 });
 

@@ -6,6 +6,8 @@ import { ArrowClockwise, ArrowUndo, Check, CheckCircle, MagnifyingGlass, MapPin,
 import { getFlagEmoji } from '../../../services/geoData';
 import { isUnknownPlaceName } from '../../../services/cityRegistry';
 import { reverseGeocode, type ReversePlace } from '../../../services/reverseGeocode';
+import { searchPlaces, type Place } from '../../../services/placeSearch';
+import { canonicalCountryName, normalizeCountryCode } from '../../../services/countryRegistry';
 import type { CitySource } from '../../../utils/atlasSources';
 import type { AtlasData } from '../../../hooks/useAtlasData';
 import { useFindNames, type FindNames } from '../../../hooks/useFindNames';
@@ -49,14 +51,43 @@ export const NamePlaceSheet: React.FC<{ city: VisitedItem; onClose: () => void; 
     const sources = useMemo(() => data.sourcesFor(city), [data, city]);
     const [name, setName] = useState('');
     const [country, setCountry] = useState<{ code: string; name: string } | undefined>();
-    const [picked, setPicked] = useState<Set<string>>(new Set());
+    const [chosen, setChosen] = useState<Set<string>>(new Set());
     const [finding, setFinding] = useState(false);
     const [found, setFound] = useState<ReversePlace | null | 'none'>(null);
     const [error, setError] = useState<string | null>(null);
+    const unknown = isUnknownPlaceName(city.name);
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState<Place[] | null>(null);
+    const [searching, setSearching] = useState(false);
+    const [picked, setPickedPlace] = useState<{ lat: number; lng: number } | undefined>();
     const where = coords(city);
 
-    useEffect(() => { setPicked(new Set(sources.map(s => s.key))); }, [sources]);
-    useEffect(() => { setName(''); setCountry(undefined); setFound(null); setError(null); }, [city.id]);
+    useEffect(() => { setChosen(new Set(sources.map(s => s.key))); }, [sources]);
+    useEffect(() => {
+        setName(unknown ? '' : city.name);
+        setQuery(unknown ? '' : city.name);
+        setCountry(undefined); setFound(null); setError(null); setResults(null); setPickedPlace(undefined);
+    }, [city.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    /** Searches real places by name (on a press or Enter, never while typing). */
+    const search = async () => {
+        if (query.trim().length < 2) return;
+        setSearching(true);
+        setError(null);
+        try {
+            const found = await searchPlaces(query.trim(), { limit: 8, bias: Number.isFinite(city.lat) ? { lat: city.lat, lon: city.lng } : undefined });
+            setResults(found.filter(p => p.kind === 'city' || p.kind === 'region' || p.kind === 'airport' || p.kind === 'poi' || p.kind === 'port' || p.kind === 'station'));
+        } catch { setResults([]); } finally { setSearching(false); }
+    };
+    const pick = (p: Place) => {
+        // An airport or station stands for the city around it.
+        const cityName = p.kind === 'city' || p.kind === 'region' ? p.name : (p.admin1 && p.kind !== 'airport' ? p.name : p.subtitle.split(',')[0].trim() || p.name);
+        setName(cityName);
+        const code = (p.countryCode || normalizeCountryCode(p.country || '')).toUpperCase();
+        setCountry(code && code !== 'XX' ? { code, name: canonicalCountryName(code, p.country) } : undefined);
+        setPickedPlace({ lat: p.lat, lng: p.lng });
+        setResults(null);
+    };
 
     const find = async () => {
         setFinding(true);
@@ -71,13 +102,13 @@ export const NamePlaceSheet: React.FC<{ city: VisitedItem; onClose: () => void; 
         } finally { setFinding(false); }
     };
 
-    const toggle = (s: CitySource) => setPicked(p => { const n = new Set(p); if (n.has(s.key)) n.delete(s.key); else n.add(s.key); return n; });
-    const ready = name.trim().length > 0 && !isUnknownPlaceName(name);
+    const toggle = (s: CitySource) => setChosen(p => { const n = new Set(p); if (n.has(s.key)) n.delete(s.key); else n.add(s.key); return n; });
+    const ready = name.trim().length > 0 && !isUnknownPlaceName(name) && (unknown || !!picked || name.trim() !== city.name);
 
     const save = async () => {
         setError(null);
         try {
-            await data.nameCity(city, name, country, sources.filter(s => picked.has(s.key)));
+            await data.nameCity(city, name, country, sources.filter(s => chosen.has(s.key)), picked);
             onClose();
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Could not save the name.');
@@ -89,8 +120,8 @@ export const NamePlaceSheet: React.FC<{ city: VisitedItem; onClose: () => void; 
         <RpSheet
             open
             onClose={onClose}
-            title="Name this place"
-            subtitle={where ? `At ${where}` : 'No coordinates'}
+            title={unknown ? 'Name this place' : 'Match to a place'}
+            subtitle={unknown ? (where ? `At ${where}` : 'No coordinates') : city.name}
             footer={
                 <ParticleButton onClick={save} disabled={!ready} pendingLabel="Saving" successLabel="Saved" errorLabel="Try again">
                     Save the name
@@ -102,7 +133,28 @@ export const NamePlaceSheet: React.FC<{ city: VisitedItem; onClose: () => void; 
                     <label htmlFor={nameId} className="text-xs text-rp-muted">City</label>
                     <input id={nameId} value={name} onChange={e => { setName(e.target.value); setCountry(c => (found && found !== 'none' && e.target.value.trim() === found.name ? c : undefined)); }} placeholder="City name" className={FIELD} autoComplete="off" />
                 </div>
-                {where ? (
+                <div className="flex flex-col gap-2 py-1.5">
+                    <label htmlFor={`${nameId}-q`} className="text-xs text-rp-muted">Search for the real place</label>
+                    <div className="flex gap-2">
+                        <input id={`${nameId}-q`} value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void search(); }} placeholder="Tokyo, or an airport code" className={FIELD} autoComplete="off" />
+                        <button type="button" onClick={() => void search()} disabled={searching || query.trim().length < 2} className={cn(BTN, 'bg-rp-inset text-rp-ink hover:bg-rp-line')} aria-label="Search places"><MagnifyingGlass size={16} aria-hidden /></button>
+                    </div>
+                    {searching ? <p role="status" className="text-xs text-rp-muted">Searching</p> : null}
+                    {results && results.length === 0 ? <p role="status" className="text-xs text-rp-muted">No place found. Try the city and country.</p> : null}
+                    {results && results.length > 0 ? (
+                        <ul className="flex flex-col">
+                            {results.map(p => (
+                                <li key={p.id}>
+                                    <button type="button" onClick={() => pick(p)} className="flex min-h-12 w-full items-center gap-3 rounded-rp-inset px-1 text-left outline-none hover:bg-rp-inset focus-visible:ring-2 focus-visible:ring-rp-muted">
+                                        <span aria-hidden className="text-lg leading-none">{p.countryCode ? getFlagEmoji(p.countryCode) : '📍'}</span>
+                                        <span className="flex min-w-0 flex-1 flex-col"><span className="truncate text-sm text-rp-ink">{p.name}</span><span className="truncate text-xs text-rp-muted">{p.subtitle || p.label}</span></span>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : null}
+                </div>
+                {where && unknown ? (
                     <div className="flex flex-col gap-2 py-1.5">
                         <button type="button" onClick={() => void find()} disabled={finding} className={cn(BTN, 'self-start bg-rp-inset text-rp-ink hover:bg-rp-line')}>
                             <MagnifyingGlass size={16} aria-hidden /> {finding ? 'Looking' : 'Find the name'}
@@ -117,6 +169,7 @@ export const NamePlaceSheet: React.FC<{ city: VisitedItem; onClose: () => void; 
                     </div>
                 ) : null}
                 {country ? <p className="py-1 text-xs text-rp-muted"><span aria-hidden>{getFlagEmoji(country.code)}</span> {country.name} will be saved with it.</p> : null}
+                {picked && !unknown ? <p className="py-1 text-xs text-rp-muted">The atlas city moves to this place. Your trips keep their own coordinates.</p> : null}
             </RpSection>
 
             <RpSection title={`Where it is used · ${sources.length}`} icon={Sparkle}>
@@ -126,7 +179,7 @@ export const NamePlaceSheet: React.FC<{ city: VisitedItem; onClose: () => void; 
                     <>
                         <p className="py-1 text-xs text-rp-muted">The new name is written into these. Untick any you want to leave.</p>
                         <div className="flex flex-col py-1">
-                            {sources.map(s => <CheckRow key={s.key} checked={picked.has(s.key)} onToggle={() => toggle(s)} title={s.label} meta={`Now: ${s.current || 'empty'}`} />)}
+                            {sources.map(s => <CheckRow key={s.key} checked={chosen.has(s.key)} onToggle={() => toggle(s)} title={s.label} meta={`Now: ${s.current || 'empty'}`} />)}
                         </div>
                     </>
                 )}

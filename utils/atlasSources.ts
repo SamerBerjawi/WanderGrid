@@ -48,7 +48,7 @@ export interface AtlasRecords {
     roadTrips: any[];
 }
 
-interface Spot { name: string; lat?: number; lng?: number }
+interface Spot { name: string; lat?: number; lng?: number; countryCode?: string }
 
 const num = (v: unknown): number | undefined => {
     const n = typeof v === 'string' ? parseFloat(v) : (v as number);
@@ -58,16 +58,25 @@ const num = (v: unknown): number | undefined => {
 /** Sources closer than this to the city's coordinates are the same place. */
 export const SAME_SPOT_KM = 2;
 
-/** The fields that describe the place `city` (an unknown-named atlas city), across all the user's records. */
+/** The fields that describe the place `city` (any atlas city; an unknown one is told apart by its coordinates), across all the user's records. */
 export const findCitySources = (city: Spot, records: AtlasRecords): CitySource[] => {
-    if (!isUnknownPlaceName(city.name)) return [];
+    const unknown = isUnknownPlaceName(city.name);
+    const wanted = cityKey(cleanCityName(city.name));
     const lat = num(city.lat);
     const lng = num(city.lng);
     const located = lat !== undefined && lng !== undefined;
 
     /** Same unknown place: nothing else says what it is, so the spot is the identity (no coordinates: also none). */
-    const same = (raw: string | undefined, sLat?: unknown, sLng?: unknown) => {
-        if (!raw || !isUnknownPlaceName(cleanCityName(raw))) return false;
+    const same = (raw: string | undefined, sLat?: unknown, sLng?: unknown, sCountry?: string) => {
+        if (!raw) return false;
+        if (!unknown) {
+            // A named place is the same place by name (and country, when both say): "Amsterdam", "NRT".
+            if (cityKey(cleanCityName(raw)) !== wanted) return false;
+            const mine = normalizeCountryCode(city.countryCode || '');
+            const theirs = normalizeCountryCode(sCountry || '');
+            return !mine || mine === 'XX' || !theirs || theirs === 'XX' || mine === theirs;
+        }
+        if (!isUnknownPlaceName(cleanCityName(raw))) return false;
         const a = num(sLat);
         const b = num(sLng);
         if (!located) return a === undefined || b === undefined;
@@ -79,7 +88,7 @@ export const findCitySources = (city: Spot, records: AtlasRecords): CitySource[]
     const add = (s: CitySource) => { if (!out.has(s.key)) out.set(s.key, s); };
 
     records.visited.filter(v => v.type === 'city').forEach(v => {
-        if (same(v.name, v.lat, v.lng)) add({ key: `visited:${v.id}`, kind: 'visited', recordId: v.id, current: v.name, label: 'Saved in your atlas' });
+        if (same(v.name, v.lat, v.lng, v.countryCode)) add({ key: `visited:${v.id}`, kind: 'visited', recordId: v.id, current: v.name, label: 'Saved in your atlas' });
     });
 
     const tripOf = new Map(records.trips.map(t => [t.id, t]));
@@ -88,7 +97,7 @@ export const findCitySources = (city: Spot, records: AtlasRecords): CitySource[]
         const places = t.location ? splitCombinedPlaces(t.location) : [];
         places.forEach(place => {
             const single = places.length === 1;
-            if (same(place, single ? t.coordinates?.lat : undefined, single ? t.coordinates?.lng : undefined)) {
+            if (same(place, single ? t.coordinates?.lat : undefined, single ? t.coordinates?.lng : undefined, single ? t.coordinates?.countryCode : undefined)) {
                 add({ key: `trip.location:${t.id}:${place}`, kind: 'trip.location', recordId: t.id, current: place, label: `Trip: ${tripName} · location` });
             }
         });
@@ -124,8 +133,9 @@ export const findCitySources = (city: Spot, records: AtlasRecords): CitySource[]
     });
     records.flights.filter(f => f.status !== 'Cancelled').forEach(f => {
         // Only a free-text city field is renamed; `destination` is an airport code and stays as it is.
-        if (f.destCity && same(f.destCity, f.destLat, f.destLng)) {
-            add({ key: `flight.destCity:${f.id}`, kind: 'flight.destCity', recordId: f.id, tripId: holder(f), current: f.destCity, label: `Flight ${f.identifier || f.destination || ''}`.trim() });
+        // The atlas uses destCity, or the destination's code when there is none; a new name goes into destCity either way.
+        if ((f.destCity || f.destination) && same(f.destCity || f.destination, f.destLat, f.destLng, f.destCountryCode)) {
+            add({ key: `flight.destCity:${f.id}`, kind: 'flight.destCity', recordId: f.id, tripId: holder(f), current: f.destCity || '', label: `Flight ${f.identifier || f.destination || ''}`.trim() });
         }
     });
 
@@ -143,7 +153,9 @@ export interface NameChoice {
     /** The name for free-text place fields ("Porto, Portugal"). */
     display: string;
     country?: { code: string; name: string };
-    /** Coordinates of the place, for a stored city that has to be created. Never written into trips. */
+    /** The person picked a real place: its country and coordinates replace the stored city's. */
+    replace?: boolean;
+    /** Coordinates of the place, for a stored city that has to be created or re-pointed. Never written into trips. */
     lat?: number;
     lng?: number;
 }
@@ -216,7 +228,8 @@ export const planNameWriteBack = (choices: NameChoice[], ctx: WriteBackContext):
                 hasStored = true;
                 rec.name = city;
                 rec.code = city;
-                if (choice.country && isUnknownCountry(rec)) { rec.countryCode = choice.country.code; rec.countryName = choice.country.name; }
+                if (choice.country && (choice.replace || isUnknownCountry(rec))) { rec.countryCode = choice.country.code; rec.countryName = choice.country.name; }
+                if (choice.replace && Number.isFinite(choice.lat) && Number.isFinite(choice.lng)) { rec.lat = choice.lat; rec.lng = choice.lng; }
                 written++;
                 return;
             }
@@ -253,7 +266,7 @@ export const planNameWriteBack = (choices: NameChoice[], ctx: WriteBackContext):
                 if (record.destination !== src.current) { skip(); return; }
                 record.destination = display;
             } else if (src.kind === 'flight.destCity') {
-                if (record.destCity !== src.current) { skip(); return; }
+                if ((record.destCity || '') !== src.current) { skip(); return; }
                 record.destCity = city;
             } else {
                 const wp = (record.waypoints || []).find((w: any) => w.id === src.entryId);

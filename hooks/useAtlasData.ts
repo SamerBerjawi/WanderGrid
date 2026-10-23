@@ -218,12 +218,14 @@ export const useAtlasData = () => {
 
     /** Names one unknown city: the stored record and the chosen source fields, in one step, with Undo. */
     const nameCity = useCallback(async (
-        city: VisitedItem, name: string, country: { code: string; name: string } | undefined, sources: CitySource[]
+        city: VisitedItem, name: string, country: { code: string; name: string } | undefined, sources: CitySource[],
+        picked?: { lat: number; lng: number }
     ) => {
         const text = name.trim();
         const choice: NameChoice = {
             sources, city: text, display: country?.name ? `${text}, ${country.name}` : text, country,
-            lat: city.lat, lng: city.lng,
+            // A picked place re-points the stored city to it; a typed name keeps the city where it was.
+            replace: !!picked, lat: picked?.lat ?? city.lat, lng: picked?.lng ?? city.lng,
         };
         const plan = planNameWriteBack([choice], await freshRecords());
         if (namePlanSize(plan) === 0) throw new Error('Nothing to rename: these records have changed since. Close this and open the place again.');
