@@ -375,7 +375,11 @@ export const useExpeditionMapData = () => {
 
                         const isFlight = !tr.mode || tr.mode === 'Flight';
 
-                        if (originGeo?.iso) {
+                        // The origin of a connecting flight is the previous leg's layover, not a stay.
+                        const prev = idx > 0 ? transports[idx - 1] : null;
+                        const prevIsFlight = Boolean(prev) && (!prev!.mode || prev!.mode === 'Flight');
+                        const isConnection = isFlight && prevIsFlight && prev!.destination?.toUpperCase() === originCode;
+                        if (originGeo?.iso && !isConnection) {
                             destinationCountries.add(originGeo.iso.toUpperCase());
                         }
 
