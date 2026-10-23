@@ -949,7 +949,7 @@ function withNextVersion(table, incoming, existing) {
     if (existing && incoming.version !== undefined && incoming.version !== null && Number(incoming.version) !== current) {
         throw conflict(table, incoming.id);
     }
-    return { ...incoming, version: current + 1 };
+    return { ...incoming, version: current + 1, updatedAt: new Date().toISOString() };
 }
 
 // Upserts records after checking the caller may change each existing one (new ones get an owner).
@@ -2418,74 +2418,10 @@ app.get('/api/carriers/search', async (req, res) => {
 const CALENDAR_TOKEN_PATTERN = /^[0-9a-f]{48}$/;
 const newCalendarToken = () => crypto.randomBytes(24).toString('hex');
 
-const icsEscape = (value) => String(value ?? '')
-    .replace(/\\/g, '\\\\')
-    .replace(/;/g, '\;')
-    .replace(/,/g, '\\,')
-    .replace(/\r\n|\r|\n/g, '\\n');
-
-// Fold content lines longer than 75 octets (RFC 5545 §3.1) without splitting UTF-8 characters.
-const icsFold = (line) => {
-    const parts = [];
-    let current = '';
-    let bytes = 0;
-    for (const ch of line) {
-        const len = Buffer.byteLength(ch);
-        if (bytes + len > (parts.length === 0 ? 75 : 74)) {
-            parts.push(current);
-            current = '';
-            bytes = 0;
-        }
-        current += ch;
-        bytes += len;
-    }
-    parts.push(current);
-    return parts.join('\r\n ');
-};
-
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}/;
-const isValidDay = (value) => typeof value === 'string' && ISO_DAY.test(value) && !isNaN(new Date(value.slice(0, 10)).getTime());
-
-function buildIcsCalendar(trips) {
-    const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    const formatDate = (dateStr) => dateStr.slice(0, 10).replace(/-/g, '');
-    const getExclusiveEndDate = (dateStr) => {
-        const date = new Date(dateStr.slice(0, 10));
-        date.setDate(date.getDate() + 1);
-        return date.toISOString().split('T')[0].replace(/-/g, '');
-    };
-
-    const events = trips
-        .filter(trip => isValidDay(trip.startDate) && isValidDay(trip.endDate)) // one bad record must not break the feed
-        .map(trip => {
-            let description = `Status: ${trip.status}\n`;
-            if (Array.isArray(trip.transports) && trip.transports.length > 0) {
-                description += `\nTransports:${trip.transports.map(t => `\n- ${t.mode}: ${t.provider} (${t.departureTime})`).join('')}`;
-            }
-            return [
-                'BEGIN:VEVENT',
-                `UID:${icsEscape(trip.id)}@wandergrid.app`,
-                `DTSTAMP:${now}`,
-                `DTSTART;VALUE=DATE:${formatDate(trip.startDate)}`,
-                `DTEND;VALUE=DATE:${getExclusiveEndDate(trip.endDate)}`,
-                `SUMMARY:${icsEscape(`${trip.icon || '✈️'} ${trip.name}`)}`,
-                `LOCATION:${icsEscape(trip.location || '')}`,
-                `DESCRIPTION:${icsEscape(description)}`,
-                'END:VEVENT'
-            ].map(icsFold).join('\r\n');
-        });
-
-    return [
-        'BEGIN:VCALENDAR',
-        'VERSION:2.0',
-        'PRODID:-//WanderGrid//Travel Calendar//EN',
-        'CALSCALE:GREGORIAN',
-        'METHOD:PUBLISH',
-        'X-WR-CALNAME:WanderGrid Trips',
-        ...events,
-        'END:VCALENDAR'
-    ].join('\r\n');
-}
+// The feed is built by icsFeed.mjs, the same module the app uses for its own .ics files. It is an ES module,
+// so a CommonJS server loads it with import(); the promise is awaited on first use.
+const icsFeedModule = import('./icsFeed.mjs');
+const AIRPORT_TIMEZONES = require('./airportTimezones.json');
 
 // Returns (creating on first use) the signed-in user's feed token.
 app.get('/api/calendar/token', async (req, res) => {
@@ -2523,26 +2459,91 @@ app.post('/api/calendar/token/rotate', async (req, res) => {
     }
 });
 
-// Public (token-authenticated) feed for calendar apps.
+// What the person's "What to sync" panel remembers. The feed URL itself carries the choice as query
+// parameters (one URL = one configuration, see icsFeed.mjs), so this only restores the panel.
+app.get('/api/calendar/prefs', async (req, res) => {
+    try {
+        const { parseFeedOptions } = await icsFeedModule;
+        const { rows } = await pool.query(`SELECT data FROM users WHERE id = $1`, [req.user.id]);
+        if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
+        res.json({ options: parseFeedOptions(rows[0].data.calendarFeed || {}) });
+    } catch (err) {
+        sendError(res, err, 500, 'Failed to read calendar options');
+    }
+});
+
+app.put('/api/calendar/prefs', async (req, res) => {
+    try {
+        const { parseFeedOptions } = await icsFeedModule;
+        const options = parseFeedOptions(req.body && typeof req.body === 'object' ? req.body : {});
+        await withTransaction(async (client) => {
+            const { rows } = await client.query(`SELECT data FROM users WHERE id = $1`, [req.user.id]);
+            if (rows.length === 0) throw new HttpError(404, 'User not found');
+            await client.query(`UPDATE users SET data = $2 WHERE id = $1`, [req.user.id, JSON.stringify({ ...rows[0].data, calendarFeed: options })]);
+        });
+        res.json({ options });
+    } catch (err) {
+        if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
+        sendError(res, err, 500, 'Failed to save calendar options');
+    }
+});
+
+// Public (token-authenticated) feed for calendar apps. Calendar apps poll it often, so a finished feed is kept
+// for a short time per link and options, and answers If-None-Match with 304.
+const FEED_CACHE_MS = 30_000;
+const FEED_CACHE_MAX = 200;
+const feedCache = new Map();
+const FEED_PLACEHOLDER_TIME = Date.UTC(2026, 0, 1);
+
 app.get('/api/calendar/:token/feed.ics', async (req, res) => {
     const { token } = req.params;
     if (!CALENDAR_TOKEN_PATTERN.test(token)) return res.status(404).send('Not found');
     try {
-        const { rows: userRows } = await pool.query(`SELECT data FROM users WHERE data->>'calendarToken' = $1 LIMIT 1`, [token]);
-        if (userRows.length === 0) return res.status(404).send('Not found');
-        const userId = userRows[0].data.id;
+        const { buildFeed, parseFeedOptions, feedOptionsToQuery } = await icsFeedModule;
+        const options = parseFeedOptions(req.query);
+        const baseUrl = (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host') || 'localhost'}`).replace(/\/+$/, '');
+        const key = `${token}|${feedOptionsToQuery(options)}|${baseUrl}`;
+        let entry = feedCache.get(key);
+        if (!entry || entry.expires < Date.now()) {
+            const { rows: userRows } = await pool.query(`SELECT data FROM users WHERE data->>'calendarToken' = $1 LIMIT 1`, [token]);
+            if (userRows.length === 0) return res.status(404).send('Not found');
+            const user = userRows[0].data;
 
-        const { rows } = await pool.query(`
-            SELECT data FROM trips
-            WHERE (data->>'status' = 'Upcoming' OR data->>'status' = 'Past')
-        `);
-        const trips = rows.map(r => r.data)
-            .filter(t => Array.isArray(t.participants) && t.participants.includes(userId));
+            const { rows } = await pool.query(`SELECT data FROM trips`);
+            const trips = rows.map(r => r.data).filter(t => t && Array.isArray(t.participants) && t.participants.includes(user.id));
 
+            const entitlements = new Map();
+            if (options.leave) {
+                const { rows: ent } = await pool.query(`SELECT data FROM entitlements`);
+                ent.forEach(r => entitlements.set(r.data.id, r.data.name));
+            }
+            let holidayCalendars = [];
+            if (options.holidays && Array.isArray(user.holidayConfigIds) && user.holidayConfigIds.length > 0) {
+                const { rows: cfg } = await pool.query(`SELECT data FROM configs`);
+                holidayCalendars = cfg.map(r => r.data).filter(c => user.holidayConfigIds.includes(c.id));
+            }
+
+            // DTSTAMP/LAST-MODIFIED come from the records (updatedAt), never from the clock, so an unchanged feed is byte-identical.
+            const newest = trips.reduce((m, t) => Math.max(m, Date.parse(t.updatedAt) || 0), 0);
+            const generatedAt = newest || FEED_PLACEHOLDER_TIME;
+            const body = buildFeed(trips, options, {
+                now: generatedAt, baseUrl,
+                airportTz: (iata) => AIRPORT_TIMEZONES[iata],
+                airportName: (iata) => memoryAirports.get(iata)?.airport_name || '',
+                entitlementName: (id) => entitlements.get(id) || '',
+                holidayCalendars,
+            });
+            entry = { body, etag: `"${crypto.createHash('sha1').update(body).digest('hex')}"`, modified: new Date(generatedAt).toUTCString(), expires: Date.now() + FEED_CACHE_MS };
+            if (feedCache.size >= FEED_CACHE_MAX) feedCache.clear();
+            feedCache.set(key, entry);
+        }
+        res.set('ETag', entry.etag);
+        res.set('Last-Modified', entry.modified);
+        res.set('Cache-Control', 'private, max-age=0, must-revalidate');
+        if (req.headers['if-none-match'] === entry.etag) return res.status(304).end();
         res.set('Content-Type', 'text/calendar;charset=utf-8');
         res.set('Content-Disposition', 'inline; filename="wandergrid.ics"');
-        res.set('Cache-Control', 'private, no-store');
-        res.send(buildIcsCalendar(trips));
+        res.send(entry.body);
     } catch (err) {
         console.error("Calendar Feed Error", err);
         res.status(500).send("Error generating calendar");
@@ -2915,6 +2916,8 @@ app.put('/api/users/:id', async (req, res) => {
             delete updatedUser.sessionToken;
             if (prevUser.calendarToken) updatedUser.calendarToken = prevUser.calendarToken;
             else delete updatedUser.calendarToken;
+            if (prevUser.calendarFeed) updatedUser.calendarFeed = prevUser.calendarFeed;
+            else delete updatedUser.calendarFeed;
             // An outstanding reset code survives profile edits but not a password change.
             if (prevUser.passwordReset && updatedUser.password === prevUser.password) updatedUser.passwordReset = prevUser.passwordReset;
             else delete updatedUser.passwordReset;
