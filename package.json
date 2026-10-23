@@ -1,7 +1,7 @@
 {
   "name": "wandergrid-v0.2",
   "private": true,
-  "version": "0.5-261023.13",
+  "version": "0.5-261023.14",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -40,6 +40,8 @@
   "devDependencies": {
     "@types/d3": "^7.4.3",
     "@types/node": "^22.14.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.5.4",
     "jsdom": "^26.1.0",
