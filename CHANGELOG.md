@@ -32,6 +32,7 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Fixed
 
+- **Carrier logos on the Flights page now come from Settings > Carriers.** The Flights page, Road trips, trip pages, map sheets and the flight finder share one lookup that finds the carrier you set up (by code, name or the letters of the flight number, so "KLM Royal Dutch Airlines" finds "KLM") and draws its logo the way the Carriers section does. Changing a carrier shows up without a reload. A carrier you have not set up shows the mode icon instead of a guessed Clearbit or favicon image, unless Brandfetch knows it.
 - The Dashboard World map showed wrong points: a trip to "California" pinned in Central America, dots in the
   ocean and at (0, 0), straight dark lines across the US and Scandinavia. Points now need real coordinates,
   a trip's pin must fit its own legs and sit on land, land and sea legs follow their traced route, and the

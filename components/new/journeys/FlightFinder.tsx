@@ -4,11 +4,11 @@ import type { FlightCandidate } from '../../../services/flightLookup';
 import type { LookupStatus } from '../../../hooks/useFlightLookup';
 import type { LookupResult } from '../../../services/flightLookup';
 import { Airplane, ArrowRight, Check, Broadcast, WarningCircle } from '../../ui/hugeicons';
-import { RpLogo } from '../ui';
 import { StatusPill } from './JourneyParts';
 import { formatDate } from '../../../utils/formatters';
 import { formatMinutes, type JourneyStatus } from '../../../utils/journeysModel';
 import { cn } from '../../../utils/cn';
+import { RpCarrierLogo } from '../CarrierLogos';
 
 /**
  * What the flight lookup found, under the flight number and date: one card per flight with its
@@ -35,7 +35,7 @@ const Card: React.FC<{ c: FlightCandidate; applied: boolean; onUse: (c: FlightCa
         <li className={cn('flex flex-col gap-2 rounded-rp-inset p-3', applied ? 'bg-rp-green/10 ring-2 ring-rp-green' : 'bg-rp-surface')}>
             <div className="flex items-center justify-between gap-2">
                 <span className="flex min-w-0 items-center gap-3">
-                    <RpLogo name={c.airline.name} brandfetchApiKey={brandfetchApiKey} carriers={carriers} fallback={Airplane} iconClassName="text-rp-rust" size="sm" />
+                    <RpCarrierLogo provider={c.airline.name} identifier={c.flightIata} brandfetchApiKey={brandfetchApiKey} carriers={carriers} fallback={Airplane} iconClassName="text-rp-rust" size="sm" />
                     <span className="flex min-w-0 flex-col">
                         <span className="truncate text-sm font-medium text-rp-ink">{c.airline.name || c.flightIata}</span>
                         <span className="rp-tabular truncate text-xs text-rp-muted">{c.flightIata}{c.aircraft.model ? ` · ${c.aircraft.model}` : ''}</span>

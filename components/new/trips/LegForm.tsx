@@ -4,10 +4,11 @@ import { fetchAirlineSuggestions } from '../../../hooks/useFlightLog';
 import { RP_FIELD, RpField } from '../fields';
 import { BookingTicket, Seat } from '../../ui/hugeicons';
 import { PlaceField } from '../PlaceField';
-import { RpChip, RpLogo } from '../ui';
+import { RpChip } from '../ui';
 import { LegDetails } from './LegDetails';
 import { LEG_PLACES, MODE_LOOKS, legText, modeLook } from './transportModes';
 import { cn } from '../../../utils/cn';
+import { RpCarrierLogo } from '../CarrierLogos';
 
 /**
  * The fields of one transport leg: kind of transport, From and To (place search tuned to the kind),
@@ -109,7 +110,7 @@ export const LegForm: React.FC<{
             <RpField label={isFlight ? 'Airline' : 'Operator'}>
                 {id => (
                     <div className="flex items-center gap-2">
-                        <RpLogo name={leg.provider} src={leg.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={m.icon} iconClassName={m.text} />
+                        <RpCarrierLogo provider={leg.provider} identifier={leg.identifier} src={leg.logoUrl} fallback={m.icon} iconClassName={m.text} />
                         <input
                             id={id}
                             list={isFlight ? `${id}-airlines` : undefined}
