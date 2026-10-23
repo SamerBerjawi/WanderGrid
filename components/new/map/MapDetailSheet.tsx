@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import NumberFlow from '@number-flow/react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import type { Carrier, CountryResidenceStatus, Trip } from '../../../types';
@@ -16,6 +16,11 @@ export type MapSelection =
     | { kind: 'route'; route: MapRoute }
     | { kind: 'place'; place: MapPlace }
     | { kind: 'country'; code: string; name: string };
+
+// The Sankey (visx responsive + motion) loads when a place sheet first opens, not with the map.
+const PlaceFlowChart = lazy(() => import('./PlaceFlowChart'));
+
+const ROUTE_LIST_LIMIT = 12;
 
 const MODE_ICON: Record<LegMode, Icon> = {
     flight: Airplane, rail: Train, road: Car, sea: Boat,
@@ -80,6 +85,11 @@ export const MapDetailSheet: React.FC<MapDetailSheetProps> = ({
     brandfetchApiKey, carriers,
 }) => {
     const corridors = useMemo(() => (selection?.kind === 'route' ? buildRouteCorridors(trips) : null), [selection, trips]);
+    // Long route lists show the first few until "+N others" in the Sankey (or the button) opens them.
+    const [showAllRoutes, setShowAllRoutes] = useState(false);
+    const listRef = useRef<HTMLDivElement>(null);
+    const placeId = selection?.kind === 'place' ? selection.place.id : null;
+    useEffect(() => { setShowAllRoutes(false); }, [placeId]);
 
     if (!selection) return <RpSheet open={false} onClose={onClose} title="">{null}</RpSheet>;
 
@@ -164,12 +174,25 @@ export const MapDetailSheet: React.FC<MapDetailSheetProps> = ({
     if (selection.kind === 'place') {
         const p = selection.place;
         const routes = model.routes.filter(r => r.origin === p.id || r.destination === p.id).sort((a, b) => b.count - a.count);
+        const listed = showAllRoutes ? routes : routes.slice(0, ROUTE_LIST_LIMIT);
+        const revealRoutes = () => {
+            setShowAllRoutes(true);
+            requestAnimationFrame(() => listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+        };
         return (
             <RpSheet open onClose={onClose} topOffset={topOffset} title={p.label} subtitle={<span>{p.kind === 'airport' ? 'Airport' : 'Place'} · <NumberFlow value={p.count} /> {p.count === 1 ? 'visit' : 'visits'}</span>}>
                 <div className="px-1 pb-2"><WeatherChip lat={p.coords[1]} lng={p.coords[0]} /></div>
+                {routes.length ? (
+                    <RpSection icon={Path} title="Flow">
+                        <Suspense fallback={<div className="h-[280px]" aria-hidden />}>
+                            <PlaceFlowChart placeId={p.id} routes={model.routes} onOpenRoute={route => onSelect({ kind: 'route', route })} onShowOthers={revealRoutes} />
+                        </Suspense>
+                    </RpSection>
+                ) : null}
                 <RpSection icon={Path} title="Routes">
+                    <div ref={listRef} />
                     <ul className="flex flex-col divide-y divide-rp-line">
-                        {routes.map(r => {
+                        {listed.map(r => {
                             const other = r.origin === p.id ? r.destination : r.origin;
                             const Icon = MODE_ICON[r.mode];
                             return (
@@ -183,6 +206,11 @@ export const MapDetailSheet: React.FC<MapDetailSheetProps> = ({
                             );
                         })}
                     </ul>
+                    {routes.length > listed.length ? (
+                        <button type="button" onClick={() => setShowAllRoutes(true)} className="mt-1 inline-flex min-h-11 items-center rounded-full px-3 text-sm font-medium text-rp-ink underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-rp-muted">
+                            Show all {routes.length} routes
+                        </button>
+                    ) : null}
                 </RpSection>
             </RpSheet>
         );

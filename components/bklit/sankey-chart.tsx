@@ -1,0 +1,180 @@
+/**
+ * A vertical Sankey in BklitUI's conventions (its ParentSize wrapper, links that draw in with a staggered
+ * enter transition, faded non-hovered links, a node/link/tooltip split), ported for WanderGrid's New pages
+ * from the `@bklit/sankey-chart` registry item. The registry chart is horizontal, lays out with d3-sankey
+ * and needs `--chart-*` variables; this one runs top to bottom (flow in across the top, one band in the
+ * middle, flow out across the bottom), lays itself out (`sankey-layout.ts`, so a one-sided place works),
+ * has no extra packages and takes colours from the rp-* tokens. Real props, no demo data. Every node is
+ * focusable and acts like a button; the caller keeps a list as the accessible alternative.
+ */
+import { motion, useReducedMotion, useTransform } from "motion/react";
+import { useId, useMemo, useState } from "react";
+import { cn } from "@/utils/cn";
+import { DEFAULT_CHART_ENTER_TRANSITION } from "./animation";
+import { ParentSize } from "./chart-parent-size";
+import { layoutFlow, placeLabels, ribbonPath } from "./sankey-layout";
+import { useMountProgress } from "./use-mount-progress";
+
+export type SankeyAccent = "green" | "rust" | "ink" | "mustard" | "navy" | "sea" | "plum" | "ochre" | "muted";
+
+export interface SankeyFlowNode {
+  key: string;
+  /** Short text under or over the node. */
+  label: string;
+  /** Tooltip first line (the full name). */
+  title: string;
+  /** Tooltip second line (the count). */
+  detail: string;
+  /** Spoken name of the node's button. */
+  ariaLabel: string;
+  value: number;
+  accent: SankeyAccent;
+}
+
+export interface SankeyChartProps {
+  /** Nodes across the top; the flow runs down from them into the band. */
+  top: SankeyFlowNode[];
+  /** Nodes across the bottom; the flow runs down from the band into them. */
+  bottom: SankeyFlowNode[];
+  /** Text inside the middle band. */
+  centerLabel: string;
+  /** What the chart says, for assistive technology. */
+  label: string;
+  onSelect?: (key: string) => void;
+  className?: string;
+}
+
+const NODE_H = 10;
+const BAND_H = 30;
+const LINK_H = 78;
+const LABEL_H = 32;
+const PAD_X = 4;
+const HEIGHT = LABEL_H + NODE_H + LINK_H + BAND_H + LINK_H + NODE_H + LABEL_H;
+const colour = (a: SankeyAccent, alpha?: number) =>
+  alpha == null ? `rgb(var(--rp-${a}))` : `rgb(var(--rp-${a}) / ${alpha})`;
+
+interface Placed extends SankeyFlowNode { side: "top" | "bottom"; x: number; w: number; bx: number; path: string }
+
+function Chart({ top, bottom, centerLabel, label, onSelect, width }: SankeyChartProps & { width: number }) {
+  const reduce = useReducedMotion();
+  const clipId = useId();
+  const [active, setActive] = useState<string | null>(null);
+  const inner = Math.max(0, width - PAD_X * 2);
+  const progress = useMountProgress(reduce ? { duration: 0 } : DEFAULT_CHART_ENTER_TRANSITION, 0.05, label);
+  const reveal = useTransform(progress, v => v * (LINK_H * 2 + BAND_H + 2));
+
+  const placed = useMemo<Placed[]>(() => {
+    const lay = layoutFlow(top.map(n => n.value), bottom.map(n => n.value), inner);
+    const yTopNode = LABEL_H;
+    const yTopBand = LABEL_H + NODE_H + LINK_H;
+    const yBotBand = yTopBand + BAND_H;
+    const yBotNode = yBotBand + LINK_H;
+    return [
+      ...top.map((n, i) => ({ ...n, side: "top" as const, x: lay.top[i].node.x, w: lay.top[i].node.w, bx: lay.top[i].band.x, path: ribbonPath(lay.top[i].node, lay.top[i].band, yTopNode + NODE_H, yTopBand) })),
+      ...bottom.map((n, i) => ({ ...n, side: "bottom" as const, x: lay.bottom[i].node.x, w: lay.bottom[i].node.w, bx: lay.bottom[i].band.x, path: ribbonPath(lay.bottom[i].band, lay.bottom[i].node, yBotBand, yBotNode) })),
+    ];
+  }, [top, bottom, inner]);
+
+  const labelSpots = useMemo(() => {
+    const spots = new Map<string, { x: number; row: number }>();
+    (["top", "bottom"] as const).forEach(side => {
+      const list = placed.filter(p => p.side === side);
+      placeLabels(list.map(p => p.x + p.w / 2), list.map(p => p.label), list.map(p => p.value), inner)
+        .forEach(s => spots.set(list[s.index].key, { x: s.x, row: s.row }));
+    });
+    return spots;
+  }, [placed, inner]);
+
+  if (width < 40) return null;
+  const hot = placed.find(p => p.key === active);
+  const bandY = LABEL_H + NODE_H + LINK_H;
+  const linkTop = LABEL_H + NODE_H;
+  const linkBottom = bandY + BAND_H + LINK_H;
+  const usedL = Math.min(...placed.map(p => p.bx), inner);
+  const usedR = Math.max(...placed.map(p => p.bx + p.w), 0);
+  const fade = (key: string) => (active == null ? 1 : active === key ? 1 : 0.22);
+
+  return (
+    <div className="relative" style={{ width, height: HEIGHT }}>
+      <svg width={width} height={HEIGHT} role="group" aria-label={label} className="overflow-visible">
+        <defs>
+          <clipPath id={clipId}>
+            <motion.rect x={0} y={linkTop} width={width} height={reveal} />
+          </clipPath>
+        </defs>
+        <g transform={`translate(${PAD_X},0)`}>
+          <g clipPath={`url(#${clipId})`}>
+            {placed.map(p => (
+              <motion.path
+                key={p.key}
+                d={p.path}
+                fill={colour(p.accent)}
+                initial={false}
+                animate={{ opacity: fade(p.key) * (active === p.key ? 0.6 : 0.34) }}
+                transition={{ duration: reduce ? 0 : 0.18, ease: "easeOut" }}
+                style={{ pointerEvents: "none" }}
+              />
+            ))}
+          </g>
+          <rect x={0} y={bandY} width={inner} height={BAND_H} rx={BAND_H / 2} fill="rgb(var(--rp-inset))" />
+          {usedR > usedL ? <rect x={usedL} y={bandY} width={usedR - usedL} height={BAND_H} rx={BAND_H / 2} fill="rgb(var(--rp-ink))" /> : null}
+          <text x={inner / 2} y={bandY + BAND_H / 2 + 4} textAnchor="middle" fontSize={12} fontWeight={600} fill="rgb(var(--rp-on-ink))" style={{ fontVariantNumeric: "tabular-nums", paintOrder: "stroke" }}>
+            {centerLabel}
+          </text>
+          {placed.map(p => {
+            const y = p.side === "top" ? LABEL_H : LABEL_H + NODE_H + LINK_H * 2 + BAND_H;
+            const spot = labelSpots.get(p.key);
+            const ly = p.side === "top" ? LABEL_H - 6 - (spot?.row ?? 0) * 13 : y + NODE_H + 13 + (spot?.row ?? 0) * 13;
+            return (
+              <g
+                key={p.key}
+                role="button"
+                tabIndex={0}
+                aria-label={p.ariaLabel}
+                className="cursor-pointer outline-none [&:focus-visible>rect]:stroke-[rgb(var(--rp-ink))]"
+                onMouseEnter={() => setActive(p.key)}
+                onMouseLeave={() => setActive(null)}
+                onFocus={() => setActive(p.key)}
+                onBlur={() => setActive(null)}
+                onClick={() => onSelect?.(p.key)}
+                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect?.(p.key); } }}
+              >
+                {/* A bigger invisible target than the thin node, for pointers and touch. */}
+                <rect x={p.x - 1} y={p.side === "top" ? y - 22 : y - 4} width={p.w + 2} height={NODE_H + 26} fill="transparent" />
+                <motion.rect x={p.x} y={y} width={p.w} height={NODE_H} rx={3} fill={colour(p.accent)} strokeWidth={2} stroke="transparent" animate={{ opacity: fade(p.key) }} transition={{ duration: reduce ? 0 : 0.18 }} />
+                {spot ? (
+                  <text x={spot.x} y={ly} textAnchor="middle" fontSize={11} fontWeight={active === p.key ? 700 : 500} fill={active === p.key ? "rgb(var(--rp-ink))" : "rgb(var(--rp-muted))"} style={{ fontVariantNumeric: "tabular-nums" }}>
+                    {p.label}
+                  </text>
+                ) : null}
+              </g>
+            );
+          })}
+        </g>
+      </svg>
+      {hot ? (
+        <div
+          role="presentation"
+          className="pointer-events-none absolute z-popover max-w-[220px] -translate-x-1/2 rounded-lg bg-rp-ink px-2.5 py-1.5 text-xs text-rp-on-ink shadow-md"
+          style={{
+            left: Math.min(Math.max(PAD_X + hot.x + hot.w / 2, 80), width - 80),
+            ...(hot.side === "top" ? { top: linkTop + 8 } : { top: linkBottom - 8, transform: "translate(-50%, -100%)" }),
+          }}
+        >
+          <p className="truncate font-medium">{hot.title}</p>
+          <p className="rp-tabular opacity-80">{hot.detail}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function SankeyChart(props: SankeyChartProps) {
+  return (
+    <div className={cn("w-full", props.className)} style={{ height: HEIGHT }}>
+      <ParentSize>{({ width }) => <Chart {...props} width={width} />}</ParentSize>
+    </div>
+  );
+}
+
+export default SankeyChart;
