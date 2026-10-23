@@ -10,11 +10,11 @@ export interface ChoroplethRoute {
   id: string;
   from: [number, number];
   to: [number, number];
+  /** A traced line ([lng, lat] vertices, e.g. a road or sea lane); without one the great circle from `from` to `to`. */
+  path?: [number, number][];
   stroke: string;
   dashed?: boolean;
   opacity?: number;
-  /** A traced road, rail or sea lane to draw instead of the great circle (WanderGrid addition). */
-  path?: [number, number][];
 }
 
 export interface ChoroplethRoutesProps {

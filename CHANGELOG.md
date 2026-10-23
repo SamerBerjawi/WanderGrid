@@ -32,6 +32,10 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Fixed
 
+- The Dashboard World map showed wrong points: a trip to "California" pinned in Central America, dots in the
+  ocean and at (0, 0), straight dark lines across the US and Scandinavia. Points now need real coordinates,
+  a trip's pin must fit its own legs and sit on land, land and sea legs follow their traced route, and the
+  place search ranks a state above a village of the same name.
 - **Scratch map filters.** Lived in no longer washes lived countries in a flat fill (they get their own
   colour), a Visited toggle joins the scratch filters, Layovers now finds layover-only countries (a connecting flight's next origin was
   counted as a stay) and hides them, and City pins Off removes every pin and route-end marker.
