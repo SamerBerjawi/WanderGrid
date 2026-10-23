@@ -14,7 +14,7 @@ export interface TestResult {
 }
 
 export type KeylessProvider = 'adsbdb' | 'osrm' | 'geocoding' | 'openfreemap' | 'gibs';
-export type KeyedService = 'gemini' | 'aviationstack' | 'aerodatabox' | 'openaip' | 'brandfetch';
+export type KeyedService = 'aviationstack' | 'aerodatabox' | 'openaip' | 'brandfetch';
 
 const timed = async (url: string, ms: number, name: string, okStatuses: number[] = []) => {
     const t0 = performance.now();
