@@ -572,18 +572,19 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
             const kind = scratchKindOf(statuses, visited.has(code), toggles);
             let fill = hex(palette.surface);
             let opacity = 0.01; // not 0: MapLibre skips invisible features when querying clicks
-            if (kind === 'lived' || kind === 'visited') {
+            if (kind === 'lived') { fill = hex(mix(palette.green, palette.ink, 0.2)); opacity = 0.8; }
+            else if (kind === 'visited') {
                 const centre = featureCentroid(f.geometry);
                 fill = hex(geoColor(centre.lat, centre.lng, palette));
                 opacity = 0.85;
             } else if (kind === 'layover') { fill = hex(palette.mustard); opacity = 0.6; }
             else if (kind === 'wishlist') { fill = hex(palette.rust); opacity = 0.35; }
-            return { type: 'Feature', id: i, properties: { code, name, fill, opacity, lived: kind === 'lived' ? 1 : 0 }, geometry: f.geometry };
+            return { type: 'Feature', id: i, properties: { code, name, fill, opacity }, geometry: f.geometry };
         });
         return { type: 'FeatureCollection' as const, features };
         // appearance is read through scratchToggles; only its three toggles matter
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [mode, borders, airportsOnly, visitedCountryCodes, countryStatusMap, palette, appearance.showLivedCountries, appearance.showLayoverCountries, appearance.showWishlistCountries]);
+    }, [mode, borders, airportsOnly, visitedCountryCodes, countryStatusMap, palette, appearance.showLivedCountries, appearance.showVisitedCountries, appearance.showLayoverCountries, appearance.showWishlistCountries]);
 
     // Eight stacked caps (civil, nautical, astronomical twilight, then night): each adds a little shade,
     // so the edge fades from dusk into deep night instead of a hard line.
@@ -629,8 +630,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
 
         // Paint follows the palette, the theme and the settings.
         const hover = (on: any, off: any): any => ['case', ['boolean', ['feature-state', 'hover'], false], on, off];
-        map.setPaintProperty('rp-country-line', 'line-color', ['case', ['==', ['get', 'lived'], 1], hex(p.ink), css(p.ink, 0.25)]);
-        map.setPaintProperty('rp-country-line', 'line-width', ['case', ['==', ['get', 'lived'], 1], 2, 0.5]);
+        map.setPaintProperty('rp-country-line', 'line-color', css(p.ink, 0.25));
         map.setPaintProperty('rp-night', 'fill-color', lightBasemap ? hex(p.ink) : '#02050f');
         map.setPaintProperty('rp-night', 'fill-opacity', lightBasemap ? 0.055 : 0.085);
         // A selected route (or a selected place's routes) stays strong; everything else fades back.

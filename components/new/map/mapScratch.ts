@@ -5,8 +5,9 @@ import type { MapAppearanceSettings } from '../../../types/mapAppearance';
  * What the scratch map draws for a country, and how big its markers are. Pure, so every toggle has one
  * tested meaning (tests/unit/mapScratch.test.ts).
  *
- *  - Lived in: lived countries (current or past) keep the scratched colour and gain a heavy outline.
- *    Off removes the outline; the country stays scratched, because you have been there.
+ *  - Lived in: lived countries (current or past) get their own colour. Off paints them as plain visited.
+ *  - Visited: countries you have been to (by trips or by status), in the regional colours. Off hides them;
+ *    lived countries still show while Lived in is on.
  *  - Layovers: countries you only changed planes in. Off hides them. A country you also visited stays scratched.
  *  - Wishlist: countries you want to go to. Off hides them. A visited country stays scratched.
  *  - City pins: the size of every marker on the scratch map: the visited-city pins and the endpoints of any
@@ -17,13 +18,15 @@ export type ScratchKind = 'lived' | 'visited' | 'layover' | 'wishlist' | 'none';
 
 export interface ScratchToggles {
     showLived: boolean;
+    showVisited: boolean;
     showLayover: boolean;
     showWishlist: boolean;
 }
 
 /** Settings that were never saved read as on, as the toggles do. */
-export const scratchToggles = (a: Pick<MapAppearanceSettings, 'showLivedCountries' | 'showLayoverCountries' | 'showWishlistCountries'>): ScratchToggles => ({
+export const scratchToggles = (a: Pick<MapAppearanceSettings, 'showLivedCountries' | 'showVisitedCountries' | 'showLayoverCountries' | 'showWishlistCountries'>): ScratchToggles => ({
     showLived: a.showLivedCountries !== false,
+    showVisited: a.showVisitedCountries !== false,
     showLayover: a.showLayoverCountries !== false,
     showWishlist: a.showWishlistCountries !== false,
 });
@@ -35,7 +38,7 @@ export const scratchKindOf = (
 ): ScratchKind => {
     const lived = statuses.includes('lived_current') || statuses.includes('lived_past');
     if (lived && t.showLived) return 'lived';
-    if (lived || visitedByTrips || statuses.includes('visited')) return 'visited';
+    if (lived || visitedByTrips || statuses.includes('visited')) return t.showVisited ? 'visited' : 'none';
     if (statuses.includes('layover') && t.showLayover) return 'layover';
     if (statuses.includes('wishlist') && t.showWishlist) return 'wishlist';
     return 'none';

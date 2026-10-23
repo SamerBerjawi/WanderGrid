@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { markerRadius, markerSizes, scratchKindOf, scratchToggles } from '../../components/new/map/mapScratch';
 
-const on = { showLived: true, showLayover: true, showWishlist: true };
+const on = { showLived: true, showVisited: true, showLayover: true, showWishlist: true };
 
 describe('scratchKindOf', () => {
     it('lived countries are lived while the toggle is on, and stay scratched when it is off', () => {
@@ -19,10 +19,18 @@ describe('scratchKindOf', () => {
         expect(scratchKindOf(['wishlist'], false, { ...on, showWishlist: false })).toBe('none');
     });
     it('a visited country stays scratched whatever the other toggles say', () => {
-        const off = { showLived: false, showLayover: false, showWishlist: false };
+        const off = { showLived: false, showVisited: true, showLayover: false, showWishlist: false };
         expect(scratchKindOf(['visited'], true, off)).toBe('visited');
         expect(scratchKindOf(['layover', 'visited'], false, off)).toBe('visited');
         expect(scratchKindOf(['wishlist'], true, off)).toBe('visited');
+    });
+    it('Visited off hides visited countries but not lived ones while Lived in is on', () => {
+        const t = { ...on, showVisited: false };
+        expect(scratchKindOf(['visited'], true, t)).toBe('none');
+        expect(scratchKindOf([], true, t)).toBe('none');
+        expect(scratchKindOf(['lived_current'], true, t)).toBe('lived');
+        expect(scratchKindOf(['lived_current'], true, { ...t, showLived: false })).toBe('none');
+        expect(scratchKindOf(['layover'], false, t)).toBe('layover');
     });
     it('a country with no status and no trips is not drawn', () => {
         expect(scratchKindOf([], false, on)).toBe('none');
@@ -32,7 +40,7 @@ describe('scratchKindOf', () => {
 describe('scratchToggles', () => {
     it('reads unset settings as on and false as off', () => {
         expect(scratchToggles({})).toEqual(on);
-        expect(scratchToggles({ showLivedCountries: false, showLayoverCountries: false, showWishlistCountries: false })).toEqual({ showLived: false, showLayover: false, showWishlist: false });
+        expect(scratchToggles({ showLivedCountries: false, showVisitedCountries: false, showLayoverCountries: false, showWishlistCountries: false })).toEqual({ showLived: false, showVisited: false, showLayover: false, showWishlist: false });
     });
 });
 

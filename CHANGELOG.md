@@ -148,8 +148,8 @@ pages are now the default. The original interface is kept, hidden, under `/class
 
 ### Fixed
 
-- **Scratch map filters.** Lived in no longer washes lived countries in a flat fill (they keep their scratch
-  colour and gain an outline), Layovers now finds layover-only countries (a connecting flight's next origin was
+- **Scratch map filters.** Lived in no longer washes lived countries in a flat fill (they get their own
+  colour), a Visited toggle joins the scratch filters, Layovers now finds layover-only countries (a connecting flight's next origin was
   counted as a stay) and hides them, and City pins Off removes every pin and route-end marker.
 - Still maps (Flights, Road trips, trip header, dashboard World) draw the real road, rail and sea routes
   instead of straight lines once they are known.
