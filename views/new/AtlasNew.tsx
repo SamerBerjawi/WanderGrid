@@ -18,7 +18,7 @@ import { AddCountrySheet, CitySheet, CountrySheet, ScanSheet, type CountryTarget
 import { WishlistPanel } from '../../components/new/atlas/WishlistPanel';
 import { MergeDrawer } from '../../components/new/atlas/MergeDrawer';
 import { TONE_LABEL, toneOf, type AtlasTone } from '../../components/new/atlas/atlasStatus';
-import { openNewPage } from '../../components/new/devLinks';
+import { openPage } from '../../utils/appNavigation';
 import {
     Airplane, ArrowUpRight, Buildings, Carousel, Globe, Heart, MagnifyingGlass, Plus, Sparkle, SquaresFour, Stack,
 } from '../../components/ui/hugeicons';
@@ -265,7 +265,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = ({ onTripClick }) => {
                                             <Buildings size={16} aria-hidden /> Cities
                                         </button>
                                     ) : null}
-                                    <button type="button" onClick={() => openNewPage('/map-new')} className={cn(PILL, 'bg-rp-inset text-rp-ink hover:bg-rp-line')}>
+                                    <button type="button" onClick={() => openPage('/map')} className={cn(PILL, 'bg-rp-inset text-rp-ink hover:bg-rp-line')}>
                                         <span className="hidden sm:inline">Open in map</span><span className="sm:hidden">Map</span> <ArrowUpRight size={16} aria-hidden />
                                     </button>
                                 </div>

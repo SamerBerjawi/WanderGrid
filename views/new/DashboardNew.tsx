@@ -5,7 +5,7 @@ import { WidgetGrid, type WidgetGridItem, type WidgetLayoutItem } from '../../co
 import type { DockTool } from '../../components/kokonutui/tool-dock';
 import { RpPageToolbar } from '../../components/new/PageToolbar';
 import { RpEmpty, useIsMobile } from '../../components/new/ui';
-import { openNewPage } from '../../components/new/devLinks';
+import { openPage } from '../../utils/appNavigation';
 import {
     LeaveWidget, MapWidget, MetricWidget, NextWidget, PassportWidget, RecentWidget, UpcomingWidget, WhereNextWidget, YearsWidget, nextTone,
 } from '../../components/new/dashboard/DashboardWidgets';
@@ -178,12 +178,12 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
         },
         {
             id: 'passport', title: 'Passport', icon: <WidgetIcon icon={IdentificationCard} />, defaultSpan: 3, rows: 2, narrowRows: 3,
-            onOpen: () => openNewPage('/atlas-new'), openLabel: 'Open Atlas',
+            onOpen: () => openPage('/atlas'), openLabel: 'Open Atlas',
             render: size => <PassportWidget data={data} size={size} />,
         },
         {
             id: 'map', title: 'World', icon: <WidgetIcon icon={Globe} />, defaultSpan: 6, rows: span => (span >= 5 ? 4 : 3), narrowRows: 2,
-            onOpen: () => openNewPage(mapLink()), openLabel: 'Open Map',
+            onOpen: () => openPage(mapLink()), openLabel: 'Open Map',
             render: () => <MapWidget data={data} />,
         },
         {
@@ -192,14 +192,14 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
         },
         {
             id: 'leave', title: `Leave ${year}`, icon: <WidgetIcon icon={SunHorizon} />, defaultSpan: 2, rows: 4, narrowRows: 4, interactive: true,
-            onOpen: member ? () => (onMemberClick ? onMemberClick(member.id) : openNewPage('/calendar')) : undefined, openLabel: member ? `Open ${member.name}` : undefined,
+            onOpen: member ? () => (onMemberClick ? onMemberClick(member.id) : openPage('/calendar')) : undefined, openLabel: member ? `Open ${member.name}` : undefined,
             render: () => (
                 <LeaveWidget users={data.users} memberId={member?.id ?? ''} onMember={setMemberId} use={leave.use} trips={leave.trips} allowance={leave.allowance} year={year} onTripClick={openTrip} />
             ),
         },
         {
             id: 'upcoming', title: 'Upcoming trips', icon: <WidgetIcon icon={Suitcase} />, defaultSpan: 6, rows: 2, narrowRows: 3, interactive: true, flush: mobile && data.upcoming.length >= 3,
-            onOpen: () => openNewPage('/trips-new'), openLabel: 'Open Trips',
+            onOpen: () => openPage('/trips'), openLabel: 'Open Trips',
             render: size => <UpcomingWidget data={data} size={size} onTripClick={openTrip} />,
         },
         {
@@ -208,12 +208,12 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
         },
         {
             id: 'wherenext', title: 'Where next?', icon: <WidgetIcon icon={Compass} />, defaultSpan: 3, rows: 4, narrowRows: 4, interactive: true,
-            onOpen: () => openNewPage('/atlas-new'), openLabel: 'Open Atlas',
+            onOpen: () => openPage('/atlas'), openLabel: 'Open Atlas',
             render: () => <WhereNextWidget data={data} />,
         },
         {
             id: 'recent', title: 'Recent trips', icon: <WidgetIcon icon={ClockCounterClockwise} />, defaultSpan: 6, rows: span => (span >= 5 ? 2 : 4), narrowRows: 3,
-            onOpen: () => openNewPage('/trips-new'), openLabel: 'Open Trips',
+            onOpen: () => openPage('/trips'), openLabel: 'Open Trips',
             render: size => <RecentWidget data={data} size={size} onTripClick={openTrip} />,
         },
     ], [data, nextTrip, member, leave, year, openTrip, onMemberClick, mobile]);
@@ -221,7 +221,7 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
     // On phones the tab bar's "+" starts a trip.
     const tools: DockTool[] = [
         { id: 'edit', label: editing ? 'Done' : 'Edit widgets', icon: (editing ? Check : PencilSimple) as any, action: () => setEditing(e => !e) },
-        ...(mobile ? [] : [{ id: 'new', label: 'New trip', icon: Plus as any, action: () => openNewPage('/trips-new?new=1') }]),
+        ...(mobile ? [] : [{ id: 'new', label: 'New trip', icon: Plus as any, action: () => openPage('/trips?new=1') }]),
         { id: 'reset', label: 'Reset widgets', icon: ArrowCounterClockwise as any, action: resetLayout },
     ];
 
@@ -257,9 +257,9 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
                             <p className="mt-1 text-sm opacity-80">Add a trip, a flight or the places you have been, and this page fills in.</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            <button type="button" onClick={() => openNewPage('/trips-new?new=1')} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-on-mustard px-5 text-sm font-medium text-rp-mustard outline-none focus-visible:ring-2 focus-visible:ring-rp-on-mustard focus-visible:ring-offset-2 focus-visible:ring-offset-rp-mustard"><Plus size={16} aria-hidden />Plan a trip</button>
-                            <button type="button" onClick={() => openNewPage('/atlas-new')} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-on-mustard/10 px-5 text-sm font-medium outline-none hover:bg-rp-on-mustard/15 focus-visible:ring-2 focus-visible:ring-rp-on-mustard"><Globe size={16} aria-hidden />Add places</button>
-                            <button type="button" onClick={() => openNewPage('/flights')} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-on-mustard/10 px-5 text-sm font-medium outline-none hover:bg-rp-on-mustard/15 focus-visible:ring-2 focus-visible:ring-rp-on-mustard"><Airplane size={16} aria-hidden />Log a flight</button>
+                            <button type="button" onClick={() => openPage('/trips?new=1')} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-on-mustard px-5 text-sm font-medium text-rp-mustard outline-none focus-visible:ring-2 focus-visible:ring-rp-on-mustard focus-visible:ring-offset-2 focus-visible:ring-offset-rp-mustard"><Plus size={16} aria-hidden />Plan a trip</button>
+                            <button type="button" onClick={() => openPage('/atlas')} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-on-mustard/10 px-5 text-sm font-medium outline-none hover:bg-rp-on-mustard/15 focus-visible:ring-2 focus-visible:ring-rp-on-mustard"><Globe size={16} aria-hidden />Add places</button>
+                            <button type="button" onClick={() => openPage('/flights')} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-on-mustard/10 px-5 text-sm font-medium outline-none hover:bg-rp-on-mustard/15 focus-visible:ring-2 focus-visible:ring-rp-on-mustard"><Airplane size={16} aria-hidden />Log a flight</button>
                         </div>
                     </section>
                 ) : null}

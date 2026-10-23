@@ -378,7 +378,7 @@ test.describe('W48 Error recovery', () => {
     if (crashed) {
       await page.unroute('**/api/trips');
       await recover.click();
-      await expect(page).toHaveURL(/\/$/);
+      await expect(page).toHaveURL(/\/classic$/);
     } else {
       // Not crashing on bad data is acceptable too, as long as the page still renders.
       await expect(page.locator('main h1').first()).toBeVisible();

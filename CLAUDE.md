@@ -49,8 +49,9 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 
 | Path | Responsibility |
 | --- | --- |
-| `index.tsx`, `App.tsx` | Entry point. `App` does view switching on `ViewState` with a `switch`; there is no router library. Views are `React.lazy`-loaded |
-| `views/` | Top-level pages (Dashboard, PlannerView, VacationCalendar, ExpeditionMapView, Flights, RoadTrips, TripDetail, TravelAtlas, Settings, UserDetail, Auth) |
+| `index.tsx`, `App.tsx` | Entry point. There is no router library: `utils/routes.ts` (`resolveRoute`, pure and unit-tested) maps a URL to a route, and `App` keeps it in state. **The redesigned ("New") pages and `components/new/ShellNew.tsx` are the default at the clean paths** (`/`, `/trips`, `/trip/:id`, `/flights`, `/roadtrips`, `/map`, `/atlas`, `/calendar`, `/user/:id`, `/settings`); the original pages, Sidebar/GoldenSidebar shell and old Auth are kept under **`/classic`** (`/classic/planner`, `/classic/trip/:id` ...), where `App` still switches on `ViewState`. Old `-new` URLs redirect to the clean path. Views are `React.lazy`-loaded |
+| `views/` | The original top-level pages (Dashboard, PlannerView, VacationCalendar, ExpeditionMapView, Flights, RoadTrips, TripDetail, TravelAtlas, Settings, UserDetail, Auth), now served under `/classic` |
+| `views/new/`, `components/new/` | The redesigned pages (`DashboardNew`, `TripsNew`, `TripNew`, `FlightsNew`, `RoadTripsNew`, `MapNew`, `AtlasNew`, `CalendarNew`, `MemberNew`, `SettingsNew`, `AuthNew`) and their parts. They are the default pages; design rules are in `UI_UX_DESIGN_REFERENCE.md`, not `Design.md`. Never import them from the original pages |
 | `components/` | Feature components (configurators, drawers, map, passport/stamps). `ui.tsx` has the shared Card, Button and similar components |
 | `components/glass/` | Liquid-glass primitives: GlassPanel, GlassButton, GlassInput, GlassSelect, GlassToggle, GlassSegmented, GlassSlider, SettingRow |
 | `components/ui/` | Icon wrapper, date pickers, bento grid, virtual list item |
@@ -116,6 +117,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 
 ## Fragile, legacy, or out of scope
 
+- **`/classic` is a kept interface, not the product:** every old file stays until the user approves deleting it (`UI_UX_DESIGN_REFERENCE.md` §5.0, §5.5 lists what only the old pages can do). Do not fix or restyle old pages unless asked; do not link to `/classic` from New pages beyond the two entry points (trip menu, Settings). The Golden Hour and Departure Board themes (`UI_GOLDEN_HOUR`, `uiTheme`) only apply there.
 - **Retired "v2" views:** `Flights2`, `RoadTrips2` and `TripDetail2` were deleted; their legacy URLs (`/flights-2`, `/roadtrips-2`, `/trip-2/:id`) resolve to the main pages. `VacationPlanner` ("Planner-2") was removed as redundant; `/planner-2` and `/planner2` open the Planner.
 - **`services/mockDb.ts`** (~1.5k lines) is the real production data client, despite its name. It contains the API client, the localStorage fallback, backup/restore and trip↔flight sync. Edit it carefully. Restore assigns the password `password` to users that have none.
 - **`verifyPassword`** accepts plaintext stored passwords (legacy, no `:` salt separator). This is a legacy compatibility path, so do not extend it.

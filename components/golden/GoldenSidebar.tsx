@@ -1,4 +1,3 @@
-import { NEW_PAGE_LINKS, SHOW_NEW_PAGE_LINKS, openNewPage } from '../new/devLinks';
 import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { affectsCollections } from '../../hooks/useWanderSync';
@@ -23,6 +22,8 @@ interface GoldenSidebarProps {
   currentUser: User | null;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  /** Leaves the original interface for the redesigned one. */
+  onOpenNew?: () => void;
 }
 
 const TONE_BG: Record<GhTone, string> = {
@@ -49,7 +50,7 @@ const MOBILE_MAIN = [ViewState.DASHBOARD, ViewState.FLIGHTS, ViewState.MAP, View
 
 /** Golden Hour navigation: solid rounded rail on desktop, floating pill bar and sheet on mobile. */
 export const GoldenSidebar: React.FC<GoldenSidebarProps> = ({
-  currentView, onNavigate, theme, onThemeToggle, onLogout, currentUser, isCollapsed = false, onToggleCollapse,
+  currentView, onNavigate, theme, onThemeToggle, onLogout, currentUser, isCollapsed = false, onToggleCollapse, onOpenNew,
 }) => {
   const [nextTrip, setNextTrip] = useState<Trip | null>(null);
   const [daysUntil, setDaysUntil] = useState(0);
@@ -119,20 +120,18 @@ export const GoldenSidebar: React.FC<GoldenSidebarProps> = ({
                 </button>
               );
             })}
-            {SHOW_NEW_PAGE_LINKS && NEW_PAGE_LINKS.map(link => (
+            {onOpenNew && (
               <button
-                key={link.path}
                 type="button"
-                onClick={() => openNewPage(link.path)}
-                aria-label={`${link.label}, dev builds only`}
-                title={isCollapsed ? `${link.label} (dev)` : undefined}
+                onClick={onOpenNew}
+                aria-label="Back to the new interface"
+                title={isCollapsed ? 'New interface' : undefined}
                 className={`min-h-[44px] flex items-center gap-3 rounded-full px-3 text-sm font-semibold cursor-pointer transition-all hover:bg-sunset-sand dark:hover:bg-sunset-dusk ${isCollapsed ? 'justify-center' : ''}`}
               >
-                <Icon name={link.icon} className="text-xl leading-none shrink-0" />
-                {!isCollapsed && <span className="truncate">{link.label}</span>}
-                {!isCollapsed && <span className="ml-auto px-2 py-0.5 rounded-full bg-sunset-sun text-sunset-ink text-2xs font-bold uppercase tracking-wider">Dev</span>}
+                <Icon name="dashboard" className="text-xl leading-none shrink-0" />
+                {!isCollapsed && <span className="truncate">New interface</span>}
               </button>
-            ))}
+            )}
           </nav>
 
           {!isCollapsed && (
@@ -213,13 +212,12 @@ export const GoldenSidebar: React.FC<GoldenSidebarProps> = ({
                   {item.label}
                 </button>
               ))}
-              {SHOW_NEW_PAGE_LINKS && NEW_PAGE_LINKS.map(link => (
-                <button key={link.path} type="button" onClick={() => { setMoreOpen(false); openNewPage(link.path); }} className="min-h-[44px] rounded-full px-4 flex items-center gap-3 text-sm font-semibold cursor-pointer">
-                  <Icon name={link.icon} className="text-xl leading-none" />
-                  {link.label}
-                  <span className="ml-auto px-2 py-0.5 rounded-full bg-sunset-sun text-sunset-ink text-2xs font-bold uppercase tracking-wider">Dev</span>
+              {onOpenNew && (
+                <button type="button" onClick={() => { setMoreOpen(false); onOpenNew(); }} className="min-h-[44px] rounded-full px-4 flex items-center gap-3 text-sm font-semibold cursor-pointer">
+                  <Icon name="dashboard" className="text-xl leading-none" />
+                  New interface
                 </button>
-              ))}
+              )}
               {currentUser && (
                 <button type="button" onClick={() => go(ViewState.USER_DETAIL, currentUser.id)} aria-current={currentView === ViewState.USER_DETAIL ? 'page' : undefined} className={`min-h-[44px] rounded-full px-4 flex items-center gap-3 text-sm font-semibold cursor-pointer ${currentView === ViewState.USER_DETAIL ? TONE_BG.lilac : ''}`}>
                   <span className="w-7 h-7 rounded-full bg-sunset-lilac text-sunset-ink font-black text-xs flex items-center justify-center">{initial}</span>

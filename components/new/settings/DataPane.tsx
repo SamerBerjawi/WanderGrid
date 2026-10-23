@@ -281,7 +281,7 @@ export const DataPane: React.FC<{ data: SettingsData; onNavigate: (path: string)
                     title: 'Lists',
                     rows: [
                         { id: 'refresh', icon: ArrowsClockwise, label: 'Refresh airports and carriers', detail: lastRefresh ? 'Just now' : hasServer() ? undefined : 'Needs the server', onSelect: () => setSheet('refresh') },
-                        { id: 'import', icon: Airplane, label: 'Import flights', detail: 'On the Flights page', onSelect: () => onNavigate('/flights-new') },
+                        { id: 'import', icon: Airplane, label: 'Import flights', detail: 'On the Flights page', onSelect: () => onNavigate('/flights') },
                     ],
                     footer: 'Flights import CSV, Excel and JSON files, with column matching.',
                 },

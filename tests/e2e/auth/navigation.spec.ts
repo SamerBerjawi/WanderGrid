@@ -1,19 +1,19 @@
 /**
- * Chunk A — workflow 47: app-shell navigation (desktop sidebar, mobile tab bar + "More" sheet),
+ * Chunk A — workflow 47 (original interface, under /classic): app-shell navigation (desktop sidebar, mobile tab bar + "More" sheet),
  * theme toggle, sidebar collapse, next-trip widget, profile chip, back/forward, refresh, unknown routes.
  */
 import { test, expect, ADMIN, resetDb, apiRegister, seedSession, expectAppShell, isMobile } from '../support/fixtures';
 import { seedTrip, isoDaysFromNow } from '../support/planning';
 
 const PAGES: { label: string; path: string; mobile: 'bar' | 'more' }[] = [
-  { label: 'Dashboard', path: '/', mobile: 'bar' },
-  { label: 'Map', path: '/map', mobile: 'bar' },
-  { label: 'Planner', path: '/planner', mobile: 'more' },
-  { label: 'Vacation Calendar', path: '/calendar', mobile: 'more' },
-  { label: 'Travel Atlas', path: '/atlas', mobile: 'bar' },
-  { label: 'Flights', path: '/flights', mobile: 'bar' },
-  { label: 'Road Trips', path: '/roadtrips', mobile: 'more' },
-  { label: 'Settings', path: '/settings', mobile: 'more' },
+  { label: 'Dashboard', path: '/classic', mobile: 'bar' },
+  { label: 'Map', path: '/classic/map', mobile: 'bar' },
+  { label: 'Planner', path: '/classic/planner', mobile: 'more' },
+  { label: 'Vacation Calendar', path: '/classic/calendar', mobile: 'more' },
+  { label: 'Travel Atlas', path: '/classic/atlas', mobile: 'bar' },
+  { label: 'Flights', path: '/classic/flights', mobile: 'bar' },
+  { label: 'Road Trips', path: '/classic/roadtrips', mobile: 'more' },
+  { label: 'Settings', path: '/classic/settings', mobile: 'more' },
 ];
 
 const mobileBar = (page) => page.locator('div.md\\:hidden.fixed');

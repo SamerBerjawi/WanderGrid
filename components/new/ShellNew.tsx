@@ -8,11 +8,13 @@ import {
 import type { User } from '../../types';
 import { RpSheet } from './ui';
 import { cn } from '../../utils/cn';
+import { PATHS, resolveRoute } from '../../utils/routes';
 import './new.css';
 
 /**
  * App shell for the New pages (UI_UX_DESIGN_REFERENCE.md §2.1, §2.4, §5.0): grouped top tabs on
- * tablet and desktop, a bottom tab bar with a centre "+" on mobile. It only wraps `-new` URLs.
+ * tablet and desktop, a bottom tab bar with a centre "+" on mobile. It is the shell at every normal route;
+ * the original shell only exists under /classic.
  */
 
 export interface ShellNavItem {
@@ -23,15 +25,15 @@ export interface ShellNavItem {
 
 /** Grouped top tabs (decision 6). Pages without a New version open their current page. */
 export const SHELL_NAV: ShellNavItem[] = [
-    { path: '/dashboard-new', label: 'Dashboard', icon: House },
-    { path: '/trips-new', label: 'Trips', icon: Suitcase },
-    { path: '/flights-new', label: 'Flights', icon: Airplane },
-    { path: '/calendar-new', label: 'Calendar', icon: CalendarBlank },
-    { path: '/atlas-new', label: 'Atlas', icon: Globe },
-    { path: '/map-new', label: 'Map', icon: MapTrifold },
+    { path: '/dashboard', label: 'Dashboard', icon: House },
+    { path: '/trips', label: 'Trips', icon: Suitcase },
+    { path: '/flights', label: 'Flights', icon: Airplane },
+    { path: '/calendar', label: 'Calendar', icon: CalendarBlank },
+    { path: '/atlas', label: 'Atlas', icon: Globe },
+    { path: '/map', label: 'Map', icon: MapTrifold },
 ];
 
-const MOBILE_TABS = ['/dashboard-new', '/trips-new', '/map-new', '/flights-new'];
+const MOBILE_TABS = ['/dashboard', '/trips', '/map', '/flights'];
 
 export interface ShellNewProps {
     currentPath: string;
@@ -107,11 +109,11 @@ const AccountButton: React.FC<{ user: User | null; onNavigate: (p: string) => vo
                             <p className="truncate text-xs text-rp-muted">{user?.email}</p>
                         </div>
                         {user?.id ? (
-                            <button role="menuitem" type="button" onClick={() => { setOpen(false); onNavigate(`/member-new/${encodeURIComponent(user.id)}`); }} className="flex min-h-11 w-full items-center gap-3 rounded-[14px] px-3 text-sm text-rp-ink hover:bg-rp-inset">
+                            <button role="menuitem" type="button" onClick={() => { setOpen(false); onNavigate(PATHS.member(user.id)); }} className="flex min-h-11 w-full items-center gap-3 rounded-[14px] px-3 text-sm text-rp-ink hover:bg-rp-inset">
                                 <UserCircle size={18} /> My profile
                             </button>
                         ) : null}
-                        <button role="menuitem" type="button" onClick={() => { setOpen(false); onNavigate('/settings-new'); }} className="flex min-h-11 w-full items-center gap-3 rounded-[14px] px-3 text-sm text-rp-ink hover:bg-rp-inset">
+                        <button role="menuitem" type="button" onClick={() => { setOpen(false); onNavigate('/settings'); }} className="flex min-h-11 w-full items-center gap-3 rounded-[14px] px-3 text-sm text-rp-ink hover:bg-rp-inset">
                             <Gear size={18} /> Settings
                         </button>
                         <button role="menuitem" type="button" onClick={() => { setOpen(false); onLogout(); }} className="flex min-h-11 w-full items-center gap-3 rounded-[14px] px-3 text-sm text-rp-ink hover:bg-rp-inset">
@@ -128,6 +130,8 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
     const [sheet, setSheet] = useState<'more' | 'add' | null>(null);
     const navItems = Object.fromEntries(SHELL_NAV.map(i => [i.path, { name: i.label, icon: i.icon }]));
     const go = (path: string) => { setSheet(null); onNavigate(path); };
+    // currentPath is the tab (Road trips sits under Flights), so the quick actions ask the URL which page is open.
+    const onPage = (page: 'trips' | 'flights' | 'roadtrips') => { const r = resolveRoute(window.location.pathname); return r.shell === 'new' && r.page === page; };
 
     return (
         <div className="rp-root rp-canvas-glow relative flex h-[100dvh] w-full flex-col overflow-hidden bg-rp-canvas font-rp text-rp-ink antialiased">
@@ -140,7 +144,7 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
             >
                 <button
                     type="button"
-                    onClick={() => go('/dashboard-new')}
+                    onClick={() => go('/dashboard')}
                     aria-label="WanderGrid home"
                     className={cn(
                         'pointer-events-auto min-h-11 items-center gap-2.5 rounded-full bg-rp-surface py-1.5 pr-4 pl-1.5 rp-shadow-soft outline-none focus-visible:ring-2 focus-visible:ring-rp-muted',
@@ -206,11 +210,11 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
                         </button>
                     ))}
                     {user?.id ? (
-                        <button type="button" onClick={() => go(`/member-new/${encodeURIComponent(user.id)}`)} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
+                        <button type="button" onClick={() => go(PATHS.member(user.id))} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
                             <UserCircle size={20} /> My profile
                         </button>
                     ) : null}
-                    <button type="button" onClick={() => go('/settings-new')} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
+                    <button type="button" onClick={() => go('/settings')} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
                         <Gear size={20} /> Settings
                     </button>
                     <button type="button" onClick={() => { setSheet(null); onLogout(); }} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
@@ -220,13 +224,13 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
             </RpSheet>
             <RpSheet modal open={sheet === 'add'} onClose={() => setSheet(null)} title="Quick actions">
                 <div className="flex flex-col gap-1">
-                    <button type="button" onClick={() => (currentPath === '/trips-new' ? (setSheet(null), window.dispatchEvent(new Event('rp:new-trip'))) : go('/trips-new?new=1'))} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
+                    <button type="button" onClick={() => (currentPath === '/trips' ? (setSheet(null), window.dispatchEvent(new Event('rp:new-trip'))) : go('/trips?new=1'))} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
                         <Suitcase size={20} /> New trip
                     </button>
-                    <button type="button" onClick={() => (window.location.pathname === '/flights-new' ? (setSheet(null), window.dispatchEvent(new Event('rp:new-flight'))) : go('/flights-new?new=1'))} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
+                    <button type="button" onClick={() => (window.location.pathname === '/flights' ? (setSheet(null), window.dispatchEvent(new Event('rp:new-flight'))) : go('/flights?new=1'))} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
                         <Airplane size={20} /> Log a flight
                     </button>
-                    <button type="button" onClick={() => (window.location.pathname === '/roadtrips-new' ? (setSheet(null), window.dispatchEvent(new Event('rp:new-roadtrip'))) : go('/roadtrips-new?new=1'))} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
+                    <button type="button" onClick={() => (window.location.pathname === '/roadtrips' ? (setSheet(null), window.dispatchEvent(new Event('rp:new-roadtrip'))) : go('/roadtrips?new=1'))} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
                         <Train size={20} /> Log a road trip
                     </button>
                 </div>

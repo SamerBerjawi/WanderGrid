@@ -13,7 +13,7 @@ import HoldButton from '../../components/kokonutui/hold-button';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import { RpChip, RpEmpty, RpSheet, useIsMobile } from '../../components/new/ui';
 import { RpPageToolbar } from '../../components/new/PageToolbar';
-import { openNewPage } from '../../components/new/devLinks';
+import { openPage } from '../../utils/appNavigation';
 import { useUndoToast } from '../../components/new/UndoToast';
 import { TripMenu, type TripMenuItem } from '../../components/new/trips/TripMenu';
 import { JourneyTable, type JourneyGrouping } from '../../components/new/journeys/JourneyTable';
@@ -227,7 +227,7 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
         ...(isIndependent(rec.trip.id) ? [{ id: 'trip', label: 'Create trip', icon: Suitcase, onSelect: () => void makeTrip([rec]) }] : []),
         { id: 'copy', label: 'Duplicate', icon: Copy, onSelect: () => setEditor({ kind: 'create', seed: { ...rec.flight, actualDepartureTime: undefined, actualArrivalTime: undefined }, tripId: isIndependent(rec.trip.id) ? undefined : rec.trip.id }) },
         { id: 'return', label: 'Add return flight', icon: ArrowsClockwise, onSelect: () => setEditor({ kind: 'create', seed: returnSeed(rec.flight), tripId: isIndependent(rec.trip.id) ? undefined : rec.trip.id }) },
-        { id: 'map', label: 'Show on map', icon: Globe, onSelect: () => openNewPage(mapLink({ route: [rec.flight.origin, rec.flight.destination] })) },
+        { id: 'map', label: 'Show on map', icon: Globe, onSelect: () => openPage(mapLink({ route: [rec.flight.origin, rec.flight.destination] })) },
         { id: 'delete', label: 'Delete', icon: Trash, tone: 'danger', separated: true, onSelect: () => setDeleting([rec]) },
     ], [log.createTripFromFlights]);
 
@@ -448,7 +448,7 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                 onAssign={(rec, tripId) => void assign([rec], tripId)}
                 onCreateTrip={rec => { setDetailId(null); void makeTrip([rec]); }}
                 onOpenTrip={onTripClick ? id => { setDetailId(null); onTripClick(id); } : undefined}
-                onShowOnMap={rec => openNewPage(mapLink({ route: [rec.flight.origin, rec.flight.destination] }))}
+                onShowOnMap={rec => openPage(mapLink({ route: [rec.flight.origin, rec.flight.destination] }))}
                 onSaveDetails={saveDetails}
                 brandfetchApiKey={brandfetchApiKey}
             />

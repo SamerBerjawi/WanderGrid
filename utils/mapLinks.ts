@@ -1,12 +1,12 @@
 /**
  * Links that open the New map focused on something (UI_UX_DESIGN_REFERENCE.md §5.0). Other pages use
- * these instead of building query strings. When MapNew replaces /map, change MAP_PATH only.
+ * these instead of building query strings. MapNew is the page at /map (the original map is /classic/map).
  *
  *   ?route=JFK-CDG       select that route (either direction) and frame it
  *   ?trip=<tripId>       frame the trip and emphasise its routes
  *   ?focus=lat,lng,zoom  fly to a point
  */
-export const MAP_PATH = '/map-new';
+export const MAP_PATH = '/map';
 
 export interface MapLinkOptions {
     /** Origin and destination as stored on the transport (IATA code or place name). */

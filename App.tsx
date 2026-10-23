@@ -5,6 +5,7 @@ import { goldenViews } from './views/golden/registry';
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { ViewState, User } from './types';
+import { resolveRoute, classicPathFor, classicTripPath, navPathFor, CLASSIC_PREFIX, PATHS, type Route } from './utils/routes';
 import { dataService } from './services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';
 import { IconContext } from '@/components/ui/hugeicons';
@@ -29,7 +30,8 @@ const Auth = lazy(() => loadAuth().then(m => ({ default: m.Auth })));
 // critical path (PERF-001/005).
 const Sidebar = lazy(() => import('./components/Sidebar').then(m => ({ default: m.Sidebar })));
 const GoldenSidebar = lazy(() => import('./components/golden/GoldenSidebar').then(m => ({ default: m.GoldenSidebar })));
-// Redesigned pages (UI_UX_DESIGN_REFERENCE.md §5.0): reached only at their own `-new` URLs, inside ShellNew.
+// Redesigned pages (UI_UX_DESIGN_REFERENCE.md §5.0): the default experience, inside ShellNew. The original
+// pages and their shell stay under /classic (utils/routes.ts).
 const ShellNew = lazy(() => import('./components/new/ShellNew').then(m => ({ default: m.ShellNew })));
 const MapNew = lazy(() => import('./views/new/MapNew').then(m => ({ default: m.MapNew })));
 const AtlasNew = lazy(() => import('./views/new/AtlasNew').then(m => ({ default: m.AtlasNew })));
@@ -42,59 +44,26 @@ const CalendarNew = lazy(() => import('./views/new/CalendarNew').then(m => ({ de
 const MemberNew = lazy(() => import('./views/new/MemberNew').then(m => ({ default: m.MemberNew })));
 const SettingsNew = lazy(() => import('./views/new/SettingsNew').then(m => ({ default: m.SettingsNew })));
 const AuthNew = lazy(() => import('./views/new/AuthNew').then(m => ({ default: m.AuthNew })));
-type NewPage = 'map' | 'atlas' | 'trips' | 'trip' | 'member' | 'auth' | 'flights' | 'roadtrips' | 'dashboard' | 'settings' | 'calendar';
-const NEW_PAGES: Record<string, NewPage> = { '/map-new': 'map', '/atlas-new': 'atlas', '/trips-new': 'trips', '/auth-new': 'auth', '/flights-new': 'flights', '/roadtrips-new': 'roadtrips', '/dashboard-new': 'dashboard', '/settings-new': 'settings', '/calendar-new': 'calendar' };
-// One trip's page: /trip-new/:id (the Trips page opens it).
-const NEW_TRIP_PATH = /^\/trip-new\/([^/]+)$/;
-const getNewTripId = (): string | null => {
-    try { const m = window.location.pathname.match(NEW_TRIP_PATH); return m ? safeDecode(m[1]) : null; } catch (e) { return null; }
-};
-// One member's page: /member-new/:id.
-const NEW_MEMBER_PATH = /^\/member-new\/([^/]+)$/;
-const getNewMemberId = (): string | null => {
-    try { const m = window.location.pathname.match(NEW_MEMBER_PATH); return m ? safeDecode(m[1]) : null; } catch (e) { return null; }
-};
-const getNewPage = (): NewPage | null => {
-    try { return NEW_PAGES[window.location.pathname] ?? (NEW_TRIP_PATH.test(window.location.pathname) ? 'trip' : NEW_MEMBER_PATH.test(window.location.pathname) ? 'member' : null); } catch (e) { return null; }
-};
+const NotFoundNew = lazy(() => import('./components/new/NotFoundNew').then(m => ({ default: m.NotFoundNew })));
 
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { Toaster } from './components/Toaster';
 import { ConfirmHost } from './components/ConfirmHost';
 import { toast, errorMessage } from './services/toast';
 
-// Ids in URLs may arrive percent-encoded (e.g. `@` as %40 from mail/chat apps).
-const safeDecode = (value: string) => {
-    try { return decodeURIComponent(value); } catch (e) { return value; }
-};
-
-const getUrlState = () => {
+/** Reads the current location. An alias (`-new`, `?view=`) is replaced by its canonical URL right away. */
+const readRoute = (): Route => {
     try {
-        const path = window.location.pathname;
-        const search = new URLSearchParams(window.location.search);
-        const queryView = search.get('view');
-
-        if (path === '/settings' || queryView === 'settings') return { view: ViewState.SETTINGS };
-        // Planner-2 was removed; its old URLs open the Planner.
-        if (path === '/planner' || path === '/planner-2' || path === '/planner2' || queryView === 'planner' || queryView === 'planner-2') return { view: ViewState.PLANNER };
-        if (path === '/map' || queryView === 'map') return { view: ViewState.MAP };
-        if (path === '/gamification' || queryView === 'gamification') return { view: ViewState.DASHBOARD };
-        // Legacy "-2" URLs of the retired duplicate views resolve to the main pages.
-        if (path === '/flights' || path === '/flights-2' || path === '/flights2' || queryView === 'flights' || queryView === 'flights-2') return { view: ViewState.FLIGHTS };
-        if (path === '/roadtrips' || path === '/roadtrips-2' || path === '/roadtrips2' || queryView === 'roadtrips' || queryView === 'roadtrips-2') return { view: ViewState.ROADTRIPS };
-        if (path === '/atlas' || path === '/travel-atlas' || queryView === 'atlas') return { view: ViewState.TRAVEL_ATLAS };
-        if (path === '/calendar' || path === '/vacation-calendar' || queryView === 'calendar') return { view: ViewState.VACATION_CALENDAR };
-        
-        const userMatch = path.match(/^\/user\/([^/]+)$/);
-        if (userMatch) return { view: ViewState.USER_DETAIL, userId: safeDecode(userMatch[1]) };
-
-        const tripMatch = path.match(/^\/trip(?:-2)?\/([^/]+)$/);
-        if (tripMatch) return { view: ViewState.TRIP_DETAIL, tripId: safeDecode(tripMatch[1]) };
+        const route = resolveRoute(window.location.pathname, window.location.search);
+        if (route.redirectTo) {
+            window.history.replaceState(window.history.state, '', `${route.redirectTo}${window.location.hash}`);
+            return resolveRoute(window.location.pathname, window.location.search);
+        }
+        return route;
     } catch (e) {
-        console.warn("Failed to parse URL state", e);
+        console.warn('Failed to parse URL state', e);
+        return { shell: 'new', page: 'dashboard', redirectTo: null };
     }
-
-    return { view: ViewState.DASHBOARD };
 };
 
 import ViewSkeleton from './components/skeletons/ViewSkeleton';
@@ -108,60 +77,35 @@ import { AmbientBackground } from './components/AmbientBackground';
 import { getPageTheme } from './config/pageThemes';
 
 export default function App() {
-  const initialState = getUrlState();
-  const [view, setView] = useState<ViewState>(initialState.view);
-  const [newPage, setNewPage] = useState<NewPage | null>(getNewPage);
-  // Re-renders when the New page's path changes without its kind changing (one trip to another).
-  const [, setNewPathTick] = useState(0);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(initialState.userId || null);
-  const [selectedTripId, setSelectedTripId] = useState<string | null>(initialState.tripId || null);
+  const [route, setRoute] = useState<Route>(readRoute);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+  const isClassic = route.shell === 'classic';
+  const view = route.shell === 'classic' ? route.view : ViewState.DASHBOARD;
+  const selectedUserId = route.shell === 'classic' ? route.userId ?? null : null;
+  const selectedTripId = route.shell === 'classic' ? route.tripId ?? null : null;
   
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('dark');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthReady, setIsAuthReady] = useState<boolean>(false);
 
-  // Handle URL Navigation (Push State)
-  const navigate = (newView: ViewState, id?: string) => {
-      setNewPage(null);
-      let path = '/';
-      switch(newView) {
-          case ViewState.SETTINGS: path = '/settings'; break;
-          case ViewState.PLANNER: path = '/planner'; break;
-          case ViewState.MAP: path = '/map'; break;
-          case ViewState.GAMIFICATION: path = '/gamification'; break;
-          case ViewState.FLIGHTS: path = '/flights'; break;
-          case ViewState.ROADTRIPS: path = '/roadtrips'; break;
-          case ViewState.TRAVEL_ATLAS: path = '/atlas'; break;
-          case ViewState.VACATION_CALENDAR: path = '/calendar'; break;
-          case ViewState.USER_DETAIL: path = id ? `/user/${id}` : '/'; break;
-          case ViewState.TRIP_DETAIL: path = id ? `/trip/${id}` : '/'; break;
-          case ViewState.DASHBOARD: 
-          default: path = '/'; break;
-      }
-      
+  // Every in-app link goes through here: push the path (once), then re-read the location, which also
+  // replaces an alias such as a `-new` URL with its canonical path.
+  const navigateTo = (path: string) => {
       try {
-          if (window.location.pathname !== path) {
-              window.history.pushState({}, '', path);
-          }
+          if (`${window.location.pathname}${window.location.search}` !== path) window.history.pushState({}, '', path);
       } catch (e) {
           console.debug("URL update blocked by environment.");
       }
-      
-      setView(newView);
-      if (newView === ViewState.USER_DETAIL && id) setSelectedUserId(id);
-      if (newView === ViewState.TRIP_DETAIL && id) setSelectedTripId(id);
+      setRoute(readRoute());
+  };
+
+  // The original pages' own navigation (Sidebar, GoldenSidebar, golden views) stays under /classic.
+  const navigate = (newView: ViewState, id?: string) => {
+      navigateTo(classicPathFor(newView, id));
   };
 
   useEffect(() => {
-      const handlePopState = () => {
-          setNewPage(getNewPage());
-          setNewPathTick(t => t + 1);
-          const state = getUrlState();
-          setView(state.view);
-          if (state.userId) setSelectedUserId(state.userId);
-          if (state.tripId) setSelectedTripId(state.tripId);
-      };
+      const handlePopState = () => setRoute(readRoute());
       window.addEventListener('popstate', handlePopState);
       return () => window.removeEventListener('popstate', handlePopState);
   }, []);
@@ -237,8 +181,10 @@ export default function App() {
             isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         }
         root.classList.toggle('dark', isDark);
-        root.classList.toggle('theme-golden', isFeatureEnabled('UI_GOLDEN_HOUR'));
-        root.classList.toggle('theme-board', getUiTheme() === 'board');
+        // The Golden Hour / Departure Board skins belong to the original pages only (decision 201); the stored
+        // choice is never touched, the New pages simply never receive these classes.
+        root.classList.toggle('theme-golden', isClassic && isFeatureEnabled('UI_GOLDEN_HOUR'));
+        root.classList.toggle('theme-board', isClassic && getUiTheme() === 'board');
 
         // Update meta theme-color for iOS / Android PWA status bar
         const metaThemeColor = document.getElementById('theme-color-meta');
@@ -258,7 +204,7 @@ export default function App() {
         mediaQuery.addEventListener('change', handler);
         return () => mediaQuery.removeEventListener('change', handler);
     }
-  }, [theme]);
+  }, [theme, isClassic]);
 
   // The workspace theme is an admin setting; other users keep their choice in this browser only.
   // A personal preference wins over the workspace theme on load, so every explicit choice must update it too;
@@ -288,7 +234,7 @@ export default function App() {
       setCurrentUser(null);
       localStorage.removeItem('wandergrid_session_user');
       localStorage.removeItem('wandergrid_session_token');
-      if (!options?.keepLocation) navigate(ViewState.DASHBOARD);
+      if (!options?.keepLocation) navigateTo(isClassic ? CLASSIC_PREFIX : PATHS.home);
   };
 
   // Async failures in event handlers bypass error boundaries; surface them instead of failing silently.
@@ -320,6 +266,7 @@ export default function App() {
       navigate(ViewState.USER_DETAIL, userId);
   };
 
+  // Inside the original pages a trip opens on the original page.
   const handleTripClick = (tripId: string) => {
       if (tripId && tripId.startsWith('independent-flight-')) {
           navigate(ViewState.FLIGHTS);
@@ -327,6 +274,10 @@ export default function App() {
           navigate(ViewState.TRIP_DETAIL, tripId);
       }
   };
+
+  // Inside the New pages a trip opens on its New page; a flight that belongs to no trip goes to Flights.
+  const openTripNew = (id: string) => navigateTo(id.startsWith('independent-flight-') ? PATHS.flights : PATHS.trip(id));
+  const openMemberNew = (id: string) => navigateTo(PATHS.member(id));
 
   const getStableRouteKey = () => {
     switch (view) {
@@ -401,22 +352,19 @@ export default function App() {
       );
   }
 
-  // AuthNew stands alone (no shell): the sign-in page when signed out, a harmless preview when signed in.
-  if (newPage === 'auth') {
-      const leaveAuth = () => {
-          try { window.history.pushState({}, '', '/trips-new'); } catch (e) {}
-          setNewPage(getNewPage());
-      };
+  // Signed out: AuthNew in place on any URL (so a deep link survives signing in); the old sign-in only under /classic.
+  if (!currentUser && !isClassic) {
       return (
-        <Suspense fallback={null}>
+        <Suspense fallback={<ViewLoader fullScreen />}>
           <AuthNew
-            preview={!!currentUser}
+            preview={false}
             isDark={theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)}
             onThemeChange={t => handleThemeChange(t)}
-            onClosePreview={leaveAuth}
-            onLogin={user => { handleLogin(user); leaveAuth(); }}
+            onClosePreview={() => undefined}
+            onLogin={handleLogin}
           />
           <Toaster />
+          <ConfirmHost />
         </Suspense>
       );
   }
@@ -441,64 +389,44 @@ export default function App() {
 
   const isDarkMode = theme === 'dark' || (theme === 'auto' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
-  // Links from the New shell: another New page stays in the shell; anything else opens the current page.
-  const navigateFromShell = (path: string) => {
-      try { if (window.location.pathname !== path) window.history.pushState({}, '', path); } catch (e) {}
-      const next = getNewPage();
-      setNewPage(next);
-      setNewPathTick(t => t + 1);
-      if (!next) {
-          const state = getUrlState();
-          setView(state.view);
-          if (state.userId) setSelectedUserId(state.userId);
-          if (state.tripId) setSelectedTripId(state.tripId);
-      }
-  };
-
-  // Inside the New pages a trip opens on its New page; a flight that belongs to no trip still goes to Flights.
-  const openTripNew = (id: string) => {
-      if (id.startsWith('independent-flight-')) handleTripClick(id);
-      else navigateFromShell(`/trip-new/${encodeURIComponent(id)}`);
-  };
-
-  const openMemberNew = (id: string) => navigateFromShell(`/member-new/${encodeURIComponent(id)}`);
-
-  if (newPage) {
+  if (route.shell === 'new') {
+      const page = route.page;
       return (
-        <Suspense fallback={<ViewLoader view={newPage} fullScreen />}>
+        <Suspense fallback={<ViewLoader view={page} fullScreen />}>
           <ShellNew
-            currentPath={newPage === 'trip' ? '/trips-new' : newPage === 'roadtrips' ? '/flights-new' : newPage === 'member' || newPage === 'settings' ? '' : window.location.pathname}
-            onNavigate={navigateFromShell}
+            currentPath={navPathFor(page)}
+            onNavigate={navigateTo}
             user={currentUser}
             isDark={isDarkMode}
             onThemeChange={t => handleThemeChange(t)}
             onLogout={() => handleLogout()}
             localMode={!dataService.isDatabaseMode()}
-            fullBleed={newPage === 'map'}
-            hideBrandOnMobile={newPage === 'map'}
+            fullBleed={page === 'map'}
+            hideBrandOnMobile={page === 'map'}
           >
-            <AppErrorBoundary routeKey={`new-${newPage}`} onResetToDashboard={() => navigate(ViewState.DASHBOARD)}>
-              <Suspense fallback={<ViewLoader view={newPage} />}>
-                {newPage === 'map' ? <MapNew onTripClick={openTripNew} isSidebarCollapsed={isSidebarCollapsed} onThemeChange={t => handleThemeChange(t)} /> : null}
-                {newPage === 'atlas' ? <AtlasNew onTripClick={openTripNew} /> : null}
-                {newPage === 'trips' ? <TripsNew onTripClick={openTripNew} /> : null}
-                {newPage === 'dashboard' ? <DashboardNew onTripClick={openTripNew} onMemberClick={openMemberNew} /> : null}
-                {newPage === 'flights' ? <FlightsNew onTripClick={openTripNew} /> : null}
-                {newPage === 'roadtrips' ? <RoadTripsNew onTripClick={openTripNew} /> : null}
-                {newPage === 'settings' ? <SettingsNew theme={theme} isDark={isDarkMode} onThemeChange={t => handleThemeChange(t)} onOpenMember={openMemberNew} onNavigate={navigateFromShell} /> : null}
-                {newPage === 'calendar' ? <CalendarNew onTripClick={openTripNew} onMemberClick={openMemberNew} /> : null}
-                {newPage === 'member' && getNewMemberId() ? (
+            <AppErrorBoundary routeKey={`new-${page}-${route.id ?? ''}`} onResetToDashboard={() => navigateTo(PATHS.home)}>
+              <Suspense fallback={<ViewLoader view={page} />}>
+                {page === 'map' ? <MapNew onTripClick={openTripNew} isSidebarCollapsed={isSidebarCollapsed} onThemeChange={t => handleThemeChange(t)} /> : null}
+                {page === 'atlas' ? <AtlasNew onTripClick={openTripNew} /> : null}
+                {page === 'trips' ? <TripsNew onTripClick={openTripNew} /> : null}
+                {page === 'dashboard' ? <DashboardNew onTripClick={openTripNew} onMemberClick={openMemberNew} /> : null}
+                {page === 'flights' ? <FlightsNew onTripClick={openTripNew} /> : null}
+                {page === 'roadtrips' ? <RoadTripsNew onTripClick={openTripNew} /> : null}
+                {page === 'settings' ? <SettingsNew theme={theme} isDark={isDarkMode} onThemeChange={t => handleThemeChange(t)} onOpenMember={openMemberNew} onNavigate={navigateTo} /> : null}
+                {page === 'calendar' ? <CalendarNew onTripClick={openTripNew} onMemberClick={openMemberNew} /> : null}
+                {page === 'member' && route.id ? (
                   <MemberNew
-                    key={getNewMemberId()!}
-                    memberId={getNewMemberId()!}
-                    onBack={() => (window.history.length > 1 ? window.history.back() : navigateFromShell('/trips-new'))}
+                    key={route.id}
+                    memberId={route.id}
+                    onBack={() => (window.history.length > 1 ? window.history.back() : navigateTo(PATHS.trips))}
                     onOpenTrip={openTripNew}
                     onLogout={() => handleLogout()}
                   />
                 ) : null}
-                {newPage === 'trip' && getNewTripId() ? (
-                  <TripNew key={getNewTripId()!} tripId={getNewTripId()!} onOpenMember={openMemberNew} onBack={() => navigateFromShell('/trips-new')} onOpenOriginal={handleTripClick} />
+                {page === 'trip' && route.id ? (
+                  <TripNew key={route.id} tripId={route.id} onOpenMember={openMemberNew} onBack={() => navigateTo(PATHS.trips)} onOpenClassic={id => navigateTo(classicTripPath(id))} />
                 ) : null}
+                {page === 'notfound' ? <NotFoundNew onHome={() => navigateTo(PATHS.home)} /> : null}
               </Suspense>
             </AppErrorBoundary>
           </ShellNew>
@@ -519,6 +447,7 @@ export default function App() {
         />
         <Suspense fallback={null}>
         <NavSidebar 
+          onOpenNew={() => navigateTo(PATHS.home)}
           currentView={view} 
           onNavigate={(v, id) => navigate(v, id)} 
           theme={theme}
