@@ -59,9 +59,20 @@ export async function expectAppShell(page: Page) {
 
 export const isMobile = (page: Page) => (page.viewportSize()?.width ?? 1440) < 768;
 
+/**
+ * The redesigned pages own the clean URLs; the original pages these specs were written for live under
+ * /classic. `page.goto('/planner')` therefore opens '/classic/planner' (see tests/e2e/auth/routes.spec.ts
+ * for the New routes, which use `gotoNew`).
+ */
+export const classicUrl = (url: string) => (url.startsWith('/') && !url.startsWith('/classic') && !url.startsWith('/api/') ? `/classic${url === '/' ? '' : url}` : url);
+export const gotoNew = (page: Page, url: string) => (page as any).__gotoNew(url) as Promise<unknown>;
+
 /** Every test fails if the page reports a Content-Security-Policy violation (WP-2.12). */
 export const test = base.extend<{}>({
   page: async ({ page }, use) => {
+    const goto = page.goto.bind(page);
+    (page as any).__gotoNew = (url: string) => goto(url);
+    (page as any).goto = (url: string, options?: any) => goto(classicUrl(url), options);
     const violations: string[] = [];
     page.on('console', (m) => { if (/Content Security Policy|Refused to (load|execute|connect|create)/i.test(m.text())) violations.push(m.text()); });
     await use(page);

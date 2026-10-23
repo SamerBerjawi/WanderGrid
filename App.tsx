@@ -5,7 +5,7 @@ import { goldenViews } from './views/golden/registry';
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { ViewState, User } from './types';
-import { resolveRoute, classicPathFor, classicTripPath, navPathFor, PATHS, type Route } from './utils/routes';
+import { resolveRoute, classicPathFor, classicTripPath, navPathFor, CLASSIC_PREFIX, PATHS, type Route } from './utils/routes';
 import { dataService } from './services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';
 import { IconContext } from '@/components/ui/hugeicons';
@@ -234,7 +234,7 @@ export default function App() {
       setCurrentUser(null);
       localStorage.removeItem('wandergrid_session_user');
       localStorage.removeItem('wandergrid_session_token');
-      if (!options?.keepLocation) navigateTo(PATHS.home);
+      if (!options?.keepLocation) navigateTo(isClassic ? CLASSIC_PREFIX : PATHS.home);
   };
 
   // Async failures in event handlers bypass error boundaries; surface them instead of failing silently.

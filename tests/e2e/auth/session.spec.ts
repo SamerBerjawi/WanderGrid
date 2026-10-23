@@ -32,7 +32,7 @@ test.describe('W6 session restore', () => {
     await expectAppShell(page);
     await page.reload();
     await expectAppShell(page);
-    expect(new URL(page.url()).pathname).toBe('/settings');
+    expect(new URL(page.url()).pathname).toBe('/classic/settings');
   });
 
   test('invalid/tampered token returns the user to the sign-in screen', async ({ page, request }) => {
@@ -82,7 +82,7 @@ test.describe('W7 log out', () => {
     await waitForAuthScreen(page);
     const ls = await page.evaluate(() => [localStorage.getItem('wandergrid_session_token'), localStorage.getItem('wandergrid_session_user')]);
     expect(ls).toEqual([null, null]);
-    expect(new URL(page.url()).pathname).toBe('/');
+    expect(new URL(page.url()).pathname).toBe('/classic');
   });
 
   test('browser Back after sign-out does not reveal the app', async ({ page, request }) => {
