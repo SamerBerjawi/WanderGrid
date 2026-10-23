@@ -100,7 +100,7 @@ export const NamePlaceSheet: React.FC<{ city: VisitedItem; onClose: () => void; 
             <RpSection title="Name" icon={MapPin}>
                 <div className="flex flex-col gap-1.5 py-1.5">
                     <label htmlFor={nameId} className="text-xs text-rp-muted">City</label>
-                    <input id={nameId} value={name} onChange={e => { setName(e.target.value); setCountry(c => (found && found !== 'none' && e.target.value.trim() === found.name ? c : undefined)); }} placeholder="Porto" className={FIELD} autoComplete="off" />
+                    <input id={nameId} value={name} onChange={e => { setName(e.target.value); setCountry(c => (found && found !== 'none' && e.target.value.trim() === found.name ? c : undefined)); }} placeholder="City name" className={FIELD} autoComplete="off" />
                 </div>
                 {where ? (
                     <div className="flex flex-col gap-2 py-1.5">

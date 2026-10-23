@@ -154,6 +154,16 @@ pages are now the default. The original interface is kept, hidden, under `/class
 - Several merge regressions between the stacked redesign branches (a lost route-colour mode, import
   restorations and renumbered decision references).
 
+- **Atlas: merging many duplicates no longer fails.** Merging 250+ duplicate records stopped halfway with
+  "Too many requests" (one request per record, and four reloads per write). The merge is now planned once and
+  applied in a few atomic steps with progress, Stop, Retry and Undo, the review list is grouped by country and
+  paged, and the page reloads once at the end. New route `POST /api/visited/merge`.
+- **Atlas: places with no name.** Unknown places are kept apart by their coordinates instead of being folded
+  into one city. Open one to type a name or press **Find the name** (new `GET /api/proxy/reverse-geocode`);
+  saving writes the name into the atlas and into every trip, stop and transport it came from, with Undo, and
+  never changes coordinates. **Find names** does it for all unnamed places at once, after you review the
+  proposals.
+
 ### Security
 
 - The flight tracker no longer sends a masked API key, and integration keys are tested on the server so they
