@@ -161,6 +161,7 @@ export interface MapAppearanceSettings {
 
     // Scratch Map Mode Filters & Toggles
     scratchCitySize?: 'off' | 'small' | 'medium' | 'large';
+    showVisitedCountries?: boolean; // Show/hide visited countries (by trips or status)
     showLivedCountries?: boolean; // Show/hide lived (current & past) residence highlights
     showWishlistCountries?: boolean; // Show/hide dream wishlist targets
     showLayoverCountries?: boolean; // Show/hide layover-only transit territories
@@ -198,6 +199,7 @@ export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     terrain3d: false,
     terrain3dExaggeration: 1.0,
     scratchCitySize: 'medium',
+    showVisitedCountries: true,
     showLivedCountries: true,
     showWishlistCountries: true,
     showLayoverCountries: true,

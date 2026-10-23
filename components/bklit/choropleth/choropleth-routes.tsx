@@ -13,6 +13,8 @@ export interface ChoroplethRoute {
   stroke: string;
   dashed?: boolean;
   opacity?: number;
+  /** A traced road, rail or sea lane to draw instead of the great circle (WanderGrid addition). */
+  path?: [number, number][];
 }
 
 export interface ChoroplethRoutesProps {
@@ -28,7 +30,7 @@ export const ChoroplethRoutes = memo(function ChoroplethRoutes({ routes, strokeW
   return (
     <g className="choropleth-routes" fill="none" strokeLinecap="round" pointerEvents="none">
       {routes.map((r) => {
-        const d = rawPathGenerator({ type: "LineString", coordinates: [r.from, r.to] });
+        const d = rawPathGenerator({ type: "LineString", coordinates: r.path && r.path.length > 2 ? r.path : [r.from, r.to] });
         return d ? (
           <path
             key={r.id}

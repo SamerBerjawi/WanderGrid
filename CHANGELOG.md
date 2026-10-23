@@ -151,11 +151,28 @@ pages are now the default. The original interface is kept, hidden, under `/class
 
 ### Fixed
 
+- **Scratch map filters.** Lived in no longer washes lived countries in a flat fill (they get their own
+  colour), a Visited toggle joins the scratch filters, Layovers now finds layover-only countries (a connecting flight's next origin was
+  counted as a stay) and hides them, and City pins Off removes every pin and route-end marker.
+- Still maps (Flights, Road trips, trip header, dashboard World) draw the real road, rail and sea routes
+  instead of straight lines once they are known.
+- The scratch map is drawn with finer 10m borders when zoomed in, and the Night lights basemap stays sharp at
+  high zoom (vector streets and labels over the lights, since the imagery ends at level 8).
 - A production build failure caused by the 6 MB Hugeicons set being matched by the service worker's
   precache; it is now a separately named, runtime-cached chunk.
 - Overlapping stays no longer draw on top of each other.
 - Several merge regressions between the stacked redesign branches (a lost route-colour mode, import
   restorations and renumbered decision references).
+
+- **Atlas: merging many duplicates no longer fails.** Merging 250+ duplicate records stopped halfway with
+  "Too many requests" (one request per record, and four reloads per write). The merge is now planned once and
+  applied in a few atomic steps with progress, Stop, Retry and Undo, the review list is grouped by country and
+  paged, and the page reloads once at the end. New route `POST /api/visited/merge`.
+- **Atlas: places with no name.** Unknown places are kept apart by their coordinates instead of being folded
+  into one city. Open one to type a name or press **Find the name** (new `GET /api/proxy/reverse-geocode`);
+  saving writes the name into the atlas and into every trip, stop and transport it came from, with Undo, and
+  never changes coordinates. **Find names** does it for all unnamed places at once, after you review the
+  proposals.
 
 ### Security
 
