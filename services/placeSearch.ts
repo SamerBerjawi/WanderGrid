@@ -496,7 +496,7 @@ const AIRPORT_TEST = new RegExp(AIRPORT_WORDS.source);
 const STATION_TEST = new RegExp(STATION_WORDS.source);
 const GENERIC_WORDS = new RegExp(`${AIRPORT_WORDS.source}|${STATION_WORDS.source}`, 'g');
 
-function profileQuery(query: string, mode: SearchMode, bias?: { lat?: number; lon?: number }): QueryProfile {
+export function profileQuery(query: string, mode: SearchMode, bias?: { lat?: number; lon?: number }): QueryProfile {
     const cleaned = cleanLabel(query);
     const parts = cleaned.split(',').map(s => s.trim()).filter(Boolean);
     const nMain = norm(parts[0] || cleaned);
@@ -517,7 +517,7 @@ function profileQuery(query: string, mode: SearchMode, bias?: { lat?: number; lo
     };
 }
 
-function scorePlace(p: Place, q: QueryProfile): number {
+export function scorePlace(p: Place, q: QueryProfile): number {
     const nName = norm(p.name);
     const nLabelName = norm(p.label.replace(/^[A-Z]{3}\s*-\s*/, '').split(',')[0]);
     let s = 0;
@@ -547,6 +547,10 @@ function scorePlace(p: Place, q: QueryProfile): number {
     // 3. Importance: population, else OSM place rank
     if (p.population && p.population > 0) s += Math.log10(p.population + 10) * 9;
     else if (p.kind === 'city') s += p.rank ?? 6;
+    // States, provinces and countries come without a population from most providers; they are still bigger than
+    // any village that shares their name ("California" is the state, not a hamlet in Nicaragua).
+    else if (p.kind === 'region') s += 24;
+    else if (p.kind === 'country') s += 30;
 
     // 4. Kind intent
     // Tiny localities must not outrank real destinations: the city bonus scales with importance.
