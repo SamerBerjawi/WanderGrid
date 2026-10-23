@@ -30,8 +30,8 @@ import { cn } from '../../utils/cn';
  * features come from the data layer (useTripsData: the trip, status, archive, duplicate, delete, edit
  * of legs, stays and activities, packing list, notes); the layout is new: a header in the trip's
  * status colour, four counts, and tabs for Itinerary, Canvas (the whole plan on one grid), Bookings, Costs, Gear and Notes.
- * Not carried over yet: AI guide, weather, route map, calendar view, flight import and ICS export (all still on
- * the original trip page: menu > Open in classic view).
+ * Not carried over: AI guide, flight import on the trip (they existed only on the original trip page, now
+ * removed; see UI_UX_DESIGN_REFERENCE.md §5.5 and the git tag classic-final).
  */
 
 interface TripNewProps {
