@@ -6,12 +6,13 @@ import { buildPlaceFlows, describeFlows, shortPlaceLabel, type FlowNode } from '
 
 /** The place sheet's Sankey: arrivals across the top, the place in the middle band, departures below. */
 
-const MODE_ACCENT: Record<LegMode, SankeyAccent> = { flight: 'rust', rail: 'green', road: 'ochre', sea: 'sea' };
+/** Each node gets its own accent (the grouped node stays muted), as in the Bklit sankey; the tooltip names the mode. */
+const PALETTE: SankeyAccent[] = ['rust', 'green', 'navy', 'mustard', 'plum', 'sea', 'ochre'];
 const MODE_WORD: Record<LegMode, [string, string]> = {
     flight: ['flight', 'flights'], rail: ['train trip', 'train trips'], road: ['road trip', 'road trips'], sea: ['sea trip', 'sea trips'],
 };
 
-const toChartNode = (n: FlowNode): SankeyFlowNode => {
+const toChartNode = (n: FlowNode, i: number): SankeyFlowNode => {
     const [one, many] = MODE_WORD[n.mode];
     const word = n.others ? 'trips' : n.count === 1 ? one : many;
     const dir = n.side === 'in' ? 'From' : 'To';
@@ -25,7 +26,7 @@ const toChartNode = (n: FlowNode): SankeyFlowNode => {
             ? `${n.side === 'in' ? 'Arrivals' : 'Departures'}, ${n.name}: ${n.count} ${word}. Show all routes`
             : `${dir} ${n.name}: ${n.count} ${word}${extra}. Open route`,
         value: n.count,
-        accent: n.others ? 'muted' : MODE_ACCENT[n.mode],
+        accent: n.others ? 'muted' : PALETTE[i % PALETTE.length],
     };
 };
 
@@ -40,8 +41,8 @@ export interface PlaceFlowChartProps {
 const PlaceFlowChart: React.FC<PlaceFlowChartProps> = ({ placeId, routes, onOpenRoute, onShowOthers }) => {
     const flows = useMemo(() => buildPlaceFlows(placeId, routes), [placeId, routes]);
     const nodes = useMemo(() => new Map([...flows.incoming, ...flows.outgoing].map(n => [n.key, n])), [flows]);
-    const top = useMemo(() => flows.incoming.map(toChartNode), [flows]);
-    const bottom = useMemo(() => flows.outgoing.map(toChartNode), [flows]);
+    const top = useMemo(() => flows.incoming.map((n, i) => toChartNode(n, i)), [flows]);
+    const bottom = useMemo(() => flows.outgoing.map((n, i) => toChartNode(n, i)), [flows]);
     const code = shortPlaceLabel(placeId, 12);
     const { totals } = flows;
     if (!top.length && !bottom.length) return null;

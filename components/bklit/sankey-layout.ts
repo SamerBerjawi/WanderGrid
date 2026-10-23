@@ -85,7 +85,7 @@ export interface LabelSpot { index: number; x: number; row: number }
  * not touch a neighbour, else on a second row; a label that fits neither is left out (it still shows in
  * the tooltip). Text width is estimated from the character count.
  */
-export const placeLabels = (centres: number[], labels: string[], priority: number[], width: number, charW = 6.4, pad = 4): LabelSpot[] => {
+export const placeLabels = (centres: number[], labels: string[], priority: number[], width: number, charW = 7.4, pad = 8): LabelSpot[] => {
     const rows: [number, number][][] = [[], []];
     const out: LabelSpot[] = [];
     const order = centres.map((_, i) => i).sort((a, b) => priority[b] - priority[a] || a - b);
