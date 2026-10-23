@@ -8,7 +8,8 @@ All notable changes to WanderGrid are listed here, newest first. The format foll
 
 The redesign release. Every page, dialog and message of the app was rebuilt in one new design language
 (the "New" pages, specified in [UI_UX_DESIGN_REFERENCE.md](UI_UX_DESIGN_REFERENCE.md)), and the new
-pages are now the default. The original interface is kept, hidden, under `/classic`.
+pages are the only interface. The original interface was removed before release; the git tag `classic-final`
+holds the last commit that has it.
 
 ### Upgrading from 0.5
 
@@ -16,11 +17,12 @@ pages are now the default. The original interface is kept, hidden, under `/class
   `/trip/:id`, `/flights`, `/roadtrips`, `/map`, `/atlas`, `/calendar`, `/user/:id` and `/settings`. The
   preview URLs used during development (`/trips-new`, `/trip-new/:id` and so on) redirect to them, and old
   aliases such as `/flights-2` and `/planner-2` still resolve.
-- **The old interface** lives under `/classic` (for example `/classic/planner`). It is reachable by URL, from a
-  trip's menu ("Open in classic view") and from the link at the bottom of Settings. Some features exist only
-  there for now; see *Known limitations* below.
-- **Interface themes.** The Golden Hour and Departure Board themes apply only under `/classic`. The new pages
-  offer Light, Dark and Auto. Your stored theme value is left untouched.
+- **The old interface is gone.** Old `/classic/...` bookmarks redirect to the same page (for example
+  `/classic/planner` opens `/planner`). There is no way back to the old pages in the app; see *Removed* below
+  for what only they did.
+- **Interface themes.** The Golden Hour and Departure Board themes were removed with the old interface. The
+  pages offer Light, Dark and Auto. A stored theme value from the old picker is ignored (and left in the
+  browser's storage).
 - **Data.** No migration is needed. Two optional fields were added to stored records (a trip's `targetBudget`,
   and `originGeoKey` / `destGeoKey` on transports, which record which text a leg's coordinates belong to).
   Older records without them keep working.
@@ -159,15 +161,21 @@ pages are now the default. The original interface is kept, hidden, under `/class
 - The flight tracker no longer sends a masked API key, and integration keys are tested on the server so they
   never need to reach the browser in full. Keys are shown masked in Settings.
 
+### Removed
+
+- The original interface under `/classic` and its themes (Golden Hour, Departure Board), with the shell,
+  the old pages, the liquid-glass components and the dependencies only they used (`recharts`, `leaflet`,
+  `react-simple-maps`, `@google/genai`, `html2canvas` and others). Recover any file from the tag
+  `classic-final`: `git show classic-final:<path>`.
+- Features that existed only there (§5.5 of the design reference): the trip AI guide and AI flight analysis,
+  flight import directly on a trip page, the full-screen cinematic map, the Departure Board view of flights,
+  the old Dashboard widgets (achievements, cabin donut, top airports and airlines, earth-orbits hero), the
+  Road trips hub tabs, per-trip edit buttons on the member page and the page-wide Save button in Settings.
+
 ### Known limitations
 
-- **Only in `/classic` for now** (see §5.5 of the design reference for the full table): the trip AI guide
-  and AI flight analysis, flight import and trip ICS export directly on a trip page, the full-screen
-  cinematic map, the Departure Board view of flights, the old Dashboard widgets (achievements, cabin
-  donut, top airports and airlines, earth-orbits hero), Road trips hub tabs, per-trip edit buttons on the
-  member page, and the page-wide Save button in Settings.
-- **Testing.** The end-to-end suite still covers the original pages (it now runs against `/classic`); there are
-  no end-to-end specs for the new pages yet. The new features were exercised in local mode and against the
+- **Testing.** The end-to-end specs for the original pages were deleted with them; only the route spec
+  remains, so there are almost no end-to-end specs for the pages yet. The new features were exercised in local mode and against the
   real server on an in-memory database, not against a real PostgreSQL server.
 - Live flight tracking, provider key tests and the holiday providers were not exercised against the live
   services during development.

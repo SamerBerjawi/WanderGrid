@@ -2,6 +2,8 @@
 
 This document preserves the production-grade architectural and performance optimization rules established for WanderGrid. Any subsequent updates, refactoring, or feature development must adhere to these structural constraints and design guidelines.
 
+> **Note (original interface removed, `UI_UX_DESIGN_REFERENCE.md` decisions 225–236):** the glass, `GlassPanel`, `GlassSelect`, `EmptyState` and Golden Hour rules in the UI sections below describe the deleted interface (git tag `classic-final`). For UI work follow `UI_UX_DESIGN_REFERENCE.md`; the architecture, performance and backend sections still apply.
+
 ---
 
 ## 1. Static Dataset Optimization (Airports & Carriers)

@@ -9,9 +9,9 @@ WanderGrid is a self-hosted travel planner, flight log and leave manager. It has
 
 - React 19.2 / react-dom 19.2, TypeScript ~5.8, Vite 6.2 with `@vitejs/plugin-react` 5, `vite-plugin-pwa` 1.3 (Workbox generateSW)
 - Tailwind CSS 3.4 + PostCSS/autoprefixer (single compiled config; no CDN); `clsx`, `tailwind-merge`; global CSS in `styles.css`. Classes built at runtime must be safelisted in `tailwind.config.js`
-- UI: `@nkzw/liquid-glass` 1.3 (glass surfaces), `@hugeicons/react` + `@hugeicons/core-free-icons` (stroke-rounded; app imports go through `components/ui/hugeicons.tsx`, an adapter keeping the `size`/`weight`/`className` API), `motion` 12 (`motion/react`), `@number-flow/react`, `@dnd-kit/*`
-- Maps/geo: `maplibre-gl` 6.4, `deck.gl` 9.3, `pmtiles` 4.5, `leaflet` 1.9.4, `react-simple-maps` 3, `d3` 7, `topojson-client`, `searoute-js`, `@mapbox/mapbox-gl-rtl-text`
-- Charts: `recharts` 3.8. Data I/O: `xlsx` 0.18, `html2canvas` 1.4.1. AI: `@google/genai` 1.34
+- UI: `@hugeicons/react` + `@hugeicons/core-free-icons` (stroke-rounded; app imports go through `components/ui/hugeicons.tsx`, an adapter keeping the `size`/`weight`/`className` API), `motion` 12 (`motion/react`), `@number-flow/react`, `@dnd-kit/*`
+- Maps/geo: `maplibre-gl` 6.4, `deck.gl` 9.3, `pmtiles` 4.5, `d3` 7, `searoute-js`, `@mapbox/mapbox-gl-rtl-text`
+- Charts: `@visx/*`. Data I/O: `xlsx`
 - `.npmrc` sets `legacy-peer-deps=true`. Peer conflicts are expected.
 
 ### Backend (`backend_files/package.json`, CommonJS)
@@ -42,29 +42,26 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 - The backend defaults to `PORT=3000`, and that clashes with Vite. Set `PORT=3001` locally so the Vite proxy reaches it. I verified that it boots and that `/api/health` responds. Running it against a live Postgres was **not verified** because no Postgres or Docker was available.
 - `npm run dev` runs in local mode by default (`.env.development` sets `VITE_LOCAL_MODE=true`): the data layer uses localStorage only and shows a "Local mode" badge, so no backend or Postgres is needed. To develop against the API, put `VITE_LOCAL_MODE=false` in `.env.development.local` (git-ignored) and run the backend on `PORT=3001`.
 - **There is no seed script.** The schema is created at startup by `initDb()` in `server.js` (`CREATE TABLE IF NOT EXISTS`, retried 10×/3s). `backend_files/schema.sql` mirrors it but nothing executes it. The global airport and carrier tables are populated automatically from external datasets. To get sample data, register a user in the UI or restore a backup JSON in Settings.
-- Frontend unit tests (`npm test`, Vitest + jsdom, `tests/unit/`): the pure logic of the Flights page (journey grouping, status and progress, alerts, import column mapping, lookup helpers). End-to-end: `cd tests/e2e && npm install && npx playwright test` (production build + real server on pg-mem, desktop and mobile projects, ~45 min). CI runs tsc, the token check and backend tests on every push and PR before building the image; the full e2e suite runs only for `v*` tags and manual runs (Actions tab → Run workflow).
+- Frontend unit tests (`npm test`, Vitest + jsdom, `tests/unit/`): the pure logic of the routes, the Flights page (journey grouping, status and progress, alerts, import column mapping, lookup helpers). End-to-end: `cd tests/e2e && npm install && npx playwright test` (production build + real server on pg-mem, desktop and mobile projects; after the removal of the original interface only `auth/routes.spec.ts` is left, so new-page specs are still to be written). CI runs tsc, the token check and backend tests on every push and PR before building the image; the full e2e suite runs only for `v*` tags and manual runs (Actions tab → Run workflow).
 - A git `pre-commit` hook runs `scripts/bump-version.cjs`, so every commit also bumps `version.ts`/`package.json`.
 
 ## Directory map
 
 | Path | Responsibility |
 | --- | --- |
-| `index.tsx`, `App.tsx` | Entry point. There is no router library: `utils/routes.ts` (`resolveRoute`, pure and unit-tested) maps a URL to a route, and `App` keeps it in state. **The redesigned ("New") pages and `components/new/ShellNew.tsx` are the default at the clean paths** (`/`, `/trips`, `/trip/:id`, `/flights`, `/roadtrips`, `/map`, `/atlas`, `/calendar`, `/user/:id`, `/settings`); the original pages, Sidebar/GoldenSidebar shell and old Auth are kept under **`/classic`** (`/classic/planner`, `/classic/trip/:id` ...), where `App` still switches on `ViewState`. Old `-new` URLs redirect to the clean path. Views are `React.lazy`-loaded |
-| `views/` | The original top-level pages (Dashboard, PlannerView, VacationCalendar, ExpeditionMapView, Flights, RoadTrips, TripDetail, TravelAtlas, Settings, UserDetail, Auth), now served under `/classic` |
-| `views/new/`, `components/new/` | The redesigned pages (`DashboardNew`, `TripsNew`, `TripNew`, `FlightsNew`, `RoadTripsNew`, `MapNew`, `AtlasNew`, `CalendarNew`, `MemberNew`, `SettingsNew`, `AuthNew`) and their parts. They are the default pages; design rules are in `UI_UX_DESIGN_REFERENCE.md`, not `Design.md`. Never import them from the original pages |
-| `components/` | Feature components (configurators, drawers, map, passport/stamps). `ui.tsx` has the shared Card, Button and similar components |
-| `components/glass/` | Liquid-glass primitives: GlassPanel, GlassButton, GlassInput, GlassSelect, GlassToggle, GlassSegmented, GlassSlider, SettingRow |
+| `index.tsx`, `App.tsx` | Entry point. There is no router library: `utils/routes.ts` (`resolveRoute`, pure and unit-tested) maps a URL to a page (`dashboard`, `trips`, `trip`, `flights`, `roadtrips`, `map`, `atlas`, `calendar`, `member`, `settings`, `notfound`) and `App` keeps it in state; all pages render inside `components/new/ShellNew.tsx`. Paths: `/`, `/trips` (`/planner`), `/trip/:id`, `/flights`, `/roadtrips`, `/map`, `/atlas`, `/calendar`, `/user/:id`, `/settings`. Old `-new`, `-2` and `/classic/...` URLs redirect to the clean path. Pages are `React.lazy`-loaded |
+| `views/new/` | The pages: `DashboardNew`, `TripsNew`, `TripNew`, `FlightsNew`, `RoadTripsNew`, `MapNew`, `AtlasNew`, `CalendarNew`, `MemberNew`, `SettingsNew`, `AuthNew` (the `New` suffix is historical) |
+| `components/new/` | The parts of those pages and the shell (`ShellNew`, `RpDialog`, `ui.tsx` primitives, per-page folders). Design rules are in `UI_UX_DESIGN_REFERENCE.md`, not `Design.md` |
+| `components/` | `AppErrorBoundary`, `ErrorBoundary`, `Toaster`, `ConfirmHost`, `PWAInstallBanner`, plus `bklit/` and `kokonutui/` (vendored chart and UI components the New pages use), `skeletons/` and `ui/hugeicons.tsx` |
 | `components/ui/` | Icon wrapper, date pickers, bento grid, virtual list item |
 | `services/` | Client-side domain logic. `mockDb.ts` is **the** data service (`dataService`), despite its name. The rest cover geocoding, routing (road/rail/maritime), flight tracking, import/export, map styles, and the solar terminator |
 | `hooks/` | `useWanderSync` (SWR cache), `usePWA`, `useExistingTripSuggestions` |
 | `utils/` | `formatters.ts` (date/currency; mandatory), `brandfetch.ts`, `flightData.ts`, static aviation and sticker data |
-| `config/` | `featureFlags.ts` (`VITE_FF_*` overrides) and `pageThemes.ts` |
+| `config/` | `featureFlags.ts` (`VITE_FF_*` overrides) |
 | `types.ts`, `types/` | Shared TS types. Path alias `@/*` points at the repo root |
-| `constants.ts` | Shared style strings (`INPUT_BASE_STYLE`, `BTN_*_STYLE`, …) |
 | `backend_files/` | Express server (`server.js`, ~2.9k lines), upstream helpers (`upstream.js`, `geocodingChain.js`, `routeProxy.js`, `aviationStack.js`, `carrierMapping.js`, `integrationsTester.js`), the `test/` folder, and the Dockerfile |
 | `public/` | PWA icons, `manifest.json`, GeoJSON (`data/`), map styles, `airport-overlay.pmtiles` (gitignored and must be present locally) |
 | `docs/` | Change registries: `gev-changes.md` (GEV feature ports with reversal recipes) and `mission-control-changes.md` |
-| `.agents/skills/liquid-glass-wandergrid`, `liquid-glass-wandergrid-SKILL.md` | Liquid-glass styling skill referenced by AGENTS.md §11 |
 | `scripts/bump-version.cjs` | Writes `v0.5-YYMMDD.N` to `version.ts` and `package.json` |
 | `dist/`, `scratch/` | Build output and an empty scratch dir. Both are untracked/ignored |
 
@@ -92,24 +89,18 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 - Routing: FOSSGIS OSRM, then project-osrm, then Valhalla for road. OpenRailRouting for rail (tries the `all_tracks`, `non_tgv`, `tgv_all`, `all_tracks_1435` profiles in turn). `searoute-js` for maritime. Road and rail legs are resolved by `backend_files/routeStore.js` behind `POST /api/proxy/routes/resolve` (batched, requires the session token) and persisted in `cached_routes`, including definitive "no route" answers; the client (`services/multiModalRouting.ts`) polls only for pending legs.
 - Public holidays (calendar > Holidays > Add a country calendar): Nager.Date, then OpenHolidays, behind `GET /api/proxy/holidays/countries` and `/:year/:countryCode` (`backend_files/holidays.js`, one-day cache). In local mode the browser calls Nager.Date directly.
 - Flights: AviationStack, AeroDataBox (RapidAPI), adsbdb, adsb.lol and OpenSky. Map tiles: OpenFreeMap, CARTO, OSM, NASA GIBS, AWS Terrarium and OpenAIP (keyed). Logos: Brandfetch. Holidays: Nager.Date. Weather radar: RainViewer.
-- Gemini (`@google/genai`) runs client-side in `PackingList.tsx` and `TripDetail*.tsx`. The key comes from workspace settings (`googleGeminiApiKey`) or `GEMINI_API_KEY`, which `vite.config.ts` `define` **inlines into the bundle**.
+- Gemini: the client-side AI guide was removed with the original interface (git tag `classic-final`); the server keeps `/api/ai/generate`.
 - Most third-party API keys are stored in workspace settings and sent by the client as headers, for example `X-AeroDataBox-Key` and `X-OpenAIP-Key`. A key can also be set through env vars (`INTEGRATIONS_*`).
 
-**Env vars** (see `.env.example`): `DATABASE_URL`, `JWT_SECRET`, `PORT`, `NODE_ENV`, `STRUCTURED_LOGGING`, `DB_POOL_SIZE`, `DB_CONNECTION_TIMEOUT_MS`, `DB_STATEMENT_TIMEOUT_MS`, `API_CACHE_TTL_MS`, `FLIGHT_FETCH_TIMEOUT_MS`, `GLOBAL_DATA_REFRESH_MS`, `GEOCODE_CACHE_TTL_MS`, `EXTERNAL_FETCH_TIMEOUT_MS`, `INTEGRATIONS_*`, `FLIGHT_LOOKUP_FLIGHTSTATS` (`off` disables the keyless FlightStats source of the flight lookup). Frontend: `GEMINI_API_KEY` and `VITE_FF_*`.
+**Env vars** (see `.env.example`): `DATABASE_URL`, `JWT_SECRET`, `PORT`, `NODE_ENV`, `STRUCTURED_LOGGING`, `DB_POOL_SIZE`, `DB_CONNECTION_TIMEOUT_MS`, `DB_STATEMENT_TIMEOUT_MS`, `API_CACHE_TTL_MS`, `FLIGHT_FETCH_TIMEOUT_MS`, `GLOBAL_DATA_REFRESH_MS`, `GEOCODE_CACHE_TTL_MS`, `EXTERNAL_FETCH_TIMEOUT_MS`, `INTEGRATIONS_*`, `FLIGHT_LOOKUP_FLIGHTSTATS` (`off` disables the keyless FlightStats source of the flight lookup). Frontend: `VITE_FF_*`.
 
 ## Conventions
 
 - **Naming:** PascalCase `.tsx` files for components and views, with named exports (e.g. `export const Flights`). camelCase `.ts` files for services and utils. Hooks are named `useX`. Backend files use camelCase CommonJS. Feature-flag IDs follow `GEV_P0x_*`.
 - **State:** there is no global store (no Redux or Zustand). Each view keeps local `useState` and reads through `dataService` and `useWanderSync`. Settings are loaded via `dataService.getWorkspaceSettings()`.
-- **Styling:** Tailwind utility classes with design tokens from `tailwind.config.js`, such as `light-text`/`dark-text`, `primary-*`, the `z-modal`/`z-popover`/… scale and `text-2xs`. Shared class strings live in `constants.ts`. Surfaces use `GlassPanel` (`wg-glass-card`/`wg-glass-pill`). Use the Hugeicons adapter icons (`weight="duotone"` maps to the standard stroke) for headers and the regular `Plus` for add buttons. Dark mode is class-based.
+- **Styling:** Tailwind utility classes with design tokens from `tailwind.config.js`, such as `light-text`/`dark-text`, `primary-*`, the `z-modal`/`z-popover`/… scale and `text-2xs`. The New pages use the `rp-*` tokens and `components/new/new.css`. Use the Hugeicons adapter icons. Dark mode is class-based.
 - **Formatting:** always use `formatDate`, `formatDateRange` and `formatCurrency` from `utils/formatters.ts`. Never call `toLocaleDateString` directly.
-- **UI rules to enforce** (AGENTS.md §7–11):
-  - No arbitrary `z-[…]` values.
-  - No raw `<select>` outside `GlassSelect`.
-  - No near-black surface fills.
-  - 44px touch targets, with `aria-label` on icon-only buttons.
-  - Use `<EmptyState />` for empty collections.
-  - Run the §11.3 grep self-check on touched files and report it.
+- **UI rules to enforce:** follow `UI_UX_DESIGN_REFERENCE.md` (it supersedes the glass rules in AGENTS.md §7–11, which described the removed interface). `npm run lint:tokens` must stay clean: no arbitrary `z-[…]` values, no arbitrary hex colours, valid palette shades. 44px touch targets, with `aria-label` on icon-only buttons.
 - **Error handling:**
   - Server responses go through `sendError(res, err, status, msg)`, which sanitizes messages in production. Logs are structured JSON when `NODE_ENV=production` or `STRUCTURED_LOGGING=true`.
   - On the client, `ErrorBoundary` wraps the root (`index.tsx`) and `AppErrorBoundary` wraps views.
@@ -118,7 +109,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 
 ## Fragile, legacy, or out of scope
 
-- **`/classic` is a kept interface, not the product:** every old file stays until the user approves deleting it (`UI_UX_DESIGN_REFERENCE.md` §5.0, §5.5 lists what only the old pages can do). Do not fix or restyle old pages unless asked; do not link to `/classic` from New pages beyond the two entry points (trip menu, Settings). The Golden Hour and Departure Board themes (`UI_GOLDEN_HOUR`, `uiTheme`) only apply there.
+- **The original interface is gone.** It was deleted (decisions 225–236 in `UI_UX_DESIGN_REFERENCE.md`); the git tag `classic-final` is the last commit that has it (`git show classic-final:views/Flights.tsx`). `/classic/...` URLs redirect to the New page. Do not reintroduce `ViewState`, the Golden Hour / Departure Board themes or `components/glass`. A stored `wandergrid_ui_theme` value is ignored.
 - **Retired "v2" views:** `Flights2`, `RoadTrips2` and `TripDetail2` were deleted; their legacy URLs (`/flights-2`, `/roadtrips-2`, `/trip-2/:id`) resolve to the main pages. `VacationPlanner` ("Planner-2") was removed as redundant; `/planner-2` and `/planner2` open the Planner.
 - **`services/mockDb.ts`** (~1.5k lines) is the real production data client, despite its name. It contains the API client, the localStorage fallback, backup/restore and trip↔flight sync. Edit it carefully. Restore assigns the password `password` to users that have none.
 - **`verifyPassword`** accepts plaintext stored passwords (legacy, no `:` salt separator). This is a legacy compatibility path, so do not extend it.
