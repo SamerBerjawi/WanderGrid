@@ -192,6 +192,61 @@ async function searchNominatim(query) {
   }
 }
 
+/**
+ * Reverse geocoding for the Atlas "Find the name" action: the place a coordinate is in. Photon first, Nominatim
+ * as the fallback; both are cached by fetchUpstream (coordinates rounded to ~100 m so a repeated lookup is free),
+ * time out after 3 s and never throw. Returns null when neither provider names the spot.
+ */
+async function reverseGeocode(lat, lon) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  const la = lat.toFixed(3);
+  const lo = lon.toFixed(3);
+  const pick = (...vals) => vals.find(v => typeof v === 'string' && v.trim()) || '';
+
+  try {
+    const res = await fetchUpstream({
+      key: `reverse:photon:v1:${la},${lo}`,
+      url: `https://photon.komoot.io/reverse?lat=${la}&lon=${lo}&lang=en&limit=1`,
+      ttlMs: 30 * 24 * 3600 * 1000,
+      staleMs: 90 * 24 * 3600 * 1000,
+      timeoutMs: GEOCODE_TIMEOUT_MS,
+      maxBytes: 128 * 1024,
+      hostGate: { minIntervalMs: 50 },
+    });
+    const props = res.ok ? res.data?.features?.[0]?.properties : null;
+    if (props) {
+      const name = pick(props.city, props.town, props.village, props.municipality, props.district, props.county, props.name);
+      if (name) {
+        return { name, country: props.country || '', country_code: (props.countrycode || '').toUpperCase(), admin1: props.state || '', provider: 'photon' };
+      }
+    }
+  } catch (err) {
+    console.warn('[Geocoding] Photon reverse error:', err.message);
+  }
+
+  try {
+    const res = await fetchUpstream({
+      key: `reverse:nominatim:v1:${la},${lo}`,
+      url: `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${la}&lon=${lo}&zoom=10&addressdetails=1&accept-language=en`,
+      ttlMs: 30 * 24 * 3600 * 1000,
+      staleMs: 90 * 24 * 3600 * 1000,
+      timeoutMs: GEOCODE_TIMEOUT_MS,
+      maxBytes: 128 * 1024,
+      hostGate: { minIntervalMs: 1000 },
+    });
+    const addr = res.ok ? res.data?.address : null;
+    if (addr) {
+      const name = pick(addr.city, addr.town, addr.village, addr.municipality, addr.suburb, addr.county, res.data?.name);
+      if (name) {
+        return { name, country: addr.country || '', country_code: (addr.country_code || '').toUpperCase(), admin1: addr.state || addr.province || '', provider: 'nominatim' };
+      }
+    }
+  } catch (err) {
+    console.warn('[Geocoding] Nominatim reverse error:', err.message);
+  }
+  return null;
+}
+
 async function searchGeocodingChain(query, { lat, lon } = {}) {
   const trimmed = query.trim();
   const normalizedQuery = normalizeToponym(trimmed);
@@ -386,4 +441,5 @@ module.exports = {
   classifyOsmType,
   lookupTimezoneForCoord,
   searchGeocodingChain,
+  reverseGeocode,
 };

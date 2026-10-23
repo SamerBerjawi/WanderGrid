@@ -1,18 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Trip, VisitedItem } from '../types';
 import { dataService } from '../services/mockDb';
 import { affectsCollections } from './useWanderSync';
 import { refineUKCountry } from '../services/geocoding';
-import { mergeCountryRecords, normalizeCountryCode, planCountryCleanup, resolveCountryCode, ukNationsFromCities } from '../services/countryRegistry';
-import { cityKey, planCityCleanup } from '../services/cityRegistry';
+import { mergeCountryRecords, normalizeCountryCode, ukNationsFromCities } from '../services/countryRegistry';
+import { buildMergePlan, buildUndoChunks, chunkMergePlan, type MergeChunk } from '../utils/atlasMergePlan';
+import { useBatchRun } from './useBatchRun';
+import { toast } from '../services/toast';
+import { isUnknownPlaceName } from '../services/cityRegistry';
+import {
+    chunkNamePlan, findCitySources, namePlanSize, planNameWriteBack, undoNameChunks,
+    type CitySource, type NameChoice, type NameChunk, type NamePlan,
+} from '../utils/atlasSources';
+import { runBatch } from '../utils/batchRunner';
 
-/** One line of the merge review: a record to write (merging its sources) or a stored record to remove. */
-export interface CleanupReviewItem {
-    id: string;
-    kind: 'merge' | 'update' | 'remove';
-    record: VisitedItem;
-    sources: VisitedItem[];
-}
 import {
     CityDraft, CountryDraft, ScanResult, buildTrackedCities, cityRecordFor, countryRecordFor, duplicateIdsOf, isLayoverCountry,
     activityForCountry, isVisitedCountry, isWishlistCountry, promoteToVisited, resolveAirportCity, scanHistory, scanImportRecords, WORLD_COUNTRY_COUNT,
@@ -49,8 +50,10 @@ export const useAtlasData = () => {
     }, []);
 
     useEffect(() => { void load(); }, [load]);
+    // A batch (merge, find names) writes many records; it reloads once when it is done, not after each write.
+    const busy = useRef(false);
     useEffect(() => {
-        const onUpdate = (e: Event) => { if (affectsCollections(e, ['visited', 'trips', 'flights'])) void load(); };
+        const onUpdate = (e: Event) => { if (!busy.current && affectsCollections(e, ['visited', 'trips', 'flights'])) void load(); };
         window.addEventListener('wandergrid_db_updated', onUpdate);
         return () => window.removeEventListener('wandergrid_db_updated', onUpdate);
     }, [load]);
@@ -65,27 +68,10 @@ export const useAtlasData = () => {
     const layovers = useMemo(() => countries.filter(isLayoverCountry), [countries]);
     const wishlist = useMemo(() => countries.filter(isWishlistCountry), [countries]);
 
+    // One plan from the stored records. It is rebuilt only when they change, never between merge steps.
     const cleanup = useMemo(() => {
-        const c = planCountryCleanup(visited, { ukConstituentsFor: ukNations });
-        const ci = planCityCleanup(visited, { resolveAirport: resolveAirportCity });
-        const upserts = [...c.upserts, ...ci.upserts];
-        const deleteIds = [...c.deleteIds, ...ci.deleteIds];
-
-        // For review: each surviving record with the stored entries folded into it; leftovers are removals.
-        const deleteSet = new Set(deleteIds);
-        const covered = new Set<string>();
-        const sameRecord = (s: VisitedItem, rec: VisitedItem) => s.type === rec.type && (
-            rec.type === 'country' ? resolveCountryCode(s) === normalizeCountryCode(rec.code) : cityKey(s.name) === cityKey(rec.name)
-        );
-        const review: CleanupReviewItem[] = upserts.map(rec => {
-            const sources = visited.filter(s => s.id === rec.id || (deleteSet.has(s.id) && sameRecord(s, rec)));
-            sources.forEach(s => covered.add(s.id));
-            return { id: rec.id, kind: sources.length > 1 ? 'merge' : 'update', record: rec, sources };
-        });
-        visited.filter(s => deleteSet.has(s.id) && !covered.has(s.id)).forEach(s => {
-            review.push({ id: `remove_${s.id}`, kind: 'remove', record: s, sources: [s] });
-        });
-        return { upserts, deleteIds, review, count: upserts.length + deleteIds.length };
+        const plan = buildMergePlan(visited, { ukConstituentsFor: ukNations, resolveAirport: resolveAirportCity });
+        return { plan, count: plan.count, duplicates: plan.deleteIds.length, review: plan.groups };
     }, [visited, ukNations]);
 
     const worldShare = Math.round((visitedCountries.length / WORLD_COUNTRY_COUNT) * 1000) / 10;
@@ -139,15 +125,114 @@ export const useAtlasData = () => {
         await changed();
     }, [removeDuplicates, changed]);
 
-    const mergeDuplicates = useCallback(async () => {
-        const stored = new Set(visited.map(v => v.id));
-        for (const record of cleanup.upserts) {
-            if (stored.has(record.id)) await dataService.updateVisited(record);
-            else await dataService.addVisited(record);
-        }
-        for (const id of cleanup.deleteIds) await dataService.deleteVisited(id);
-        await changed();
-    }, [visited, cleanup, changed]);
+    // Merge: the plan is cut into steps of whole groups once, each step is one atomic request, and the page reloads
+    // once at the end. `frozen` keeps the plan the run started with, whatever the stored records do meanwhile.
+    const mergeRun = useBatchRun<MergeChunk>();
+    const frozen = useRef<{ chunks: MergeChunk[]; plan: typeof cleanup.plan; before: number } | null>(null);
+    const [mergeUndoable, setMergeUndoable] = useState(false);
+    const [mergeSummary, setMergeSummary] = useState<{ before: number; after: number; removed: number } | null>(null);
+    const applyChunk = useCallback((chunk: MergeChunk) => dataService.mergeVisited(chunk.upserts, chunk.deleteIds), []);
+
+    const finishBatch = useCallback(async () => {
+        await load();
+        busy.current = false;
+        window.dispatchEvent(new CustomEvent('wandergrid_db_updated', { detail: { collections: ['visited'] } }));
+    }, [load]);
+
+    const startMerge = useCallback(async () => {
+        if (busy.current) return;
+        busy.current = true;
+        const plan = cleanup.plan;
+        const chunks = chunkMergePlan(plan, 100);
+        frozen.current = { chunks, plan, before: plan.storedCount };
+        setMergeUndoable(false);
+        setMergeSummary({ before: plan.storedCount, after: plan.afterCount, removed: plan.deleteIds.length });
+        try {
+            await dataService.runQuiet(() => mergeRun.start(chunks, applyChunk, { pauseMs: 150 }));
+        } finally { await finishBatch(); }
+        setMergeUndoable(true);
+    }, [cleanup.plan, mergeRun, applyChunk, finishBatch]);
+
+    const retryMerge = useCallback(async () => {
+        if (busy.current || !frozen.current) return;
+        busy.current = true;
+        try {
+            await dataService.runQuiet(() => mergeRun.retry(frozen.current!.chunks, applyChunk, { pauseMs: 150 }));
+        } finally { await finishBatch(); }
+    }, [mergeRun, applyChunk, finishBatch]);
+
+    const undoMerge = useCallback(async () => {
+        const f = frozen.current;
+        if (busy.current || !f) return;
+        busy.current = true;
+        const undo = buildUndoChunks(f.plan, mergeRun.state.doneChunks);
+        try {
+            const r = await dataService.runQuiet(() => mergeRun.start(undo, applyChunk, { pauseMs: 150 }));
+            if (r.failed.length > 0) toast.error(`Undo could not restore ${r.failed.length} ${r.failed.length === 1 ? 'step' : 'steps'}: ${r.failed[0].error}`);
+            else toast.success('Merge undone. Your records are back as they were.');
+        } finally { await finishBatch(); }
+        setMergeUndoable(false);
+        setMergeSummary(null);
+        frozen.current = null;
+        mergeRun.reset();
+    }, [mergeRun, applyChunk, finishBatch]);
+
+    // Unknown places: cities with no usable name. Naming one writes the name into every record it comes from.
+    const unknownCities = useMemo(() => cities.filter(c => isUnknownPlaceName(c.name)), [cities]);
+    const sourcesFor = useCallback(
+        (city: VisitedItem) => findCitySources(city, { visited, trips, flights, roadTrips }),
+        [visited, trips, flights, roadTrips]
+    );
+
+    /** The records a naming plan may change, read fresh so it never builds on a stale copy. */
+    const freshRecords = useCallback(async () => {
+        const [t, f, v] = await Promise.all([dataService.getTrips(), dataService.getIndependentTransports(), dataService.getVisited()]);
+        return { trips: t || [], flights: f || [], visited: v || [] };
+    }, []);
+
+    const applyNameChunk = useCallback((chunk: NameChunk) => dataService.applyNameStep(chunk), []);
+
+    /** Applies a naming plan step by step; if a step fails, the steps already applied are put back and the error is thrown. */
+    const applyNamePlan = useCallback(async (plan: NamePlan) => {
+        const chunks = chunkNamePlan(plan, 50);
+        busy.current = true;
+        try {
+            const result = await dataService.runQuiet(() => runBatch(chunks, applyNameChunk, { pauseMs: 100 }));
+            if (result.failed.length > 0) {
+                // Put every step back, the failed one included (its trips may have been written before its cities failed).
+                await dataService.runQuiet(() => runBatch(undoNameChunks(plan, chunks), applyNameChunk));
+                throw new Error(result.failed[0].error);
+            }
+        } finally { await finishBatch(); }
+        return chunks;
+    }, [applyNameChunk, finishBatch]);
+
+    const undoNamePlan = useCallback(async (plan: NamePlan, chunks: NameChunk[]) => {
+        busy.current = true;
+        try {
+            const r = await dataService.runQuiet(() => runBatch(undoNameChunks(plan, chunks), applyNameChunk, { pauseMs: 100 }));
+            if (r.failed.length > 0) toast.error(`Undo could not restore everything: ${r.failed[0].error}`);
+            else toast.success('Names restored.');
+        } finally { await finishBatch(); }
+    }, [applyNameChunk, finishBatch]);
+
+    /** Names one unknown city: the stored record and the chosen source fields, in one step, with Undo. */
+    const nameCity = useCallback(async (
+        city: VisitedItem, name: string, country: { code: string; name: string } | undefined, sources: CitySource[],
+        picked?: { lat: number; lng: number }
+    ) => {
+        const text = name.trim();
+        const choice: NameChoice = {
+            sources, city: text, display: country?.name ? `${text}, ${country.name}` : text, country,
+            // A picked place re-points the stored city to it; a typed name keeps the city where it was.
+            replace: !!picked, lat: picked?.lat ?? city.lat, lng: picked?.lng ?? city.lng,
+        };
+        const plan = planNameWriteBack([choice], await freshRecords());
+        if (namePlanSize(plan) === 0) throw new Error('Nothing to rename: these records have changed since. Close this and open the place again.');
+        const chunks = await applyNamePlan(plan);
+        toast.undo(`Named "${text}" in ${plan.written} ${plan.written === 1 ? 'place' : 'places'}.`, () => undoNamePlan(plan, chunks));
+        return plan;
+    }, [freshRecords, applyNamePlan, undoNamePlan]);
 
     const scan = useCallback(
         () => scanHistory(visited, countries, trips, flights, roadTrips),
@@ -173,7 +258,9 @@ export const useAtlasData = () => {
         loading, error, reload: load,
         visited, countries, visitedCountries, layovers, wishlist, cities, storedIds,
         worldShare, cityCountryCount, cleanup, hasHistory,
-        saveCountry, saveCity, promote, remove, mergeDuplicates, scan, importScan, activityFor,
+        unknownCities, sourcesFor, nameCity, freshRecords, applyNamePlan, undoNamePlan,
+        saveCountry, saveCity, promote, remove, scan,
+        merge: { run: mergeRun.state, start: startMerge, retry: retryMerge, cancel: mergeRun.cancel, undo: undoMerge, undoable: mergeUndoable, reset: mergeRun.reset, summary: mergeSummary }, importScan, activityFor,
     };
 };
 
