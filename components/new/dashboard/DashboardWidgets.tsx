@@ -18,7 +18,7 @@ import { mapLink } from '../../../utils/mapLinks';
 import { FlagArt, FlagBadge } from '../atlas/AtlasParts';
 import { RpHugeicon } from '../RpHugeicon';
 import { RpChip, RpEmpty, RpSheet, useIsMobile } from '../ui';
-import { openNewPage } from '../devLinks';
+import { openPage } from '../../../utils/appNavigation';
 import { Airplane, ArrowUpRight, Check, Clock, Suitcase } from '../../ui/hugeicons';
 import { formatCurrency, formatDate, formatDateRange, getActiveCurrency } from '../../../utils/formatters';
 import { destinationLabel, bucketOf, timingOf, tripCost } from '../../../utils/tripsModel';
@@ -82,7 +82,7 @@ export const NextWidget: React.FC<{ data: DashboardData; size: WidgetSize; onTri
     const next = data.next;
     if (!next) {
         return (
-            <RpEmpty title="Nothing planned yet" action={<button type="button" className={cn(PILL, 'bg-rp-ink text-rp-on-ink focus-visible:ring-offset-rp-surface')} onClick={() => openNewPage('/trips-new?new=1')}>Plan a trip</button>}>
+            <RpEmpty title="Nothing planned yet" action={<button type="button" className={cn(PILL, 'bg-rp-ink text-rp-on-ink focus-visible:ring-offset-rp-surface')} onClick={() => openPage('/trips?new=1')}>Plan a trip</button>}>
                 Your next trip shows up here.
             </RpEmpty>
         );
@@ -115,7 +115,7 @@ export const NextWidget: React.FC<{ data: DashboardData; size: WidgetSize; onTri
                 ) : null}
             </div>
             {flight && size !== 's' ? (
-                <button type="button" onClick={() => openNewPage('/flights')} className={cn('flex min-h-11 items-center gap-2 rounded-full px-4 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-rp-muted', c.chip, c.hover)}>
+                <button type="button" onClick={() => openPage('/flights')} className={cn('flex min-h-11 items-center gap-2 rounded-full px-4 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-rp-muted', c.chip, c.hover)}>
                     <Airplane size={16} aria-hidden className="shrink-0" />
                     <span className="truncate"><span className="font-semibold">{flight.code}</span> {flight.origin} → {flight.destination}{flight.time ? ` · ${flight.time}` : ''}</span>
                 </button>
@@ -199,7 +199,7 @@ export const UpcomingWidget: React.FC<{ data: DashboardData; size: WidgetSize; o
 
     if (!trips.length) {
         return (
-            <RpEmpty title="No trips coming up" action={<button type="button" className={cn(PILL, 'bg-rp-ink text-rp-on-ink focus-visible:ring-offset-rp-surface')} onClick={() => openNewPage('/trips-new?new=1')}>Plan a trip</button>}>
+            <RpEmpty title="No trips coming up" action={<button type="button" className={cn(PILL, 'bg-rp-ink text-rp-on-ink focus-visible:ring-offset-rp-surface')} onClick={() => openPage('/trips?new=1')}>Plan a trip</button>}>
                 Planned and confirmed trips line up here.
             </RpEmpty>
         );
@@ -238,7 +238,7 @@ const UpcomingTiles: React.FC<{ trips: Trip[]; today: string; onTripClick: (id: 
             </ul>
             {trips.length > shown.length ? (
                 <div className="flex justify-center">
-                    <button type="button" onClick={() => openNewPage('/trips-new')} className={cn(PILL, 'bg-rp-inset text-rp-ink hover:bg-rp-line focus-visible:ring-offset-rp-surface')}>Show all {trips.length}</button>
+                    <button type="button" onClick={() => openPage('/trips')} className={cn(PILL, 'bg-rp-inset text-rp-ink hover:bg-rp-line focus-visible:ring-offset-rp-surface')}>Show all {trips.length}</button>
                 </div>
             ) : null}
         </div>
@@ -280,7 +280,7 @@ export const RecentWidget: React.FC<{ data: DashboardData; size: WidgetSize; onT
             </ul>
             <div className={FADE} />
             <div className="absolute inset-x-0 bottom-0 flex justify-center">
-                <button type="button" onClick={() => openNewPage('/trips-new')} className={cn(PILL, 'bg-rp-inset text-rp-ink hover:bg-rp-line focus-visible:ring-offset-rp-surface')}>
+                <button type="button" onClick={() => openPage('/trips')} className={cn(PILL, 'bg-rp-inset text-rp-ink hover:bg-rp-line focus-visible:ring-offset-rp-surface')}>
                     Show all {all.length}
                 </button>
             </div>
@@ -533,7 +533,7 @@ export const WhereNextWidget: React.FC<{ data: DashboardData }> = ({ data }) => 
     const byId = useMemo(() => new Map<string, VisitedItem>(items.map(i => [i.id, i])), [items]);
     if (!items.length) {
         return (
-            <RpEmpty title="Your wishlist is empty" action={<button type="button" className={cn(PILL, 'bg-rp-ink text-rp-on-ink focus-visible:ring-offset-rp-surface')} onClick={() => openNewPage('/atlas-new')}>Open Atlas</button>}>
+            <RpEmpty title="Your wishlist is empty" action={<button type="button" className={cn(PILL, 'bg-rp-ink text-rp-on-ink focus-visible:ring-offset-rp-surface')} onClick={() => openPage('/atlas')}>Open Atlas</button>}>
                 Countries you want to see turn up here.
             </RpEmpty>
         );
@@ -545,7 +545,7 @@ export const WhereNextWidget: React.FC<{ data: DashboardData }> = ({ data }) => 
                 cards={cards}
                 label="Wishlist deck. Drag the top card away, or use the arrow keys, to see the next country."
                 actionLabel="Open"
-                onAction={() => openNewPage('/atlas-new')}
+                onAction={() => openPage('/atlas')}
                 topActionLabel="Been there"
                 topActionIcon={<Check size={16} />}
                 onTopAction={card => { const item = byId.get(card.id); if (item) void data.markVisited(item); }}
@@ -655,7 +655,7 @@ export const MapWidget: React.FC<{ data: DashboardData }> = ({ data }) => {
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-rp-muted">
                 <span className="flex items-center gap-1.5"><span aria-hidden className="size-2.5 rounded-full bg-rp-green" /><span className="text-rp-ink rp-tabular">{data.countries.length}</span> {data.countries.length === 1 ? 'country' : 'countries'}</span>
                 <span className="flex items-center gap-1.5"><span aria-hidden className="h-0.5 w-4 rounded-full bg-rp-rust" /><span className="text-rp-ink rp-tabular">{routes.length}</span> {routes.length === 1 ? 'route' : 'routes'}</span>
-                <button type="button" onClick={() => openNewPage(mapLink())} className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-xs font-medium text-rp-ink outline-none hover:bg-rp-inset focus-visible:ring-2 focus-visible:ring-rp-muted">Open map <ArrowUpRight size={14} aria-hidden /></button>
+                <button type="button" onClick={() => openPage(mapLink())} className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-xs font-medium text-rp-ink outline-none hover:bg-rp-inset focus-visible:ring-2 focus-visible:ring-rp-muted">Open map <ArrowUpRight size={14} aria-hidden /></button>
             </div>
         </div>
     );

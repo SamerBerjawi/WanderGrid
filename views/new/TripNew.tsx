@@ -9,7 +9,7 @@ import { errorMessage, toast } from '../../services/toast';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import { RpEmpty } from '../../components/new/ui';
 import NumberFlow from '@number-flow/react';
-import { openNewPage } from '../../components/new/devLinks';
+import { openPage } from '../../utils/appNavigation';
 import { NextFlight } from '../../components/new/journeys/NextFlight';
 import { RpHugeicon } from '../../components/new/RpHugeicon';
 import { useUndoToast } from '../../components/new/UndoToast';
@@ -26,11 +26,12 @@ import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, FileText
 import { cn } from '../../utils/cn';
 
 /**
- * TripNew (UI_UX_DESIGN_REFERENCE.md §5.0): the redesigned page for one trip, at /trip-new/:id. The
+ * TripNew (UI_UX_DESIGN_REFERENCE.md §5.0): the redesigned page for one trip, at /trip/:id. The
  * features come from the data layer (useTripsData: the trip, status, archive, duplicate, delete, edit
  * of legs, stays and activities, packing list, notes); the layout is new: a header in the trip's
  * status colour, four counts, and tabs for Itinerary, Canvas (the whole plan on one grid), Bookings, Costs, Gear and Notes.
- * Not carried over yet: AI guide, weather, route map, calendar view, flight import and ICS export.
+ * Not carried over yet: AI guide, weather, route map, calendar view, flight import and ICS export (all still on
+ * the original trip page: menu > Open in classic view).
  */
 
 interface TripNewProps {
@@ -38,7 +39,8 @@ interface TripNewProps {
     /** Back to the trips list. */
     onBack: () => void;
     /** Opens the original trip page (kept while TripNew is being built out). */
-    onOpenOriginal?: (tripId: string) => void;
+    /** Opens this trip on its original page under /classic (the AI guide, flight import and ICS export live there). */
+    onOpenClassic?: (tripId: string) => void;
     /** Opens a member's New page. */
     onOpenMember?: (userId: string) => void;
 }
@@ -65,7 +67,7 @@ const currentUserId = (): string | undefined => {
 };
 const SHOW_CITIES = 3;
 
-export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal, onOpenMember }) => {
+export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenClassic, onOpenMember }) => {
     const data = useTripsData();
     const undo = useUndoToast();
     const [tab, setTab] = useState<TabId>(readTab);
@@ -134,7 +136,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
     const actions: TripActions = {
         onDetails: () => undefined,
         onEdit: t => setSheet({ kind: 'edit', trip: t }),
-        onOpenTrip: t => onOpenOriginal?.(t.id),
+        onOpenTrip: t => onOpenClassic?.(t.id),
         onMove: (_t, b) => void moveTo(b),
         onArchive: t => attempt(async () => {
             await data.setArchived([t.id], true);
@@ -155,7 +157,10 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
         }),
         onDelete: setDeleting,
     };
-    const menu = tripMenuItems(trip, bucket, actions).filter(i => i.id !== 'open' || Boolean(onOpenOriginal));
+    // "Open trip" would reopen this page, so here it is the way into the original page (decision 200).
+    const menu = tripMenuItems(trip, bucket, actions)
+        .filter(i => i.id !== 'open' || Boolean(onOpenClassic))
+        .map(i => (i.id === 'open' ? { ...i, label: 'Open in classic view' } : i));
     const edit = (s: EditStep) => setSheet({ kind: 'edit', trip, step: s });
 
     // Canvas drags: each change is saved at once and can be undone.
@@ -288,7 +293,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
                     </div>
                 </header>
 
-                <NextFlight records={(trip.transports || []).filter(t => t.mode === 'Flight').map(f => ({ flight: f, trip }))} brandfetchApiKey={data.brandfetchApiKey} showTrip={false} onOpen={() => openNewPage('/flights-new')} />
+                <NextFlight records={(trip.transports || []).filter(t => t.mode === 'Flight').map(f => ({ flight: f, trip }))} brandfetchApiKey={data.brandfetchApiKey} showTrip={false} onOpen={() => openPage('/flights')} />
 
                 <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
                     <StatTile
@@ -364,7 +369,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenOriginal
                 onClose={() => setSheet(null)}
                 onSave={async (draft: TripDraft, t?: Trip) => { if (t) await data.update(t, draft); }}
                 onDelete={setDeleting}
-                onOpenTrip={t => onOpenOriginal?.(t.id)}
+                onOpenTrip={() => setSheet(null)}
             />
             <DeleteTripSheet
                 trip={deleting}
