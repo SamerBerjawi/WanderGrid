@@ -17,6 +17,7 @@ import {
     getBasemapTileConfig, gibsDailyTiles, withApiAuth, isLightEffectiveBasemap,
 } from '../../../services/mapStyle';
 import { getCachedMultiModalRoute, fetchMultiModalRoute, getGeodesicArcPoints } from '../../../services/multiModalRouting';
+import { NIGHT_LIGHTS_SOURCE_ID, composeNightLightsStyle, nightLightsTileSize } from '../../../services/nightLights';
 import { getTwilightGradientGeoJSON } from '../../../services/solarTerminator';
 import { calculateDistance } from '../../../services/geocoding';
 import { getLatestRainRadarTileUrl } from '../../../services/rainViewer';
@@ -176,7 +177,19 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
     // Set when the chosen basemap keeps failing to load; cleared whenever another basemap is chosen.
     const [basemapFailed, setBasemapFailed] = useState(false);
     useEffect(() => setBasemapFailed(false), [effectiveBasemap]);
+    const nightComposite = FEATURE_FLAGS.GEV_P04B_OPENFREEMAP && effectiveBasemap === 'citylights' && !basemapFailed;
+    const styleOptions = useCallback((): maplibregl.StyleSwapOptions & maplibregl.StyleOptions => ({
+        diff: false,
+        transformStyle: nightComposite
+            ? (_prev: any, next: any) => composeNightLightsStyle(next, { tileSize: nightLightsTileSize(window.devicePixelRatio || 1), canvas: css(palette.canvas) })
+            : undefined,
+    }), [nightComposite, palette]);
+    const styleOptionsRef = useRef(styleOptions);
+    styleOptionsRef.current = styleOptions;
     const baseStyle = useMemo<string | maplibregl.StyleSpecification>(() => {
+        // Night lights is NASA imagery under OpenFreeMap's dark vector detail: the dark style is loaded and
+        // recomposed by `styleOptions` (the raster-only style below is the fallback when it is not available).
+        if (nightComposite) return OPENFREEMAP_STYLES.dark!;
         const vector = FEATURE_FLAGS.GEV_P04B_OPENFREEMAP ? OPENFREEMAP_STYLES[effectiveBasemap] : undefined;
         // Backup basemaps come from the other provider: a failed vector style falls back to Esri's grey
         // raster, and a failed raster (Esri, NASA) falls back to OpenFreeMap's vector light or dark map.
@@ -194,7 +207,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         };
         // palette.canvas only matters for the raster fallback background
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [effectiveBasemap, cartoKey, isDark, basemapFailed]);
+    }, [effectiveBasemap, cartoKey, isDark, basemapFailed, nightComposite]);
 
     // Watch for the basemap failing: repeated tile errors from the base source, or the style itself.
     const fallbackRef = useRef({ failed: false, label: effectiveBasemap, notify: onBasemapFallback });
@@ -208,7 +221,6 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         initMapLibre();
         const map = new maplibregl.Map({
             container,
-            style: baseStyle,
             center: WORLD.center,
             zoom: WORLD.zoom,
             attributionControl: false,
@@ -217,6 +229,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
             dragRotate: false,
             pitchWithRotate: false,
         });
+        map.setStyle(baseStyle as any, styleOptionsRef.current() as any);
         map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
         attachMissingImageLoader(map);
         map.touchZoomRotate.disableRotation();
@@ -229,7 +242,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         if (import.meta.env.DEV) (window as any).__rpMap = map;
 
         map.on('style.load', () => setStyleVersion(v => v + 1));
-        const OVERLAY_SOURCES = new Set(['rp-dem', 'rp-dem-3d', 'rp-rail', 'rp-radar', 'rp-gibs', 'rp-night', 'rp-countries', 'rp-routes', 'rp-places', 'rp-pins', 'rp-airports', AIRPORT_SOURCE_ID, OPENAIP_AIRSPACE_SOURCE_ID]);
+        const OVERLAY_SOURCES = new Set(['rp-dem', 'rp-dem-3d', 'rp-rail', 'rp-radar', 'rp-gibs', 'rp-night', NIGHT_LIGHTS_SOURCE_ID, 'rp-countries', 'rp-routes', 'rp-places', 'rp-pins', 'rp-airports', AIRPORT_SOURCE_ID, OPENAIP_AIRSPACE_SOURCE_ID]);
         let errorTimes: number[] = [];
         map.on('error', (e: any) => {
             const f = fallbackRef.current;
@@ -262,8 +275,8 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
     const firstStyle = useRef(true);
     useEffect(() => {
         if (firstStyle.current) { firstStyle.current = false; return; }
-        mapRef.current?.setStyle(baseStyle as any, { diff: false });
-    }, [baseStyle]);
+        mapRef.current?.setStyle(baseStyle as any, styleOptionsRef.current() as any);
+    }, [baseStyle, nightComposite]);
 
     /* ------------------------------------------------------------------ projection & sky */
 
