@@ -106,6 +106,9 @@ pages are now the default. The original interface is kept, hidden, under `/class
   per-route detail sheets with airline logos, filters, and route colours by region or frequency. Animated
   routes move at one speed, so longer routes take longer.
 - Place names are in proper case, and a place shows the weather where it is.
+- An airport or place sheet draws a vertical Sankey of its routes: arrivals across the top, departures across
+  the bottom, each as wide as the number of times you travelled it, with the top 8 per side and a "+N others"
+  node. Hover, focus or tap a node to see the count or open the route; the routes list stays below.
 - A travel atlas with a world map coloured by status (lived, visited, wishlist, layover), country and city
   lists as grids or rails, a scroll index, a wishlist deck with "Been there", a review drawer for merging
   duplicate places, and a country sheet that lists the trips, flights and road trips for it.
