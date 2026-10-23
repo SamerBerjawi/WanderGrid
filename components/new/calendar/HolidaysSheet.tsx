@@ -4,6 +4,8 @@ import { formatDate } from '../../../utils/formatters';
 import { Flag, Info } from '../../ui/hugeicons';
 import { RpChip, RpEmpty, RpSheet, RpToggle } from '../ui';
 import { cn } from '../../../utils/cn';
+import HoldButton from '../../kokonutui/hold-button';
+import { AddCalendar } from './AddCalendar';
 
 /**
  * Public holidays: which saved country calendars a member follows (per year) and which of their
@@ -24,7 +26,11 @@ export const HolidaysSheet: React.FC<{
     initialYear: number;
     onLink: (member: User, config: SavedConfig, linked: boolean) => void;
     onToggleDay: (config: SavedConfig, holidayId: string, included: boolean) => void;
-}> = ({ open, onClose, configs, member, canLink, canEditDays, initialYear, onLink, onToggleDay }) => {
+    /** Adding and removing country calendars (admins). */
+    thisYear: number;
+    onAddCalendar: (config: SavedConfig, regionalSkipped: number) => Promise<void>;
+    onRemoveCalendar: (config: SavedConfig) => Promise<void>;
+}> = ({ open, onClose, configs, member, canLink, canEditDays, initialYear, onLink, onToggleDay, thisYear, onAddCalendar, onRemoveCalendar }) => {
     const years = useMemo(() => [...new Set(configs.map(c => c.year))].sort((a, b) => b - a), [configs]);
     const [year, setYear] = useState(initialYear);
     useEffect(() => {
@@ -36,10 +42,12 @@ export const HolidaysSheet: React.FC<{
 
     return (
         <RpSheet open={open} onClose={onClose} title="Holidays" subtitle={member ? `Calendars ${member.name.split(' ')[0]} follows` : undefined} width={460}>
-            {configs.length === 0 ? (
-                <RpEmpty title="No holiday calendars yet" />
-            ) : (
-                <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4">
+                {canEditDays ? <AddCalendar thisYear={thisYear} initialYear={year} saved={configs} onAdd={onAddCalendar} /> : null}
+                {configs.length === 0 ? (
+                    <RpEmpty title="No holiday calendars yet">{canEditDays ? 'Add a country above to see its public holidays.' : 'An admin can add a country calendar.'}</RpEmpty>
+                ) : (
+                    <>
                     {years.length > 1 ? (
                         <div className="-m-3 flex gap-2 overflow-x-auto p-3 [scrollbar-width:none]" role="group" aria-label="Year">
                             {years.map(y => <RpChip key={y} selected={y === year} onClick={() => setYear(y)} className="rp-tabular">{y}</RpChip>)}
@@ -49,10 +57,11 @@ export const HolidaysSheet: React.FC<{
                         <p className="flex items-start gap-2 px-1 text-xs text-rp-muted"><Info size={14} className="mt-0.5 shrink-0" aria-hidden /> No calendar is followed yet, so every calendar shows. Follow one to narrow it.</p>
                     ) : null}
                     {!canEditDays ? <p className="px-1 text-xs text-rp-muted">Only an admin can switch a holiday on or off as a day off.</p> : null}
-                    {shown.map(config => <ConfigCard key={config.id} config={config} member={member} linked={linked.has(config.id)} canLink={canLink} canEditDays={canEditDays} onLink={onLink} onToggleDay={onToggleDay} />)}
+                    {shown.map(config => <ConfigCard key={config.id} config={config} member={member} linked={linked.has(config.id)} canLink={canLink} canEditDays={canEditDays} onLink={onLink} onToggleDay={onToggleDay} onRemove={onRemoveCalendar} />)}
                     {shown.length === 0 ? <RpEmpty title={`No calendar for ${year}`} /> : null}
-                </div>
-            )}
+                    </>
+                )}
+            </div>
         </RpSheet>
     );
 };
@@ -65,7 +74,8 @@ const ConfigCard: React.FC<{
     canEditDays: boolean;
     onLink: (member: User, config: SavedConfig, linked: boolean) => void;
     onToggleDay: (config: SavedConfig, holidayId: string, included: boolean) => void;
-}> = ({ config, member, linked, canLink, canEditDays, onLink, onToggleDay }) => {
+    onRemove: (config: SavedConfig) => Promise<void>;
+}> = ({ config, member, linked, canLink, canEditDays, onLink, onToggleDay, onRemove }) => {
     const [all, setAll] = useState(false);
     const days = [...config.holidays].sort((a, b) => a.date.localeCompare(b.date));
     const rows = all ? days : days.slice(0, SHOWN);
@@ -104,6 +114,11 @@ const ConfigCard: React.FC<{
                     <button type="button" onClick={() => setAll(v => !v)} className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium text-rp-muted outline-none hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted">
                         {all ? 'Show fewer' : `Show all ${days.length}`}
                     </button>
+                </div>
+            ) : null}
+            {canEditDays ? (
+                <div className="flex justify-end pt-2">
+                    <HoldButton onHoldComplete={() => onRemove(config)} resetAfter={0}>Hold to remove {config.countryCode} {config.year}</HoldButton>
                 </div>
             ) : null}
         </section>

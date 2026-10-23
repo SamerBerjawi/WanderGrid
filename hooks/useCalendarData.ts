@@ -148,6 +148,40 @@ export const useCalendarData = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [load]);
 
+    /** Adds a one-day event (admins). */
+    const addEvent = useCallback(async (event: CalendarEvent): Promise<CalendarEvent> => {
+        setEvents(prev => [...prev.filter(e => e.id !== event.id), event]);
+        await guarded(() => dataService.addCustomEvent(event));
+        return event;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [load]);
+
+    /** Removes an event (admins). */
+    const deleteEvent = useCallback(async (id: string): Promise<void> => {
+        setEvents(prev => prev.filter(e => e.id !== id));
+        await guarded(() => dataService.deleteCustomEvent(id));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [load]);
+
+    /** Saves a country calendar fetched from the holiday service (or refreshes one already saved: your day-off switches are kept). */
+    const addCalendar = useCallback(async (config: SavedConfig): Promise<SavedConfig> => {
+        const existing = configs.find(c => c.id === config.id);
+        const merged: SavedConfig = existing
+            ? { ...config, holidays: config.holidays.map(h => { const old = existing.holidays.find(o => o.date === h.date && o.name === h.name); return old ? { ...h, isIncluded: old.isIncluded } : h; }) }
+            : config;
+        setConfigs(prev => (prev.some(c => c.id === merged.id) ? prev.map(c => (c.id === merged.id ? merged : c)) : [...prev, merged]));
+        await guarded(() => dataService.saveConfig(merged));
+        return merged;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [configs, load]);
+
+    /** Deletes a saved country calendar (admins only; members following it simply stop seeing it). */
+    const removeCalendar = useCallback(async (config: SavedConfig): Promise<void> => {
+        setConfigs(prev => prev.filter(c => c.id !== config.id));
+        await guarded(() => dataService.deleteConfig(config.id));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [load]);
+
     /** Links or unlinks a saved holiday calendar for a member. */
     const setMemberCalendar = useCallback(async (member: User, configId: string, linked: boolean): Promise<void> => {
         const ids = member.holidayConfigIds || [];
@@ -162,7 +196,7 @@ export const useCalendarData = () => {
     return {
         users, trips, entitlements, configs, events, settings, loading, error, today,
         me, isAdmin, session,
-        reload: load, saveLeave, createLeave, deleteLeave, setHolidayIncluded, setMemberCalendar,
+        reload: load, saveLeave, createLeave, deleteLeave, setHolidayIncluded, setMemberCalendar, addCalendar, removeCalendar, addEvent, deleteEvent,
     };
 };
 

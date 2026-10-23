@@ -21,7 +21,7 @@ import { cn } from '../../../utils/cn';
  * the day length and the days worked anyway are what decide how many days really count.
  */
 
-export type LeaveTarget = { kind: 'new'; date?: string; memberId?: string } | { kind: 'edit'; trip: Trip };
+export type LeaveTarget = { kind: 'new'; date?: string; endDate?: string; memberId?: string } | { kind: 'edit'; trip: Trip };
 
 type Mode = NonNullable<Trip['durationMode']>;
 const DATE = cn(RP_FIELD, 'rp-date rp-tabular');
@@ -64,7 +64,7 @@ const draftFor = (target: LeaveTarget, me: string, today: string): Draft => {
     }
     const day = target.date ?? today;
     return {
-        mode: 'timeoff', tripId: '', name: 'Time off', startDate: day, endDate: day, status: day < today ? 'Past' : 'Planning',
+        mode: 'timeoff', tripId: '', name: 'Time off', startDate: day, endDate: target.endDate && target.endDate >= day ? target.endDate : day, status: (target.endDate && target.endDate >= day ? target.endDate : day) < today ? 'Past' : 'Planning',
         memberId: target.memberId ?? me, entitlementId: undefined, allocations: [], durationMode: 'all_full', startPortion: 'full', endPortion: 'full', excluded: [],
     };
 };

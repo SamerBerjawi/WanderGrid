@@ -7,11 +7,11 @@ import { formatMinutes, journeyMinutes, placeCode, placeName, type JourneyRecord
  * booking details and a reminder three hours before) and a plain-text itinerary to copy or share.
  */
 
-const ics = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
-const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+export const ics = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+export const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 
 /** Lines longer than 75 octets are folded onto continuation lines that start with a space (RFC 5545). */
-const fold = (line: string): string => {
+export const fold = (line: string): string => {
     if (line.length <= 74) return line;
     const out: string[] = [];
     let rest = line;
@@ -34,26 +34,29 @@ const details = (t: Transport): string[] => [
     t.vehicleModel ? `Aircraft: ${t.vehicleModel}${t.tailNumber ? ` (${t.tailNumber})` : ''}` : '',
 ].filter(Boolean);
 
-export const flightsToIcs = (records: JourneyRecord[], now = new Date()): string => {
-    const events = records.map(({ flight: t, trip }) => {
-        const start = getFlightDepartureUtcDate(t);
-        const end = getFlightArrivalUtcDate(t);
-        const lines = [
-            'BEGIN:VEVENT',
-            `UID:${t.id}@wandergrid.app`,
-            `DTSTAMP:${stamp(now)}`,
-            `DTSTART:${stamp(start)}`,
-            `DTEND:${stamp(end > start ? end : new Date(start.getTime() + 3_600_000))}`,
-            `SUMMARY:${ics(`${symbol(t)} ${[t.identifier, `${placeCode(t.origin, t.mode)} → ${placeCode(t.destination, t.mode)}`].filter(Boolean).join(' ')}`)}`,
-            `LOCATION:${ics((t.mode === 'Flight' && getAirportName(t.origin)) || placeName(t.origin))}`,
-            `DESCRIPTION:${ics([t.provider, ...details(t), trip && trip.id !== 'unassigned' ? `Trip: ${trip.name}` : ''].filter(Boolean).join('\n'))}`,
-            'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${ics(`${t.identifier || (t.mode === 'Flight' ? 'Flight' : t.mode)} leaves in 3 hours`)}`, 'TRIGGER:-PT3H', 'END:VALARM',
-            'END:VEVENT',
-        ];
-        return lines.map(fold).join('\r\n');
-    });
-    return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//WanderGrid//Flights//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', ...events, 'END:VCALENDAR'].join('\r\n') + '\r\n';
+/** One flight, journey leg or other transport as a calendar event (at its real time, with a 3 hour reminder). */
+export const transportEvent = ({ flight: t, trip }: JourneyRecord, now = new Date()): string => {
+    const start = getFlightDepartureUtcDate(t);
+    const end = getFlightArrivalUtcDate(t);
+    const lines = [
+        'BEGIN:VEVENT',
+        `UID:${t.id}@wandergrid.app`,
+        `DTSTAMP:${stamp(now)}`,
+        `DTSTART:${stamp(start)}`,
+        `DTEND:${stamp(end > start ? end : new Date(start.getTime() + 3_600_000))}`,
+        `SUMMARY:${ics(`${symbol(t)} ${[t.identifier, `${placeCode(t.origin, t.mode)} → ${placeCode(t.destination, t.mode)}`].filter(Boolean).join(' ')}`)}`,
+        `LOCATION:${ics((t.mode === 'Flight' && getAirportName(t.origin)) || placeName(t.origin))}`,
+        `DESCRIPTION:${ics([t.provider, ...details(t), trip && trip.id !== 'unassigned' ? `Trip: ${trip.name}` : ''].filter(Boolean).join('\n'))}`,
+        'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${ics(`${t.identifier || (t.mode === 'Flight' ? 'Flight' : t.mode)} leaves in 3 hours`)}`, 'TRIGGER:-PT3H', 'END:VALARM',
+        'END:VEVENT',
+    ];
+    return lines.map(fold).join('\r\n');
 };
+
+export const wrapCalendar = (events: string[], name: string): string =>
+    ['BEGIN:VCALENDAR', 'VERSION:2.0', `PRODID:-//WanderGrid//${name}//EN`, 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', ...events, 'END:VCALENDAR'].join('\r\n') + '\r\n';
+
+export const flightsToIcs = (records: JourneyRecord[], now = new Date()): string => wrapCalendar(records.map(r => transportEvent(r, now)), 'Flights');
 
 const when = (t: Transport) => `${t.departureDate} ${t.departureTime || ''}`.trim();
 

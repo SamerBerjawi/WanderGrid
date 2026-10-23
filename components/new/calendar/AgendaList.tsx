@@ -2,7 +2,7 @@ import React from 'react';
 import { WEEKDAY_SHORT, weekdayOf, MONTH_NAMES, type CalendarItem } from '../../../utils/calendarModel';
 import { formatDateRange } from '../../../utils/formatters';
 import { RpEmpty } from '../ui';
-import { chipClass, itemIcon, STATE_CHIP, STATE_LABEL } from './calendarStyles';
+import { chipClass, itemIcon, STATE_LABEL, tripChip } from './calendarStyles';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -62,7 +62,7 @@ export const AgendaList: React.FC<{
                                     {meta ? <span className="rp-tabular block truncate text-xs text-rp-muted">{meta}</span> : null}
                                 </span>
                                 {item.kind === 'trip' ? (
-                                    <span className={cn('inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-medium', STATE_CHIP[item.state])}>
+                                    <span className={cn('inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-medium', tripChip(item))}>
                                         <Icon size={12} aria-hidden /> {STATE_LABEL[item.state]}
                                     </span>
                                 ) : (

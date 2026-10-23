@@ -3,7 +3,7 @@ import {
     isWeekend, itemsOn, monthMatrix, weekdayOrder, MONTH_NAMES, WEEKDAY_SHORT, WEEKDAY_LONG, weekdayOf,
     type CalendarItem, type WeekStart,
 } from '../../../utils/calendarModel';
-import { STATE_CHIP } from './calendarStyles';
+import { tripChip } from './calendarStyles';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -63,7 +63,7 @@ export const YearGrid: React.FC<{
                                                 onClick={() => onOpenDay(day.iso)}
                                                 className={cn(
                                                     'rp-tabular relative flex size-11 items-center justify-center rounded-full text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-rp-ink',
-                                                    trip ? STATE_CHIP[trip.state] : weekend ? 'text-rp-muted hover:bg-rp-inset' : 'text-rp-ink hover:bg-rp-inset',
+                                                    trip ? tripChip(trip) : weekend ? 'text-rp-muted hover:bg-rp-inset' : 'text-rp-ink hover:bg-rp-inset',
                                                     holiday && 'ring-2 ring-inset ring-rp-ochre',
                                                     isToday && !trip && 'bg-rp-ink font-semibold text-rp-on-ink hover:bg-rp-ink',
                                                     isToday && trip && 'underline decoration-2 underline-offset-4',

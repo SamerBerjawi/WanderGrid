@@ -18,6 +18,7 @@ const { createRouteService } = require('./routeStore');
 const { searchGeocodingChain, searchOpenMeteo, searchPhoton, searchNominatim } = require('./geocodingChain');
 const { testProvider } = require('./integrationsTester');
 const { SERVICE_KEYS, testKey } = require('./keyTester');
+const holidays = require('./holidays');
 
 const pbkdf2Async = util.promisify(crypto.pbkdf2);
 
@@ -2223,6 +2224,9 @@ const handleGeocodingSearch = async (req, res) => {
 
 
 // Route handlers for geocoding search
+// Public holidays for the calendar's "Add a country calendar" (Nager.Date, OpenHolidays as fallback).
+app.get('/api/proxy/holidays/countries', holidays.handleCountries);
+app.get('/api/proxy/holidays/:year/:countryCode', holidays.handleHolidays);
 app.get('/api/proxy/geocoding', handleGeocodingSearch);
 app.get('/api/geocode/search', handleGeocodingSearch);
 
