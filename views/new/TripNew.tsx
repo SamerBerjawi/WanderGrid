@@ -30,8 +30,8 @@ import { cn } from '../../utils/cn';
  * features come from the data layer (useTripsData: the trip, status, archive, duplicate, delete, edit
  * of legs, stays and activities, packing list, notes); the layout is new: a header in the trip's
  * status colour, four counts, and tabs for Itinerary, Canvas (the whole plan on one grid), Bookings, Costs, Gear and Notes.
- * Not carried over yet: AI guide, weather, route map, calendar view, flight import and ICS export (all still on
- * the original trip page: menu > Open in classic view).
+ * Not carried over: AI guide, flight import on the trip (they existed only on the original trip page, now
+ * removed; see UI_UX_DESIGN_REFERENCE.md §5.5 and the git tag classic-final).
  */
 
 interface TripNewProps {
@@ -39,8 +39,6 @@ interface TripNewProps {
     /** Back to the trips list. */
     onBack: () => void;
     /** Opens the original trip page (kept while TripNew is being built out). */
-    /** Opens this trip on its original page under /classic (the AI guide, flight import and ICS export live there). */
-    onOpenClassic?: (tripId: string) => void;
     /** Opens a member's New page. */
     onOpenMember?: (userId: string) => void;
 }
@@ -67,7 +65,7 @@ const currentUserId = (): string | undefined => {
 };
 const SHOW_CITIES = 3;
 
-export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenClassic, onOpenMember }) => {
+export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }) => {
     const data = useTripsData();
     const undo = useUndoToast();
     const [tab, setTab] = useState<TabId>(readTab);
@@ -136,7 +134,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenClassic,
     const actions: TripActions = {
         onDetails: () => undefined,
         onEdit: t => setSheet({ kind: 'edit', trip: t }),
-        onOpenTrip: t => onOpenClassic?.(t.id),
+        onOpenTrip: () => undefined,
         onMove: (_t, b) => void moveTo(b),
         onArchive: t => attempt(async () => {
             await data.setArchived([t.id], true);
@@ -157,10 +155,8 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenClassic,
         }),
         onDelete: setDeleting,
     };
-    // "Open trip" would reopen this page, so here it is the way into the original page (decision 200).
-    const menu = tripMenuItems(trip, bucket, actions)
-        .filter(i => i.id !== 'open' || Boolean(onOpenClassic))
-        .map(i => (i.id === 'open' ? { ...i, label: 'Open in classic view' } : i));
+    // "Open trip" would reopen this page, so it is not in this menu.
+    const menu = tripMenuItems(trip, bucket, actions).filter(i => i.id !== 'open');
     const edit = (s: EditStep) => setSheet({ kind: 'edit', trip, step: s });
 
     // Canvas drags: each change is saved at once and can be undone.

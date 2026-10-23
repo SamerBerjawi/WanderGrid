@@ -13,8 +13,7 @@ import { ChoroplethChart, ChoroplethFeature, ChoroplethPoints, ChoroplethRoutes,
 import type { FeatureCollection, Geometry } from 'geojson';
 import { featureCode, loadWorld } from '../atlas/AtlasMap';
 import { buildMapModel } from '../map/mapModel';
-import { fitView, nearLand, pinsOf, toLngLat } from '../../../utils/mapPoints';
-import { fetchMultiModalRoute, getCachedMultiModalRoute } from '../../../services/multiModalRouting';
+import { fitView, nearLand, pinsOf } from '../../../utils/mapPoints';
 import { normalizeCountryCode } from '../../../services/countryRegistry';
 import { mapLink } from '../../../utils/mapLinks';
 import { FlagArt, FlagBadge } from '../atlas/AtlasParts';
@@ -27,6 +26,8 @@ import { destinationLabel, bucketOf, timingOf, tripCost } from '../../../utils/t
 import { rankOf, type LeaveTrip, type LeaveUse } from '../../../utils/dashboardModel';
 import { regionOf } from '../../../utils/atlasModel';
 import { cn } from '../../../utils/cn';
+import { simplifyPath } from '../../../utils/simplifyPath';
+import { useTracedPaths } from '../../../hooks/useTracedPaths';
 
 /**
  * The widgets of the New Dashboard (UI_UX_DESIGN_REFERENCE.md §5.2 rows 2 and 14). Each one is a body for
@@ -588,32 +589,13 @@ export const MapWidget: React.FC<{ data: DashboardData }> = ({ data }) => {
         return code.startsWith('GB-') ? 'GB' : code;
     })), [data.countries]);
     const model = useMemo(() => buildMapModel(data.trips, { mode: 'all', groupAirports: false }), [data.trips]);
-    // Land and sea legs follow their traced line once it is cached (the Map page fetches it); until then, and
-    // for flights, the great circle. One bounded request per missing leg, never one per render.
-    const [traceVersion, setTraceVersion] = useState(0);
-    useEffect(() => {
-        let pending = 0;
-        let timer = 0;
-        model.routes.filter(r => r.mode !== 'flight').slice(0, 24).forEach(r => {
-            if (getCachedMultiModalRoute(r.rawMode, r.from[1], r.from[0], r.to[1], r.to[0], r.waypoints)) return;
-            pending += 1;
-            void fetchMultiModalRoute(r.rawMode, r.from[1], r.from[0], r.to[1], r.to[0], () => {
-                window.clearTimeout(timer);
-                timer = window.setTimeout(() => setTraceVersion(v => v + 1), 400);
-            }, r.waypoints);
-        });
-        return () => window.clearTimeout(timer);
-    }, [model.routes]);
-    const routes = useMemo(() => model.routes.map(r => {
-        const traced = r.mode === 'flight' ? null : getCachedMultiModalRoute(r.rawMode, r.from[1], r.from[0], r.to[1], r.to[0], r.waypoints);
-        const path = traced?.map(([lng, lat]) => toLngLat([lng, lat])).filter((p): p is [number, number] => !!p);
-        return {
-            id: r.id, from: r.from, to: r.to, path: path && path.length > 2 ? path : undefined, stroke: ROUTE_STROKE[r.mode] ?? ROUTE_STROKE.flight,
-            dashed: r.mode === 'sea', opacity: r.status === 'past' ? 0.85 : 0.55,
-        };
-        // traceVersion re-reads the routing cache when a traced line arrives
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }), [model.routes, traceVersion]);
+    // Land and sea routes follow their traced road, rail or lane once it is known (the same cache as the Map page).
+    const requests = useMemo(() => model.routes.map(r => ({ id: r.id, mode: r.rawMode, from: r.from, to: r.to, via: (r.waypoints || []).filter((w: any) => w?.coordinates).map((w: any) => [w.coordinates.lng, w.coordinates.lat] as [number, number]) })), [model.routes]);
+    const traced = useTracedPaths(requests);
+    const routes = useMemo(() => model.routes.map(r => ({
+        id: r.id, from: r.from, to: r.to, stroke: ROUTE_STROKE[r.mode] ?? ROUTE_STROKE.flight,
+        dashed: r.mode === 'sea', opacity: r.status === 'past' ? 0.85 : 0.55, path: traced.has(r.id) ? simplifyPath(traced.get(r.id)!, 0.03) : undefined,
+    })), [model.routes, traced]);
     // A pin is a real place on land: a trip's own stops that fit its legs (not a geocoder's lone guess), none in the ocean.
     const pins = useMemo(() => {
         const all = pinsOf(data.trips);
@@ -623,6 +605,7 @@ export const MapWidget: React.FC<{ data: DashboardData }> = ({ data }) => {
     const view = useMemo(() => {
         const pts: [number, number][] = [];
         routes.forEach(r => {
+            if (r.path) { r.path.forEach(pt => pts.push(pt)); return; }
             const along = geoInterpolate(r.from, r.to);
             [0, 0.25, 0.5, 0.75, 1].forEach(t => pts.push(along(t) as [number, number]));
         });

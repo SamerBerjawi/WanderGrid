@@ -1,6 +1,6 @@
 /**
  * Links that open the New map focused on something (UI_UX_DESIGN_REFERENCE.md §5.0). Other pages use
- * these instead of building query strings. MapNew is the page at /map (the original map is /classic/map).
+ * these instead of building query strings. MapNew is the page at /map.
  *
  *   ?route=JFK-CDG       select that route (either direction) and frame it
  *   ?trip=<tripId>       frame the trip and emphasise its routes

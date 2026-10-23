@@ -50,29 +50,14 @@ export async function fillLogin(page: Page, email: string, password: string) {
 
 export const submitButton = (page: Page) => page.locator('form button[type="submit"]');
 
-/** True once the authenticated app shell (sidebar or mobile tab bar) is rendered. */
-export async function expectAppShell(page: Page) {
-  const isMobile = (page.viewportSize()?.width ?? 1440) < 768;
-  if (isMobile) await expect(page.locator('div.md\\:hidden.fixed').getByRole('button', { name: /Dashboard/i }).first()).toBeVisible({ timeout: 20_000 });
-  else await expect(page.locator('aside nav').getByRole('button', { name: 'Dashboard' })).toBeVisible({ timeout: 20_000 });
-}
-
 export const isMobile = (page: Page) => (page.viewportSize()?.width ?? 1440) < 768;
 
-/**
- * The redesigned pages own the clean URLs; the original pages these specs were written for live under
- * /classic. `page.goto('/planner')` therefore opens '/classic/planner' (see tests/e2e/auth/routes.spec.ts
- * for the New routes, which use `gotoNew`).
- */
-export const classicUrl = (url: string) => (url.startsWith('/') && !url.startsWith('/classic') && !url.startsWith('/api/') ? `/classic${url === '/' ? '' : url}` : url);
-export const gotoNew = (page: Page, url: string) => (page as any).__gotoNew(url) as Promise<unknown>;
+/** Kept for the specs that predate the removal of /classic: every URL is now a canonical one. */
+export const gotoNew = (page: Page, url: string) => page.goto(url);
 
 /** Every test fails if the page reports a Content-Security-Policy violation (WP-2.12). */
 export const test = base.extend<{}>({
   page: async ({ page }, use) => {
-    const goto = page.goto.bind(page);
-    (page as any).__gotoNew = (url: string) => goto(url);
-    (page as any).goto = (url: string, options?: any) => goto(classicUrl(url), options);
     const violations: string[] = [];
     page.on('console', (m) => { if (/Content Security Policy|Refused to (load|execute|connect|create)/i.test(m.text())) violations.push(m.text()); });
     await use(page);

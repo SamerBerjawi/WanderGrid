@@ -4,6 +4,8 @@ import type { FeatureCollection, Geometry } from 'geojson';
 import { ParentSize } from '../../bklit/chart-parent-size';
 import type { RouteLine } from '../../../utils/journeysModel';
 import { cn } from '../../../utils/cn';
+import { simplifyPath } from '../../../utils/simplifyPath';
+import { useTracedPaths } from '../../../hooks/useTracedPaths';
 
 /**
  * A small, still map of routes: the land, one great-circle arc per route (thicker the more often it was
@@ -57,7 +59,8 @@ const RouteSvg: React.FC<{ land: FeatureCollection<Geometry> | null; routes: Rou
         return {
             path: p,
             project: projection,
-            lines: routes.map(r => ({ d: p({ type: 'LineString', coordinates: r.path && r.path.length > 1 ? r.path : [r.from, ...(r.via || []), r.to] }) || '', count: r.count, label: r.label })),
+            // A traced road has thousands of vertices: keep what a pixel or so of the screen can show.
+            lines: routes.map(r => ({ d: p({ type: 'LineString', coordinates: r.path && r.path.length > 2 ? simplifyPath(r.path, 0.6 / (projection.scale() * Math.PI / 180)) : r.path && r.path.length > 1 ? r.path : [r.from, ...(r.via || []), r.to] }) || '', count: r.count, label: r.label })),
             points: [...seen.values()],
             flown: track && track.length > 1 ? p({ type: 'LineString', coordinates: track }) || '' : '',
         };
@@ -88,13 +91,18 @@ const RouteSvg: React.FC<{ land: FeatureCollection<Geometry> | null; routes: Rou
     );
 };
 
-export const RoutesMap: React.FC<{ routes: RouteLine[]; /** Places that are not ends of a route: stays and stops, drawn as ochre dots. */ pins?: { lng: number; lat: number }[]; marker?: { lng: number; lat: number }; /** The route actually flown, as [longitude, latitude] pairs, drawn as a solid line over the planned arc. */ track?: [number, number][]; className?: string; label?: string; /** How far in the map may zoom, as a multiple of the whole world; 3.2 keeps flights at continent level, short land and sea routes ask for more. */ maxZoom?: number }> = ({ routes, pins = EMPTY, marker, track, className, label, maxZoom = 3.2 }) => {
+export const RoutesMap: React.FC<{ routes: RouteLine[]; /** Places that are not ends of a route: stays and stops, drawn as ochre dots. */ pins?: { lng: number; lat: number }[]; marker?: { lng: number; lat: number }; /** The route actually flown, as [longitude, latitude] pairs, drawn as a solid line over the planned arc. */ track?: [number, number][]; className?: string; label?: string; /** How far in the map may zoom, as a multiple of the whole world; 3.2 keeps flights at continent level, short land and sea routes ask for more. */ maxZoom?: number }> = ({ routes: plain, pins = EMPTY, marker, track, className, label, maxZoom = 3.2 }) => {
+    const routes = plain;
     const [land, setLand] = useState<FeatureCollection<Geometry> | null>(null);
     useEffect(() => { let live = true; loadLand().then(l => { if (live) setLand(l); }).catch(() => undefined); return () => { live = false; }; }, []);
+    // Land and sea legs follow their traced road, rail or lane once it is known; until then (and when there is none) the arc.
+    const requests = useMemo(() => routes.map((r, i) => ({ id: String(i), mode: r.path ? undefined : r.mode, from: r.from, to: r.to, via: r.via })), [routes]);
+    const traced = useTracedPaths(requests);
+    const drawn = useMemo(() => routes.map((r, i) => { const p = traced.get(String(i)); return p && p.length > 2 ? { ...r, path: p } : r; }), [routes, traced]);
     const summary = label ?? `Map of ${routes.length} ${routes.length === 1 ? 'route' : 'routes'}`;
     return (
         <div className={cn('relative w-full overflow-hidden', className)}>
-            <ParentSize className="h-full">{({ width, height }) => (width > 0 && height > 0 ? <RouteSvg land={land} routes={routes} pins={pins} marker={marker} track={track} width={width} height={height} label={summary} maxZoom={maxZoom} /> : null)}</ParentSize>
+            <ParentSize className="h-full">{({ width, height }) => (width > 0 && height > 0 ? <RouteSvg land={land} routes={drawn} pins={pins} marker={marker} track={track} width={width} height={height} label={summary} maxZoom={maxZoom} /> : null)}</ParentSize>
         </div>
     );
 };

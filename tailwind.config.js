@@ -7,7 +7,6 @@ export default {
     "./index.html",
     "./App.tsx",
     "./index.tsx",
-    "./constants.ts",
     "./components/**/*.{js,ts,jsx,tsx}",
     "./views/**/*.{js,ts,jsx,tsx}",
     "./hooks/**/*.{js,ts,jsx,tsx}",
@@ -15,7 +14,7 @@ export default {
     "./services/**/*.{js,ts,jsx,tsx}",
     "./types/**/*.{js,ts,jsx,tsx}"
   ],
-  // DashboardWidgets builds accent classes at runtime (`bg-${color}-500/10`); the removed Play CDN used to
+  // The dashboard widgets build accent classes at runtime (`bg-${color}-500/10`); the removed Play CDN used to
   // generate them on the fly, so the accents it can receive are safelisted here.
   safelist: [
     { pattern: /^(bg|text|border)-(blue|amber|indigo|rose|emerald|purple|sky|cyan|violet|teal|orange)-(400|500|600)(\/(5|10|15|20|25|30))?$/, variants: ['dark', 'group-hover'] },
@@ -90,21 +89,7 @@ export default {
           navy: 'rgb(var(--rp-navy) / <alpha-value>)',
           plum: 'rgb(var(--rp-plum) / <alpha-value>)',
         },
-        // Golden Hour theme (flag UI_GOLDEN_HOUR)
-        sunset: {
-          coral: 'rgb(var(--sunset-coral) / <alpha-value>)',
-          orange: 'rgb(var(--sunset-orange) / <alpha-value>)',
-          sun: 'rgb(var(--sunset-sun) / <alpha-value>)',
-          teal: 'rgb(var(--sunset-teal) / <alpha-value>)',
-          lilac: 'rgb(var(--sunset-lilac) / <alpha-value>)',
-          ink: 'rgb(var(--sunset-ink) / <alpha-value>)',
-          cream: 'rgb(var(--sunset-cream) / <alpha-value>)',
-          sand: 'rgb(var(--sunset-sand) / <alpha-value>)',
-          plum: 'rgb(var(--sunset-plum) / <alpha-value>)',
-          night: 'rgb(var(--sunset-night) / <alpha-value>)',
-          dusk: 'rgb(var(--sunset-dusk) / <alpha-value>)',
-        },
-        // Blue shades used on Flights are variable-driven so Golden Hour can remap them to the primary palette
+        // Blue shades are variable-driven (--blue-* in styles.css)
         blue: {
           50: 'rgb(var(--blue-50) / <alpha-value>)',
           100: 'rgb(var(--blue-100) / <alpha-value>)',

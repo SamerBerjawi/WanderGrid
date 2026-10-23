@@ -12,7 +12,6 @@ import { card, StatTile } from '../../components/new/settings/SettingsParts';
 import { Airplane, Backpack, Database, Gear, Plugs, Users, type Icon } from '../../components/ui/hugeicons';
 import { countKeys } from '../../utils/settingsModel';
 import { cn } from '../../utils/cn';
-import { CLASSIC_HOME } from '../../utils/routes';
 
 /**
  * SettingsNew (UI_UX_DESIGN_REFERENCE.md §5.0): the redesigned settings, at /settings. Features come
@@ -159,17 +158,6 @@ export const SettingsNew: React.FC<SettingsNewProps> = ({ theme, isDark, onTheme
                         {active === 'data' && data.isAdmin ? <DataPane data={data} onNavigate={onNavigate} /> : null}
                     </div>
                 </div>
-
-                <p className="px-1 text-sm text-rp-muted">
-                    Missing something? The original interface still has the AI trip guide, the flight import wizard on a trip and the full-screen trip map.{' '}
-                    <button
-                        type="button"
-                        onClick={() => onNavigate(CLASSIC_HOME)}
-                        className="inline-flex min-h-11 items-center rounded-full font-medium text-rp-ink underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-rp-muted"
-                    >
-                        Classic interface
-                    </button>
-                </p>
             </div>
         </div>
     );

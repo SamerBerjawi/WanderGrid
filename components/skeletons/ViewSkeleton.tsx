@@ -1,10 +1,9 @@
 import React from 'react';
 import { cn } from '../../utils/cn';
-import { ViewState } from '../../types';
 import '../new/new.css';
 
 interface ViewSkeletonProps {
-  view?: ViewState | string;
+  view?: string;
   /** Fill the screen on the New canvas (the shell itself is still loading). */
   fullScreen?: boolean;
 }
@@ -35,7 +34,7 @@ const Header: React.FC = () => (
  * it also shows inside the old shell while an old page loads.
  */
 export const ViewSkeleton: React.FC<ViewSkeletonProps> = ({ view = 'dashboard', fullScreen }) => {
-  const isDashboard = view === 'dashboard' || view === 'dashboard-new';
+  const isDashboard = view === 'dashboard';
   const isMap = view === 'map' || view === 'atlas';
 
   return (

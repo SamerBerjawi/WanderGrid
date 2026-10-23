@@ -8,7 +8,8 @@ All notable changes to WanderGrid are listed here, newest first. The format foll
 
 The redesign release. Every page, dialog and message of the app was rebuilt in one new design language
 (the "New" pages, specified in [UI_UX_DESIGN_REFERENCE.md](UI_UX_DESIGN_REFERENCE.md)), and the new
-pages are now the default. The original interface is kept, hidden, under `/classic`.
+pages are the only interface. The original interface was removed before release; the git tag `classic-final`
+holds the last commit that has it.
 
 ### Upgrading from 0.5
 
@@ -16,11 +17,12 @@ pages are now the default. The original interface is kept, hidden, under `/class
   `/trip/:id`, `/flights`, `/roadtrips`, `/map`, `/atlas`, `/calendar`, `/user/:id` and `/settings`. The
   preview URLs used during development (`/trips-new`, `/trip-new/:id` and so on) redirect to them, and old
   aliases such as `/flights-2` and `/planner-2` still resolve.
-- **The old interface** lives under `/classic` (for example `/classic/planner`). It is reachable by URL, from a
-  trip's menu ("Open in classic view") and from the link at the bottom of Settings. Some features exist only
-  there for now; see *Known limitations* below.
-- **Interface themes.** The Golden Hour and Departure Board themes apply only under `/classic`. The new pages
-  offer Light, Dark and Auto. Your stored theme value is left untouched.
+- **The old interface is gone.** Old `/classic/...` bookmarks redirect to the same page (for example
+  `/classic/planner` opens `/planner`). There is no way back to the old pages in the app; see *Removed* below
+  for what only they did.
+- **Interface themes.** The Golden Hour and Departure Board themes were removed with the old interface. The
+  pages offer Light, Dark and Auto. A stored theme value from the old picker is ignored (and left in the
+  browser's storage).
 - **Data.** No migration is needed. Two optional fields were added to stored records (a trip's `targetBudget`,
   and `originGeoKey` / `destGeoKey` on transports, which record which text a leg's coordinates belong to).
   Older records without them keep working.
@@ -106,6 +108,9 @@ pages are now the default. The original interface is kept, hidden, under `/class
   per-route detail sheets with airline logos, filters, and route colours by region or frequency. Animated
   routes move at one speed, so longer routes take longer.
 - Place names are in proper case, and a place shows the weather where it is.
+- An airport or place sheet draws a vertical Sankey of its routes: arrivals across the top, departures across
+  the bottom, each as wide as the number of times you travelled it, with the top 8 per side and a "+N others"
+  node. Hover, focus or tap a node to see the count or open the route; the routes list stays below.
 - A travel atlas with a world map coloured by status (lived, visited, wishlist, layover), country and city
   lists as grids or rails, a scroll index, a wishlist deck with "Been there", a review drawer for merging
   duplicate places, and a country sheet that lists the trips, flights and road trips for it.
@@ -115,6 +120,21 @@ pages are now the default. The original interface is kept, hidden, under `/class
   keyboard grid, a day drawer on phones, a ring for leave by type, leave-type colours, and per-member filters.
 - Leave editing with half days and allocations across types and years, a leave optimizer, country holiday
   calendars per year (with holidays you can switch off), trip calendar export and a subscribe link.
+
+#### Calendar sync
+- The subscribable feed and the app's own `.ics` files now list **individual events** instead of one block per
+  trip: each flight (and, if you turn them on, train, bus and ferry legs) at its real time with booking details,
+  a check-in and a check-out per stay (or one event for the stay), timed activities, and optionally your time off
+  and public holidays. Times are written in UTC when the airport or place time zone is known and as floating
+  local times otherwise, so your calendar never shifts them. Items keep a stable UID, so editing a flight updates
+  its event, and the trip's version is the `SEQUENCE`.
+- **What to sync** in Calendar > Options chooses what the feed holds and builds the link as you change it.
+  Query parameters (one link, one choice): `trips`, `flights`, `transport`, `stays`, `activities`, `leave`,
+  `holidays`, `planning` (each `0` or `1`), `stay=split|span`, `cost=1`, `reminders=1` with `remindFlight`,
+  `remindStay` and `remindActivity` in minutes, and `private=full|busy|hide`. Without parameters the feed holds
+  trips, flights and stays. Your choice is remembered per person (`GET`/`PUT /api/calendar/prefs`).
+- The feed sends an `ETag` (so a poll that finds nothing new gets `304`), a refresh hint, and cancelled trips drop
+  out of it. Semicolons in trip text are now escaped properly in the feed.
 
 #### Members (MemberNew) and Settings (SettingsNew)
 - A member page: passport-style overview with country stamps and flags, places split into countries and
@@ -152,6 +172,13 @@ pages are now the default. The original interface is kept, hidden, under `/class
   ocean and at (0, 0), straight dark lines across the US and Scandinavia. Points now need real coordinates,
   a trip's pin must fit its own legs and sit on land, land and sea legs follow their traced route, and the
   place search ranks a state above a village of the same name.
+- **Scratch map filters.** Lived in no longer washes lived countries in a flat fill (they get their own
+  colour), a Visited toggle joins the scratch filters, Layovers now finds layover-only countries (a connecting flight's next origin was
+  counted as a stay) and hides them, and City pins Off removes every pin and route-end marker.
+- Still maps (Flights, Road trips, trip header, dashboard World) draw the real road, rail and sea routes
+  instead of straight lines once they are known.
+- The scratch map is drawn with finer 10m borders when zoomed in, and the Night lights basemap stays sharp at
+  high zoom (vector streets and labels over the lights, since the imagery ends at level 8).
 - A production build failure caused by the 6 MB Hugeicons set being matched by the service worker's
   precache; it is now a separately named, runtime-cached chunk.
 - Overlapping stays no longer draw on top of each other.
@@ -173,15 +200,21 @@ pages are now the default. The original interface is kept, hidden, under `/class
 - The flight tracker no longer sends a masked API key, and integration keys are tested on the server so they
   never need to reach the browser in full. Keys are shown masked in Settings.
 
+### Removed
+
+- The original interface under `/classic` and its themes (Golden Hour, Departure Board), with the shell,
+  the old pages, the liquid-glass components and the dependencies only they used (`recharts`, `leaflet`,
+  `react-simple-maps`, `@google/genai`, `html2canvas` and others). Recover any file from the tag
+  `classic-final`: `git show classic-final:<path>`.
+- Features that existed only there (§5.5 of the design reference): the trip AI guide and AI flight analysis,
+  flight import directly on a trip page, the full-screen cinematic map, the Departure Board view of flights,
+  the old Dashboard widgets (achievements, cabin donut, top airports and airlines, earth-orbits hero), the
+  Road trips hub tabs, per-trip edit buttons on the member page and the page-wide Save button in Settings.
+
 ### Known limitations
 
-- **Only in `/classic` for now** (see §5.5 of the design reference for the full table): the trip AI guide
-  and AI flight analysis, flight import and trip ICS export directly on a trip page, the full-screen
-  cinematic map, the Departure Board view of flights, the old Dashboard widgets (achievements, cabin
-  donut, top airports and airlines, earth-orbits hero), Road trips hub tabs, per-trip edit buttons on the
-  member page, and the page-wide Save button in Settings.
-- **Testing.** The end-to-end suite still covers the original pages (it now runs against `/classic`); there are
-  no end-to-end specs for the new pages yet. The new features were exercised in local mode and against the
+- **Testing.** The end-to-end specs for the original pages were deleted with them; only the route spec
+  remains, so there are almost no end-to-end specs for the pages yet. The new features were exercised in local mode and against the
   real server on an in-memory database, not against a real PostgreSQL server.
 - Live flight tracking, provider key tests and the holiday providers were not exercised against the live
   services during development.

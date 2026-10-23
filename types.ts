@@ -339,20 +339,6 @@ export interface WorkspaceSettings {
     keySources?: Partial<Record<'googleGeminiApiKey' | 'aviationStackApiKey' | 'aeroDataBoxApiKey' | 'openAipApiKey', 'workspace' | 'env' | 'none'>>;
 }
 
-export enum ViewState {
-  DASHBOARD = 'dashboard',
-  SETTINGS = 'settings',
-  USER_DETAIL = 'user_detail',
-  PLANNER = 'planner',
-  TRIP_DETAIL = 'trip_detail',
-  MAP = 'map',
-  GAMIFICATION = 'gamification',
-  FLIGHTS = 'flights',
-  ROADTRIPS = 'roadtrips',
-  TRAVEL_ATLAS = 'travel_atlas',
-  VACATION_CALENDAR = 'vacation_calendar'
-}
-
 export type CountryResidenceStatus = 'lived_past' | 'lived_current' | 'visited' | 'layover' | 'wishlist';
 
 export interface VisitedItem {

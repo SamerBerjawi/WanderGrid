@@ -32,8 +32,6 @@ import { formatProperLocationName } from '../../services/geocoding';
 
 export interface MapNewProps {
     onTripClick?: (tripId: string) => void;
-    /** Kept for parity with the page it will replace; the New shell has no sidebar. */
-    isSidebarCollapsed?: boolean;
     /** Lets a light or dark basemap switch the app theme to match. */
     onThemeChange?: (theme: 'light' | 'dark') => void;
 }

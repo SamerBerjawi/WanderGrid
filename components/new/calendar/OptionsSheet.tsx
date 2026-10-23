@@ -5,9 +5,13 @@ import { errorMessage, toast } from '../../../services/toast';
 import type { Trip } from '../../../types';
 import type { WeekStart } from '../../../utils/calendarModel';
 import HoldButton from '../../kokonutui/hold-button';
-import { Copy, DownloadSimple, Export } from '../../ui/hugeicons';
+import { CalendarCheck, Copy, DownloadSimple, Export } from '../../ui/hugeicons';
 import { RP_FIELD } from '../fields';
 import { RpChip, RpSection, RpSheet } from '../ui';
+import ParticleButton from '../../kokonutui/particle-button';
+import { useCalendarFeedOptions } from '../../../hooks/useCalendarFeedOptions';
+import { calendarFeedUrl } from '../../../utils/icsContext';
+import { SyncPanel } from './SyncPanel';
 
 /**
  * Options: the first day of the week (kept on this device), the link that adds your trips to a calendar
@@ -19,8 +23,6 @@ const WEEK_CHOICES: { id: WeekStart; label: string }[] = [
     { id: 0, label: 'Sunday' },
     { id: 6, label: 'Saturday' },
 ];
-
-const feedUrl = (token: string) => `${window.location.origin}/api/calendar/${token}/feed.ics`;
 
 export type ColourBy = 'status' | 'type';
 
@@ -37,6 +39,8 @@ export const OptionsSheet: React.FC<{
     const [token, setToken] = useState<string | null>(null);
     const [state, setState] = useState<'idle' | 'loading' | 'missing'>('idle');
     const server = dataService.isDatabaseMode();
+    const { options: feed, update: updateFeed, ready } = useCalendarFeedOptions(open);
+    const url = token ? calendarFeedUrl(window.location.origin, token, feed) : '';
 
     useEffect(() => {
         if (!open || !server || token) return;
@@ -51,9 +55,9 @@ export const OptionsSheet: React.FC<{
     const copy = async (text: string) => {
         try {
             await navigator.clipboard.writeText(text);
-            toast.success('Link copied');
-        } catch {
+        } catch (e) {
             toast.error("Couldn't copy. Select the link and copy it.");
+            throw e;
         }
     };
     const rotate = async () => {
@@ -65,7 +69,7 @@ export const OptionsSheet: React.FC<{
         }
     };
     const download = () => {
-        calendarService.downloadIcs(calendarService.generateIcsContent(trips), 'wandergrid-calendar.ics');
+        calendarService.downloadIcs(calendarService.generateIcsContent(trips, 'WanderGrid Trips', feed), 'wandergrid-calendar.ics');
     };
 
     return (
@@ -87,6 +91,13 @@ export const OptionsSheet: React.FC<{
                     </div>
                 </RpSection>
 
+                <RpSection title="What to sync" icon={CalendarCheck}>
+                    <div className="py-2">
+                        {ready ? <SyncPanel options={feed} onChange={updateFeed} /> : <p className="text-sm text-rp-muted">Loading…</p>}
+                        {!server && <p className="mt-2 text-xs text-rp-muted">In local mode this sets what the download holds. The link needs the server.</p>}
+                    </div>
+                </RpSection>
+
                 <RpSection title="Add to a calendar app" icon={Export}>
                     {!server ? (
                         <p className="py-2 text-sm text-rp-muted">The link needs the server. In local mode you can download a file.</p>
@@ -95,14 +106,12 @@ export const OptionsSheet: React.FC<{
                     ) : (
                         <div className="flex flex-col gap-2 py-2">
                             <label className="sr-only" htmlFor="calendar-feed">Calendar link</label>
-                            <input id="calendar-feed" readOnly value={token ? feedUrl(token) : 'Loading…'} onFocus={e => e.currentTarget.select()} className={RP_FIELD} />
+                            <input id="calendar-feed" readOnly value={url || 'Loading…'} onFocus={e => e.currentTarget.select()} className={RP_FIELD} />
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                <button type="button" disabled={!token} onClick={() => token && void copy(feedUrl(token))} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-ink px-5 text-sm font-medium text-rp-on-ink outline-none hover:bg-rp-ink/90 focus-visible:ring-2 focus-visible:ring-rp-muted disabled:opacity-40">
-                                    <Copy size={16} aria-hidden /> Copy link
-                                </button>
+                                <ParticleButton disabled={!url} onClick={() => copy(url)} successLabel="Copied" successDuration={900} className="!min-h-11" icon={<Copy size={16} aria-hidden />}>Copy link</ParticleButton>
                                 <HoldButton onHoldComplete={rotate} resetAfter={0}>Hold to make a new link</HoldButton>
                             </div>
-                            <p className="text-xs text-rp-muted">Anyone with the link can see your trips. A new link stops the old one.</p>
+                            <p className="text-xs text-rp-muted">The link changes with your choices above, so copy it again after changing them. Anyone with the link can see what it syncs. A new link stops the old one.</p>
                         </div>
                     )}
                 </RpSection>
