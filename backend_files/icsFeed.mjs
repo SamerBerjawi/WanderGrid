@@ -253,8 +253,9 @@ const metaOf = (trip, ctx) => {
 const statusOf = (trip) => (trip.status === 'Cancelled' ? 'CANCELLED' : trip.status === 'Planning' ? 'TENTATIVE' : 'CONFIRMED');
 
 /** One transport leg (flight, train, ...) as a timed event. */
-export function transportEvent(t, trip, options, ctx) {
+export function transportEvent(t, leg, options, ctx) {
     if (!validDay(t.departureDate)) return null;
+    const trip = leg && leg.id !== 'unassigned' ? leg : null; // flights logged on their own have no trip to link to
     const flight = (t.mode || 'Flight') === 'Flight';
     const fromCode = flight ? iataOf(t.origin) : '';
     const toCode = flight ? iataOf(t.destination) : '';
@@ -294,7 +295,7 @@ export function transportEvent(t, trip, options, ctx) {
         t.dropoffLocation ? `Drop-off: ${t.dropoffLocation}` : '',
         t.notes || '',
         options.cost ? (money(t.cost, ctx) ? `Cost: ${money(t.cost, ctx)}` : '') : '',
-        trip && trip.id !== 'unassigned' && trip.name ? `Trip: ${trip.name}` : '',
+        trip && trip.name ? `Trip: ${trip.name}` : '',
         trip ? tripUrl(trip, ctx) : '',
     ].filter(Boolean).join('\n');
 

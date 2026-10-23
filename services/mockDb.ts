@@ -1,4 +1,5 @@
 
+import { parseFeedOptions, type FeedOptions } from '../utils/icsContext';
 import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, WorkspaceSettings, CustomEvent as TripCustomEvent, PackingItem, Carrier, BackupSelectionOptions, RestoreOptions } from '../types';
 // Geocoding (~100 KB with its place-search tables) is only needed when trips are saved; load it on first
 // use so it isn't part of the app's startup bundle (PERF-001).
@@ -338,6 +339,22 @@ class DataService {
 
   async getCalendarFeedToken(): Promise<string> {
     return (await this.fetch<{ token: string }>('/calendar/token')).token;
+  }
+
+  /** What the person chose to sync (the "What to sync" panel). On the server it is kept per person; in local mode on this device. */
+  async getCalendarFeedOptions(): Promise<FeedOptions> {
+    if (!this._useApi) {
+      try { return parseFeedOptions(JSON.parse(localStorage.getItem('wandergrid_calendar_feed') || '{}')); } catch { return parseFeedOptions({}); }
+    }
+    return parseFeedOptions((await this.fetch<{ options: Record<string, unknown> }>('/calendar/prefs')).options);
+  }
+
+  async saveCalendarFeedOptions(options: FeedOptions): Promise<void> {
+    if (!this._useApi) {
+      try { localStorage.setItem('wandergrid_calendar_feed', JSON.stringify(options)); } catch { /* storage unavailable: the choice lasts for this visit */ }
+      return;
+    }
+    await this.fetch('/calendar/prefs', { method: 'PUT', body: JSON.stringify(options) });
   }
 
   async rotateCalendarFeedToken(): Promise<string> {
