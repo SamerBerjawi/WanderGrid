@@ -17,16 +17,19 @@ const trip = {
 const out = tripToIcs(trip, new Date('2026-10-23T00:00:00Z')).replace(/\r\n /g, '');
 
 describe('tripToIcs', () => {
-    it('writes the trip, its flight, stay and activities as separate events', () => {
-        expect(out.match(/BEGIN:VEVENT/g)).toHaveLength(5);
+    it('writes the trip, its flight, check-in, check-out and activities as separate events', () => {
+        expect(out.match(/BEGIN:VEVENT/g)).toHaveLength(6);
         expect(out).toContain('UID:trip-1@wandergrid.app');
         expect(out).toContain('UID:f1@wandergrid.app');
-        expect(out).toContain('UID:a1@wandergrid.app');
+        expect(out).toContain('UID:a1-in@wandergrid.app');
+        expect(out).toContain('UID:a1-out@wandergrid.app');
         expect(out).toContain('UID:x1@wandergrid.app');
     });
-    it('makes the trip and the stay all-day events with an exclusive end', () => {
+    it('makes the trip an all-day event with an exclusive end and the stay two timed events', () => {
         expect(out).toContain('DTSTART;VALUE=DATE:20261201');
         expect(out).toContain('DTEND;VALUE=DATE:20261209');
+        expect(out).toContain('DTSTART:20261201T150000');
+        expect(out).toContain('DTSTART:20261208T110000');
     });
     it('keeps the flight at its real UTC time and the activity at a floating local time', () => {
         expect(out).toMatch(/DTSTART:20261201T\d{6}Z/);
@@ -46,6 +49,14 @@ describe('tripToIcs', () => {
         const text = tripToIcs(bad);
         expect(text).not.toContain('UID:trip-1@');
         expect(text).not.toContain('UID:z@');
+    });
+});
+
+describe('tripToIcs for a Private trip', () => {
+    it('still writes the trip and its bookings (it is the signed-in person\'s own file)', () => {
+        const text = tripToIcs({ ...trip, privacy: 'Private' } as Trip);
+        expect(text.match(/BEGIN:VEVENT/g)).toHaveLength(6);
+        expect(text).toContain('UID:trip-1@wandergrid.app');
     });
 });
 

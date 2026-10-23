@@ -25,6 +25,11 @@ WanderGrid is a privacy-focused, full-stack application designed for digital nom
 *   **Visual Calendar**: Drag-and-drop planning view supporting AM/PM splits, custom duration logic, and weekend/holiday masking.
 *   **Public Holidays**: Automated import of statutory holidays for 100+ countries via Nager.Date with custom weekend shifting rules.
 
+### 🗓 Calendar Sync
+*   **Subscribe from any calendar app**: Calendar › Options › *Add to a calendar app* gives a private link (`/api/calendar/<token>/feed.ics`). The token is a 48-character secret per person that can be replaced at any time; anyone holding the link can read what it syncs.
+*   **Choose the detail**: *What to sync* switches trips, flights, trains/buses/ferries, stays, activities, time off, public holidays and reminders, and the link updates as you change them. Each choice is a query parameter, so one link is one configuration: `trips`, `flights`, `transport`, `stays`, `activities`, `leave`, `holidays`, `planning` (`0`/`1`), `stay=split|span`, `cost=1`, `reminders=1` (+ `remindFlight`, `remindStay`, `remindActivity` in minutes), `private=full|busy|hide`. A link with no parameters holds trips, flights and stays.
+*   Behind a reverse proxy, set `PUBLIC_URL` (for example `https://trips.example.com`) so the links back to each trip use your public address.
+
 ### 🏆 Gamification & Analytics
 *   **Traveler Rank**: Level up from "Backyard Explorer" to "Citizen of the World" based on unique countries visited.
 *   **Passport Stamps**: Beautifully rendered digital stamps for every country visited, grouped by region.

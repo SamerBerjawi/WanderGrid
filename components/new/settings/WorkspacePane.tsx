@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { WorkspaceSettings } from '../../../types';
 import { dataService } from '../../../services/mockDb';
 import { calendarService } from '../../../services/calendarExport';
+import { calendarFeedUrl } from '../../../utils/icsContext';
 import { errorMessage, toast } from '../../../services/toast';
 import type { SettingsData } from '../../../hooks/useSettingsData';
 import { StackPanel, type StackPage } from '../../kokonutui/stack-panel';
@@ -111,14 +112,14 @@ export const WorkspacePane: React.FC<{
     const exportCalendar = async () => {
         await attempt(async () => {
             const trips = await dataService.getTrips();
-            const ics = calendarService.generateIcsContent(trips, settings.orgName || 'WanderGrid');
+            const ics = calendarService.generateIcsContent(trips, settings.orgName || 'WanderGrid', await dataService.getCalendarFeedOptions());
             download(`wandergrid-calendar-${new Date().toISOString().split('T')[0]}.ics`, ics, 'text/calendar');
         }, "The calendar file couldn't be made.");
     };
     const copyLink = async (rotate: boolean) => {
         try {
             const token = rotate ? await dataService.rotateCalendarFeedToken() : await dataService.getCalendarFeedToken();
-            await navigator.clipboard.writeText(`${window.location.origin}/api/calendar/${token}/feed.ics`);
+            await navigator.clipboard.writeText(calendarFeedUrl(window.location.origin, token, await dataService.getCalendarFeedOptions()));
             toast.success(rotate ? 'New link copied. The old one no longer works.' : 'Calendar link copied');
         } catch (e) {
             toast.error(errorMessage(e, "The calendar link couldn't be copied."));
@@ -218,7 +219,7 @@ export const WorkspacePane: React.FC<{
                         { id: 'ics', icon: DownloadSimple, label: 'Download calendar file', onSelect: () => void exportCalendar() },
                         { id: 'copy', icon: Copy, label: 'Copy subscription link', onSelect: () => void copyLink(false) },
                     ],
-                    footer: 'Your link is private: anyone with it can read your trips.',
+                    footer: 'Your link is private: anyone with it can read what it syncs. Choose what it holds under Calendar › Options › What to sync.',
                 },
                 { rows: [{ id: 'reset', icon: ArrowsClockwise, label: 'Reset link', tone: 'danger' as const, onSelect: () => setSheet('reset-link') }] },
             ],

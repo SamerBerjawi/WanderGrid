@@ -119,6 +119,21 @@ pages are now the default. The original interface is kept, hidden, under `/class
 - Leave editing with half days and allocations across types and years, a leave optimizer, country holiday
   calendars per year (with holidays you can switch off), trip calendar export and a subscribe link.
 
+#### Calendar sync
+- The subscribable feed and the app's own `.ics` files now list **individual events** instead of one block per
+  trip: each flight (and, if you turn them on, train, bus and ferry legs) at its real time with booking details,
+  a check-in and a check-out per stay (or one event for the stay), timed activities, and optionally your time off
+  and public holidays. Times are written in UTC when the airport or place time zone is known and as floating
+  local times otherwise, so your calendar never shifts them. Items keep a stable UID, so editing a flight updates
+  its event, and the trip's version is the `SEQUENCE`.
+- **What to sync** in Calendar > Options chooses what the feed holds and builds the link as you change it.
+  Query parameters (one link, one choice): `trips`, `flights`, `transport`, `stays`, `activities`, `leave`,
+  `holidays`, `planning` (each `0` or `1`), `stay=split|span`, `cost=1`, `reminders=1` with `remindFlight`,
+  `remindStay` and `remindActivity` in minutes, and `private=full|busy|hide`. Without parameters the feed holds
+  trips, flights and stays. Your choice is remembered per person (`GET`/`PUT /api/calendar/prefs`).
+- The feed sends an `ETag` (so a poll that finds nothing new gets `304`), a refresh hint, and cancelled trips drop
+  out of it. Semicolons in trip text are now escaped properly in the feed.
+
 #### Members (MemberNew) and Settings (SettingsNew)
 - A member page: passport-style overview with country stamps and flags, places split into countries and
   cities, leave by type, documents, and profile and account panels. Removing a member is a Hold Button.
