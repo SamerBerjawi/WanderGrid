@@ -184,7 +184,7 @@ export const MapDetailSheet: React.FC<MapDetailSheetProps> = ({
                 <div className="px-1 pb-2"><WeatherChip lat={p.coords[1]} lng={p.coords[0]} /></div>
                 {routes.length ? (
                     <RpSection icon={Path} title="Flow">
-                        <Suspense fallback={<div className="h-[330px]" aria-hidden />}>
+                        <Suspense fallback={<div className="h-[350px]" aria-hidden />}>
                             <PlaceFlowChart placeId={p.id} routes={model.routes} onOpenRoute={route => onSelect({ kind: 'route', route })} onShowOthers={revealRoutes} />
                         </Suspense>
                     </RpSection>

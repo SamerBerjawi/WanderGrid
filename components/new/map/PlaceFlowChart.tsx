@@ -65,7 +65,7 @@ const PlaceFlowChart: React.FC<PlaceFlowChartProps> = ({ placeId, routes, onOpen
             <SankeyChart
                 top={top}
                 bottom={bottom}
-                centerLabel={`${code} · ${totals.in} in · ${totals.out} out`}
+                centerLabel={code}
                 label={describeFlows(code, flows)}
                 onSelect={open}
             />

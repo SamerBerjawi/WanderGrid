@@ -45,9 +45,14 @@ export interface SankeyChartProps {
 }
 
 const NODE_H = 14;
-const BAND_H = 34;
+const BAND_H = 28;
+/** One corner radius for every node and the middle bar, so the edges match. */
+const RADIUS = 4;
+/** Share of the width the flow may use, so the middle bar stays a bar and not a full-width strip. */
+const FLOW_SHARE = 0.74;
+const ROW_GAP = 34;
 const LINK_H = 78;
-const LABEL_H = 58;
+const LABEL_H = 78;
 const PAD_X = 4;
 /** A side with no nodes gives up its rows, so a place with only arrivals or only departures is not half empty. */
 const SIDE_H = LABEL_H + NODE_H + LINK_H;
@@ -62,7 +67,9 @@ function Chart({ top, bottom, centerLabel, label, onSelect, width }: SankeyChart
   const reduce = useReducedMotion();
   const clipId = useId();
   const [active, setActive] = useState<string | null>(null);
-  const inner = Math.max(0, width - PAD_X * 2);
+  const full = Math.max(0, width - PAD_X * 2);
+  const inner = Math.round(full * FLOW_SHARE);
+  const offX = PAD_X + (full - inner) / 2;
   const progress = useMountProgress(reduce ? { duration: 0 } : DEFAULT_CHART_ENTER_TRANSITION, 0.05, label);
   const hasTop = top.length > 0;
   const hasBottom = bottom.length > 0;
@@ -101,7 +108,7 @@ function Chart({ top, bottom, centerLabel, label, onSelect, width }: SankeyChart
   const usedR = Math.max(...placed.map(p => p.bx + p.w), 0);
   // Two-line labels (name, then count) on two rows: the second row sits further from the node.
   const labelY = (side: "top" | "bottom", row: number) =>
-    side === "top" ? LABEL_H - 30 - row * 28 + 13 : botNodeY + NODE_H + 15 + row * 28;
+    side === "top" ? LABEL_H - 32 - row * ROW_GAP + 13 : botNodeY + NODE_H + 17 + row * ROW_GAP;
   const fade = (key: string) => (active == null ? 1 : active === key ? 1 : 0.18);
 
   return (
@@ -118,7 +125,7 @@ function Chart({ top, bottom, centerLabel, label, onSelect, width }: SankeyChart
             <motion.rect x={0} y={linkTop} width={width} height={reveal} />
           </clipPath>
         </defs>
-        <g transform={`translate(${PAD_X},0)`}>
+        <g transform={`translate(${offX},0)`}>
           <g clipPath={`url(#${clipId})`}>
             {placed.map(p => (
               <motion.path
@@ -132,10 +139,17 @@ function Chart({ top, bottom, centerLabel, label, onSelect, width }: SankeyChart
               />
             ))}
           </g>
-          {usedR > usedL ? <rect x={usedL} y={bandY} width={usedR - usedL} height={BAND_H} rx={9} fill={HUB} /> : null}
-          <text x={inner / 2} y={bandY + BAND_H / 2 + 4} textAnchor="middle" fontSize={12} fontWeight={600} fill="rgb(var(--rp-on-ink))" style={{ fontVariantNumeric: "tabular-nums" }}>
-            {centerLabel}
-          </text>
+          {usedR > usedL ? (() => {
+            const minW = centerLabel.length * 8 + 24;
+            const w = Math.max(usedR - usedL, minW);
+            const x = (usedL + usedR) / 2 - w / 2;
+            return (
+              <>
+                <rect x={x} y={bandY} width={w} height={BAND_H} rx={RADIUS} fill={HUB} />
+                <text x={x + w / 2} y={bandY + BAND_H / 2 + 4} textAnchor="middle" fontSize={12} fontWeight={600} fill="rgb(var(--rp-on-ink))">{centerLabel}</text>
+              </>
+            );
+          })() : null}
           {placed.map(p => {
             const y = p.side === "top" ? LABEL_H : botNodeY;
             const spot = labelSpots.get(p.key);
@@ -155,7 +169,10 @@ function Chart({ top, bottom, centerLabel, label, onSelect, width }: SankeyChart
               >
                 {/* A bigger invisible target than the thin node, for pointers and touch. */}
                 <rect x={p.x - 1} y={p.side === "top" ? y - 22 : y - 4} width={p.w + 2} height={NODE_H + 26} fill="transparent" />
-                <motion.rect x={p.x} y={y} width={p.w} height={NODE_H} rx={5} fill={colour(p.accent)} strokeWidth={2} stroke="transparent" animate={{ opacity: fade(p.key) }} transition={{ duration: reduce ? 0 : 0.18 }} />
+                <motion.rect x={p.x} y={y} width={p.w} height={NODE_H} rx={RADIUS} fill={colour(p.accent)} strokeWidth={2} stroke="transparent" animate={{ opacity: fade(p.key) }} transition={{ duration: reduce ? 0 : 0.18 }} />
+                {spot && spot.row > 0 ? (
+                  <line x1={p.x + p.w / 2} x2={spot.x} y1={p.side === "top" ? y : y + NODE_H} y2={p.side === "top" ? y - 8 : y + NODE_H + 8} stroke="rgb(var(--rp-line))" strokeWidth={1} />
+                ) : null}
                 {spot ? (
                   <text x={spot.x} textAnchor="middle" style={{ fontVariantNumeric: "tabular-nums" }}>
                     <tspan x={spot.x} y={p.side === "top" ? labelY(p.side, spot.row) - 13 : labelY(p.side, spot.row)} fontSize={12} fontWeight={600} fill="rgb(var(--rp-ink))">{p.label}</tspan>
@@ -172,7 +189,7 @@ function Chart({ top, bottom, centerLabel, label, onSelect, width }: SankeyChart
           role="presentation"
           className="pointer-events-none absolute z-popover max-w-[220px] -translate-x-1/2 rounded-lg bg-rp-ink px-2.5 py-1.5 text-xs text-rp-on-ink shadow-md"
           style={{
-            left: Math.min(Math.max(PAD_X + hot.x + hot.w / 2, 80), width - 80),
+            left: Math.min(Math.max(offX + hot.x + hot.w / 2, 80), width - 80),
             ...(hot.side === "top" ? { top: linkTop + 8 } : { top: linkBottom - 8, transform: "translate(-50%, -100%)" }),
           }}
         >
