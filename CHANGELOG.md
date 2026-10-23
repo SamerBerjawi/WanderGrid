@@ -148,6 +148,10 @@ pages are now the default. The original interface is kept, hidden, under `/class
 
 ### Fixed
 
+- The Dashboard World map showed wrong points: a trip to "California" pinned in Central America, dots in the
+  ocean and at (0, 0), straight dark lines across the US and Scandinavia. Points now need real coordinates,
+  a trip's pin must fit its own legs and sit on land, land and sea legs follow their traced route, and the
+  place search ranks a state above a village of the same name.
 - A production build failure caused by the 6 MB Hugeicons set being matched by the service worker's
   precache; it is now a separately named, runtime-cached chunk.
 - Overlapping stays no longer draw on top of each other.
