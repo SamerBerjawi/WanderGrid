@@ -2501,7 +2501,8 @@ app.get('/api/calendar/:token/feed.ics', async (req, res) => {
     try {
         const { buildFeed, parseFeedOptions, feedOptionsToQuery } = await icsFeedModule;
         const options = parseFeedOptions(req.query);
-        const baseUrl = (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host') || 'localhost'}`).replace(/\/+$/, '');
+        const proto = String(req.get('x-forwarded-proto') || req.protocol).split(',')[0].trim();
+        const baseUrl = (process.env.PUBLIC_URL || `${proto}://${req.get('host') || 'localhost'}`).replace(/\/+$/, '');
         const key = `${token}|${feedOptionsToQuery(options)}|${baseUrl}`;
         let entry = feedCache.get(key);
         if (!entry || entry.expires < Date.now()) {

@@ -9,7 +9,9 @@ import type { FeedOptions } from '../../../utils/icsContext';
  */
 
 const STAY_LABEL: Record<FeedOptions['stay'], string> = { split: 'Check-in and check-out', span: 'One event for the stay' };
+const STAY_SHORT: Record<FeedOptions['stay'], string> = { split: 'In and out', span: 'One event' };
 const PRIVATE_LABEL: Record<FeedOptions['private'], string> = { full: 'Show details', busy: 'Show as "Private trip"', hide: 'Leave out' };
+const PRIVATE_SHORT: Record<FeedOptions['private'], string> = { full: 'Details', busy: 'Block only', hide: 'Left out' };
 
 export const SyncPanel: React.FC<{ options: FeedOptions; onChange: (patch: Partial<FeedOptions>) => void }> = ({ options, onChange }) => {
     const toggle = (id: keyof FeedOptions, label: string, icon: StackRow['icon'], detail?: string): StackRow => ({
@@ -30,7 +32,7 @@ export const SyncPanel: React.FC<{ options: FeedOptions; onChange: (patch: Parti
 
     const pages: Record<string, StackPage> = {
         root: {
-            title: 'What to sync',
+            title: 'Sync',
             sections: [
                 {
                     title: 'Trips and bookings',
@@ -46,20 +48,20 @@ export const SyncPanel: React.FC<{ options: FeedOptions; onChange: (patch: Parti
                     title: 'Also',
                     rows: [
                         toggle('leave', 'Time off', Sun),
-                        toggle('holidays', 'Public holidays', Flag, 'Calendars you follow'),
+                        toggle('holidays', 'Public holidays', Flag),
                         toggle('planning', 'Trips still being planned', Clock),
                     ],
-                    footer: 'Time off and holidays are off so they do not repeat what your own calendars show.',
+                    footer: 'Off by default so they do not repeat your own calendars. Holidays come from the calendars you follow.',
                 },
                 {
                     title: 'Details',
                     rows: [
-                        ...(options.stays ? [{ id: 'stay', label: 'Stays appear as', icon: Bed, detail: STAY_LABEL[options.stay], to: 'stay' }] : []),
-                        { id: 'private', label: 'Private trips', icon: options.private === 'full' ? Eye : Lock, detail: PRIVATE_LABEL[options.private], to: 'private' },
+                        ...(options.stays ? [{ id: 'stay', label: 'Stays appear as', icon: Bed, detail: STAY_SHORT[options.stay], to: 'stay' }] : []),
+                        { id: 'private', label: 'Private trips', icon: options.private === 'full' ? Eye : Lock, detail: PRIVATE_SHORT[options.private], to: 'private' },
                         toggle('cost', 'Prices in notes', CalendarCheck),
-                        toggle('reminders', 'Reminders', Bell, '3 h flights · 1 day stays'),
+                        toggle('reminders', 'Reminders', Bell),
                     ],
-                    footer: options.reminders ? 'A reminder 3 hours before each flight or train, 1 day before a check-in and 1 hour before an activity.' : undefined,
+                    footer: 'Reminders alert 3 hours before a flight or train, 1 day before a check-in and 1 hour before an activity.',
                 },
             ],
         },
