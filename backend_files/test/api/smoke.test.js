@@ -37,3 +37,14 @@ test('holiday proxy needs a token and rejects bad parameters before any upstream
     assert.equal((await srv.api('GET', '/api/proxy/holidays/1800/BE', { token })).status, 400);
     assert.equal((await srv.api('GET', '/api/proxy/holidays/2026/BEL', { token })).status, 400);
 });
+
+test('reverse geocoding validates coordinates and fails quiet offline', async () => {
+    const { json: u } = await srv.api('POST', '/api/auth/register', { body: { name: 'Geo', email: 'geo@test.dev', password: 'geo-pass-123' } });
+    assert.equal((await srv.api('GET', '/api/proxy/reverse-geocode?lat=abc&lon=2', { token: u.token })).status, 400);
+    assert.equal((await srv.api('GET', '/api/proxy/reverse-geocode?lat=95&lon=2', { token: u.token })).status, 400);
+    const r = await srv.api('GET', '/api/proxy/reverse-geocode?lat=41.15&lon=-8.61', { token: u.token });
+    assert.equal(r.status, 200);
+    assert.equal(r.json.ok, true);
+    assert.equal(r.json.answered, false, 'tests are offline, so no provider answers');
+    assert.equal(r.json.result, null);
+});

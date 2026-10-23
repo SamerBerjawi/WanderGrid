@@ -12,6 +12,8 @@ import { cityScanKey, isLayoverCountry, isWishlistCountry, regionOf, type AtlasS
 import type { AtlasData } from '../../../hooks/useAtlasData';
 import { STATUS_OPTIONS, toneOf } from './atlasStatus';
 import { FlagBadge, RpChipLabel, ToneChip } from './AtlasParts';
+import { NamePlaceSheet } from './NamePlaceSheets';
+import { isUnknownPlaceName } from '../../../services/cityRegistry';
 import { cn } from '../../../utils/cn';
 
 /** Sheets of the New Atlas page: a country, a city, adding a country, and finding places in trips. */
@@ -193,6 +195,8 @@ export const CitySheet: React.FC<{ city: VisitedItem | null; onClose: () => void
     }, [city]);
 
     if (!city) return <RpSheet open={false} onClose={onClose} title="">{null}</RpSheet>;
+    // A place with no usable name is named from its coordinates and the records it comes from.
+    if (isUnknownPlaceName(city.name)) return <NamePlaceSheet city={city} onClose={onClose} data={data} />;
 
     const save = async () => {
         const nameChanged = name.trim() !== city.name;

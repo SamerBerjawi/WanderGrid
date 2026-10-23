@@ -7,6 +7,12 @@ import { mergeCountryRecords, normalizeCountryCode, ukNationsFromCities } from '
 import { buildMergePlan, buildUndoChunks, chunkMergePlan, type MergeChunk } from '../utils/atlasMergePlan';
 import { useBatchRun } from './useBatchRun';
 import { toast } from '../services/toast';
+import { isUnknownPlaceName } from '../services/cityRegistry';
+import {
+    chunkNamePlan, findCitySources, namePlanSize, planNameWriteBack, undoNameChunks,
+    type CitySource, type NameChoice, type NameChunk, type NamePlan,
+} from '../utils/atlasSources';
+import { runBatch } from '../utils/batchRunner';
 
 import {
     CityDraft, CountryDraft, ScanResult, buildTrackedCities, cityRecordFor, countryRecordFor, duplicateIdsOf, isLayoverCountry,
@@ -171,6 +177,61 @@ export const useAtlasData = () => {
         mergeRun.reset();
     }, [mergeRun, applyChunk, finishBatch]);
 
+    // Unknown places: cities with no usable name. Naming one writes the name into every record it comes from.
+    const unknownCities = useMemo(() => cities.filter(c => isUnknownPlaceName(c.name)), [cities]);
+    const sourcesFor = useCallback(
+        (city: VisitedItem) => findCitySources(city, { visited, trips, flights, roadTrips }),
+        [visited, trips, flights, roadTrips]
+    );
+
+    /** The records a naming plan may change, read fresh so it never builds on a stale copy. */
+    const freshRecords = useCallback(async () => {
+        const [t, f, v] = await Promise.all([dataService.getTrips(), dataService.getIndependentTransports(), dataService.getVisited()]);
+        return { trips: t || [], flights: f || [], visited: v || [] };
+    }, []);
+
+    const applyNameChunk = useCallback((chunk: NameChunk) => dataService.applyNameStep(chunk), []);
+
+    /** Applies a naming plan step by step; if a step fails, the steps already applied are put back and the error is thrown. */
+    const applyNamePlan = useCallback(async (plan: NamePlan) => {
+        const chunks = chunkNamePlan(plan, 50);
+        busy.current = true;
+        try {
+            const result = await dataService.runQuiet(() => runBatch(chunks, applyNameChunk, { pauseMs: 100 }));
+            if (result.failed.length > 0) {
+                // Put every step back, the failed one included (its trips may have been written before its cities failed).
+                await dataService.runQuiet(() => runBatch(undoNameChunks(plan, chunks), applyNameChunk));
+                throw new Error(result.failed[0].error);
+            }
+        } finally { await finishBatch(); }
+        return chunks;
+    }, [applyNameChunk, finishBatch]);
+
+    const undoNamePlan = useCallback(async (plan: NamePlan, chunks: NameChunk[]) => {
+        busy.current = true;
+        try {
+            const r = await dataService.runQuiet(() => runBatch(undoNameChunks(plan, chunks), applyNameChunk, { pauseMs: 100 }));
+            if (r.failed.length > 0) toast.error(`Undo could not restore everything: ${r.failed[0].error}`);
+            else toast.success('Names restored.');
+        } finally { await finishBatch(); }
+    }, [applyNameChunk, finishBatch]);
+
+    /** Names one unknown city: the stored record and the chosen source fields, in one step, with Undo. */
+    const nameCity = useCallback(async (
+        city: VisitedItem, name: string, country: { code: string; name: string } | undefined, sources: CitySource[]
+    ) => {
+        const text = name.trim();
+        const choice: NameChoice = {
+            sources, city: text, display: country?.name ? `${text}, ${country.name}` : text, country,
+            lat: city.lat, lng: city.lng,
+        };
+        const plan = planNameWriteBack([choice], await freshRecords());
+        if (namePlanSize(plan) === 0) throw new Error('Nothing to rename: these records have changed since. Close this and open the place again.');
+        const chunks = await applyNamePlan(plan);
+        toast.undo(`Named "${text}" in ${plan.written} ${plan.written === 1 ? 'place' : 'places'}.`, () => undoNamePlan(plan, chunks));
+        return plan;
+    }, [freshRecords, applyNamePlan, undoNamePlan]);
+
     const scan = useCallback(
         () => scanHistory(visited, countries, trips, flights, roadTrips),
         [visited, countries, trips, flights, roadTrips]
@@ -195,6 +256,7 @@ export const useAtlasData = () => {
         loading, error, reload: load,
         visited, countries, visitedCountries, layovers, wishlist, cities, storedIds,
         worldShare, cityCountryCount, cleanup, hasHistory,
+        unknownCities, sourcesFor, nameCity, freshRecords, applyNamePlan, undoNamePlan,
         saveCountry, saveCity, promote, remove, scan,
         merge: { run: mergeRun.state, start: startMerge, retry: retryMerge, cancel: mergeRun.cancel, undo: undoMerge, undoable: mergeUndoable, reset: mergeRun.reset, summary: mergeSummary }, importScan, activityFor,
     };

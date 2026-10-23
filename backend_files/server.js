@@ -15,7 +15,7 @@ const { fetchUpstream } = require('./upstream');
 const { resolveIcaoCallsign } = require('./carrierMapping');
 const { handleRouteProxy, handleRailRouteProxy } = require('./routeProxy');
 const { createRouteService } = require('./routeStore');
-const { searchGeocodingChain, searchOpenMeteo, searchPhoton, searchNominatim } = require('./geocodingChain');
+const { searchGeocodingChain, searchOpenMeteo, searchPhoton, searchNominatim, reverseGeocode } = require('./geocodingChain');
 const { testProvider } = require('./integrationsTester');
 const { SERVICE_KEYS, testKey } = require('./keyTester');
 const holidays = require('./holidays');
@@ -2229,6 +2229,17 @@ app.get('/api/proxy/holidays/countries', holidays.handleCountries);
 app.get('/api/proxy/holidays/:year/:countryCode', holidays.handleHolidays);
 app.get('/api/proxy/geocoding', handleGeocodingSearch);
 app.get('/api/geocode/search', handleGeocodingSearch);
+
+// Name of the place at a coordinate (Atlas "Find the name"). Cached upstream by coordinate; a miss is a normal answer.
+app.get('/api/proxy/reverse-geocode', async (req, res) => {
+    const lat = Number(req.query.lat);
+    const lon = Number(req.query.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+        return res.status(400).json({ ok: false, error: 'lat and lon must be coordinates' });
+    }
+    const result = await reverseGeocode(lat, lon);
+    res.json({ ok: true, answered: result !== null, result });
+});
 
 // --- Global Search & Lookup Endpoints (External DB / PostgreSQL) ---
 

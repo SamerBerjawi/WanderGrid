@@ -63,6 +63,21 @@ export const splitCombinedPlaces = (raw: string): string[] => {
   return parts.length > 1 ? parts : [text];
 };
 
+const COORDINATE_NAME = /^[-+]?\d{1,3}(?:\.\d+)?\s*[°]?\s*[,;\s]\s*[-+]?\d{1,3}(?:\.\d+)?\s*[°]?$/;
+const PLACEHOLDER_NAME = /^(?:(?:unknown|unnamed|untitled|no name|dropped pin|pinned (?:location|place)|custom (?:location|place)|waypoint)\b|n\/a$|\?+$|(?:stop|location|place)\s*#?\d+$)/i;
+
+/**
+ * A name that says nothing about where the place is: empty, "Unknown", "Unnamed stop", "Dropped pin", "Stop 3", or just
+ * coordinates ("41.15, -8.61", or the "41.15" left once a comma-separated pair is cut at the comma). Such a record is
+ * one place only together with its coordinates, so the merge never folds two of them together by name.
+ */
+export const isUnknownPlaceName = (name: string | undefined | null): boolean => {
+  const text = (name || '').trim();
+  if (!text) return true;
+  if (/^[-+]?\d+(?:\.\d+)?$/.test(text)) return true;
+  return COORDINATE_NAME.test(text) || PLACEHOLDER_NAME.test(text);
+};
+
 const looksLikeAirportCode = (name: string) => /^[A-Z]{3}$/.test((name || '').trim());
 
 /** "ABU Dhabi" -> "Abu Dhabi": an all-caps word inside an otherwise mixed-case name is a casing slip, not an acronym. */
@@ -106,7 +121,11 @@ const prepare = (item: VisitedItem, opts: CityMergeOptions): Prepared => {
       if (lng === undefined) lng = info.lng;
     }
   }
-  return { item, key: cityKey(name), country, lat, lng, name };
+  // An unknown name is not an identity: such records stay apart unless they sit on the same spot (about 1 km).
+  const key = isUnknownPlaceName(name)
+    ? (lat !== undefined && lng !== undefined ? `unknown@${lat.toFixed(2)},${lng.toFixed(2)}` : `unknown#${item.id}`)
+    : cityKey(name);
+  return { item, key, country, lat, lng, name };
 };
 
 const hasCoords = (p: Prepared): p is Prepared & { lat: number; lng: number } => p.lat !== undefined && p.lng !== undefined;

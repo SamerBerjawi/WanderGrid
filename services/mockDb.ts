@@ -1292,9 +1292,10 @@ class DataService {
    * Apply several trip/flight changes atomically (one server transaction), e.g. bundling flights
    * into a trip. Either everything is saved or nothing is, so flights can't be lost half-way.
    */
-  async applyBatch(changes: { newTrips?: Trip[]; upsertTrips?: Trip[]; deleteTrips?: string[]; upsertFlights?: any[]; deleteFlights?: string[] }): Promise<void> {
+  async applyBatch(changes: { newTrips?: Trip[]; upsertTrips?: Trip[]; deleteTrips?: string[]; upsertFlights?: any[]; deleteFlights?: string[] }, options: { skipGeocoding?: boolean } = {}): Promise<void> {
     const newTrips = await Promise.all((changes.newTrips || []).map(t => this.prepareNewTrip(t)));
-    const updatedTrips = await Promise.all((changes.upsertTrips || []).map(t => this.processGeocoding(t)));
+    // `skipGeocoding`: the caller changed text only and the stored coordinates must stay as they are.
+    const updatedTrips = options.skipGeocoding ? (changes.upsertTrips || []) : await Promise.all((changes.upsertTrips || []).map(t => this.processGeocoding(t)));
     const payload = {
       upsertTrips: [...updatedTrips.map(t => this.rebaseVersion('trips', t)), ...newTrips],
       deleteTrips: changes.deleteTrips || [],
@@ -1589,6 +1590,18 @@ class DataService {
   /** One atlas merge step, atomic on the server: write `upserts`, then remove `deleteIds`. Never more than 500 records. */
   async mergeVisited(upserts: any[], deleteIds: string[]): Promise<void> {
     await this.fetch('/visited/merge', { method: 'POST', body: JSON.stringify({ upserts, deleteIds }) });
+  }
+  /** Records of the independent `flights` collection (flights and road trips that belong to no trip), as stored. */
+  async getIndependentTransports(): Promise<any[]> { return this.fetch<any[]>('/flights'); }
+  /**
+   * One step of an Atlas rename: trips and independent transports in one transaction (no geocoding, coordinates stay),
+   * then the stored cities. Trips and transports go first, so a failure in the second part never leaves a name half-written.
+   */
+  async applyNameStep(step: { trips: Trip[]; flights: any[]; visitedUpserts: any[]; visitedDeletes: string[] }): Promise<void> {
+    if (step.trips.length > 0 || step.flights.length > 0) {
+      await this.applyBatch({ upsertTrips: step.trips, upsertFlights: step.flights }, { skipGeocoding: true });
+    }
+    if (step.visitedUpserts.length > 0 || step.visitedDeletes.length > 0) await this.mergeVisited(step.visitedUpserts, step.visitedDeletes);
   }
   private quietDepth = 0;
   /**
