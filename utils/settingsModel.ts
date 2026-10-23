@@ -2,11 +2,11 @@ import type { WorkspaceSettings } from '../types';
 
 /** Which API keys the workspace has, and where each comes from. Pure helpers for the Settings page. */
 
-export type KeyField = 'googleGeminiApiKey' | 'aviationStackApiKey' | 'aeroDataBoxApiKey' | 'openAipApiKey' | 'brandfetchApiKey' | 'cartoApiKey';
+export type KeyField = 'aviationStackApiKey' | 'aeroDataBoxApiKey' | 'openAipApiKey' | 'brandfetchApiKey';
 
-/** Paid keys are held by the server and only ever come back as a mask; Brandfetch and CARTO ids are public and readable. */
-export const SERVER_HELD_KEYS = ['googleGeminiApiKey', 'aviationStackApiKey', 'aeroDataBoxApiKey', 'openAipApiKey'] as const;
-export const ALL_KEY_FIELDS: KeyField[] = [...SERVER_HELD_KEYS, 'brandfetchApiKey', 'cartoApiKey'];
+/** Paid keys are held by the server and only ever come back as a mask; the Brandfetch id is public and readable. */
+export const SERVER_HELD_KEYS = ['aviationStackApiKey', 'aeroDataBoxApiKey', 'openAipApiKey'] as const;
+export const ALL_KEY_FIELDS: KeyField[] = [...SERVER_HELD_KEYS, 'brandfetchApiKey'];
 
 export type KeySource = 'workspace' | 'env' | 'none';
 

@@ -324,8 +324,6 @@ export interface WorkspaceSettings {
     aeroDataBoxEndpoint?: 'rapidapi' | 'direct';
     openAipApiKey?: string;
     brandfetchApiKey?: string;
-    googleGeminiApiKey?: string; // AI Key
-    cartoApiKey?: string; // CARTO Maps Key
     masterPackingList?: PackingItem[]; // Global packing list template
     carriers?: Carrier[]; // Manageable custom carriers list
     defaultTravelClass?: 'Economy' | 'Premium Economy' | 'Business' | 'First';
@@ -334,9 +332,9 @@ export interface WorkspaceSettings {
     defaultBasemapLight?: 'liberty' | 'bright' | 'positron' | 'satellite' | 'snow' | 'vibrant' | 'ocean';
     defaultBasemapDark?: 'citylights' | 'ocean' | 'satellite' | 'onyx';
     allowSelfRegistration?: boolean; // Public "Sign Up" after the first admin exists (default true)
-    configuredKeys?: Partial<Record<'googleGeminiApiKey' | 'aviationStackApiKey' | 'aeroDataBoxApiKey' | 'openAipApiKey', boolean>>; // Read-only, from the server
+    configuredKeys?: Partial<Record<'aviationStackApiKey' | 'aeroDataBoxApiKey' | 'openAipApiKey', boolean>>; // Read-only, from the server
     /** Read-only, from the server: where each key comes from (saved in the workspace, or the host's environment). */
-    keySources?: Partial<Record<'googleGeminiApiKey' | 'aviationStackApiKey' | 'aeroDataBoxApiKey' | 'openAipApiKey', 'workspace' | 'env' | 'none'>>;
+    keySources?: Partial<Record<'aviationStackApiKey' | 'aeroDataBoxApiKey' | 'openAipApiKey', 'workspace' | 'env' | 'none'>>;
 }
 
 export type CountryResidenceStatus = 'lived_past' | 'lived_current' | 'visited' | 'layover' | 'wishlist';

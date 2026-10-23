@@ -6,13 +6,6 @@
 const TIMEOUT_MS = 6000;
 
 const SERVICES = {
-  gemini: {
-    name: 'Google Gemini',
-    request: (key) => ({
-      url: 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1',
-      headers: { 'x-goog-api-key': key },
-    }),
-  },
   aviationstack: {
     name: 'AviationStack',
     request: (key) => {

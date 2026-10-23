@@ -13,6 +13,7 @@ import { ChoroplethChart, ChoroplethFeature, ChoroplethPoints, ChoroplethRoutes,
 import type { FeatureCollection, Geometry } from 'geojson';
 import { featureCode, loadWorld } from '../atlas/AtlasMap';
 import { buildMapModel } from '../map/mapModel';
+import { fitView, nearLand, pinsOf } from '../../../utils/mapPoints';
 import { normalizeCountryCode } from '../../../services/countryRegistry';
 import { mapLink } from '../../../utils/mapLinks';
 import { FlagArt, FlagBadge } from '../atlas/AtlasParts';
@@ -567,34 +568,6 @@ const ROUTE_STROKE: Record<string, string> = {
     sea: 'rgb(var(--rp-sea))',
 };
 
-const rad = (d: number) => (d * Math.PI) / 180;
-const mercY = (latDeg: number) => Math.log(Math.tan(Math.PI / 4 + rad(Math.max(-84, Math.min(84, latDeg))) / 2));
-
-/**
- * The Mercator view that fits every point (route ends and the arcs between them, trips, visited
- * countries) in a box of the given size, centred, never zoomed past about 40° across and never
- * panned past the edge of the world, so the land always fills the box.
- */
-const fitView = (points: [number, number][], w: number, h: number) => {
-    const pts = points.length ? points : [[-150, -50], [170, 75]] as [number, number][];
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    pts.forEach(([lng, lat]) => {
-        const x = rad(lng), y = mercY(lat);
-        minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y);
-    });
-    const pad = 0.2;
-    const spanX = Math.max(maxX - minX, rad(40)) * (1 + pad * 2);
-    const spanY = Math.max(maxY - minY, mercY(25) - mercY(-25)) * (1 + pad * 2);
-    const kMin = Math.max(w / (2 * Math.PI), h / (mercY(84) - mercY(-60)));
-    const k = Math.max(kMin, Math.min(w / spanX, h / spanY));
-    let tx = w / 2 - k * ((minX + maxX) / 2);
-    let ty = h / 2 + k * ((minY + maxY) / 2);
-    // Keep the box inside the world (longitudes ±180°, latitudes 84°N to 60°S).
-    tx = Math.min(k * Math.PI, Math.max(w - k * Math.PI, tx));
-    ty = Math.min(k * mercY(84), Math.max(h + k * mercY(-60), ty));
-    return { scale: k, translate: [tx, ty] as [number, number] };
-};
-
 /**
  * A simplified world: countries you have been to scratched in green, every route as a thin arc (flights
  * rust, rail green, road ink, sea dashed), a pin for each trip. The view fits all of them whatever the
@@ -623,9 +596,11 @@ export const MapWidget: React.FC<{ data: DashboardData }> = ({ data }) => {
         id: r.id, from: r.from, to: r.to, stroke: ROUTE_STROKE[r.mode] ?? ROUTE_STROKE.flight,
         dashed: r.mode === 'sea', opacity: r.status === 'past' ? 0.85 : 0.55, path: traced.has(r.id) ? simplifyPath(traced.get(r.id)!, 0.03) : undefined,
     })), [model.routes, traced]);
-    const pins = useMemo(() => data.trips
-        .filter(t => t.status !== 'Cancelled' && !t.hideInPlanner && t.coordinates?.lat != null && t.coordinates?.lng != null)
-        .map(t => ({ id: t.id, lng: t.coordinates!.lng, lat: t.coordinates!.lat, label: t.name })), [data.trips]);
+    // A pin is a real place on land: a trip's own stops that fit its legs (not a geocoder's lone guess), none in the ocean.
+    const pins = useMemo(() => {
+        const all = pinsOf(data.trips);
+        return world ? all.filter(p => nearLand(world.features as any, [p.lng, p.lat])) : [];
+    }, [data.trips, world]);
 
     const view = useMemo(() => {
         const pts: [number, number][] = [];

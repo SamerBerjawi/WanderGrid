@@ -398,17 +398,6 @@ export default defineConfig(({ mode }) => {
                 },
               },
               {
-                urlPattern: /^https:\/\/[a-d]\.basemaps\.cartocdn\.com\//,
-                handler: 'NetworkFirst',
-                options: {
-                  cacheName: 'carto-basemap-tiles-v3',
-                  expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 30 },
-                  cacheableResponse: {
-                    statuses: [200],
-                  },
-                },
-              },
-              {
                 urlPattern: /^https:\/\/.*\.tile\.openstreetmap\.org\//,
                 handler: 'CacheFirst',
                 options: {
@@ -489,7 +478,7 @@ export default defineConfig(({ mode }) => {
           },
         }),
       ],
-      // No API keys are inlined into the bundle (SEC-010): GEMINI_API_KEY is read by the server only.
+      // No API keys are inlined into the bundle (SEC-010): keys are read by the server only.
       resolve: {
         alias: {
           '@': path.resolve('.'),

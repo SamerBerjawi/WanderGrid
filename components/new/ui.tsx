@@ -333,20 +333,30 @@ export const RpLogo: React.FC<{
     iconClassName?: string;
     size?: 'sm' | 'md';
     className?: string;
-}> = ({ name, brandfetchApiKey, carriers, src: saved, fallback: Fallback, iconClassName, size = 'md', className }) => {
+}> = ({ name, brandfetchApiKey, carriers, src: saved, fallback, iconClassName, size, className }) => {
     const sources = React.useMemo(
         () => [...(saved ? [saved] : []), ...carrierLogoSources(name, brandfetchApiKey, carriers)],
         [saved, name, brandfetchApiKey, carriers]
     );
+    return <LogoChip sources={sources} alt={name ? `${name} logo` : ''} fallback={fallback} iconClassName={iconClassName} size={size} className={className} />;
+};
+
+/** The white chip behind a logo: tries each source in turn, then shows the icon. */
+export const LogoChip: React.FC<{ sources: string[]; alt: string; fallback: Icon; iconClassName?: string; size?: 'sm' | 'md'; className?: string }> = ({ sources, alt, fallback: Fallback, iconClassName, size = 'md', className }) => {
     const [attempt, setAttempt] = useState(0);
     useEffect(() => setAttempt(0), [sources]);
     const src = sources[attempt];
+    const px = size === 'sm' ? 28 : 36;
     return (
         <span className={cn('flex shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-white', size === 'sm' ? 'size-7' : 'size-9', className)}>
             {src ? (
                 <img
                     src={src}
-                    alt={name ? `${name} logo` : ''}
+                    alt={alt}
+                    width={px}
+                    height={px}
+                    loading="lazy"
+                    decoding="async"
                     className="h-full w-full object-contain"
                     referrerPolicy="no-referrer"
                     onError={() => setAttempt(a => a + 1)}

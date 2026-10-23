@@ -8,9 +8,10 @@ import { formatDate } from '../../../utils/formatters';
 import { formatProperLocationName } from '../../../services/geocoding';
 import { WeatherChip } from '../WeatherChip';
 import { Airplane, AirplaneLanding, ArrowRight, Boat, Car, CheckCircle, ClockCounterClockwise, Heart, House, type Icon, Path, Ticket, Train, XCircle } from '../../ui/hugeicons';
-import { RpChip, RpLogo, RpSection, RpSheet } from '../ui';
+import { RpChip, RpSection, RpSheet } from '../ui';
 import { cn } from '../../../utils/cn';
 import type { LegMode, LegStatus, MapModel, MapPlace, MapRoute } from './mapModel';
+import { RpCarrierLogo } from '../CarrierLogos';
 
 export type MapSelection =
     | { kind: 'route'; route: MapRoute }
@@ -134,7 +135,7 @@ export const MapDetailSheet: React.FC<MapDetailSheetProps> = ({
                             <div className="flex flex-wrap gap-2 py-2">
                                 {operators.map(o => (
                                     <span key={o} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-surface py-1 pr-4 pl-1 text-sm text-rp-ink">
-                                        <RpLogo name={o} brandfetchApiKey={brandfetchApiKey} carriers={carriers} fallback={Icon} size="sm" className="rounded-full" />
+                                        <RpCarrierLogo provider={o} brandfetchApiKey={brandfetchApiKey} carriers={carriers} fallback={Icon} size="sm" className="rounded-full" />
                                         {o}
                                     </span>
                                 ))}
@@ -151,7 +152,7 @@ export const MapDetailSheet: React.FC<MapDetailSheetProps> = ({
                                         className="flex min-h-14 w-full items-center gap-3 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-rp-muted"
                                     >
                                         <span className="relative">
-                                            <RpLogo name={l.provider} brandfetchApiKey={brandfetchApiKey} carriers={carriers} fallback={Icon} />
+                                            <RpCarrierLogo provider={l.provider} identifier={l.identifier} brandfetchApiKey={brandfetchApiKey} carriers={carriers} fallback={Icon} />
                                             <span className={cn('absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-rp-inset', STATUS_DOT[l.status])} aria-label={STATUS_LABEL[l.status]} />
                                         </span>
                                         <span className="min-w-0 flex-1">
