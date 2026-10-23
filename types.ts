@@ -126,6 +126,8 @@ export interface Transport {
   
   // Helper for flight tracking
   providerCode?: string; // IATA code for airline (e.g. AA)
+  /** New pages: set when the leg was filled in from a live-data lookup (AeroDataBox), so its row shows the antenna. */
+  liveDataSource?: 'aerodatabox';
 
   // AirTrail Explicit Fields
   departureTerminal?: string;
