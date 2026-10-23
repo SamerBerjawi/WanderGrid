@@ -22,6 +22,7 @@ import { LegForm } from './LegForm';
 import { LoggedFlights } from './LoggedFlights';
 import { calculateDistance } from '../../../services/geocoding';
 import { cn } from '../../../utils/cn';
+import { RpCarrierLogo } from '../CarrierLogos';
 
 /**
  * Sheets of the New Trips page: a three-step New trip flow (Trip basics, Transport, Stays); an edit
@@ -374,7 +375,7 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
                                 <ItemRow
                                     key={t.id || i}
                                     active={editing === i}
-                                    logo={<RpLogo name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={tm.icon} iconClassName={tm.text} />}
+                                    logo={<RpCarrierLogo provider={t.provider} identifier={t.identifier} src={t.logoUrl} fallback={tm.icon} iconClassName={tm.text} />}
                                     title={`${t.origin} → ${t.destination}`}
                                     meta={[t.provider, t.departureDate ? formatDate(t.departureDate, 'short') : '', t.cost != null ? formatCurrency(t.cost) : ''].filter(Boolean).join(' · ') || tm.label}
                                     onEdit={() => edit(i)}

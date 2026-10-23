@@ -3,9 +3,9 @@ import type { Transport } from '../../../types';
 import type { TripDraft } from '../../../hooks/useTripsData';
 import { dataService } from '../../../services/mockDb';
 import { Airplane, ArrowRight, Plus } from '../../ui/hugeicons';
-import { RpLogo } from '../ui';
 import { formatDate } from '../../../utils/formatters';
 import { placeCode } from '../../../utils/journeysModel';
+import { RpCarrierLogo } from '../CarrierLogos';
 
 /**
  * While a trip is made or edited: the flights already in the Flights log (not on any trip) that fall on
@@ -64,7 +64,7 @@ export const LoggedFlights: React.FC<{
                 {shown.map(f => (
                     <li key={f.id} className="flex min-h-14 items-center justify-between gap-3 border-t border-rp-green/20 py-1.5 first:border-t-0">
                         <span className="flex min-w-0 items-center gap-3">
-                            <RpLogo name={f.provider} src={f.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={Airplane} iconClassName="text-rp-rust" size="sm" />
+                            <RpCarrierLogo provider={f.provider} identifier={f.identifier} src={f.logoUrl} fallback={Airplane} iconClassName="text-rp-rust" size="sm" />
                             <span className="flex min-w-0 flex-col">
                                 <span className="rp-tabular flex items-center gap-1.5 text-sm font-semibold text-rp-ink">{placeCode(f.origin)} <ArrowRight size={12} className="text-rp-rust" aria-hidden /> {placeCode(f.destination)}</span>
                                 <span className="rp-tabular truncate text-xs text-rp-muted">{formatDate(f.departureDate, 'short')}{f.identifier ? ` · ${f.identifier}` : ''}</span>
