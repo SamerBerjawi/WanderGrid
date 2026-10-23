@@ -14,16 +14,16 @@ const MODE_WORD: Record<LegMode, [string, string]> = {
 const toChartNode = (n: FlowNode): SankeyFlowNode => {
     const [one, many] = MODE_WORD[n.mode];
     const word = n.others ? 'trips' : n.count === 1 ? one : many;
-    const dir = n.side === 'in' ? 'arrived from' : 'departed to';
+    const dir = n.side === 'in' ? 'From' : 'To';
     const extra = n.roundTrip ? ' · also the other way' : '';
     return {
         key: n.key,
-        label: n.others ? n.label : n.label,
+        label: n.label,
         title: n.name,
         detail: `${n.count} ${word}${extra}`,
         ariaLabel: n.others
-            ? `${n.name}: ${n.count} ${word} ${n.side === 'in' ? 'arrived' : 'departed'}. Show all routes`
-            : `${n.name}: ${n.count} ${word} ${dir} here${extra}. Open route`,
+            ? `${n.side === 'in' ? 'Arrivals' : 'Departures'}, ${n.name}: ${n.count} ${word}. Show all routes`
+            : `${dir} ${n.name}: ${n.count} ${word}${extra}. Open route`,
         value: n.count,
         accent: n.others ? 'muted' : MODE_ACCENT[n.mode],
     };

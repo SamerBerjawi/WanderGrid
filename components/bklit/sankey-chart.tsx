@@ -49,7 +49,9 @@ const BAND_H = 30;
 const LINK_H = 78;
 const LABEL_H = 32;
 const PAD_X = 4;
-const HEIGHT = LABEL_H + NODE_H + LINK_H + BAND_H + LINK_H + NODE_H + LABEL_H;
+/** A side with no nodes gives up its rows, so a place with only arrivals or only departures is not half empty. */
+const SIDE_H = LABEL_H + NODE_H + LINK_H;
+const heightFor = (hasTop: boolean, hasBottom: boolean) => (hasTop ? SIDE_H : 0) + BAND_H + (hasBottom ? SIDE_H : 0);
 const colour = (a: SankeyAccent, alpha?: number) =>
   alpha == null ? `rgb(var(--rp-${a}))` : `rgb(var(--rp-${a}) / ${alpha})`;
 
@@ -61,19 +63,22 @@ function Chart({ top, bottom, centerLabel, label, onSelect, width }: SankeyChart
   const [active, setActive] = useState<string | null>(null);
   const inner = Math.max(0, width - PAD_X * 2);
   const progress = useMountProgress(reduce ? { duration: 0 } : DEFAULT_CHART_ENTER_TRANSITION, 0.05, label);
-  const reveal = useTransform(progress, v => v * (LINK_H * 2 + BAND_H + 2));
+  const hasTop = top.length > 0;
+  const hasBottom = bottom.length > 0;
+  const HEIGHT = heightFor(hasTop, hasBottom);
+  const reveal = useTransform(progress, v => v * (HEIGHT + 2));
 
   const placed = useMemo<Placed[]>(() => {
     const lay = layoutFlow(top.map(n => n.value), bottom.map(n => n.value), inner);
     const yTopNode = LABEL_H;
-    const yTopBand = LABEL_H + NODE_H + LINK_H;
+    const yTopBand = hasTop ? SIDE_H : 0;
     const yBotBand = yTopBand + BAND_H;
     const yBotNode = yBotBand + LINK_H;
     return [
       ...top.map((n, i) => ({ ...n, side: "top" as const, x: lay.top[i].node.x, w: lay.top[i].node.w, bx: lay.top[i].band.x, path: ribbonPath(lay.top[i].node, lay.top[i].band, yTopNode + NODE_H, yTopBand) })),
       ...bottom.map((n, i) => ({ ...n, side: "bottom" as const, x: lay.bottom[i].node.x, w: lay.bottom[i].node.w, bx: lay.bottom[i].band.x, path: ribbonPath(lay.bottom[i].band, lay.bottom[i].node, yBotBand, yBotNode) })),
     ];
-  }, [top, bottom, inner]);
+  }, [top, bottom, inner, hasTop]);
 
   const labelSpots = useMemo(() => {
     const spots = new Map<string, { x: number; row: number }>();
@@ -87,9 +92,10 @@ function Chart({ top, bottom, centerLabel, label, onSelect, width }: SankeyChart
 
   if (width < 40) return null;
   const hot = placed.find(p => p.key === active);
-  const bandY = LABEL_H + NODE_H + LINK_H;
-  const linkTop = LABEL_H + NODE_H;
+  const bandY = hasTop ? SIDE_H : 0;
+  const linkTop = hasTop ? LABEL_H + NODE_H : 0;
   const linkBottom = bandY + BAND_H + LINK_H;
+  const botNodeY = bandY + BAND_H + LINK_H;
   const usedL = Math.min(...placed.map(p => p.bx), inner);
   const usedR = Math.max(...placed.map(p => p.bx + p.w), 0);
   const fade = (key: string) => (active == null ? 1 : active === key ? 1 : 0.22);
@@ -110,7 +116,7 @@ function Chart({ top, bottom, centerLabel, label, onSelect, width }: SankeyChart
                 d={p.path}
                 fill={colour(p.accent)}
                 initial={false}
-                animate={{ opacity: fade(p.key) * (active === p.key ? 0.6 : 0.34) }}
+                animate={{ opacity: fade(p.key) * (active === p.key ? 0.8 : 0.5) }}
                 transition={{ duration: reduce ? 0 : 0.18, ease: "easeOut" }}
                 style={{ pointerEvents: "none" }}
               />
@@ -122,7 +128,7 @@ function Chart({ top, bottom, centerLabel, label, onSelect, width }: SankeyChart
             {centerLabel}
           </text>
           {placed.map(p => {
-            const y = p.side === "top" ? LABEL_H : LABEL_H + NODE_H + LINK_H * 2 + BAND_H;
+            const y = p.side === "top" ? LABEL_H : botNodeY;
             const spot = labelSpots.get(p.key);
             const ly = p.side === "top" ? LABEL_H - 6 - (spot?.row ?? 0) * 13 : y + NODE_H + 13 + (spot?.row ?? 0) * 13;
             return (
@@ -171,7 +177,7 @@ function Chart({ top, bottom, centerLabel, label, onSelect, width }: SankeyChart
 
 export function SankeyChart(props: SankeyChartProps) {
   return (
-    <div className={cn("w-full", props.className)} style={{ height: HEIGHT }}>
+    <div className={cn("w-full", props.className)} style={{ height: heightFor(props.top.length > 0, props.bottom.length > 0) }}>
       <ParentSize>{({ width }) => <Chart {...props} width={width} />}</ParentSize>
     </div>
   );
