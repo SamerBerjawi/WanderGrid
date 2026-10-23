@@ -125,29 +125,8 @@ export const JourneyHero: React.FC<{ items: JourneyRecord[]; kind?: 'flight' | '
     const change = (m: Metric) => { setMetric(m); try { localStorage.setItem(keyFor(land), m); } catch { /* storage unavailable */ } };
     const years = useMemo(() => totalsByYear(items), [items]);
     const flat = useMemo(() => routeLines(items), [items]);
-    // Ferries and cruises follow their shipping lane (searoute) once it is found; until then, and for everything else, the arc.
-    const [lanes, setLanes] = useState<Map<string, [number, number][]>>(new Map());
-    useEffect(() => {
-        let live = true;
-        const laneKey = (r: { from: unknown; to: unknown; via?: unknown }) => `${r.from}|${r.to}|${r.via ?? ''}`;
-        const todo = flat.filter(r => r.sea && !lanes.has(laneKey(r)));
-        if (todo.length === 0) return;
-        void import('../../../services/maritimeRouting').then(async ({ fetchSeaRoute }) => {
-            // A few at a time, each shown as soon as it is found: a ferry line the server has not looked up yet can take a while.
-            const queue = todo.slice(0, 30);
-            const worker = async () => {
-                for (let r = queue.shift(); r; r = queue.shift()) {
-                    const g = await fetchSeaRoute(r.from[1], r.from[0], r.to[1], r.to[0], (r.via || []).map(([lng, lat]) => ({ lat, lng })), true).catch(() => null);
-                    const path = g && g.length > 2 ? g.map(([x, y]) => [x, y] as [number, number]) : [];
-                    if (live) setLanes(prev => new Map(prev).set(laneKey(r), path));
-                }
-            };
-            await Promise.all([worker(), worker(), worker()]);
-        });
-        return () => { live = false; };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [flat]);
-    const routes = useMemo(() => flat.map(r => { const p = r.sea ? lanes.get(`${r.from}|${r.to}|${r.via ?? ''}`) : undefined; return p && p.length > 2 ? { ...r, path: p } : r; }), [flat, lanes]);
+    // RoutesMap follows the traced road, rail or shipping lane of each land and sea route once it is found.
+    const routes = flat;
     const totals = useMemo(() => journeyTotals(items), [items]);
     const best = years.reduce((a, b) => (b[metric] > a[metric] ? b : a), years[0]);
     const earth = aroundTheWorld(totals.km);
