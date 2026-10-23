@@ -76,6 +76,7 @@ const ymd = (local: string | null) => (local ? local.slice(0, 10) : '');
 /** The leg's form fields from a candidate: airports, times, airline, gates, aircraft and length. */
 export const candidateToLeg = (c: FlightCandidate): Partial<Transport> => ({
     mode: 'Flight',
+    liveDataSource: c.source === 'aerodatabox' ? 'aerodatabox' : undefined,
     origin: c.departure.iata,
     destination: c.arrival.iata,
     ...(c.airline.name ? { provider: c.airline.name } : {}),
