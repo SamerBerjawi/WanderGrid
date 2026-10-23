@@ -11,6 +11,7 @@ import MomentumRail, { type RailItem } from '../../components/kokonutui/momentum
 import type { DockTool } from '../../components/kokonutui/tool-dock';
 import { RpPageToolbar } from '../../components/new/PageToolbar';
 import { CityQuickAddSheet } from '../../components/new/atlas/AtlasSheets';
+import { FindNamesSheet } from '../../components/new/atlas/NamePlaceSheets';
 import { RpEmpty } from '../../components/new/ui';
 import { AtlasMap } from '../../components/new/atlas/AtlasMap';
 import { CityTile, CountryTile, FlagArt, RegionHeading, RpChipLabel, RpKpi } from '../../components/new/atlas/AtlasParts';
@@ -95,6 +96,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = ({ onTripClick }) => {
     const [mergeOpen, setMergeOpen] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
     const [addingCity, setAddingCity] = useState(false);
+    const [findingNames, setFindingNames] = useState(false);
 
     const changeTab = (next: Tab) => {
         setTab(next);
@@ -237,7 +239,9 @@ export const AtlasNew: React.FC<AtlasNewProps> = ({ onTripClick }) => {
                             <div className="flex items-center gap-3">
                                 <Stack size={18} className="shrink-0 text-rp-ink" aria-hidden />
                                 <p className="text-sm text-rp-ink">
-                                    {data.cleanup.count} duplicate {data.cleanup.count === 1 ? 'record' : 'records'} found. Merge them so every page shows each place once.
+                                    {data.cleanup.duplicates > 0
+                                        ? <>{data.cleanup.duplicates} duplicate {data.cleanup.duplicates === 1 ? 'record' : 'records'} found. Merge them so every page shows each place once.</>
+                                        : <>{data.cleanup.count} {data.cleanup.count === 1 ? 'record' : 'records'} to tidy up.</>}
                                 </p>
                             </div>
                             <button type="button" onClick={() => setMergeOpen(true)} className={cn(PILL, 'self-start bg-rp-ink text-rp-on-ink hover:bg-rp-ink/90 sm:self-auto')}>
@@ -275,7 +279,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = ({ onTripClick }) => {
                                 counts={toneCounts}
                                 onCountryClick={(code, name) => openCountry(code, name)}
                                 cities={showCities ? mapCities : undefined}
-                                onCityClick={id => { const c = data.cities.find(x => x.id === id); if (c && data.storedIds.has(id)) setCity(c); }}
+                                onCityClick={id => { const c = data.cities.find(x => x.id === id); if (c) setCity(c); }}
                             />
                         </section>
                         <div className="order-first grid grid-cols-2 gap-3 md:grid-cols-4 lg:order-none lg:grid-cols-2 lg:gap-6">
@@ -370,6 +374,17 @@ export const AtlasNew: React.FC<AtlasNewProps> = ({ onTripClick }) => {
                                 </EmptyCard>
                             )
                         ) : (
+                            <>
+                            {data.unknownCities.length > 0 ? (
+                                <div className="flex flex-col gap-3 rounded-rp-tile bg-rp-mustard/25 p-4 sm:flex-row sm:items-center sm:justify-between">
+                                    <p className="text-sm text-rp-ink">
+                                        {data.unknownCities.length} {data.unknownCities.length === 1 ? 'place has' : 'places have'} no name. Open one to name it, or look up all the names at once.
+                                    </p>
+                                    <button type="button" onClick={() => setFindingNames(true)} className={cn(PILL, 'self-start bg-rp-ink text-rp-on-ink hover:bg-rp-ink/90 sm:self-auto')}>
+                                        <MagnifyingGlass size={16} aria-hidden /> Find names
+                                    </button>
+                                </div>
+                            ) : null}
                             <CityGroups
                                 view={view}
                                 items={visibleCities}
@@ -377,6 +392,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = ({ onTripClick }) => {
                                 onOpen={setCity}
                                 empty={<RpEmpty title={query ? 'No cities match' : 'No cities yet'}>{query ? 'Try another name.' : 'Cities from your trips and flights appear here, and you can add your own.'}</RpEmpty>}
                             />
+                            </>
                         )}
                     </section>
                 </div>
@@ -395,8 +411,9 @@ export const AtlasNew: React.FC<AtlasNewProps> = ({ onTripClick }) => {
                 }}
             />
             <CityQuickAddSheet open={addingCity} onClose={() => { setAddingCity(false); setCityError(null); }} onAdd={addCity} error={cityError} />
+            <FindNamesSheet open={findingNames} onClose={() => setFindingNames(false)} data={data} />
             <ScanSheet open={scanOpen} onClose={() => setScanOpen(false)} data={data} />
-            <MergeDrawer open={mergeOpen} onOpenChange={setMergeOpen} review={data.cleanup.review} onConfirm={() => data.mergeDuplicates()} />
+            <MergeDrawer open={mergeOpen} onOpenChange={setMergeOpen} review={data.cleanup.review} merge={data.merge} />
         </div>
     );
 };
@@ -483,7 +500,7 @@ const CityGroups: React.FC<{
                 title="Cities"
                 groups={groups}
                 // Places that come from trips can't be edited here, so only stored cities open.
-                onSelect={id => { const item = byId.get(id); if (item && storedIds.has(id)) onOpen(item); }}
+                onSelect={id => { const item = byId.get(id); if (item) onOpen(item); }}
                 toItem={(c, region) => ({
                     id: c.id,
                     title: c.name,
@@ -502,7 +519,7 @@ const CityGroups: React.FC<{
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         {group.items.map(item => {
                             const stored = storedIds.has(item.id);
-                            return <CityTile key={item.id} item={item} derived={!stored} onClick={stored ? () => onOpen(item) : undefined} />;
+                            return <CityTile key={item.id} item={item} derived={!stored} onClick={() => onOpen(item)} />;
                         })}
                     </div>
                 </section>

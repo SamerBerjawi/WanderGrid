@@ -1,4 +1,5 @@
 
+import { parseFeedOptions, type FeedOptions } from '../utils/icsContext';
 import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, WorkspaceSettings, CustomEvent as TripCustomEvent, PackingItem, Carrier, BackupSelectionOptions, RestoreOptions } from '../types';
 // Geocoding (~100 KB with its place-search tables) is only needed when trips are saved; load it on first
 // use so it isn't part of the app's startup bundle (PERF-001).
@@ -340,6 +341,22 @@ class DataService {
     return (await this.fetch<{ token: string }>('/calendar/token')).token;
   }
 
+  /** What the person chose to sync (the "What to sync" panel). On the server it is kept per person; in local mode on this device. */
+  async getCalendarFeedOptions(): Promise<FeedOptions> {
+    if (!this._useApi) {
+      try { return parseFeedOptions(JSON.parse(localStorage.getItem('wandergrid_calendar_feed') || '{}')); } catch { return parseFeedOptions({}); }
+    }
+    return parseFeedOptions((await this.fetch<{ options: Record<string, unknown> }>('/calendar/prefs')).options);
+  }
+
+  async saveCalendarFeedOptions(options: FeedOptions): Promise<void> {
+    if (!this._useApi) {
+      try { localStorage.setItem('wandergrid_calendar_feed', JSON.stringify(options)); } catch { /* storage unavailable: the choice lasts for this visit */ }
+      return;
+    }
+    await this.fetch('/calendar/prefs', { method: 'PUT', body: JSON.stringify(options) });
+  }
+
   async rotateCalendarFeedToken(): Promise<string> {
     return (await this.fetch<{ token: string }>('/calendar/token/rotate', { method: 'POST' })).token;
   }
@@ -637,7 +654,7 @@ class DataService {
 
               const result = await res.json();
               const isMutation = options?.method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method.toUpperCase());
-              if (isMutation) {
+              if (isMutation && this.quietDepth === 0) {
                   try {
                       // Tell listeners which collections changed so unrelated views don't refetch (PERF-008).
                       window.dispatchEvent(new CustomEvent('wandergrid_db_updated', { detail: { collections: collectionsForEndpoint(endpoint) } }));
@@ -755,6 +772,21 @@ class DataService {
               try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
               return { success: true, count: payload.length } as unknown as T;
           }
+      }
+
+      if (endpoint === '/visited/merge' && method === 'POST') {
+          const { upserts = [], deleteIds = [] } = (body || {}) as { upserts?: any[]; deleteIds?: string[] };
+          const list = getCachedStorage<any[]>(key('visited'), []);
+          const gone = new Set<string>(deleteIds);
+          upserts.forEach(u => gone.delete(u.id));
+          const byId = new Map(upserts.map(u => [u.id, u]));
+          const seen = new Set<string>();
+          // One pass and one storage write for the whole step, whatever its size.
+          const updated = list.filter((i: any) => !gone.has(i.id)).map((i: any) => { seen.add(i.id); return byId.get(i.id) || i; });
+          upserts.forEach(u => { if (!seen.has(u.id)) updated.push(u); });
+          setCachedStorage(key('visited'), updated);
+          if (this.quietDepth === 0) { try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated', { detail: { collections: ['visited'] } })); } catch (e) {} }
+          return { success: true, upserted: upserts.length, deleted: deleteIds.length, versions: {} } as unknown as T;
       }
 
       if (endpoint === '/visited/bulk') {
@@ -1277,9 +1309,10 @@ class DataService {
    * Apply several trip/flight changes atomically (one server transaction), e.g. bundling flights
    * into a trip. Either everything is saved or nothing is, so flights can't be lost half-way.
    */
-  async applyBatch(changes: { newTrips?: Trip[]; upsertTrips?: Trip[]; deleteTrips?: string[]; upsertFlights?: any[]; deleteFlights?: string[] }): Promise<void> {
+  async applyBatch(changes: { newTrips?: Trip[]; upsertTrips?: Trip[]; deleteTrips?: string[]; upsertFlights?: any[]; deleteFlights?: string[] }, options: { skipGeocoding?: boolean } = {}): Promise<void> {
     const newTrips = await Promise.all((changes.newTrips || []).map(t => this.prepareNewTrip(t)));
-    const updatedTrips = await Promise.all((changes.upsertTrips || []).map(t => this.processGeocoding(t)));
+    // `skipGeocoding`: the caller changed text only and the stored coordinates must stay as they are.
+    const updatedTrips = options.skipGeocoding ? (changes.upsertTrips || []) : await Promise.all((changes.upsertTrips || []).map(t => this.processGeocoding(t)));
     const payload = {
       upsertTrips: [...updatedTrips.map(t => this.rebaseVersion('trips', t)), ...newTrips],
       deleteTrips: changes.deleteTrips || [],
@@ -1571,6 +1604,31 @@ class DataService {
   async addVisited(item: any): Promise<void> { await this.fetch('/visited', { method: 'POST', body: JSON.stringify(item) }); }
   async addVisitedBulk(items: any[]): Promise<void> { await this.fetch('/visited/bulk', { method: 'POST', body: JSON.stringify(items) }); }
   async updateVisited(item: any): Promise<void> { await this.versionedPut('visited', item); }
+  /** One atlas merge step, atomic on the server: write `upserts`, then remove `deleteIds`. Never more than 500 records. */
+  async mergeVisited(upserts: any[], deleteIds: string[]): Promise<void> {
+    await this.fetch('/visited/merge', { method: 'POST', body: JSON.stringify({ upserts, deleteIds }) });
+  }
+  /** Records of the independent `flights` collection (flights and road trips that belong to no trip), as stored. */
+  async getIndependentTransports(): Promise<any[]> { return this.fetch<any[]>('/flights'); }
+  /**
+   * One step of an Atlas rename: trips and independent transports in one transaction (no geocoding, coordinates stay),
+   * then the stored cities. Trips and transports go first, so a failure in the second part never leaves a name half-written.
+   */
+  async applyNameStep(step: { trips: Trip[]; flights: any[]; visitedUpserts: any[]; visitedDeletes: string[] }): Promise<void> {
+    if (step.trips.length > 0 || step.flights.length > 0) {
+      await this.applyBatch({ upsertTrips: step.trips, upsertFlights: step.flights }, { skipGeocoding: true });
+    }
+    if (step.visitedUpserts.length > 0 || step.visitedDeletes.length > 0) await this.mergeVisited(step.visitedUpserts, step.visitedDeletes);
+  }
+  private quietDepth = 0;
+  /**
+   * Runs `fn` without the per-write `wandergrid_db_updated` events, so a batch of writes does not make every
+   * mounted view refetch after each one. The caller reloads once when the batch is done.
+   */
+  async runQuiet<T>(fn: () => Promise<T>): Promise<T> {
+    this.quietDepth++;
+    try { return await fn(); } finally { this.quietDepth--; }
+  }
   async deleteVisited(id: string): Promise<void> { await this.fetch(`/visited/${id}`, { method: 'DELETE' }); }
   async getWorkspaceSettings(): Promise<WorkspaceSettings> {
     const settings = await this.fetch<WorkspaceSettings>('/settings');

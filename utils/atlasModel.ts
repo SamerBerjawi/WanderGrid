@@ -1,7 +1,7 @@
 import { CountryResidenceStatus, Trip, VisitedItem, getResidenceStatuses } from '../types';
 import { getRegion } from '../services/geoData';
 import { cleanCityName, formatPlaceName, resolvePlaceName, getCoordinates, STATIC_GEO_DATA } from '../services/geocoding';
-import { mergeCityRecords, splitCombinedPlaces, type AirportInfo } from '../services/cityRegistry';
+import { isUnknownPlaceName, mergeCityRecords, splitCombinedPlaces, type AirportInfo } from '../services/cityRegistry';
 import {
     canonicalCountryName, countryId, excludedCountryCodes, findCountryRecord, normalizeCountryCode, type MergedCountry,
 } from '../services/countryRegistry';
@@ -57,12 +57,16 @@ export const groupByRegion = <T extends { name: string }>(items: T[], codeOf: (i
  */
 export const buildTrackedCities = (visited: VisitedItem[], trips: Trip[], flights: any[], roadTrips: any[]) => {
     const cityMap = new Map<string, VisitedItem>();
-    const keyOf = (name: string, code?: string) => `${name.toLowerCase()}_${(code || 'XX').toLowerCase()}`;
+    // A place with no usable name is told apart by where it is, not by its name, so two "Unknown" stops stay two places.
+    const keyOf = (name: string, code?: string, at?: { lat?: number; lng?: number }) => {
+        const where = isUnknownPlaceName(name) && Number.isFinite(at?.lat) && Number.isFinite(at?.lng) ? `@${at!.lat!.toFixed(2)},${at!.lng!.toFixed(2)}` : '';
+        return `${name.toLowerCase()}${where}_${(code || 'XX').toLowerCase()}`;
+    };
     const add = (key: string, item: VisitedItem) => { if (!cityMap.has(key)) cityMap.set(key, item); };
 
     visited.filter(item => item.type === 'city').forEach(item => {
         const city = cleanCityName(item.name, item.countryCode);
-        cityMap.set(keyOf(city, item.countryCode), {
+        cityMap.set(keyOf(city, item.countryCode, item), {
             ...item,
             name: formatPlaceName(city),
             countryName: item.countryName ? formatPlaceName(item.countryName) : item.countryName,
@@ -75,8 +79,8 @@ export const buildTrackedCities = (visited: VisitedItem[], trips: Trip[], flight
             const code = (t.coordinates?.countryCode || 'XX').toUpperCase();
             const city = cleanCityName(place, t.coordinates?.countryCode);
             const single = places.length === 1;
-            add(keyOf(city, code), {
-                id: `trip_city_${keyOf(city, code)}`, type: 'city', code, name: formatPlaceName(city), countryCode: code,
+            add(keyOf(city, code, single ? t.coordinates : undefined), {
+                id: `trip_city_${keyOf(city, code, single ? t.coordinates : undefined)}`, type: 'city', code, name: formatPlaceName(city), countryCode: code,
                 countryName: t.coordinates?.country ? formatPlaceName(t.coordinates.country) : undefined,
                 visitDate: t.endDate || t.startDate, lat: single ? t.coordinates?.lat : undefined, lng: single ? t.coordinates?.lng : undefined,
                 notes: `Trip: ${t.name || t.location}`, isManual: false,
@@ -85,7 +89,7 @@ export const buildTrackedCities = (visited: VisitedItem[], trips: Trip[], flight
         t.locations?.forEach(l => {
             if (!l.name) return;
             const city = cleanCityName(l.name);
-            add(keyOf(city), {
+            add(keyOf(city, undefined, l.coordinates), {
                 id: `trip_loc_${l.id || keyOf(city)}`, type: 'city', code: 'XX', name: formatPlaceName(city), countryCode: 'XX',
                 visitDate: t.endDate, lat: l.coordinates?.lat, lng: l.coordinates?.lng, notes: `Stop in ${t.name}`, isManual: false,
             });
@@ -93,7 +97,7 @@ export const buildTrackedCities = (visited: VisitedItem[], trips: Trip[], flight
         t.transports?.forEach(tr => tr.waypoints?.forEach(wp => {
             if (!wp.name) return;
             const city = cleanCityName(wp.name);
-            add(keyOf(city), {
+            add(keyOf(city, undefined, wp.coordinates), {
                 id: `transport_wp_${wp.id || keyOf(city)}`, type: 'city', code: 'XX', name: formatPlaceName(city), countryCode: 'XX',
                 visitDate: wp.visitDate || tr.departureDate || t.startDate, lat: wp.coordinates?.lat, lng: wp.coordinates?.lng,
                 notes: `Stop on ${tr.origin} → ${tr.destination}`, isManual: false,
@@ -105,8 +109,8 @@ export const buildTrackedCities = (visited: VisitedItem[], trips: Trip[], flight
         const point = (name: string | undefined, id: string, date?: string, lat?: number, lng?: number) => {
             if (!name) return;
             const city = cleanCityName(name, r.countryCode);
-            add(keyOf(city), {
-                id: `${id}_${keyOf(city)}`, type: 'city', code: 'XX', name: formatPlaceName(city), countryCode: 'XX',
+            add(keyOf(city, undefined, { lat, lng }), {
+                id: `${id}_${keyOf(city, undefined, { lat, lng })}`, type: 'city', code: 'XX', name: formatPlaceName(city), countryCode: 'XX',
                 visitDate: date, lat, lng, notes: `Road trip: ${r.name || `${r.origin} → ${r.destination}`}`, isManual: false,
             });
         };
@@ -120,8 +124,8 @@ export const buildTrackedCities = (visited: VisitedItem[], trips: Trip[], flight
         if (!name) return;
         const code = (f.destCountryCode || 'XX').toUpperCase();
         const city = cleanCityName(name, f.destCountryCode);
-        add(keyOf(city, code), {
-            id: `flight_city_${keyOf(city, code)}`, type: 'city', code, name: formatPlaceName(city), countryCode: code,
+        add(keyOf(city, code, { lat: f.destLat, lng: f.destLng }), {
+            id: `flight_city_${keyOf(city, code, { lat: f.destLat, lng: f.destLng })}`, type: 'city', code, name: formatPlaceName(city), countryCode: code,
             countryName: f.destCountry ? formatPlaceName(f.destCountry) : undefined, visitDate: f.arrivalDate || f.date,
             lat: f.destLat, lng: f.destLng, notes: `Flight to ${f.destination || city}`, isManual: false,
         });

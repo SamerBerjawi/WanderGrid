@@ -46,7 +46,8 @@ function installHooks() {
         if (request === 'express-rate-limit') {
             const real = realLoad.call(this, request, parent, isMain);
             const fn = real.rateLimit || real.default || real;
-            const wrapped = (opts = {}) => fn({ ...opts, max: 100000, limit: 100000 });
+            // TEST_REAL_RATE_LIMIT=1 keeps the production limits, to reproduce what a busy client sees (devServer.js).
+            const wrapped = (opts = {}) => (process.env.TEST_REAL_RATE_LIMIT ? fn(opts) : fn({ ...opts, max: 100000, limit: 100000 }));
             return Object.assign(wrapped, real, { rateLimit: wrapped, default: wrapped });
         }
         return realLoad.call(this, request, parent, isMain);
