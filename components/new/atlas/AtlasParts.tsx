@@ -133,7 +133,8 @@ export const CityTile: React.FC<{ item: VisitedItem; derived: boolean; onClick?:
             <span className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-sm font-medium text-rp-ink">{item.name}</span>
                 <span className="truncate text-xs text-rp-muted">
-                    {[item.countryName, item.visitDate ? formatDate(item.visitDate, 'month-year') : null].filter(Boolean).join(' · ') || 'Unknown country'}
+                    {[item.countryName, item.visitDate ? formatDate(item.visitDate, 'month-year') : null].filter(Boolean).join(' · ')
+                        || (Number.isFinite(item.lat) && Number.isFinite(item.lng) ? `${(item.lat as number).toFixed(3)}, ${(item.lng as number).toFixed(3)}` : 'Unknown country')}
                 </span>
             </span>
             {derived ? <span className="shrink-0 text-2xs font-medium text-rp-muted">From trips</span> : null}

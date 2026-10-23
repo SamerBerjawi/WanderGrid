@@ -15,7 +15,7 @@ const { fetchUpstream } = require('./upstream');
 const { resolveIcaoCallsign } = require('./carrierMapping');
 const { handleRouteProxy, handleRailRouteProxy } = require('./routeProxy');
 const { createRouteService } = require('./routeStore');
-const { searchGeocodingChain, searchOpenMeteo, searchPhoton, searchNominatim } = require('./geocodingChain');
+const { searchGeocodingChain, searchOpenMeteo, searchPhoton, searchNominatim, reverseGeocode } = require('./geocodingChain');
 const { testProvider } = require('./integrationsTester');
 const { SERVICE_KEYS, testKey } = require('./keyTester');
 const holidays = require('./holidays');
@@ -2230,6 +2230,17 @@ app.get('/api/proxy/holidays/:year/:countryCode', holidays.handleHolidays);
 app.get('/api/proxy/geocoding', handleGeocodingSearch);
 app.get('/api/geocode/search', handleGeocodingSearch);
 
+// Name of the place at a coordinate (Atlas "Find the name"). Cached upstream by coordinate; a miss is a normal answer.
+app.get('/api/proxy/reverse-geocode', async (req, res) => {
+    const lat = Number(req.query.lat);
+    const lon = Number(req.query.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+        return res.status(400).json({ ok: false, error: 'lat and lon must be coordinates' });
+    }
+    const result = await reverseGeocode(lat, lon);
+    res.json({ ok: true, answered: result !== null, result });
+});
+
 // --- Global Search & Lookup Endpoints (External DB / PostgreSQL) ---
 
 // Lookup single airport by IATA code
@@ -3075,6 +3086,33 @@ app.post('/api/visited/bulk', async (req, res) => {
     } catch (err) {
         if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
         sendError(res, err, 500, 'Failed to perform bulk visited upsert');
+    }
+});
+// One atlas merge step in a single transaction: write the surviving records, then remove the ones folded
+// into them. All or nothing, so a failed step leaves both the survivors and the duplicates as they were.
+const MAX_VISITED_MERGE = 500;
+app.post('/api/visited/merge', async (req, res) => {
+    const { upserts = [], deleteIds = [] } = req.body || {};
+    if (!Array.isArray(upserts) || !Array.isArray(deleteIds) || deleteIds.some(id => typeof id !== 'string')) {
+        return res.status(400).json({ error: 'upserts and deleteIds must be lists' });
+    }
+    if (upserts.length + deleteIds.length > MAX_VISITED_MERGE) {
+        return res.status(413).json({ error: `At most ${MAX_VISITED_MERGE} records per merge step` });
+    }
+    try {
+        let versions = {};
+        await withTransaction(async (client) => {
+            const saved = upserts.length > 0 ? await guardedBulkUpsert(client, 'visited', upserts, req.user) : [];
+            versions = versionMap(saved);
+            const keep = new Set(upserts.map(u => u && u.id));
+            for (const id of deleteIds) {
+                if (!keep.has(id)) await guardedDelete(client, 'visited', id, req.user);
+            }
+        });
+        res.json({ success: true, upserted: upserts.length, deleted: deleteIds.length, versions });
+    } catch (err) {
+        if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
+        sendError(res, err, 500, 'Failed to merge visited records');
     }
 });
 app.put('/api/visited/:id', updateResource('visited'));

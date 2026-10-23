@@ -25,6 +25,8 @@ import { destinationLabel, bucketOf, timingOf, tripCost } from '../../../utils/t
 import { rankOf, type LeaveTrip, type LeaveUse } from '../../../utils/dashboardModel';
 import { regionOf } from '../../../utils/atlasModel';
 import { cn } from '../../../utils/cn';
+import { simplifyPath } from '../../../utils/simplifyPath';
+import { useTracedPaths } from '../../../hooks/useTracedPaths';
 
 /**
  * The widgets of the New Dashboard (UI_UX_DESIGN_REFERENCE.md §5.2 rows 2 and 14). Each one is a body for
@@ -613,10 +615,14 @@ export const MapWidget: React.FC<{ data: DashboardData }> = ({ data }) => {
         const code = normalizeCountryCode(c.code);
         return code.startsWith('GB-') ? 'GB' : code;
     })), [data.countries]);
-    const routes = useMemo(() => buildMapModel(data.trips, { mode: 'all', groupAirports: false }).routes.map(r => ({
+    const model = useMemo(() => buildMapModel(data.trips, { mode: 'all', groupAirports: false }), [data.trips]);
+    // Land and sea routes follow their traced road, rail or lane once it is known (the same cache as the Map page).
+    const requests = useMemo(() => model.routes.map(r => ({ id: r.id, mode: r.rawMode, from: r.from, to: r.to, via: (r.waypoints || []).filter((w: any) => w?.coordinates).map((w: any) => [w.coordinates.lng, w.coordinates.lat] as [number, number]) })), [model.routes]);
+    const traced = useTracedPaths(requests);
+    const routes = useMemo(() => model.routes.map(r => ({
         id: r.id, from: r.from, to: r.to, stroke: ROUTE_STROKE[r.mode] ?? ROUTE_STROKE.flight,
-        dashed: r.mode === 'sea', opacity: r.status === 'past' ? 0.85 : 0.55,
-    })), [data.trips]);
+        dashed: r.mode === 'sea', opacity: r.status === 'past' ? 0.85 : 0.55, path: traced.has(r.id) ? simplifyPath(traced.get(r.id)!, 0.03) : undefined,
+    })), [model.routes, traced]);
     const pins = useMemo(() => data.trips
         .filter(t => t.status !== 'Cancelled' && !t.hideInPlanner && t.coordinates?.lat != null && t.coordinates?.lng != null)
         .map(t => ({ id: t.id, lng: t.coordinates!.lng, lat: t.coordinates!.lat, label: t.name })), [data.trips]);
@@ -624,6 +630,7 @@ export const MapWidget: React.FC<{ data: DashboardData }> = ({ data }) => {
     const view = useMemo(() => {
         const pts: [number, number][] = [];
         routes.forEach(r => {
+            if (r.path) { r.path.forEach(pt => pts.push(pt)); return; }
             const along = geoInterpolate(r.from, r.to);
             [0, 0.25, 0.5, 0.75, 1].forEach(t => pts.push(along(t) as [number, number]));
         });

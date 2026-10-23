@@ -107,7 +107,7 @@ export type MergedCountry = VisitedItem & {
 const STATUS_ORDER: CountryResidenceStatus[] = ['lived_current', 'lived_past', 'visited', 'layover', 'wishlist'];
 const VISIT_STATUSES: CountryResidenceStatus[] = ['visited', 'lived_past', 'lived_current'];
 
-interface MergeOptions {
+export interface MergeOptions {
   /**
    * Which UK nations a stored "Great Britain / United Kingdom" record stands for. Called only for UK parent
    * records. Return an empty array to fall back to England.
@@ -239,6 +239,8 @@ export interface CountryCleanupPlan {
   upserts: VisitedItem[];
   /** Number of redundant stored records (for a "N duplicates" label). */
   redundant: number;
+  /** Surviving record id -> the stored ids folded into it. */
+  folds: Record<string, string[]>;
 }
 
 export const planCountryCleanup = (items: VisitedItem[] | null | undefined, options: MergeOptions = {}): CountryCleanupPlan => {
@@ -247,10 +249,12 @@ export const planCountryCleanup = (items: VisitedItem[] | null | undefined, opti
   const storedById = new Map(stored.map(s => [s.id, s]));
   const keepIds = new Set(merged.map(m => m.id));
   const upserts: VisitedItem[] = [];
+  const folds: Record<string, string[]> = {};
 
   merged.forEach(m => {
     const { duplicateIds, ...record } = m;
     const original = storedById.get(m.id);
+    if (duplicateIds.length > 0) folds[record.id] = duplicateIds;
     const changed = !original
       || original.code !== record.code
       || original.name !== record.name
@@ -267,5 +271,5 @@ export const planCountryCleanup = (items: VisitedItem[] | null | undefined, opti
   const deleteIds = stored
     .filter(s => !keepIds.has(s.id) && !(s.excluded && !liveCodes.has(resolveCountryCode(s))))
     .map(s => s.id);
-  return { deleteIds, upserts, redundant: deleteIds.length };
+  return { deleteIds, upserts, redundant: deleteIds.length, folds };
 };

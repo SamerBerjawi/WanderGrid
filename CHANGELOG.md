@@ -106,6 +106,9 @@ pages are now the default. The original interface is kept, hidden, under `/class
   per-route detail sheets with airline logos, filters, and route colours by region or frequency. Animated
   routes move at one speed, so longer routes take longer.
 - Place names are in proper case, and a place shows the weather where it is.
+- An airport or place sheet draws a vertical Sankey of its routes: arrivals across the top, departures across
+  the bottom, each as wide as the number of times you travelled it, with the top 8 per side and a "+N others"
+  node. Hover, focus or tap a node to see the count or open the route; the routes list stays below.
 - A travel atlas with a world map coloured by status (lived, visited, wishlist, layover), country and city
   lists as grids or rails, a scroll index, a wishlist deck with "Been there", a review drawer for merging
   duplicate places, and a country sheet that lists the trips, flights and road trips for it.
@@ -163,11 +166,28 @@ pages are now the default. The original interface is kept, hidden, under `/class
 
 ### Fixed
 
+- **Scratch map filters.** Lived in no longer washes lived countries in a flat fill (they get their own
+  colour), a Visited toggle joins the scratch filters, Layovers now finds layover-only countries (a connecting flight's next origin was
+  counted as a stay) and hides them, and City pins Off removes every pin and route-end marker.
+- Still maps (Flights, Road trips, trip header, dashboard World) draw the real road, rail and sea routes
+  instead of straight lines once they are known.
+- The scratch map is drawn with finer 10m borders when zoomed in, and the Night lights basemap stays sharp at
+  high zoom (vector streets and labels over the lights, since the imagery ends at level 8).
 - A production build failure caused by the 6 MB Hugeicons set being matched by the service worker's
   precache; it is now a separately named, runtime-cached chunk.
 - Overlapping stays no longer draw on top of each other.
 - Several merge regressions between the stacked redesign branches (a lost route-colour mode, import
   restorations and renumbered decision references).
+
+- **Atlas: merging many duplicates no longer fails.** Merging 250+ duplicate records stopped halfway with
+  "Too many requests" (one request per record, and four reloads per write). The merge is now planned once and
+  applied in a few atomic steps with progress, Stop, Retry and Undo, the review list is grouped by country and
+  paged, and the page reloads once at the end. New route `POST /api/visited/merge`.
+- **Atlas: places with no name.** Unknown places are kept apart by their coordinates instead of being folded
+  into one city. Open one to type a name or press **Find the name** (new `GET /api/proxy/reverse-geocode`);
+  saving writes the name into the atlas and into every trip, stop and transport it came from, with Undo, and
+  never changes coordinates. **Find names** does it for all unnamed places at once, after you review the
+  proposals.
 
 ### Security
 
