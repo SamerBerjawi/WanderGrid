@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { markerRadius, markerSizes, scratchKindOf, scratchToggles } from '../../components/new/map/mapScratch';
+import { asStatusList, isLayoverOnly, markerRadius, markerSizes, scratchKindOf, scratchToggles } from '../../components/new/map/mapScratch';
 
 const on = { showLived: true, showVisited: true, showLayover: true, showWishlist: true };
 
@@ -60,5 +60,20 @@ describe('marker sizes', () => {
     });
     it('on the other views airports and cities keep their own sizes and there are no pins', () => {
         expect(markerSizes(false, { airportSize: 'off', citySize: 'large', scratchCitySize: 'large' })).toEqual({ airport: 0, city: markerRadius('large'), pins: 0 });
+    });
+});
+
+describe('isLayoverOnly', () => {
+    it('is a layover with no visit or residence, wishlist allowed', () => {
+        expect(isLayoverOnly(['layover'])).toBe(true);
+        expect(isLayoverOnly(['layover', 'wishlist'])).toBe(true);
+        expect(isLayoverOnly(['layover', 'visited'])).toBe(false);
+        expect(isLayoverOnly(['lived_past', 'layover'])).toBe(false);
+        expect(isLayoverOnly(['wishlist'])).toBe(false);
+        expect(isLayoverOnly([])).toBe(false);
+    });
+    it('reads a single status as a list', () => {
+        expect(asStatusList('layover')).toEqual(['layover']);
+        expect(asStatusList(undefined)).toEqual([]);
     });
 });

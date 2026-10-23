@@ -5,6 +5,7 @@ import { dataService } from '../services/mockDb';
 import { runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
 import { Trip, CountryResidenceStatus, getResidenceStatuses } from '../types';
 import { getCoordinates, getCoordinatesSync, STATIC_GEO_DATA, calculateDistance, formatProperLocationName, refineUKCountry } from '../services/geocoding';
+import { asStatusList, isLayoverOnly } from '../components/new/map/mapScratch';
 
 /**
  * Data loading for the Expedition Map (trips + flights + road trips with resolved coordinates, visited
@@ -327,8 +328,11 @@ export const useExpeditionMapData = () => {
                         const name = item.name ? item.name.toUpperCase() : (item.countryName ? item.countryName.toUpperCase() : '');
                         const statuses = getResidenceStatuses(item);
 
-                        if (code) statusMap[code] = statuses;
-                        if (name) statusMap[name] = statuses;
+                        // A city's own record says nothing about its country's status: it must not overwrite what the
+                        // country record says (a layover country stays a layover although a city in it is tracked).
+                        const own = item.type === 'country';
+                        if (code && (own || !statusMap[code])) statusMap[code] = statuses;
+                        if (name && (own || !statusMap[name])) statusMap[name] = statuses;
 
                         const hasVisited = statuses.some(s => s === 'visited' || s === 'lived_current' || s === 'lived_past');
                         if (hasVisited) {
@@ -422,6 +426,8 @@ export const useExpeditionMapData = () => {
                 // Add all verified destination countries to countrySet (except ones the user cleared)
                 excludedCodes.forEach(code => { statusMap[code] = []; countrySet.delete(code); });
                 destinationCountries.forEach(code => { if (!excludedCodes.has(code)) countrySet.add(code); });
+                // A country marked as a layover and nothing else is not visited, whatever trips or tracked cities say.
+                Object.entries(statusMap).forEach(([key, value]) => { if (isLayoverOnly(asStatusList(value))) countrySet.delete(key); });
 
                 // Auto-detect layover-only countries: in layoverCandidateCountries, but NEVER stayed as a destination
                 layoverCandidateCountries.forEach(code => {

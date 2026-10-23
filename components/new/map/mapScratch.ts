@@ -44,6 +44,13 @@ export const scratchKindOf = (
     return 'none';
 };
 
+export const asStatusList = (s?: CountryResidenceStatus[] | CountryResidenceStatus): CountryResidenceStatus[] =>
+    !s ? [] : Array.isArray(s) ? s : [s];
+
+/** A layover, with no visit or residence next to it (a wishlist alongside is fine). Such a country is not visited. */
+export const isLayoverOnly = (statuses: CountryResidenceStatus[]): boolean =>
+    statuses.includes('layover') && !statuses.some(s => s === 'visited' || s === 'lived_current' || s === 'lived_past');
+
 export const MARKER_SIZE = { off: 0, small: 3, medium: 4.5, large: 6.5 } as const;
 export type MarkerSizeName = keyof typeof MARKER_SIZE;
 
