@@ -60,7 +60,6 @@ export interface RpMapCanvasProps {
     countryStatusMap: Record<string, CountryResidenceStatus[] | CountryResidenceStatus>;
     visitedPlaces: { lat: number; lng: number; name: string }[];
     openAipAvailable: boolean;
-    cartoKey?: string;
     defaultBasemapLight?: string;
     defaultBasemapDark?: string;
     padding: RpMapPadding;
@@ -132,7 +131,7 @@ const raise = (ground: number[][], distanceKm: number): number[][] => {
 export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function RpMapCanvas(props, ref) {
     const {
         model, mode, appearance, isDark, visitedCountryCodes, countryStatusMap, visitedPlaces,
-        openAipAvailable, cartoKey, defaultBasemapLight, defaultBasemapDark, padding,
+        openAipAvailable, defaultBasemapLight, defaultBasemapDark, padding,
         onRouteClick, onPlaceClick, onCountryClick, onHover, highlightRouteIds, onBasemapFallback, className,
     } = props;
 
@@ -195,7 +194,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         // raster, and a failed raster (Esri, NASA) falls back to OpenFreeMap's vector light or dark map.
         if (basemapFailed && !vector) return OPENFREEMAP_STYLES[lightBasemap ? 'positron' : 'dark']!;
         if (vector && !basemapFailed) return vector;
-        const { tiles, maxzoom, attribution } = getBasemapTileConfig(basemapFailed ? (lightBasemap ? 'positron' : 'dark') : effectiveBasemap, basemapFailed ? undefined : cartoKey);
+        const { tiles, maxzoom, attribution } = getBasemapTileConfig(basemapFailed ? (lightBasemap ? 'positron' : 'dark') : effectiveBasemap);
         return {
             version: 8,
             glyphs: GLYPHS_URL,
@@ -207,7 +206,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         };
         // palette.canvas only matters for the raster fallback background
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [effectiveBasemap, cartoKey, isDark, basemapFailed, nightComposite]);
+    }, [effectiveBasemap, isDark, basemapFailed, nightComposite]);
 
     // Watch for the basemap failing: repeated tile errors from the base source, or the style itself.
     const fallbackRef = useRef({ failed: false, label: effectiveBasemap, notify: onBasemapFallback });

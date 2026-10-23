@@ -39,8 +39,6 @@ const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   aeroDataBoxEndpoint: 'rapidapi',
   openAipApiKey: '',
   brandfetchApiKey: '',
-  googleGeminiApiKey: '',
-  cartoApiKey: '',
   masterPackingList: DEFAULT_MASTER_LIST,
   carriers: [],
   defaultTravelClass: 'Economy',
@@ -384,7 +382,7 @@ class DataService {
   }
 
   /** Asks the server whether a stored API key works (admin only). The key itself is never returned. */
-  async testApiKey(service: 'gemini' | 'aviationstack' | 'aerodatabox' | 'openaip' | 'brandfetch'): Promise<{ success: boolean; latencyMs: number; message: string }> {
+  async testApiKey(service: 'aviationstack' | 'aerodatabox' | 'openaip' | 'brandfetch'): Promise<{ success: boolean; latencyMs: number; message: string }> {
     return this.fetch(`/integrations/test-key/${service}`, { method: 'POST' });
   }
 
@@ -408,12 +406,6 @@ class DataService {
 
   async createPasswordResetCode(userId: string): Promise<{ code: string; expiresAt: string }> {
     return this.fetch(`/users/${encodeURIComponent(userId)}/reset-code`, { method: 'POST' });
-  }
-
-  /** Ask Gemini through the server (which holds the key). Throws with the server's message on failure. */
-  async generateAI(contents: { role: 'user' | 'model'; text: string }[], responseMimeType?: 'application/json'): Promise<string> {
-    const result = await this.fetch<{ text: string }>('/ai/generate', { method: 'POST', body: JSON.stringify({ contents, responseMimeType }) });
-    return result?.text || '';
   }
 
   /** Revoke this session on the server. Uses a bare fetch so a 401 can't re-trigger the sign-out flow. */
@@ -994,12 +986,15 @@ class DataService {
               const mergedSettings = mode === 'merge'
                   ? { ...DEFAULT_WORKSPACE_SETTINGS, ...currentSettings, ...data.workspaceSettings }
                   : { ...DEFAULT_WORKSPACE_SETTINGS, ...data.workspaceSettings };
-              const keysToCheck = ['aviationStackApiKey', 'aeroDataBoxApiKey', 'aeroDataBoxEndpoint', 'openAipApiKey', 'brandfetchApiKey', 'googleGeminiApiKey', 'cartoApiKey'];
+              const keysToCheck = ['aviationStackApiKey', 'aeroDataBoxApiKey', 'aeroDataBoxEndpoint', 'openAipApiKey', 'brandfetchApiKey'];
               keysToCheck.forEach(k => {
                   if (!mergedSettings[k] && currentSettings && currentSettings[k]) {
                       mergedSettings[k] = currentSettings[k];
                   }
               });
+              // Keys of removed integrations in old backups are ignored.
+              delete mergedSettings.googleGeminiApiKey;
+              delete mergedSettings.cartoApiKey;
               setCachedStorage(key('settings'), mergedSettings, true);
           }
 
