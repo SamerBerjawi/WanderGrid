@@ -291,7 +291,6 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                 countryStatusMap={data.countryStatusMap}
                 visitedPlaces={data.visitedPlaces}
                 openAipAvailable={openAipAvailable}
-                cartoKey={settings?.cartoApiKey}
                 defaultBasemapLight={settings?.defaultBasemapLight}
                 defaultBasemapDark={settings?.defaultBasemapDark}
                 padding={padding}

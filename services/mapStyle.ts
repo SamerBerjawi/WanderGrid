@@ -32,24 +32,11 @@ export const OPENFREEMAP_STYLES: Partial<Record<EffectiveBasemap, string>> = {
 
 /** Raster tile sources for each basemap (used directly for imagery, and as the fallback for street maps). */
 export const getBasemapTileConfig = (
-    effectiveLayer: EffectiveBasemap,
-    resolvedCartoKey?: string
+    effectiveLayer: EffectiveBasemap
 ) => {
-    let key = (resolvedCartoKey || '').trim().replace(/^['"]|['"]$/g, '');
-    if (key.startsWith('key=')) key = key.slice(4).trim();
-    if (key.startsWith('?key=')) key = key.slice(5).trim();
-    const keyParam = key ? `?key=${encodeURIComponent(key)}` : '';
-
-    const getCartoTiles = (style: 'dark_all' | 'light_all') => [
-        `https://a.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`,
-        `https://b.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`,
-        `https://c.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`,
-        `https://d.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`
-    ];
-
     let tiles: string[] = [];
     let maxzoom = 20;
-    let attribution = '© CARTO, © OpenStreetMap contributors';
+    let attribution = '© OpenStreetMap contributors';
 
     switch (effectiveLayer) {
         case 'liberty':
@@ -79,29 +66,17 @@ export const getBasemapTileConfig = (
             attribution = 'NASA EOSDIS GIBS';
             break;
         case 'positron':
-            if (key) {
-                tiles = getCartoTiles('light_all');
-                maxzoom = 20;
-                attribution = '© CARTO, © OpenStreetMap contributors';
-            } else {
-                tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'];
-                maxzoom = 16;
-                attribution = 'Esri, HERE, Garmin, © OpenStreetMap contributors';
-            }
+            tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'];
+            maxzoom = 16;
+            attribution = 'Esri, HERE, Garmin, © OpenStreetMap contributors';
             break;
         case 'dark':
         case 'fiord':
         case '3d':
         default:
-            if (key) {
-                tiles = getCartoTiles('dark_all');
-                maxzoom = 20;
-                attribution = '© CARTO, © OpenStreetMap contributors';
-            } else {
-                tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'];
-                maxzoom = 16;
-                attribution = 'Esri, HERE, Garmin, © OpenStreetMap contributors';
-            }
+            tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'];
+            maxzoom = 16;
+            attribution = 'Esri, HERE, Garmin, © OpenStreetMap contributors';
             break;
     }
 

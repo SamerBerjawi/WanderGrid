@@ -2,15 +2,74 @@
 
 All notable changes to WanderGrid are listed here, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow the tags in this repository
-(v0.1 to v0.5, then 1.0.0).
+(v0.1 to v0.5, then 1.0.0 and 1.1.0).
 
 ## [1.1.0] - Unreleased
+
+The first update after the redesign: fixes found while using 1.0, a Sankey chart for airports and a much more
+detailed calendar feed. The release line is also what the app shows in its build number now (`v1.1-YYMMDD.N`).
+
+### Added
+
+- An airport or place sheet draws a vertical Sankey of its routes: arrivals across the top, departures across
+  the bottom, each as wide as the number of times you travelled it, with the top 8 per side and a "+N others"
+  node. Hover, focus or tap a node to see the count or open the route; the routes list stays below.
+#### Calendar sync
+- The subscribable feed and the app's own `.ics` files now list **individual events** instead of one block per
+  trip: each flight (and, if you turn them on, train, bus and ferry legs) at its real time with booking details,
+  a check-in and a check-out per stay (or one event for the stay), timed activities, and optionally your time off
+  and public holidays. Times are written in UTC when the airport or place time zone is known and as floating
+  local times otherwise, so your calendar never shifts them. Items keep a stable UID, so editing a flight updates
+  its event, and the trip's version is the `SEQUENCE`.
+- **What to sync** in Calendar > Options chooses what the feed holds and builds the link as you change it.
+  Query parameters (one link, one choice): `trips`, `flights`, `transport`, `stays`, `activities`, `leave`,
+  `holidays`, `planning` (each `0` or `1`), `stay=split|span`, `cost=1`, `reminders=1` with `remindFlight`,
+  `remindStay` and `remindActivity` in minutes, and `private=full|busy|hide`. Without parameters the feed holds
+  trips, flights and stays. Your choice is remembered per person (`GET`/`PUT /api/calendar/prefs`).
+- The feed sends an `ETag` (so a poll that finds nothing new gets `304`), a refresh hint, and cancelled trips drop
+  out of it. Semicolons in trip text are now escaped properly in the feed.
+
 
 ### Fixed
 
 - **Carrier logos on the Flights page now come from Settings > Carriers.** The Flights page, Road trips, trip pages, map sheets and the flight finder share one lookup that finds the carrier you set up (by code, name or the letters of the flight number, so "KLM Royal Dutch Airlines" finds "KLM") and draws its logo the way the Carriers section does. Changing a carrier shows up without a reload. A carrier you have not set up shows the mode icon instead of a guessed Clearbit or favicon image, unless Brandfetch knows it.
+- The Dashboard World map showed wrong points: a trip to "California" pinned in Central America, dots in the
+  ocean and at (0, 0), straight dark lines across the US and Scandinavia. Points now need real coordinates,
+  a trip's pin must fit its own legs and sit on land, land and sea legs follow their traced route, and the
+  place search ranks a state above a village of the same name.
+- **Scratch map filters.** Lived in no longer washes lived countries in a flat fill (they get their own
+  colour), a Visited toggle joins the scratch filters, Layovers now finds layover-only countries (a connecting flight's next origin was
+  counted as a stay) and hides them, and City pins Off removes every pin and route-end marker.
+- Still maps (Flights, Road trips, trip header, dashboard World) draw the real road, rail and sea routes
+  instead of straight lines once they are known.
+- The scratch map is drawn with finer 10m borders when zoomed in, and the Night lights basemap stays sharp at
+  high zoom (vector streets and labels over the lights, since the imagery ends at level 8).
+- **Atlas: merging many duplicates no longer fails.** Merging 250+ duplicate records stopped halfway with
+  "Too many requests" (one request per record, and four reloads per write). The merge is now planned once and
+  applied in a few atomic steps with progress, Stop, Retry and Undo, the review list is grouped by country and
+  paged, and the page reloads once at the end. New route `POST /api/visited/merge`.
+- **Atlas: places with no name.** Unknown places are kept apart by their coordinates instead of being folded
+  into one city. Open one to type a name or press **Find the name** (new `GET /api/proxy/reverse-geocode`);
+  saving writes the name into the atlas and into every trip, stop and transport it came from, with Undo, and
+  never changes coordinates. **Find names** does it for all unnamed places at once, after you review the
+  proposals.
 
-## [1.0.0] - Unreleased
+### Removed
+
+- **The Google Gemini API and every AI feature built on it.** The server route `POST /api/ai/generate`, the
+  Gemini key in Settings › Integrations (field, Test button, status), its key tester and the
+  `GEMINI_API_KEY` / `GEMINI_MODEL` environment variables are gone. The trip AI guide, AI flight analysis and AI
+  packing list had already left with the original interface, so no page loses a control. Plain tools such as
+  the master packing list, the leave optimizer and place search are unchanged.
+- **The CARTO basemap key.** The Settings field, the CARTO raster tile source and its service-worker cache rule.
+  The default basemaps are OpenFreeMap vector styles and never used CARTO; the optional raster path only
+  applied with a key and `VITE_FF_GEV_P04B_OPENFREEMAP=false`, and now uses Esri.
+- Upgrade note: stored Gemini and CARTO keys are ignored. Workspaces and backups that still contain
+  `googleGeminiApiKey` or `cartoApiKey` load and restore normally; the server never sends them to a browser or
+  exports them, and drops them the next time settings are saved. Remove `GEMINI_API_KEY` from your
+  environment if you set it.
+
+## [1.0.0] - 2026-10-23
 
 The redesign release. Every page, dialog and message of the app was rebuilt in one new design language
 (the "New" pages, specified in [UI_UX_DESIGN_REFERENCE.md](UI_UX_DESIGN_REFERENCE.md)), and the new
@@ -114,9 +173,6 @@ holds the last commit that has it.
   per-route detail sheets with airline logos, filters, and route colours by region or frequency. Animated
   routes move at one speed, so longer routes take longer.
 - Place names are in proper case, and a place shows the weather where it is.
-- An airport or place sheet draws a vertical Sankey of its routes: arrivals across the top, departures across
-  the bottom, each as wide as the number of times you travelled it, with the top 8 per side and a "+N others"
-  node. Hover, focus or tap a node to see the count or open the route; the routes list stays below.
 - A travel atlas with a world map coloured by status (lived, visited, wishlist, layover), country and city
   lists as grids or rails, a scroll index, a wishlist deck with "Been there", a review drawer for merging
   duplicate places, and a country sheet that lists the trips, flights and road trips for it.
@@ -126,21 +182,6 @@ holds the last commit that has it.
   keyboard grid, a day drawer on phones, a ring for leave by type, leave-type colours, and per-member filters.
 - Leave editing with half days and allocations across types and years, a leave optimizer, country holiday
   calendars per year (with holidays you can switch off), trip calendar export and a subscribe link.
-
-#### Calendar sync
-- The subscribable feed and the app's own `.ics` files now list **individual events** instead of one block per
-  trip: each flight (and, if you turn them on, train, bus and ferry legs) at its real time with booking details,
-  a check-in and a check-out per stay (or one event for the stay), timed activities, and optionally your time off
-  and public holidays. Times are written in UTC when the airport or place time zone is known and as floating
-  local times otherwise, so your calendar never shifts them. Items keep a stable UID, so editing a flight updates
-  its event, and the trip's version is the `SEQUENCE`.
-- **What to sync** in Calendar > Options chooses what the feed holds and builds the link as you change it.
-  Query parameters (one link, one choice): `trips`, `flights`, `transport`, `stays`, `activities`, `leave`,
-  `holidays`, `planning` (each `0` or `1`), `stay=split|span`, `cost=1`, `reminders=1` with `remindFlight`,
-  `remindStay` and `remindActivity` in minutes, and `private=full|busy|hide`. Without parameters the feed holds
-  trips, flights and stays. Your choice is remembered per person (`GET`/`PUT /api/calendar/prefs`).
-- The feed sends an `ETag` (so a poll that finds nothing new gets `304`), a refresh hint, and cancelled trips drop
-  out of it. Semicolons in trip text are now escaped properly in the feed.
 
 #### Members (MemberNew) and Settings (SettingsNew)
 - A member page: passport-style overview with country stamps and flags, places split into countries and
@@ -174,28 +215,11 @@ holds the last commit that has it.
 
 ### Fixed
 
-- **Scratch map filters.** Lived in no longer washes lived countries in a flat fill (they get their own
-  colour), a Visited toggle joins the scratch filters, Layovers now finds layover-only countries (a connecting flight's next origin was
-  counted as a stay) and hides them, and City pins Off removes every pin and route-end marker.
-- Still maps (Flights, Road trips, trip header, dashboard World) draw the real road, rail and sea routes
-  instead of straight lines once they are known.
-- The scratch map is drawn with finer 10m borders when zoomed in, and the Night lights basemap stays sharp at
-  high zoom (vector streets and labels over the lights, since the imagery ends at level 8).
 - A production build failure caused by the 6 MB Hugeicons set being matched by the service worker's
   precache; it is now a separately named, runtime-cached chunk.
 - Overlapping stays no longer draw on top of each other.
 - Several merge regressions between the stacked redesign branches (a lost route-colour mode, import
   restorations and renumbered decision references).
-
-- **Atlas: merging many duplicates no longer fails.** Merging 250+ duplicate records stopped halfway with
-  "Too many requests" (one request per record, and four reloads per write). The merge is now planned once and
-  applied in a few atomic steps with progress, Stop, Retry and Undo, the review list is grouped by country and
-  paged, and the page reloads once at the end. New route `POST /api/visited/merge`.
-- **Atlas: places with no name.** Unknown places are kept apart by their coordinates instead of being folded
-  into one city. Open one to type a name or press **Find the name** (new `GET /api/proxy/reverse-geocode`);
-  saving writes the name into the atlas and into every trip, stop and transport it came from, with Undo, and
-  never changes coordinates. **Find names** does it for all unnamed places at once, after you review the
-  proposals.
 
 ### Security
 
