@@ -52,6 +52,14 @@ describe('tripToIcs', () => {
     });
 });
 
+describe('tripToIcs for a Private trip', () => {
+    it('still writes the trip and its bookings (it is the signed-in person\'s own file)', () => {
+        const text = tripToIcs({ ...trip, privacy: 'Private' } as Trip);
+        expect(text.match(/BEGIN:VEVENT/g)).toHaveLength(6);
+        expect(text).toContain('UID:trip-1@wandergrid.app');
+    });
+});
+
 describe('tripIcsName', () => {
     it('makes a safe file name', () => {
         expect(tripIcsName(trip)).toBe('lisbon-portugal.ics');

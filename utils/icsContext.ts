@@ -13,6 +13,7 @@ export { DEFAULT_FEED_OPTIONS, TRIP_FILE_OPTIONS, feedOptionsToQuery, parseFeedO
 
 export const feedContext = (extra: FeedContext = {}): FeedContext => ({
     now: Date.now(),
+    viewer: 'owner', // the app's own files are the signed-in person's, so Private trips keep their details
     baseUrl: typeof window !== 'undefined' ? window.location.origin : '',
     airportTz: (iata: string) => getAirportTimezone(iata),
     airportName: (iata: string) => getAirportName(iata) || '',
