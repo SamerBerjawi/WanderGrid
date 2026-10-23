@@ -4,6 +4,23 @@ All notable changes to WanderGrid are listed here, newest first. The format foll
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow the tags in this repository
 (v0.1 to v0.5, then 1.0.0).
 
+## [1.1.0] - Unreleased
+
+### Removed
+
+- **The Google Gemini API and every AI feature built on it.** The server route `POST /api/ai/generate`, the
+  Gemini key in Settings › Integrations (field, Test button, status), its key tester and the
+  `GEMINI_API_KEY` / `GEMINI_MODEL` environment variables are gone. The trip AI guide, AI flight analysis and AI
+  packing list had already left with the original interface, so no page loses a control. Plain tools such as
+  the master packing list, the leave optimizer and place search are unchanged.
+- **The CARTO basemap key.** The Settings field, the CARTO raster tile source and its service-worker cache rule.
+  The default basemaps are OpenFreeMap vector styles and never used CARTO; the optional raster path only
+  applied with a key and `VITE_FF_GEV_P04B_OPENFREEMAP=false`, and now uses Esri.
+- Upgrade note: stored Gemini and CARTO keys are ignored. Workspaces and backups that still contain
+  `googleGeminiApiKey` or `cartoApiKey` load and restore normally; the server never sends them to a browser or
+  exports them, and drops them the next time settings are saved. Remove `GEMINI_API_KEY` from your
+  environment if you set it.
+
 ## [1.0.0] - Unreleased
 
 The redesign release. Every page, dialog and message of the app was rebuilt in one new design language
