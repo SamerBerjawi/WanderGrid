@@ -1,5 +1,6 @@
 import type { PredefinedMapMode, Trip } from '../../../types';
-import { formatProperLocationName, calculateDistance } from '../../../services/geocoding';
+import { formatProperLocationName, calculateDistance, getCoordinatesSync } from '../../../services/geocoding';
+import { resolveLegEnd } from '../../../utils/mapPoints';
 
 /**
  * Turns trips (with resolved transport coordinates, from useExpeditionMapData) into what the map
@@ -116,6 +117,13 @@ export const buildMapModel = (trips: Trip[], { mode, groupAirports, scratchRoute
     const today = new Date().toISOString().split('T')[0];
     const legs: MapLeg[] = [];
     const seen = new Set<string>();
+    // A leg end is drawn only with real coordinates (never a missing value defaulted to 0, 0), and an exact
+    // offline match for its name (IATA code, picked label) wins over a stored point that disagrees with it.
+    const looked = new Map<string, { lat: number; lng: number } | undefined>();
+    const lookup = (name: string) => {
+        if (!looked.has(name)) looked.set(name, getCoordinatesSync(name));
+        return looked.get(name);
+    };
 
     trips.forEach(trip => {
         const status = statusOf(trip, today);
@@ -127,8 +135,10 @@ export const buildMapModel = (trips: Trip[], { mode, groupAirports, scratchRoute
             if (mode === 'scratch' && !scratchRoutes.includes(legMode === 'flight' ? 'flight' : legMode === 'sea' ? 'sea' : 'land')) return;
             if (mode === 'flights' && legMode !== 'flight') return;
             if (mode === 'land_sea' && legMode === 'flight') return;
-            if (t.originLat == null || t.originLng == null || t.destLat == null || t.destLng == null) return;
             if (!t.origin || !t.destination) return;
+            const from = resolveLegEnd(t.origin, t.originLat, t.originLng, lookup);
+            const to = resolveLegEnd(t.destination, t.destLat, t.destLng, lookup);
+            if (!from || !to) return;
             const dedupe = `${t.id || ''}|${t.origin}|${t.destination}|${t.departureDate || ''}|${t.identifier || ''}`;
             if (seen.has(dedupe)) return;
             seen.add(dedupe);
@@ -143,14 +153,14 @@ export const buildMapModel = (trips: Trip[], { mode, groupAirports, scratchRoute
                 rawMode: t.mode || 'Flight',
                 origin: o,
                 destination: d,
-                from: [t.originLng, t.originLat],
-                to: [t.destLng, t.destLat],
+                from,
+                to,
                 date: t.departureDate,
                 provider: t.provider,
                 identifier: t.identifier,
                 corridorId: o < d ? `${o}<->${d}` : `${d}<->${o}`,
                 waypoints: t.waypoints,
-                distanceKm: t.distance || calculateDistance(t.originLat, t.originLng, t.destLat, t.destLng),
+                distanceKm: t.distance || calculateDistance(from[1], from[0], to[1], to[0]),
             });
         });
     });

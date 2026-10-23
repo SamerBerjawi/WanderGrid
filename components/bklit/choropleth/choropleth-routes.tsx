@@ -10,6 +10,8 @@ export interface ChoroplethRoute {
   id: string;
   from: [number, number];
   to: [number, number];
+  /** A traced line ([lng, lat] vertices, e.g. a road or sea lane); without one the great circle from `from` to `to`. */
+  path?: [number, number][];
   stroke: string;
   dashed?: boolean;
   opacity?: number;
@@ -28,7 +30,7 @@ export const ChoroplethRoutes = memo(function ChoroplethRoutes({ routes, strokeW
   return (
     <g className="choropleth-routes" fill="none" strokeLinecap="round" pointerEvents="none">
       {routes.map((r) => {
-        const d = rawPathGenerator({ type: "LineString", coordinates: [r.from, r.to] });
+        const d = rawPathGenerator({ type: "LineString", coordinates: r.path && r.path.length > 2 ? r.path : [r.from, r.to] });
         return d ? (
           <path
             key={r.id}
