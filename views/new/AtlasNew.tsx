@@ -237,7 +237,9 @@ export const AtlasNew: React.FC<AtlasNewProps> = ({ onTripClick }) => {
                             <div className="flex items-center gap-3">
                                 <Stack size={18} className="shrink-0 text-rp-ink" aria-hidden />
                                 <p className="text-sm text-rp-ink">
-                                    {data.cleanup.count} duplicate {data.cleanup.count === 1 ? 'record' : 'records'} found. Merge them so every page shows each place once.
+                                    {data.cleanup.duplicates > 0
+                                        ? <>{data.cleanup.duplicates} duplicate {data.cleanup.duplicates === 1 ? 'record' : 'records'} found. Merge them so every page shows each place once.</>
+                                        : <>{data.cleanup.count} {data.cleanup.count === 1 ? 'record' : 'records'} to tidy up.</>}
                                 </p>
                             </div>
                             <button type="button" onClick={() => setMergeOpen(true)} className={cn(PILL, 'self-start bg-rp-ink text-rp-on-ink hover:bg-rp-ink/90 sm:self-auto')}>
@@ -396,7 +398,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = ({ onTripClick }) => {
             />
             <CityQuickAddSheet open={addingCity} onClose={() => { setAddingCity(false); setCityError(null); }} onAdd={addCity} error={cityError} />
             <ScanSheet open={scanOpen} onClose={() => setScanOpen(false)} data={data} />
-            <MergeDrawer open={mergeOpen} onOpenChange={setMergeOpen} review={data.cleanup.review} onConfirm={() => data.mergeDuplicates()} />
+            <MergeDrawer open={mergeOpen} onOpenChange={setMergeOpen} review={data.cleanup.review} merge={data.merge} />
         </div>
     );
 };

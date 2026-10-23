@@ -208,6 +208,8 @@ export const mergeCityRecords = (items: VisitedItem[] | null | undefined, option
 export interface CityCleanupPlan {
   deleteIds: string[];
   upserts: VisitedItem[];
+  /** Surviving record id -> the stored ids folded into it (only for records that are rewritten). */
+  folds: Record<string, string[]>;
 }
 
 /** Stored city records to rewrite or remove so storage matches `mergeCityRecords`. */
@@ -217,13 +219,14 @@ export const planCityCleanup = (items: VisitedItem[] | null | undefined, options
   const merged = mergeCityRecords(stored, options);
   const keep = new Set(merged.map(m => m.id));
   const upserts: VisitedItem[] = [];
+  const folds: Record<string, string[]> = {};
 
   merged.forEach(m => {
     const { duplicateIds, ...record } = m;
     const original = storedById.get(m.id);
     // Only rewrite when duplicates were folded in; cosmetic differences alone are not worth a write.
-    if (original && duplicateIds.length > 0) upserts.push(record);
+    if (original && duplicateIds.length > 0) { upserts.push(record); folds[record.id] = duplicateIds; }
   });
 
-  return { deleteIds: stored.filter(s => !keep.has(s.id)).map(s => s.id), upserts };
+  return { deleteIds: stored.filter(s => !keep.has(s.id)).map(s => s.id), upserts, folds };
 };

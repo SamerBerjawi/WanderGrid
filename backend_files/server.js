@@ -3073,6 +3073,33 @@ app.post('/api/visited/bulk', async (req, res) => {
         sendError(res, err, 500, 'Failed to perform bulk visited upsert');
     }
 });
+// One atlas merge step in a single transaction: write the surviving records, then remove the ones folded
+// into them. All or nothing, so a failed step leaves both the survivors and the duplicates as they were.
+const MAX_VISITED_MERGE = 500;
+app.post('/api/visited/merge', async (req, res) => {
+    const { upserts = [], deleteIds = [] } = req.body || {};
+    if (!Array.isArray(upserts) || !Array.isArray(deleteIds) || deleteIds.some(id => typeof id !== 'string')) {
+        return res.status(400).json({ error: 'upserts and deleteIds must be lists' });
+    }
+    if (upserts.length + deleteIds.length > MAX_VISITED_MERGE) {
+        return res.status(413).json({ error: `At most ${MAX_VISITED_MERGE} records per merge step` });
+    }
+    try {
+        let versions = {};
+        await withTransaction(async (client) => {
+            const saved = upserts.length > 0 ? await guardedBulkUpsert(client, 'visited', upserts, req.user) : [];
+            versions = versionMap(saved);
+            const keep = new Set(upserts.map(u => u && u.id));
+            for (const id of deleteIds) {
+                if (!keep.has(id)) await guardedDelete(client, 'visited', id, req.user);
+            }
+        });
+        res.json({ success: true, upserted: upserts.length, deleted: deleteIds.length, versions });
+    } catch (err) {
+        if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
+        sendError(res, err, 500, 'Failed to merge visited records');
+    }
+});
 app.put('/api/visited/:id', updateResource('visited'));
 app.delete('/api/visited/:id', deleteResource('visited'));
 

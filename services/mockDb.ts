@@ -637,7 +637,7 @@ class DataService {
 
               const result = await res.json();
               const isMutation = options?.method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method.toUpperCase());
-              if (isMutation) {
+              if (isMutation && this.quietDepth === 0) {
                   try {
                       // Tell listeners which collections changed so unrelated views don't refetch (PERF-008).
                       window.dispatchEvent(new CustomEvent('wandergrid_db_updated', { detail: { collections: collectionsForEndpoint(endpoint) } }));
@@ -755,6 +755,21 @@ class DataService {
               try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
               return { success: true, count: payload.length } as unknown as T;
           }
+      }
+
+      if (endpoint === '/visited/merge' && method === 'POST') {
+          const { upserts = [], deleteIds = [] } = (body || {}) as { upserts?: any[]; deleteIds?: string[] };
+          const list = getCachedStorage<any[]>(key('visited'), []);
+          const gone = new Set<string>(deleteIds);
+          upserts.forEach(u => gone.delete(u.id));
+          const byId = new Map(upserts.map(u => [u.id, u]));
+          const seen = new Set<string>();
+          // One pass and one storage write for the whole step, whatever its size.
+          const updated = list.filter((i: any) => !gone.has(i.id)).map((i: any) => { seen.add(i.id); return byId.get(i.id) || i; });
+          upserts.forEach(u => { if (!seen.has(u.id)) updated.push(u); });
+          setCachedStorage(key('visited'), updated);
+          if (this.quietDepth === 0) { try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated', { detail: { collections: ['visited'] } })); } catch (e) {} }
+          return { success: true, upserted: upserts.length, deleted: deleteIds.length, versions: {} } as unknown as T;
       }
 
       if (endpoint === '/visited/bulk') {
@@ -1571,6 +1586,19 @@ class DataService {
   async addVisited(item: any): Promise<void> { await this.fetch('/visited', { method: 'POST', body: JSON.stringify(item) }); }
   async addVisitedBulk(items: any[]): Promise<void> { await this.fetch('/visited/bulk', { method: 'POST', body: JSON.stringify(items) }); }
   async updateVisited(item: any): Promise<void> { await this.versionedPut('visited', item); }
+  /** One atlas merge step, atomic on the server: write `upserts`, then remove `deleteIds`. Never more than 500 records. */
+  async mergeVisited(upserts: any[], deleteIds: string[]): Promise<void> {
+    await this.fetch('/visited/merge', { method: 'POST', body: JSON.stringify({ upserts, deleteIds }) });
+  }
+  private quietDepth = 0;
+  /**
+   * Runs `fn` without the per-write `wandergrid_db_updated` events, so a batch of writes does not make every
+   * mounted view refetch after each one. The caller reloads once when the batch is done.
+   */
+  async runQuiet<T>(fn: () => Promise<T>): Promise<T> {
+    this.quietDepth++;
+    try { return await fn(); } finally { this.quietDepth--; }
+  }
   async deleteVisited(id: string): Promise<void> { await this.fetch(`/visited/${id}`, { method: 'DELETE' }); }
   async getWorkspaceSettings(): Promise<WorkspaceSettings> {
     const settings = await this.fetch<WorkspaceSettings>('/settings');
