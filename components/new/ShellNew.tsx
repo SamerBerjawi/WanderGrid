@@ -14,7 +14,7 @@ import './new.css';
 /**
  * App shell for the New pages (UI_UX_DESIGN_REFERENCE.md §2.1, §2.4, §5.0): grouped top tabs on
  * tablet and desktop, a bottom tab bar with a centre "+" on mobile. It is the shell at every normal route;
- * the original shell only exists under /classic.
+ * (the original shell was removed; see the git tag classic-final).
  */
 
 export interface ShellNavItem {
@@ -131,7 +131,7 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
     const navItems = Object.fromEntries(SHELL_NAV.map(i => [i.path, { name: i.label, icon: i.icon }]));
     const go = (path: string) => { setSheet(null); onNavigate(path); };
     // currentPath is the tab (Road trips sits under Flights), so the quick actions ask the URL which page is open.
-    const onPage = (page: 'trips' | 'flights' | 'roadtrips') => { const r = resolveRoute(window.location.pathname); return r.shell === 'new' && r.page === page; };
+    const onPage = (page: 'trips' | 'flights' | 'roadtrips') => { const r = resolveRoute(window.location.pathname); return r.page === page; };
 
     return (
         <div className="rp-root rp-canvas-glow relative flex h-[100dvh] w-full flex-col overflow-hidden bg-rp-canvas font-rp text-rp-ink antialiased">

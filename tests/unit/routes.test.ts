@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { ViewState } from '../../types';
-import { classicPathFor, classicTripPath, navPathFor, PATHS, resolveRoute } from '../../utils/routes';
+import { navPathFor, PATHS, resolveRoute } from '../../utils/routes';
 
-const page = (path: string, search = '') => {
-    const r = resolveRoute(path, search);
-    if (r.shell !== 'new') throw new Error(`${path} is not a New page`);
-    return r;
-};
+const page = (path: string, search = '') => resolveRoute(path, search);
 
 describe('canonical paths open the New pages', () => {
     it.each([
@@ -61,29 +56,25 @@ describe('-new URLs redirect to their canonical path', () => {
     });
 });
 
-describe('/classic keeps the original pages', () => {
-    it('opens the old views', () => {
-        expect(resolveRoute('/classic')).toMatchObject({ shell: 'classic', view: ViewState.DASHBOARD });
-        expect(resolveRoute('/classic/planner')).toMatchObject({ shell: 'classic', view: ViewState.PLANNER });
-        expect(resolveRoute('/classic/flights')).toMatchObject({ shell: 'classic', view: ViewState.FLIGHTS });
-        expect(resolveRoute('/classic/roadtrips')).toMatchObject({ shell: 'classic', view: ViewState.ROADTRIPS });
-        expect(resolveRoute('/classic/atlas')).toMatchObject({ shell: 'classic', view: ViewState.TRAVEL_ATLAS });
-        expect(resolveRoute('/classic/settings')).toMatchObject({ shell: 'classic', view: ViewState.SETTINGS });
-        expect(resolveRoute('/classic/trip/abc')).toMatchObject({ shell: 'classic', view: ViewState.TRIP_DETAIL, tripId: 'abc' });
-        expect(resolveRoute('/classic/user/u1')).toMatchObject({ shell: 'classic', view: ViewState.USER_DETAIL, userId: 'u1' });
+describe('the removed /classic prefix redirects to the page', () => {
+    it.each([
+        ['/classic', 'dashboard', '/'], ['/classic/planner', 'trips', '/planner'], ['/classic/flights', 'flights', '/flights'],
+        ['/classic/atlas', 'atlas', '/atlas'], ['/classic/settings', 'settings', '/settings'], ['/classic/map', 'map', '/map'],
+    ])('%s', (path, expected, to) => {
+        expect(page(path)).toMatchObject({ page: expected, redirectTo: to });
     });
-    it('never redirects and falls back to the old Dashboard', () => {
-        expect(resolveRoute('/classic/nope').redirectTo).toBeNull();
-        expect(resolveRoute('/classic/nope')).toMatchObject({ shell: 'classic', view: ViewState.DASHBOARD });
+    it('keeps ids and the query string', () => {
+        expect(page('/classic/trip/abc')).toMatchObject({ page: 'trip', id: 'abc', redirectTo: '/trip/abc' });
+        expect(page('/classic/user/u1', '?x=1')).toMatchObject({ page: 'member', id: 'u1', redirectTo: '/user/u1?x=1' });
+    });
+    it('sends an unknown classic path home', () => {
+        expect(page('/classic/nope').redirectTo).toBe('/');
+    });
+    it('resolves the canonical target of an alias too', () => {
+        expect(page('/classic/trips-new').redirectTo).toBe('/trips');
     });
     it('does not match a path that only starts with the word', () => {
-        expect(page('/classics')).toMatchObject({ page: 'notfound' });
-    });
-    it('builds /classic paths', () => {
-        expect(classicPathFor(ViewState.FLIGHTS)).toBe('/classic/flights');
-        expect(classicPathFor(ViewState.DASHBOARD)).toBe('/classic');
-        expect(classicTripPath('a b')).toBe('/classic/trip/a%20b');
-        expect(resolveRoute(classicTripPath('a b'))).toMatchObject({ view: ViewState.TRIP_DETAIL, tripId: 'a b' });
+        expect(page('/classics')).toMatchObject({ page: 'notfound', redirectTo: null });
     });
 });
 

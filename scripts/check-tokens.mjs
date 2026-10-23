@@ -8,14 +8,14 @@ import { join } from 'node:path';
 import resolveConfig from 'tailwindcss/resolveConfig.js';
 import tailwindConfig from '../tailwind.config.js';
 
-// Files whose hex values are data, not styling: map-style preview swatches and the WebGL globe background.
-const HEX_ALLOWLIST = new Set(['components/mapSettings/tabs/MapTab.tsx', 'components/DeckFlightMap.tsx']);
+// Files whose hex values are data, not styling (none at the moment).
+const HEX_ALLOWLIST = new Set([]);
 
 const walk = (dir) => readdirSync(dir).flatMap((name) => {
   const p = join(dir, name);
   return statSync(p).isDirectory() ? walk(p) : /\.(ts|tsx)$/.test(name) ? [p] : [];
 });
-const files = process.argv.length > 2 ? process.argv.slice(2) : ['App.tsx', 'constants.ts', ...walk('views'), ...walk('components')];
+const files = process.argv.length > 2 ? process.argv.slice(2) : ['App.tsx', ...walk('views'), ...walk('components')];
 
 const { theme } = resolveConfig(tailwindConfig);
 const colorUtil = '(?:bg|text|border|border-[trblxy]|ring|ring-offset|from|via|to|fill|stroke|outline|decoration|divide|placeholder|accent|caret|shadow)';

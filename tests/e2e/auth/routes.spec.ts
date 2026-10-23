@@ -1,6 +1,6 @@
 /**
  * The redesigned pages at the clean URLs: canonical routes, `-new` redirects, signed-out deep links,
- * the not-found screen and the way into /classic. Other specs target the original pages under /classic.
+ * the not-found screen and the redirects from the removed /classic URLs.
  */
 import { test, expect, ADMIN, resetDb, apiRegister, seedSession, gotoNew, fillLogin, submitButton } from '../support/fixtures';
 
@@ -44,12 +44,12 @@ test.describe('signed in', () => {
     await expect(page).toHaveURL(/\/$/);
   });
 
-  test('Settings leads to the classic interface and Back returns', async ({ page }) => {
-    await gotoNew(page, '/settings');
-    await page.getByRole('button', { name: 'Classic interface' }).click();
-    await expect(page).toHaveURL(/\/classic$/);
-    await page.goBack();
-    await expect(page).toHaveURL(/\/settings$/);
+  test('an old /classic bookmark is replaced by the page', async ({ page }) => {
+    await gotoNew(page, '/classic/planner');
+    await expect(page).toHaveURL(/\/planner$/);
+    await expect(page.getByRole('button', { name: 'WanderGrid home' })).toBeVisible({ timeout: 20_000 });
+    await gotoNew(page, '/classic');
+    await expect(page).toHaveURL(/\/$/);
   });
 });
 

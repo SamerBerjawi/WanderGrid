@@ -1,37 +1,14 @@
 
-import { isFeatureEnabled } from './config/featureFlags';
-import { getUiTheme } from './config/uiTheme';
-import { goldenViews } from './views/golden/registry';
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
-import { ViewState, User } from './types';
-import { resolveRoute, classicPathFor, classicTripPath, navPathFor, CLASSIC_PREFIX, PATHS, type Route } from './utils/routes';
+import { User } from './types';
+import { resolveRoute, navPathFor, PATHS, type Route } from './utils/routes';
 import { dataService } from './services/mockDb';
-import { motion, AnimatePresence } from 'motion/react';
-import { IconContext } from '@/components/ui/hugeicons';
 
 // Lazy load views to split the bundle and improve performance
-const Dashboard = lazy(() => import('./views/Dashboard').then(m => ({ default: m.Dashboard })));
-const Settings = lazy(() => import('./views/Settings').then(m => ({ default: m.Settings })));
-const UserDetail = lazy(() => import('./views/UserDetail').then(m => ({ default: m.UserDetail })));
-const PlannerView = lazy(() => import('./views/PlannerView').then(m => ({ default: m.PlannerView })));
-const TripDetail = lazy(() => import('./views/TripDetail').then(m => ({ default: m.TripDetail })));
-const ExpeditionMapView = lazy(() => import('./views/ExpeditionMapView').then(m => ({ default: m.ExpeditionMapView })));
-const Flights = lazy(() => import('./views/Flights').then(m => ({ default: m.Flights })));
-const RoadTrips = lazy(() => import('./views/RoadTrips').then(m => ({ default: m.RoadTrips })));
-const TravelAtlas = lazy(() => import('./views/TravelAtlas').then(m => ({ default: m.TravelAtlas })));
-const VacationCalendar = lazy(() => import('./views/VacationCalendar').then(m => ({ default: m.VacationCalendar })));
-// Signed-out visitors always need the sign-in screen: start fetching it immediately instead of after
-// the app shell has rendered (removes one round trip from the login page's LCP).
-const loadAuth = () => import('./views/Auth');
-try { if (!localStorage.getItem('wandergrid_session_token')) void loadAuth(); } catch (e) {}
-const Auth = lazy(() => loadAuth().then(m => ({ default: m.Auth })));
-// The navigation shell (and most of its icon set) is only needed after sign-in; keep it off the login page's
-// critical path (PERF-001/005).
-const Sidebar = lazy(() => import('./components/Sidebar').then(m => ({ default: m.Sidebar })));
-const GoldenSidebar = lazy(() => import('./components/golden/GoldenSidebar').then(m => ({ default: m.GoldenSidebar })));
-// Redesigned pages (UI_UX_DESIGN_REFERENCE.md §5.0): the default experience, inside ShellNew. The original
-// pages and their shell stay under /classic (utils/routes.ts).
+// Pages (UI_UX_DESIGN_REFERENCE.md §5.0), inside ShellNew. Signed-out visitors always need the sign-in
+// screen: start fetching it immediately instead of after the app shell has rendered (removes one round trip
+// from the login page's LCP).
 const ShellNew = lazy(() => import('./components/new/ShellNew').then(m => ({ default: m.ShellNew })));
 const MapNew = lazy(() => import('./views/new/MapNew').then(m => ({ default: m.MapNew })));
 const AtlasNew = lazy(() => import('./views/new/AtlasNew').then(m => ({ default: m.AtlasNew })));
@@ -43,7 +20,9 @@ const RoadTripsNew = lazy(() => import('./views/new/RoadTripsNew').then(m => ({ 
 const CalendarNew = lazy(() => import('./views/new/CalendarNew').then(m => ({ default: m.CalendarNew })));
 const MemberNew = lazy(() => import('./views/new/MemberNew').then(m => ({ default: m.MemberNew })));
 const SettingsNew = lazy(() => import('./views/new/SettingsNew').then(m => ({ default: m.SettingsNew })));
-const AuthNew = lazy(() => import('./views/new/AuthNew').then(m => ({ default: m.AuthNew })));
+const loadAuth = () => import('./views/new/AuthNew');
+try { if (!localStorage.getItem('wandergrid_session_token')) void loadAuth(); } catch (e) {}
+const AuthNew = lazy(() => loadAuth().then(m => ({ default: m.AuthNew })));
 const NotFoundNew = lazy(() => import('./components/new/NotFoundNew').then(m => ({ default: m.NotFoundNew })));
 
 import { PWAInstallBanner } from './components/PWAInstallBanner';
@@ -62,28 +41,19 @@ const readRoute = (): Route => {
         return route;
     } catch (e) {
         console.warn('Failed to parse URL state', e);
-        return { shell: 'new', page: 'dashboard', redirectTo: null };
+        return { page: 'dashboard', redirectTo: null };
     }
 };
 
 import ViewSkeleton from './components/skeletons/ViewSkeleton';
 
 // Content-shaped New-style skeleton fallback for lazy components
-const ViewLoader: React.FC<{ view?: ViewState | string; fullScreen?: boolean }> = ({ view = 'dashboard', fullScreen }) => (
+const ViewLoader: React.FC<{ view?: string; fullScreen?: boolean }> = ({ view = 'dashboard', fullScreen }) => (
     <ViewSkeleton view={view} fullScreen={fullScreen} />
 );
 
-import { AmbientBackground } from './components/AmbientBackground';
-import { getPageTheme } from './config/pageThemes';
-
 export default function App() {
   const [route, setRoute] = useState<Route>(readRoute);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
-  const isClassic = route.shell === 'classic';
-  const view = route.shell === 'classic' ? route.view : ViewState.DASHBOARD;
-  const selectedUserId = route.shell === 'classic' ? route.userId ?? null : null;
-  const selectedTripId = route.shell === 'classic' ? route.tripId ?? null : null;
-  
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('dark');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthReady, setIsAuthReady] = useState<boolean>(false);
@@ -97,11 +67,6 @@ export default function App() {
           console.debug("URL update blocked by environment.");
       }
       setRoute(readRoute());
-  };
-
-  // The original pages' own navigation (Sidebar, GoldenSidebar, golden views) stays under /classic.
-  const navigate = (newView: ViewState, id?: string) => {
-      navigateTo(classicPathFor(newView, id));
   };
 
   useEffect(() => {
@@ -181,10 +146,8 @@ export default function App() {
             isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         }
         root.classList.toggle('dark', isDark);
-        // The Golden Hour / Departure Board skins belong to the original pages only (decision 201); the stored
-        // choice is never touched, the New pages simply never receive these classes.
-        root.classList.toggle('theme-golden', isClassic && isFeatureEnabled('UI_GOLDEN_HOUR'));
-        root.classList.toggle('theme-board', isClassic && getUiTheme() === 'board');
+        // A Golden Hour / Departure Board choice stored by the removed interface is ignored; drop its classes.
+        root.classList.remove('theme-golden', 'theme-board');
 
         // Update meta theme-color for iOS / Android PWA status bar
         const metaThemeColor = document.getElementById('theme-color-meta');
@@ -204,7 +167,7 @@ export default function App() {
         mediaQuery.addEventListener('change', handler);
         return () => mediaQuery.removeEventListener('change', handler);
     }
-  }, [theme, isClassic]);
+  }, [theme]);
 
   // The workspace theme is an admin setting; other users keep their choice in this browser only.
   // A personal preference wins over the workspace theme on load, so every explicit choice must update it too;
@@ -234,7 +197,7 @@ export default function App() {
       setCurrentUser(null);
       localStorage.removeItem('wandergrid_session_user');
       localStorage.removeItem('wandergrid_session_token');
-      if (!options?.keepLocation) navigateTo(isClassic ? CLASSIC_PREFIX : PATHS.home);
+      if (!options?.keepLocation) navigateTo(PATHS.home);
   };
 
   // Async failures in event handlers bypass error boundaries; surface them instead of failing silently.
@@ -262,81 +225,9 @@ export default function App() {
     };
   }, []);
 
-  const handleUserClick = (userId: string) => {
-      navigate(ViewState.USER_DETAIL, userId);
-  };
-
-  // Inside the original pages a trip opens on the original page.
-  const handleTripClick = (tripId: string) => {
-      if (tripId && tripId.startsWith('independent-flight-')) {
-          navigate(ViewState.FLIGHTS);
-      } else {
-          navigate(ViewState.TRIP_DETAIL, tripId);
-      }
-  };
-
-  // Inside the New pages a trip opens on its New page; a flight that belongs to no trip goes to Flights.
+  // A trip opens on its page; a flight that belongs to no trip goes to Flights.
   const openTripNew = (id: string) => navigateTo(id.startsWith('independent-flight-') ? PATHS.flights : PATHS.trip(id));
   const openMemberNew = (id: string) => navigateTo(PATHS.member(id));
-
-  const getStableRouteKey = () => {
-    switch (view) {
-      case ViewState.USER_DETAIL:
-        return `view-user-${selectedUserId || 'none'}`;
-      case ViewState.TRIP_DETAIL:
-        return `view-trip-${selectedTripId || 'none'}`;
-      default:
-        return `view-${view}`;
-    }
-  };
-
-  const routeKey = getStableRouteKey();
-
-  const NavSidebar = isFeatureEnabled('UI_GOLDEN_HOUR') ? GoldenSidebar : Sidebar;
-
-  const renderView = () => {
-    const Golden = isFeatureEnabled('UI_GOLDEN_HOUR') ? goldenViews[view] : undefined;
-    if (Golden) {
-      return (
-        <Golden
-          onUserClick={handleUserClick}
-          onTripClick={handleTripClick}
-          onBack={() => navigate(view === ViewState.TRIP_DETAIL ? ViewState.PLANNER : ViewState.DASHBOARD)}
-          onLogout={() => handleLogout()}
-          onThemeChange={applyPersonalTheme}
-          userId={selectedUserId ?? undefined}
-          tripId={selectedTripId ?? undefined}
-          isSidebarCollapsed={isSidebarCollapsed}
-        />
-      );
-    }
-    switch (view) {
-      case ViewState.DASHBOARD:
-        return <Dashboard onUserClick={handleUserClick} onTripClick={handleTripClick} />;
-      case ViewState.SETTINGS:
-        return <Settings onThemeChange={applyPersonalTheme} />;
-      case ViewState.USER_DETAIL:
-        return <UserDetail userId={selectedUserId!} onBack={() => navigate(ViewState.DASHBOARD)} onLogout={() => handleLogout()} />;
-      case ViewState.PLANNER:
-        return <PlannerView onTripClick={handleTripClick} />;
-      case ViewState.TRIP_DETAIL:
-        return <TripDetail tripId={selectedTripId!} onBack={() => navigate(ViewState.PLANNER)} />;
-      case ViewState.MAP:
-        return <ExpeditionMapView onTripClick={handleTripClick} isSidebarCollapsed={isSidebarCollapsed} />;
-      case ViewState.GAMIFICATION:
-        return <Dashboard onUserClick={handleUserClick} onTripClick={handleTripClick} />;
-      case ViewState.FLIGHTS:
-        return <Flights onTripClick={handleTripClick} />;
-      case ViewState.ROADTRIPS:
-        return <RoadTrips onTripClick={handleTripClick} />;
-      case ViewState.TRAVEL_ATLAS:
-        return <TravelAtlas onTripClick={handleTripClick} />;
-      case ViewState.VACATION_CALENDAR:
-        return <VacationCalendar onTripClick={handleTripClick} />;
-      default:
-        return <Dashboard onUserClick={handleUserClick} onTripClick={handleTripClick} />;
-    }
-  };
 
   if (!isAuthReady) {
       return (
@@ -352,8 +243,8 @@ export default function App() {
       );
   }
 
-  // Signed out: AuthNew in place on any URL (so a deep link survives signing in); the old sign-in only under /classic.
-  if (!currentUser && !isClassic) {
+  // Signed out: AuthNew in place on any URL, so a deep link survives signing in.
+  if (!currentUser) {
       return (
         <Suspense fallback={<ViewLoader fullScreen />}>
           <AuthNew
@@ -369,29 +260,10 @@ export default function App() {
       );
   }
 
-  if (!currentUser) {
-      return (
-        <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-indigo-50/50 via-slate-100/60 to-blue-50/50 dark:from-slate-950 dark:via-slate-900/90 dark:to-indigo-950/95 transition-colors duration-500 text-gray-900 dark:text-gray-100 relative safe-top safe-bottom safe-x">
-            {/* Pulsing ambient spots */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-                <div className="absolute -top-40 -left-40 w-[550px] h-[550px] rounded-full bg-blue-500/2 dark:bg-blue-600/3 blur-[120px] animate-[pulse_10s_infinite]" />
-                <div className="absolute -bottom-40 -right-40 w-[600px] h-[600px] rounded-full bg-purple-500/2 dark:bg-purple-600/3 blur-[130px] animate-[pulse_14s_infinite] delay-1000" />
-            </div>
-            <div className="w-full h-full relative z-raised">
-                <Suspense fallback={<ViewLoader />}>
-                    <Auth onLogin={handleLogin} />
-                </Suspense>
-            </div>
-            <Toaster />
-        </div>
-      );
-  }
-
   const isDarkMode = theme === 'dark' || (theme === 'auto' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
-  if (route.shell === 'new') {
-      const page = route.page;
-      return (
+  const page = route.page;
+  return (
         <Suspense fallback={<ViewLoader view={page} fullScreen />}>
           <ShellNew
             currentPath={navPathFor(page)}
@@ -406,7 +278,7 @@ export default function App() {
           >
             <AppErrorBoundary routeKey={`new-${page}-${route.id ?? ''}`} onResetToDashboard={() => navigateTo(PATHS.home)}>
               <Suspense fallback={<ViewLoader view={page} />}>
-                {page === 'map' ? <MapNew onTripClick={openTripNew} isSidebarCollapsed={isSidebarCollapsed} onThemeChange={t => handleThemeChange(t)} /> : null}
+                {page === 'map' ? <MapNew onTripClick={openTripNew} onThemeChange={t => handleThemeChange(t)} /> : null}
                 {page === 'atlas' ? <AtlasNew onTripClick={openTripNew} /> : null}
                 {page === 'trips' ? <TripsNew onTripClick={openTripNew} /> : null}
                 {page === 'dashboard' ? <DashboardNew onTripClick={openTripNew} onMemberClick={openMemberNew} /> : null}
@@ -424,7 +296,7 @@ export default function App() {
                   />
                 ) : null}
                 {page === 'trip' && route.id ? (
-                  <TripNew key={route.id} tripId={route.id} onOpenMember={openMemberNew} onBack={() => navigateTo(PATHS.trips)} onOpenClassic={id => navigateTo(classicTripPath(id))} />
+                  <TripNew key={route.id} tripId={route.id} onOpenMember={openMemberNew} onBack={() => navigateTo(PATHS.trips)} />
                 ) : null}
                 {page === 'notfound' ? <NotFoundNew onHome={() => navigateTo(PATHS.home)} /> : null}
               </Suspense>
@@ -434,61 +306,5 @@ export default function App() {
           <Toaster />
           <ConfirmHost />
         </Suspense>
-      );
-  }
-
-  return (
-    <IconContext.Provider value={{ weight: 'duotone' }}>
-      <div className="flex h-screen w-full overflow-hidden bg-light-bg dark:bg-dark-bg transition-colors duration-700 text-light-text dark:text-dark-text relative safe-x">
-        {/* Dynamic Ambient Background Glow representing current page theme */}
-        <AmbientBackground 
-          theme={getPageTheme(view)} 
-          darkMode={isDarkMode} 
-        />
-        <Suspense fallback={null}>
-        <NavSidebar 
-          onOpenNew={() => navigateTo(PATHS.home)}
-          currentView={view} 
-          onNavigate={(v, id) => navigate(v, id)} 
-          theme={theme}
-          onThemeToggle={handleThemeChange}
-          onLogout={() => handleLogout()}
-          currentUser={currentUser}
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        />
-        </Suspense>
-        <main className={`flex-1 h-full relative z-raised transition-all duration-300 ${
-          view === ViewState.MAP 
-            ? 'p-0 overflow-hidden' 
-            : `px-2 sm:px-4 md:px-8 pt-[calc(0.5rem+env(safe-area-inset-top,0px))] sm:pt-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-8 overflow-y-auto custom-scrollbar ${isSidebarCollapsed ? 'md:pl-28' : 'md:pl-80'}`
-        }`}>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={routeKey}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              className="w-full h-full"
-            >
-              <Suspense fallback={<ViewLoader view={view} />}>
-                <AppErrorBoundary routeKey={routeKey} onResetToDashboard={() => navigate(ViewState.DASHBOARD)}>
-                  {renderView()}
-                </AppErrorBoundary>
-              </Suspense>
-            </motion.div>
-          </AnimatePresence>
-        </main>
-        <PWAInstallBanner />
-        <Toaster />
-        <ConfirmHost />
-        {!dataService.isDatabaseMode() && (
-          <div className="rp-root fixed top-safe-offset right-3 z-sticky pointer-events-none" role="status">
-            <span className="inline-flex min-h-8 items-center rounded-full bg-rp-mustard px-3 text-xs font-medium text-rp-on-mustard rp-shadow-soft">Local mode · data stays in this browser</span>
-          </div>
-        )}
-      </div>
-    </IconContext.Provider>
   );
 }

@@ -45,7 +45,7 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --legacy-peer-deps --no-audit --no-fund
 
-      # tsc also checks tests/e2e, so its dependencies (@playwright/test, @axe-core/playwright) must be installed first.
+      # tsc also checks tests/e2e, so its dependencies (@playwright/test) must be installed first.
       - name: Install e2e test dependencies
         working-directory: tests/e2e
         run: npm ci --no-audit --no-fund
