@@ -59,7 +59,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 | `hooks/` | `useWanderSync` (SWR cache), `usePWA`, `useExistingTripSuggestions` |
 | `utils/` | `formatters.ts` (date/currency; mandatory), `brandfetch.ts`, `flightData.ts`, static aviation and sticker data |
 | `config/` | `featureFlags.ts` (`VITE_FF_*` overrides) and `pageThemes.ts` |
-| `types.ts`, `types/` | Shared TS types and `ViewState`. Path alias `@/*` points at the repo root |
+| `types.ts`, `types/` | Shared TS types. Path alias `@/*` points at the repo root |
 | `constants.ts` | Shared style strings (`INPUT_BASE_STYLE`, `BTN_*_STYLE`, …) |
 | `backend_files/` | Express server (`server.js`, ~2.9k lines), upstream helpers (`upstream.js`, `geocodingChain.js`, `routeProxy.js`, `aviationStack.js`, `carrierMapping.js`, `integrationsTester.js`), the `test/` folder, and the Dockerfile |
 | `public/` | PWA icons, `manifest.json`, GeoJSON (`data/`), map styles, `airport-overlay.pmtiles` (gitignored and must be present locally) |
