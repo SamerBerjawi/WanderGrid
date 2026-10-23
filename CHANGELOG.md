@@ -4,6 +4,12 @@ All notable changes to WanderGrid are listed here, newest first. The format foll
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow the tags in this repository
 (v0.1 to v0.5, then 1.0.0).
 
+## [1.1.0] - Unreleased
+
+### Fixed
+
+- **Carrier logos on the Flights page now come from Settings > Carriers.** The Flights page, Road trips, trip pages, map sheets and the flight finder share one lookup that finds the carrier you set up (by code, name or the letters of the flight number, so "KLM Royal Dutch Airlines" finds "KLM") and draws its logo the way the Carriers section does. Changing a carrier shows up without a reload. A carrier you have not set up shows the mode icon instead of a guessed Clearbit or favicon image, unless Brandfetch knows it.
+
 ## [1.0.0] - Unreleased
 
 The redesign release. Every page, dialog and message of the app was rebuilt in one new design language

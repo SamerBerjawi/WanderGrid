@@ -57,9 +57,10 @@ export const RpCarrierLogo: React.FC<{
     const ctx = useCarrierLogoConfig();
     const list = carriers ?? ctx.carriers;
     const key = brandfetchApiKey ?? ctx.brandfetchApiKey;
-    const sources = useMemo(
-        () => resolveCarrierLogo({ provider, identifier }, { carriers: list, brandfetchApiKey: key, saved: src }).sources,
+    const { sources, carrier } = useMemo(
+        () => resolveCarrierLogo({ provider, identifier }, { carriers: list, brandfetchApiKey: key, saved: src }),
         [provider, identifier, src, list, key]
     );
-    return <LogoChip sources={sources} alt={provider ? `${provider} logo` : ''} fallback={fallback} iconClassName={iconClassName} size={size} className={className} />;
+    const label = carrier?.name || provider;
+    return <LogoChip sources={sources} alt={label ? `${label} logo` : ''} fallback={fallback} iconClassName={iconClassName} size={size} className={className} />;
 };
