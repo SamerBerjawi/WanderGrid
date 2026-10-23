@@ -12,6 +12,8 @@ import { cityScanKey, isLayoverCountry, isWishlistCountry, regionOf, type AtlasS
 import type { AtlasData } from '../../../hooks/useAtlasData';
 import { STATUS_OPTIONS, toneOf } from './atlasStatus';
 import { FlagBadge, RpChipLabel, ToneChip } from './AtlasParts';
+import { NamePlaceSheet } from './NamePlaceSheets';
+import { isUnknownPlaceName } from '../../../services/cityRegistry';
 import { cn } from '../../../utils/cn';
 
 /** Sheets of the New Atlas page: a country, a city, adding a country, and finding places in trips. */
@@ -184,15 +186,19 @@ export const CitySheet: React.FC<{ city: VisitedItem | null; onClose: () => void
     const [name, setName] = useState('');
     const [visitDate, setVisitDate] = useState('');
     const [notes, setNotes] = useState('');
+    const [matching, setMatching] = useState(false);
 
     useEffect(() => {
         if (!city) return;
+        setMatching(false);
         setName(city.name);
         setVisitDate(city.visitDate || '');
         setNotes(city.notes || '');
     }, [city]);
 
     if (!city) return <RpSheet open={false} onClose={onClose} title="">{null}</RpSheet>;
+    // A place with no usable name is named from its coordinates and the records it comes from.
+    if (isUnknownPlaceName(city.name) || matching || !data.storedIds.has(city.id)) return <NamePlaceSheet city={city} onClose={() => { setMatching(false); onClose(); }} data={data} />;
 
     const save = async () => {
         const nameChanged = name.trim() !== city.name;
@@ -230,6 +236,9 @@ export const CitySheet: React.FC<{ city: VisitedItem | null; onClose: () => void
                 <Field label="City">
                     {id => <input id={id} value={name} onChange={e => setName(e.target.value)} className={FIELD} autoComplete="off" />}
                 </Field>
+                <button type="button" onClick={() => setMatching(true)} className="my-1 inline-flex min-h-11 items-center gap-2 self-start rounded-full bg-rp-inset px-4 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted">
+                    <MapPin size={16} aria-hidden /> Match to a place
+                </button>
                 <Field label="Date">
                     {id => <input id={id} type="date" value={visitDate} onChange={e => setVisitDate(e.target.value)} className={cn(FIELD, 'rp-date rp-tabular')} />}
                 </Field>
