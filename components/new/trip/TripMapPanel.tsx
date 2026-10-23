@@ -16,7 +16,7 @@ export const TripHeroMap: React.FC<{ trip: Trip; className?: string }> = ({ trip
     // The scratch mode lists every leg of the trip as a route.
     const model = useMemo(() => buildMapModel([trip], { mode: 'scratch', groupAirports: false, scratchRoutes: ['flight', 'land', 'sea'] }), [trip]);
     const routes = useMemo(
-        () => model.routes.map(r => ({ from: r.from, to: r.to, count: 1, label: `${formatProperLocationName(r.origin)} to ${formatProperLocationName(r.destination)}` })),
+        () => model.routes.map(r => ({ from: r.from, to: r.to, count: 1, mode: r.rawMode, via: (r.waypoints || []).filter((w: any) => w?.coordinates).map((w: any) => [w.coordinates.lng, w.coordinates.lat] as [number, number]), label: `${formatProperLocationName(r.origin)} to ${formatProperLocationName(r.destination)}` })),
         [model.routes]
     );
     const pins = useMemo(() => {

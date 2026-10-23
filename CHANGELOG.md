@@ -148,6 +148,13 @@ pages are now the default. The original interface is kept, hidden, under `/class
 
 ### Fixed
 
+- **Scratch map filters.** Lived in no longer washes lived countries in a flat fill (they get their own
+  colour), a Visited toggle joins the scratch filters, Layovers now finds layover-only countries (a connecting flight's next origin was
+  counted as a stay) and hides them, and City pins Off removes every pin and route-end marker.
+- Still maps (Flights, Road trips, trip header, dashboard World) draw the real road, rail and sea routes
+  instead of straight lines once they are known.
+- The scratch map is drawn with finer 10m borders when zoomed in, and the Night lights basemap stays sharp at
+  high zoom (vector streets and labels over the lights, since the imagery ends at level 8).
 - A production build failure caused by the 6 MB Hugeicons set being matched by the service worker's
   precache; it is now a separately named, runtime-cached chunk.
 - Overlapping stays no longer draw on top of each other.

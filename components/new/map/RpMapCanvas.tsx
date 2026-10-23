@@ -13,10 +13,11 @@ import {
 } from '../../../services/airportOverlayStyle';
 import { OPENAIP_AIRSPACE_SOURCE_ID, ensureOpenAipIcons, getOpenAipOverlayLayers } from '../../../services/openAipStyle';
 import {
-    OPENAIP_PROXY_TILES, OPENFREEMAP_STYLES, RAILROADS_GEOJSON_URL, COUNTRIES_GEOJSON_URL, TERRARIUM_DEM_TILES,
+    OPENAIP_PROXY_TILES, OPENFREEMAP_STYLES, RAILROADS_GEOJSON_URL, COUNTRIES_GEOJSON_URL, COUNTRIES_FINE_GEOJSON_URL, COUNTRIES_FINE_MIN_ZOOM, TERRARIUM_DEM_TILES,
     getBasemapTileConfig, gibsDailyTiles, withApiAuth, isLightEffectiveBasemap,
 } from '../../../services/mapStyle';
 import { getCachedMultiModalRoute, fetchMultiModalRoute, getGeodesicArcPoints } from '../../../services/multiModalRouting';
+import { NIGHT_LIGHTS_SOURCE_ID, composeNightLightsStyle, nightLightsTileSize } from '../../../services/nightLights';
 import { getTwilightGradientGeoJSON } from '../../../services/solarTerminator';
 import { calculateDistance } from '../../../services/geocoding';
 import { getLatestRainRadarTileUrl } from '../../../services/rainViewer';
@@ -26,6 +27,7 @@ import { cn } from '../../../utils/cn';
 import { readRpPalette, rpTokensReady, rgba, css, mix, type RGB, type RpPalette } from './mapPalette';
 import { featureCentroid, geoColor, gradientRuns } from './mapGeoColor';
 import type { MapModel, MapPlace, MapRoute, LngLat } from './mapModel';
+import { markerSizes, scratchKindOf, scratchToggles } from './mapScratch';
 
 /**
  * The New map engine: MapLibre for the basemap and its native overlays (airport detail, aviation
@@ -76,7 +78,6 @@ export interface RpMapCanvasProps {
 const FONT = '"Outfit Variable", Outfit, -apple-system, sans-serif';
 const WORLD = { center: [12, 28] as LngLat, zoom: 1.4 };
 const ROUTE_WIDTH = { thin: 1.25, normal: 2, thick: 3.25 } as const;
-const MARKER_SIZE = { off: 0, small: 3, medium: 4.5, large: 6.5 } as const;
 /** Animated routes move at one speed everywhere, so a long route takes longer than a short one. */
 const PULSE_KM_PER_S = 2200;
 /** Length of the moving pulse's tail, in km of route. */
@@ -176,7 +177,19 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
     // Set when the chosen basemap keeps failing to load; cleared whenever another basemap is chosen.
     const [basemapFailed, setBasemapFailed] = useState(false);
     useEffect(() => setBasemapFailed(false), [effectiveBasemap]);
+    const nightComposite = FEATURE_FLAGS.GEV_P04B_OPENFREEMAP && effectiveBasemap === 'citylights' && !basemapFailed;
+    const styleOptions = useCallback((): maplibregl.StyleSwapOptions & maplibregl.StyleOptions => ({
+        diff: false,
+        transformStyle: nightComposite
+            ? (_prev: any, next: any) => composeNightLightsStyle(next, { tileSize: nightLightsTileSize(window.devicePixelRatio || 1), canvas: css(palette.canvas) })
+            : undefined,
+    }), [nightComposite, palette]);
+    const styleOptionsRef = useRef(styleOptions);
+    styleOptionsRef.current = styleOptions;
     const baseStyle = useMemo<string | maplibregl.StyleSpecification>(() => {
+        // Night lights is NASA imagery under OpenFreeMap's dark vector detail: the dark style is loaded and
+        // recomposed by `styleOptions` (the raster-only style below is the fallback when it is not available).
+        if (nightComposite) return OPENFREEMAP_STYLES.dark!;
         const vector = FEATURE_FLAGS.GEV_P04B_OPENFREEMAP ? OPENFREEMAP_STYLES[effectiveBasemap] : undefined;
         // Backup basemaps come from the other provider: a failed vector style falls back to Esri's grey
         // raster, and a failed raster (Esri, NASA) falls back to OpenFreeMap's vector light or dark map.
@@ -194,7 +207,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         };
         // palette.canvas only matters for the raster fallback background
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [effectiveBasemap, cartoKey, isDark, basemapFailed]);
+    }, [effectiveBasemap, cartoKey, isDark, basemapFailed, nightComposite]);
 
     // Watch for the basemap failing: repeated tile errors from the base source, or the style itself.
     const fallbackRef = useRef({ failed: false, label: effectiveBasemap, notify: onBasemapFallback });
@@ -208,7 +221,6 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         initMapLibre();
         const map = new maplibregl.Map({
             container,
-            style: baseStyle,
             center: WORLD.center,
             zoom: WORLD.zoom,
             attributionControl: false,
@@ -217,6 +229,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
             dragRotate: false,
             pitchWithRotate: false,
         });
+        map.setStyle(baseStyle as any, styleOptionsRef.current() as any);
         map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
         attachMissingImageLoader(map);
         map.touchZoomRotate.disableRotation();
@@ -229,7 +242,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         if (import.meta.env.DEV) (window as any).__rpMap = map;
 
         map.on('style.load', () => setStyleVersion(v => v + 1));
-        const OVERLAY_SOURCES = new Set(['rp-dem', 'rp-dem-3d', 'rp-rail', 'rp-radar', 'rp-gibs', 'rp-night', 'rp-countries', 'rp-routes', 'rp-places', 'rp-pins', 'rp-airports', AIRPORT_SOURCE_ID, OPENAIP_AIRSPACE_SOURCE_ID]);
+        const OVERLAY_SOURCES = new Set(['rp-dem', 'rp-dem-3d', 'rp-rail', 'rp-radar', 'rp-gibs', 'rp-night', NIGHT_LIGHTS_SOURCE_ID, 'rp-countries', 'rp-routes', 'rp-places', 'rp-pins', 'rp-airports', AIRPORT_SOURCE_ID, OPENAIP_AIRSPACE_SOURCE_ID]);
         let errorTimes: number[] = [];
         map.on('error', (e: any) => {
             const f = fallbackRef.current;
@@ -262,8 +275,8 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
     const firstStyle = useRef(true);
     useEffect(() => {
         if (firstStyle.current) { firstStyle.current = false; return; }
-        mapRef.current?.setStyle(baseStyle as any, { diff: false });
-    }, [baseStyle]);
+        mapRef.current?.setStyle(baseStyle as any, styleOptionsRef.current() as any);
+    }, [baseStyle, nightComposite]);
 
     /* ------------------------------------------------------------------ projection & sky */
 
@@ -416,13 +429,23 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
 
     /* ------------------------------------------------------------------ data for deck layers */
 
-    // Countries for the scratch map, loaded once from the app's own copy.
+    // Countries for the scratch map, from the app's own copies: the 50m borders draw first (fast), and the
+    // finer 10m ones replace them once the map is zoomed in, so a coastline stays crisp up close.
+    const [fineCountries, setFineCountries] = useState<any>(null);
     useEffect(() => {
         if (mode !== 'scratch' || countries) return;
         let alive = true;
         fetch(COUNTRIES_GEOJSON_URL).then(r => r.json()).then(d => { if (alive) setCountries(d); }).catch(() => undefined);
         return () => { alive = false; };
     }, [mode, countries]);
+    const wantFine = mode === 'scratch' && zoom >= COUNTRIES_FINE_MIN_ZOOM;
+    useEffect(() => {
+        if (!wantFine || fineCountries) return;
+        let alive = true;
+        fetch(COUNTRIES_FINE_GEOJSON_URL).then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); }).then(d => { if (alive) setFineCountries(d); }).catch(() => undefined);
+        return () => { alive = false; };
+    }, [wantFine, fineCountries]);
+    const borders = fineCountries ?? countries; // once the fine set is in, it stays
 
     // Day and night shading refreshes every minute.
     useEffect(() => {
@@ -502,8 +525,10 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         return { type: 'FeatureCollection' as const, features };
     }, [showRoutes, routePaths, colorMode, palette, maxCount, fixedColor, appearance.routeScale, appearance.routeWidthMode]);
 
+    const sizes = markerSizes(mode === 'scratch', appearance);
+
     const airportsGeo = useMemo(() => {
-        const size = MARKER_SIZE[appearance.airportSize || 'medium'];
+        const size = sizes.airport;
         const byTraffic = appearance.airportMode !== 'uniform';
         const features = (showRoutes || airportsOnly) && size > 0 ? model.airports.map(a => ({
             type: 'Feature' as const,
@@ -512,10 +537,10 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
             geometry: { type: 'Point' as const, coordinates: a.coords },
         })) : [];
         return { type: 'FeatureCollection' as const, features };
-    }, [showRoutes, airportsOnly, model.airports, appearance.airportSize, appearance.airportMode]);
+    }, [showRoutes, airportsOnly, model.airports, sizes.airport, appearance.airportMode]);
 
     const placesGeo = useMemo(() => {
-        const size = MARKER_SIZE[appearance.citySize || 'medium'];
+        const size = sizes.city;
         const features = showRoutes && size > 0 ? model.places.map(p => ({
             type: 'Feature' as const,
             id: `p:${p.id}`,
@@ -523,10 +548,10 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
             geometry: { type: 'Point' as const, coordinates: p.coords },
         })) : [];
         return { type: 'FeatureCollection' as const, features };
-    }, [showRoutes, model.places, appearance.citySize]);
+    }, [showRoutes, model.places, sizes.city]);
 
     const pinsGeo = useMemo(() => {
-        const size = MARKER_SIZE[appearance.scratchCitySize || 'medium'];
+        const size = sizes.pins;
         const features = mode === 'scratch' && !airportsOnly && size > 0 ? visitedPlaces.map((v, i) => ({
             type: 'Feature' as const,
             id: i,
@@ -534,28 +559,32 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
             geometry: { type: 'Point' as const, coordinates: [v.lng, v.lat] },
         })) : [];
         return { type: 'FeatureCollection' as const, features };
-    }, [mode, airportsOnly, visitedPlaces, appearance.scratchCitySize]);
+    }, [mode, airportsOnly, visitedPlaces, sizes.pins]);
 
     const countriesGeo = useMemo(() => {
-        if (mode !== 'scratch' || !countries || airportsOnly) return { type: 'FeatureCollection' as const, features: [] as any[] };
+        if (mode !== 'scratch' || !borders || airportsOnly) return { type: 'FeatureCollection' as const, features: [] as any[] };
         const visited = new Set(visitedCountryCodes.map(c => c.toUpperCase()));
-        const features = countries.features.map((f: any, i: number) => {
+        const toggles = scratchToggles(appearance);
+        const features = borders.features.map((f: any, i: number) => {
             const code = countryCodeOf(f.properties);
             const name = String(f.properties?.NAME || code);
             const statuses = asList(countryStatusMap[code] ?? countryStatusMap[name.toUpperCase()]);
-            const lived = statuses.includes('lived_current') || statuses.includes('lived_past');
+            const kind = scratchKindOf(statuses, visited.has(code), toggles);
             let fill = hex(palette.surface);
-            const centre = featureCentroid(f.geometry);
-            const region = hex(geoColor(centre.lat, centre.lng, palette));
             let opacity = 0.01; // not 0: MapLibre skips invisible features when querying clicks
-            if (lived && appearance.showLivedCountries !== false) { fill = hex(palette.ink); opacity = 0.6; }
-            else if (visited.has(code) || statuses.includes('visited')) { fill = region; opacity = 0.85; }
-            else if (statuses.includes('layover') && appearance.showLayoverCountries !== false) { fill = hex(palette.mustard); opacity = 0.6; }
-            else if (statuses.includes('wishlist') && appearance.showWishlistCountries !== false) { fill = hex(palette.rust); opacity = 0.35; }
+            if (kind === 'lived') { fill = hex(mix(palette.green, palette.ink, 0.2)); opacity = 0.8; }
+            else if (kind === 'visited') {
+                const centre = featureCentroid(f.geometry);
+                fill = hex(geoColor(centre.lat, centre.lng, palette));
+                opacity = 0.85;
+            } else if (kind === 'layover') { fill = hex(palette.mustard); opacity = 0.6; }
+            else if (kind === 'wishlist') { fill = hex(palette.rust); opacity = 0.35; }
             return { type: 'Feature', id: i, properties: { code, name, fill, opacity }, geometry: f.geometry };
         });
         return { type: 'FeatureCollection' as const, features };
-    }, [mode, countries, airportsOnly, visitedCountryCodes, countryStatusMap, palette, appearance.showLivedCountries, appearance.showLayoverCountries, appearance.showWishlistCountries]);
+        // appearance is read through scratchToggles; only its three toggles matter
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mode, borders, airportsOnly, visitedCountryCodes, countryStatusMap, palette, appearance.showLivedCountries, appearance.showVisitedCountries, appearance.showLayoverCountries, appearance.showWishlistCountries]);
 
     // Eight stacked caps (civil, nautical, astronomical twilight, then night): each adds a little shade,
     // so the edge fades from dusk into deep night instead of a hard line.
@@ -577,7 +606,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
             else map.addSource(id, { type: 'geojson', data, ...extra } as any);
         };
         source('rp-night', nightGeo);
-        source('rp-countries', countriesGeo);
+        source('rp-countries', countriesGeo, { tolerance: 0.15 });
         source('rp-routes', routesGeo, { lineMetrics: true, promoteId: 'id' });
         source('rp-places', placesGeo, { promoteId: 'key' });
         source('rp-pins', pinsGeo);
@@ -586,7 +615,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         const below = beforeFirstSymbol(map);
         const add = (layer: any, before?: string) => { if (!map.getLayer(layer.id)) map.addLayer(layer, before); };
         add({ id: 'rp-country-fill', type: 'fill', source: 'rp-countries', paint: { 'fill-color': ['get', 'fill'], 'fill-opacity': ['get', 'opacity'] } }, below);
-        add({ id: 'rp-country-line', type: 'line', source: 'rp-countries', paint: { 'line-width': 0.5 } }, below);
+        add({ id: 'rp-country-line', type: 'line', source: 'rp-countries', layout: { 'line-join': 'round' }, paint: { 'line-width': 0.5 } }, below);
         add({ id: 'rp-night', type: 'fill', source: 'rp-night', paint: {} });
         add({ id: 'rp-routes', type: 'line', source: 'rp-routes', filter: ['!=', ['get', 'mode'], 'sea'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: {} });
         add({ id: 'rp-routes-sea', type: 'line', source: 'rp-routes', filter: ['==', ['get', 'mode'], 'sea'], layout: { 'line-join': 'round' }, paint: { 'line-dasharray': [2, 1.5] } });
@@ -628,11 +657,17 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         map.setPaintProperty('rp-airport-labels', 'text-color', hex(p.ink));
         map.setPaintProperty('rp-airport-labels', 'text-halo-color', hex(p.surface));
         map.setPaintProperty('rp-airport-labels', 'text-halo-width', 2);
+        // A marker size of Off hides its layers outright, so no dot or label can draw at radius 0.
+        const shown = (on: boolean) => (on ? 'visible' : 'none');
+        map.setLayoutProperty('rp-places', 'visibility', shown(sizes.city > 0));
+        map.setLayoutProperty('rp-pins', 'visibility', shown(sizes.pins > 0));
+        map.setLayoutProperty('rp-airports', 'visibility', shown(sizes.airport > 0));
+        map.setLayoutProperty('rp-airport-labels', 'visibility', shown(sizes.airport > 0));
         // Keep the travel data above any overlay added later (radar, charts...).
         DATA_LAYERS.slice(2).forEach(id => { if (map.getLayer(id)) map.moveLayer(id); });
         // On the globe, flights are raised deck.gl arcs (below); the flat lines would double them.
         map.setFilter('rp-routes', isGlobe ? ['all', ['!=', ['get', 'mode'], 'sea'], ['!=', ['get', 'mode'], 'flight']] : ['!=', ['get', 'mode'], 'sea']);
-    }, [styleVersion, palette, isDark, lightBasemap, isGlobe, colorMode, routesGeo, airportsGeo, placesGeo, pinsGeo, countriesGeo, nightGeo, highlightRouteIds]);
+    }, [styleVersion, palette, isDark, lightBasemap, isGlobe, colorMode, routesGeo, airportsGeo, placesGeo, pinsGeo, countriesGeo, nightGeo, highlightRouteIds, sizes.city, sizes.pins, sizes.airport]);
 
     /* ------------------------------------------------------------------ raised arcs (globe) and the moving pulse */
 
