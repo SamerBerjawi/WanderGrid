@@ -9,6 +9,8 @@ import {
     Airplane, Archive, ArrowCounterClockwise, ArrowUpRight, Bed, CalendarBlank, CheckCircle, Clock, Copy, PencilSimple, Suitcase, Trash, XCircle, type Icon,
 } from '../../ui/hugeicons';
 import { RpHugeicon } from '../RpHugeicon';
+import { calendarService } from '../../../services/calendarExport';
+import { toast } from '../../../services/toast';
 import { RpIconButton } from '../ui';
 import { TripMenu, type TripMenuItem } from './TripMenu';
 import { cn } from '../../../utils/cn';
@@ -79,6 +81,7 @@ export const tripMenuItems = (trip: Trip, bucket: TripBucket, actions: TripActio
         { id: 'open', label: 'Open trip', icon: ArrowUpRight, onSelect: () => actions.onOpenTrip(trip) },
     ];
     items.push({ id: 'duplicate', label: 'Duplicate', icon: Copy, onSelect: () => actions.onDuplicate(trip) });
+    items.push({ id: 'calendar', label: 'Add to calendar', icon: CalendarBlank, onSelect: () => { calendarService.downloadTrip(trip); toast.success('Calendar file downloaded'); } });
     if (trip.status === 'Cancelled') {
         items.push({ id: 'restore', label: 'Restore as Planned', icon: ArrowCounterClockwise, separated: true, onSelect: () => actions.onRestore(trip) });
     } else if (!trip.archived) {

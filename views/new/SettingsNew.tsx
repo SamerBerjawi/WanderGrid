@@ -161,7 +161,7 @@ export const SettingsNew: React.FC<SettingsNewProps> = ({ theme, isDark, onTheme
                 </div>
 
                 <p className="px-1 text-sm text-rp-muted">
-                    Missing something? The original interface still has the AI trip guide, the flight import wizard on a trip, trip calendar files and the full-screen trip map.{' '}
+                    Missing something? The original interface still has the AI trip guide, the flight import wizard on a trip and the full-screen trip map.{' '}
                     <button
                         type="button"
                         onClick={() => onNavigate(CLASSIC_HOME)}

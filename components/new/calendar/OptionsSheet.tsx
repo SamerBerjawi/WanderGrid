@@ -22,14 +22,18 @@ const WEEK_CHOICES: { id: WeekStart; label: string }[] = [
 
 const feedUrl = (token: string) => `${window.location.origin}/api/calendar/${token}/feed.ics`;
 
+export type ColourBy = 'status' | 'type';
+
 export const OptionsSheet: React.FC<{
     open: boolean;
     onClose: () => void;
     weekStart: WeekStart;
     onWeekStart: (w: WeekStart) => void;
+    colourBy: ColourBy;
+    onColourBy: (c: ColourBy) => void;
     /** The trips the page shows, for the one-off file. */
     trips: Trip[];
-}> = ({ open, onClose, weekStart, onWeekStart, trips }) => {
+}> = ({ open, onClose, weekStart, onWeekStart, colourBy, onColourBy, trips }) => {
     const [token, setToken] = useState<string | null>(null);
     const [state, setState] = useState<'idle' | 'loading' | 'missing'>('idle');
     const server = dataService.isDatabaseMode();
@@ -70,6 +74,16 @@ export const OptionsSheet: React.FC<{
                 <RpSection title="Week starts on">
                     <div role="group" aria-label="Week starts on" className="flex flex-wrap gap-2 py-2">
                         {WEEK_CHOICES.map(c => <RpChip key={c.id} selected={weekStart === c.id} onClick={() => onWeekStart(c.id)}>{c.label}</RpChip>)}
+                    </div>
+                </RpSection>
+
+                <RpSection title="Colour leave by">
+                    <div role="group" aria-label="Colour leave by" className="flex flex-col gap-2 py-2">
+                        <div className="flex flex-wrap gap-2">
+                            <RpChip selected={colourBy === 'status'} onClick={() => onColourBy('status')}>Status</RpChip>
+                            <RpChip selected={colourBy === 'type'} onClick={() => onColourBy('type')}>Leave type</RpChip>
+                        </div>
+                        <p className="text-xs text-rp-muted">{colourBy === 'type' ? 'Leave takes its type\'s colour (annual, sick, unpaid ...). Trips without leave keep their status colour. Kept on this device.' : 'Planned, confirmed, travelling now and past. Kept on this device.'}</p>
                     </div>
                 </RpSection>
 

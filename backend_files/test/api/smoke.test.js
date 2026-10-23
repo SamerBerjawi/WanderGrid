@@ -29,3 +29,11 @@ test('responses carry a Content-Security-Policy that forbids inline and third-pa
     assert.doesNotMatch(csp, /script-src[^;]*https:/);
     assert.match(csp, /object-src 'none'/);
 });
+
+test('holiday proxy needs a token and rejects bad parameters before any upstream call', async () => {
+    assert.equal((await srv.api('GET', '/api/proxy/holidays/2026/BE')).status, 401);
+    await srv.reset();
+    const { token } = (await srv.api('POST', '/api/auth/register', { body: { name: 'Admin', email: 'holidays@test.dev', password: 'admin-pass-1' } })).json;
+    assert.equal((await srv.api('GET', '/api/proxy/holidays/1800/BE', { token })).status, 400);
+    assert.equal((await srv.api('GET', '/api/proxy/holidays/2026/BEL', { token })).status, 400);
+});

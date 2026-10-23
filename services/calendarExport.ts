@@ -1,5 +1,6 @@
 
 import { Trip } from '../types';
+import { tripIcsName, tripToIcs } from '../utils/tripIcs';
 
 export const calendarService = {
     generateIcsContent: (trips: Trip[], appName: string = 'WanderGrid'): string => {
@@ -69,5 +70,8 @@ export const calendarService = {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-    }
+    },
+
+    /** One trip as a calendar file: the trip, its transports at their real times, stays and activities. */
+    downloadTrip: (trip: Trip) => calendarService.downloadIcs(tripToIcs(trip), tripIcsName(trip)),
 };

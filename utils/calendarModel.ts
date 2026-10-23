@@ -337,6 +337,8 @@ export interface CalendarItem {
     leave: boolean;
     /** A holiday that is switched off, or any item that does not take a day off. */
     muted: boolean;
+    /** The leave type's colour, when the calendar colours leave by type (a trip's first type). */
+    tint?: LeaveColor;
     trip?: Trip;
     holiday?: HolidayDay;
     event?: CustomEvent;
@@ -352,12 +354,25 @@ export const stateOf = (trip: Trip, today: string): ItemState => {
 export const LEAVE_ID_PREFIX = 'leave-';
 export const isStandaloneLeave = (trip: Trip): boolean => trip.id.startsWith(LEAVE_ID_PREFIX);
 
+export type LeaveColor = EntitlementType['color'];
+export type CalendarLayer = 'trip' | 'holiday' | 'event';
+export const ALL_LAYERS: Record<CalendarLayer, boolean> = { trip: true, holiday: true, event: true };
+
 export interface ItemFilters {
     /** Member ids in view; empty means everyone. */
     memberIds: string[];
     leaveOnly: boolean;
     query: string;
+    /** Which kinds of item are shown (default all). */
+    layers?: Record<CalendarLayer, boolean>;
 }
+
+/** The colour of a trip's leave type (the first of a split), by leave-type id. */
+export const tintOf = (trip: Trip, colors?: Record<string, LeaveColor>): LeaveColor | undefined => {
+    if (!colors) return undefined;
+    const id = trip.entitlementId || trip.allocations?.[0]?.entitlementId;
+    return id ? colors[id] : undefined;
+};
 
 /** Trips, holidays and events as calendar items. Cancelled trips and flight bundles are left out. */
 export const buildItems = (
@@ -366,22 +381,24 @@ export const buildItems = (
     events: CustomEvent[],
     filters: ItemFilters,
     today: string,
+    leaveColors?: Record<string, LeaveColor>,
 ): CalendarItem[] => {
     const q = filters.query.trim().toLowerCase();
+    const layers = filters.layers ?? ALL_LAYERS;
     const items: CalendarItem[] = [];
-    trips.forEach(t => {
+    if (layers.trip) trips.forEach(t => {
         if (t.status === 'Cancelled' || t.isBundleOnly || (t.hideInPlanner && !isStandaloneLeave(t)) || !t.startDate) return;
         if (filters.memberIds.length > 0 && !(t.participants || []).some(p => filters.memberIds.includes(p))) return;
         if (filters.leaveOnly && !hasLeave(t)) return;
         if (q && !`${t.name} ${t.location || ''}`.toLowerCase().includes(q)) return;
-        items.push({ key: `trip:${t.id}`, kind: 'trip', id: t.id, title: t.name, start: t.startDate, end: t.endDate || t.startDate, state: stateOf(t, today), leave: hasLeave(t), muted: false, trip: t });
+        items.push({ key: `trip:${t.id}`, kind: 'trip', id: t.id, title: t.name, start: t.startDate, end: t.endDate || t.startDate, state: stateOf(t, today), leave: hasLeave(t), muted: false, tint: hasLeave(t) ? tintOf(t, leaveColors) : undefined, trip: t });
     });
     if (!filters.leaveOnly) {
-        holidays.forEach(h => {
+        if (layers.holiday) holidays.forEach(h => {
             if (q && !h.name.toLowerCase().includes(q)) return;
             items.push({ key: `holiday:${h.configId}:${h.id}`, kind: 'holiday', id: h.id, title: h.name, start: h.observed, end: h.observed, state: h.observed < today ? 'past' : 'planned', leave: false, muted: !h.counted, holiday: h });
         });
-        events.forEach(e => {
+        if (layers.event) events.forEach(e => {
             if (!e.date || (q && !e.name.toLowerCase().includes(q))) return;
             items.push({ key: `event:${e.id}`, kind: 'event', id: e.id, title: e.name, start: e.date, end: e.date, state: e.date < today ? 'past' : 'planned', leave: false, muted: Boolean(e.isWorkingDay), event: e });
         });

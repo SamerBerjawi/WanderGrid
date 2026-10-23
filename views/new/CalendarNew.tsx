@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import type { Trip, User } from '../../types';
+import type { CustomEvent, SavedConfig, Trip, User } from '../../types';
 import { useCalendarData, leaveFieldsOf, NO_LEAVE, type LeaveFields, type NewLeave } from '../../hooks/useCalendarData';
 import {
-    balancesFor, buildItems, calendarYears, configsFor, daysBetween, holidayDays, isStandaloneLeave, itemsOn, leaveContext, monthOf, MONTH_NAMES,
-    nextLeave, summarise, workingDaysOf, type CalendarItem, type LeaveContext, type WeekStart,
+    ALL_LAYERS, balancesFor, buildItems, calendarYears, configsFor, daysBetween, holidayDays, isStandaloneLeave, itemsOn, leaveContext, monthOf, MONTH_NAMES,
+    nextLeave, summarise, workingDaysOf, type CalendarItem, type CalendarLayer, type LeaveColor, type LeaveContext, type WeekStart,
 } from '../../utils/calendarModel';
 import { formatDate } from '../../utils/formatters';
 import { errorMessage, toast } from '../../services/toast';
@@ -22,8 +22,12 @@ import { LeaveBalances } from '../../components/new/calendar/LeaveBalances';
 import { DayPanel } from '../../components/new/calendar/DayPanel';
 import { LeaveSheet, type LeaveTarget } from '../../components/new/calendar/LeaveSheet';
 import { HolidaysSheet } from '../../components/new/calendar/HolidaysSheet';
-import { OptionsSheet } from '../../components/new/calendar/OptionsSheet';
-import { CalendarBlank, CalendarCheck, CaretLeft, CaretRight, Clock, Flag, Gear, List, MagnifyingGlass, Plus, SquaresFour, SunHorizon, Users } from '../../components/ui/hugeicons';
+import { OptionsSheet, type ColourBy } from '../../components/new/calendar/OptionsSheet';
+import { EventSheet } from '../../components/new/calendar/EventSheet';
+import { OptimizerSheet } from '../../components/new/calendar/OptimizerSheet';
+import { TINT } from '../../components/new/calendar/calendarStyles';
+import { suggestBreaks } from '../../utils/leaveOptimizer';
+import { CalendarBlank, CalendarCheck, CaretLeft, CaretRight, Clock, Flag, Gear, List, MagnifyingGlass, Plus, Sparkle, SquaresFour, Star, SunHorizon, Suitcase, Users } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -43,6 +47,8 @@ interface CalendarNewProps {
 type Tab = 'month' | 'year' | 'schedule';
 const TAB_KEY = 'wandergrid_calendar_new_tab';
 const WEEK_KEY = 'wandergrid_calendar_new_week_start';
+const COLOUR_KEY = 'wandergrid_calendar_new_colour_by';
+const LAYERS_KEY = 'wandergrid_calendar_new_layers';
 const TABS: { id: Tab; title: string; icon: typeof CalendarBlank; pill: { bg: string; text: string }; iconClassName: string }[] = [
     { id: 'month', title: 'Month', icon: CalendarBlank, pill: { bg: 'bg-rp-ink', text: 'text-rp-on-ink' }, iconClassName: 'text-rp-ink' },
     { id: 'year', title: 'Year', icon: SquaresFour, pill: { bg: 'bg-rp-green', text: 'text-rp-paper' }, iconClassName: 'text-rp-green' },
@@ -65,6 +71,17 @@ const readWeekStart = (): WeekStart => {
         if (first === 6) return 6;
     } catch { /* locale unavailable */ }
     return 1;
+};
+
+const readColourBy = (): ColourBy => {
+    try { return localStorage.getItem(COLOUR_KEY) === 'type' ? 'type' : 'status'; } catch { return 'status'; }
+};
+const readLayers = (): Record<CalendarLayer, boolean> => {
+    try {
+        const v = JSON.parse(localStorage.getItem(LAYERS_KEY) || 'null');
+        if (v && typeof v === 'object') return { trip: v.trip !== false, holiday: v.holiday !== false, event: v.event !== false };
+    } catch { /* storage unavailable or not JSON */ }
+    return { ...ALL_LAYERS };
 };
 
 const PILL = 'inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-rp-muted focus-visible:ring-offset-2 focus-visible:ring-offset-rp-surface active:scale-[0.97]';
@@ -93,6 +110,11 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
     const [holidaysOpen, setHolidaysOpen] = useState(false);
     const [optionsOpen, setOptionsOpen] = useState(false);
     const [balanceYear, setBalanceYear] = useState(thisYear);
+    const [colourBy, setColourBy] = useState<ColourBy>(readColourBy);
+    const [layers, setLayers] = useState<Record<CalendarLayer, boolean>>(readLayers);
+    const [eventOpen, setEventOpen] = useState<{ date?: string } | null>(null);
+    const [optimizerOpen, setOptimizerOpen] = useState(false);
+    const [optimizerMonths, setOptimizerMonths] = useState<3 | 6 | 12>(6);
 
     // The balances follow the year being looked at.
     useEffect(() => { setBalanceYear(cursor.year); }, [cursor.year]);
@@ -101,6 +123,15 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
         setTab(next);
         try { localStorage.setItem(TAB_KEY, next); } catch { /* storage unavailable */ }
     };
+    const changeColourBy = (next: ColourBy) => {
+        setColourBy(next);
+        try { localStorage.setItem(COLOUR_KEY, next); } catch { /* storage unavailable */ }
+    };
+    const toggleLayer = (layer: CalendarLayer) => setLayers(prev => {
+        const next = { ...prev, [layer]: !prev[layer] };
+        try { localStorage.setItem(LAYERS_KEY, JSON.stringify(next)); } catch { /* storage unavailable */ }
+        return next;
+    });
     const changeWeekStart = (next: WeekStart) => {
         setWeekStart(next);
         try { localStorage.setItem(WEEK_KEY, String(next)); } catch { /* storage unavailable */ }
@@ -125,9 +156,13 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
     const contextFor = useCallback((id: string) => contexts.get(id) ?? leaveContext(workingDays, []), [contexts, workingDays]);
 
     const holidays = useMemo(() => holidayDays(configsFor(configs, inView), subject?.holidayWeekendRule, workingDays), [configs, inView, subject, workingDays]);
+    const leaveColors = useMemo(
+        () => (colourBy === 'type' ? Object.fromEntries(entitlements.map(e => [e.id, e.color])) as Record<string, LeaveColor> : undefined),
+        [colourBy, entitlements],
+    );
     const items = useMemo(
-        () => buildItems(trips, holidays, events, { memberIds, leaveOnly, query }, today),
-        [trips, holidays, events, memberIds, leaveOnly, query, today],
+        () => buildItems(trips, holidays, events, { memberIds, leaveOnly, query, layers }, today, leaveColors),
+        [trips, holidays, events, memberIds, leaveOnly, query, layers, today, leaveColors],
     );
 
     const balances = useMemo(
@@ -139,6 +174,17 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
     const next = useMemo(() => nextLeave(trips, subject ? [subject.id] : [], today), [trips, subject, today]);
 
     const upcomingHolidays = useMemo(() => holidays.filter(h => h.counted && h.observed >= today).slice(0, 3), [holidays, today]);
+    // The optimizer works from the subject's own days off: their followed calendars, their working week, their booked leave.
+    const optimizer = useMemo(() => {
+        if (!optimizerOpen || !subject) return [];
+        const mine = holidayDays(configsFor(configs, [subject]), subject.holidayWeekendRule, workingDays);
+        const booked = new Set<string>();
+        trips.filter(t => (t.participants || []).includes(subject.id) && t.status !== 'Cancelled' && (t.entitlementId || (t.allocations && t.allocations.length > 0))).forEach(t => {
+            for (let d = t.startDate; d && d <= (t.endDate || t.startDate); d = new Date(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10) + 1)).toISOString().slice(0, 10)) booked.add(d);
+        });
+        const to = new Date(Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 1 + optimizerMonths, +today.slice(8, 10))).toISOString().slice(0, 10);
+        return suggestBreaks({ from: today, to, workingDays, holidays: mine, booked });
+    }, [optimizerOpen, subject, configs, workingDays, trips, today, optimizerMonths]);
     const myTrips = useMemo(() => items.filter(i => i.kind === 'trip').map(i => i.trip!), [items]);
 
     const canEdit = useCallback((trip: Trip) => isAdmin || Boolean(me && (trip.participants || []).includes(me.id)), [isAdmin, me]);
@@ -205,13 +251,43 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
         });
     };
 
+    const saveEvent = async (event: CustomEvent) => {
+        await data.addEvent(event);
+        undo.show(`Added ${event.name}`, () => attempt(() => latest.current.deleteEvent(event.id)));
+    };
+    const removeEvent = (event: CustomEvent) => {
+        void attempt(async () => {
+            await data.deleteEvent(event.id);
+            undo.show(`Removed ${event.name}`, () => attempt(async () => { await latest.current.addEvent(event); }));
+        }, "Couldn't remove the event.");
+    };
+    const addCalendar = async (config: SavedConfig, regionalSkipped: number) => {
+        const existed = latest.current.configs.some(c => c.id === config.id);
+        await data.addCalendar(config);
+        // A member who already follows calendars follows the new one too; with none followed every calendar shows anyway.
+        const who = subject;
+        if (!existed && who && (who.holidayConfigIds || []).length > 0 && (isAdmin || who.id === me?.id)) await data.setMemberCalendar(who, config.id, true);
+        toast.success(`${config.countryName} ${config.year}: ${config.holidays.length} ${config.holidays.length === 1 ? 'holiday' : 'holidays'} ${existed ? 'refreshed' : 'added'}${regionalSkipped > 0 ? ` (${regionalSkipped} regional left out)` : ''}`);
+        setCursor(c => (c.year === config.year ? c : { ...c, year: config.year }));
+    };
+    const removeCalendar = async (config: SavedConfig) => {
+        await attempt(async () => { await data.removeCalendar(config); toast.success(`${config.countryName} ${config.year} removed`); }, "Couldn't remove the calendar.");
+    };
+    const planBreak = (s: { leaveDates: string[] }) => {
+        if (s.leaveDates.length === 0) return;
+        setOptimizerOpen(false);
+        setLeaveTarget({ kind: 'new', date: s.leaveDates[0], endDate: s.leaveDates[s.leaveDates.length - 1], memberId: subject?.id });
+    };
+
     const toggleMember = (id: string) => setMemberIds(ids => (ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id]));
 
     const tools: DockTool[] = [
         { id: 'today', label: 'Today', icon: CalendarBlank as any, action: goToday },
         { id: 'search', label: 'Search the calendar', icon: MagnifyingGlass as any, action: () => setSearchOpen(o => !o) },
         { id: 'add', label: 'Add leave', icon: Plus as any, action: () => startLeave() },
+        ...(isAdmin ? [{ id: 'event', label: 'Add an event', icon: Star as any, action: () => setEventOpen({}) }] : []),
         { id: 'holidays', label: 'Holidays', icon: Flag as any, action: () => setHolidaysOpen(true), dividerBefore: true },
+        { id: 'optimizer', label: 'Leave optimizer', icon: Sparkle as any, action: () => setOptimizerOpen(true) },
         { id: 'options', label: 'Calendar options', icon: Gear as any, action: () => setOptionsOpen(true) },
     ];
 
@@ -295,10 +371,12 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                         ))}
                         <span className="mx-1 h-6 w-px shrink-0 bg-rp-line" aria-hidden />
                         <RpChip selected={leaveOnly} onClick={() => setLeaveOnly(v => !v)} className="shrink-0"><SunHorizon size={16} aria-hidden /> Leave only</RpChip>
+                        <LayerChips layers={layers} onToggle={toggleLayer} />
                     </div>
                 ) : (
                     <div className="-m-3 flex gap-2 overflow-x-auto p-3 [scrollbar-width:none]" role="group" aria-label="Filter">
                         <RpChip selected={leaveOnly} onClick={() => setLeaveOnly(v => !v)}><SunHorizon size={16} aria-hidden /> Leave only</RpChip>
+                        <LayerChips layers={layers} onToggle={toggleLayer} />
                     </div>
                 )}
 
@@ -352,7 +430,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                                             onShiftMonth={shiftMonth}
                                             wantFocus={wantFocus}
                                         />
-                                        <Legend />
+                                        <Legend colourBy={colourBy} types={entitlements} />
                                         {mobile ? (
                                             <div className="mt-4">
                                                 <h3 className="px-2 pb-1 text-sm font-medium text-rp-ink">{MONTH_NAMES[cursor.month0]}</h3>
@@ -426,6 +504,8 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                 onOpenTrip={id => { setDay(null); onTripClick?.(id); }}
                 onAddLeave={startLeave}
                 onManageHolidays={() => { setDay(null); setHolidaysOpen(true); }}
+                canManageEvents={isAdmin}
+                onRemoveEvent={removeEvent}
             />
             <LeaveSheet
                 target={leaveTarget}
@@ -452,16 +532,44 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                 initialYear={cursor.year}
                 onLink={(member, config, linked) => followCalendar(member, config.id, config.countryName, linked)}
                 onToggleDay={(config, holidayId, included) => toggleHolidayDay(config.id, holidayId, config.holidays.find(h => h.id === holidayId)?.name ?? 'Holiday', included)}
+                thisYear={thisYear}
+                onAddCalendar={addCalendar}
+                onRemoveCalendar={removeCalendar}
             />
-            <OptionsSheet open={optionsOpen} onClose={() => setOptionsOpen(false)} weekStart={weekStart} onWeekStart={changeWeekStart} trips={myTrips} />
+            <OptionsSheet open={optionsOpen} onClose={() => setOptionsOpen(false)} weekStart={weekStart} onWeekStart={changeWeekStart} colourBy={colourBy} onColourBy={changeColourBy} trips={myTrips} />
+            <EventSheet open={eventOpen !== null} date={eventOpen?.date} today={today} onClose={() => setEventOpen(null)} onSave={saveEvent} />
+            <OptimizerSheet
+                open={optimizerOpen}
+                onClose={() => setOptimizerOpen(false)}
+                suggestions={optimizer}
+                today={today}
+                memberName={subject?.name}
+                daysLeft={summary && summary.year === thisYear ? summary.left : subject ? summarise(balancesFor({ user: subject, trips, entitlements, today, ctx: contextFor(subject.id) }, thisYear), subject, thisYear).left : null}
+                window={optimizerMonths}
+                onWindow={setOptimizerMonths}
+                hasHolidays={holidays.length > 0}
+                canPlan={Boolean(subject && (isAdmin || subject.id === me?.id))}
+                onPlan={planBreak}
+                onOpenHolidays={() => { setOptimizerOpen(false); setHolidaysOpen(true); }}
+            />
             {undo.host}
         </div>
     );
 };
 
 /** What the colours mean, each with its icon (colour is never the only signal). */
-const Legend: React.FC = () => (
+const LayerChips: React.FC<{ layers: Record<CalendarLayer, boolean>; onToggle: (l: CalendarLayer) => void }> = ({ layers, onToggle }) => (
+    <>
+        <span className="mx-1 h-6 w-px shrink-0 bg-rp-line" aria-hidden />
+        <RpChip selected={layers.trip} onClick={() => onToggle('trip')} className="shrink-0"><Suitcase size={16} aria-hidden /> Trips</RpChip>
+        <RpChip selected={layers.holiday} onClick={() => onToggle('holiday')} className="shrink-0"><Flag size={16} aria-hidden /> Holidays</RpChip>
+        <RpChip selected={layers.event} onClick={() => onToggle('event')} className="shrink-0"><Star size={16} aria-hidden /> Events</RpChip>
+    </>
+);
+
+const Legend: React.FC<{ colourBy: ColourBy; types: { id: string; name: string; color: LeaveColor }[] }> = ({ colourBy, types }) => (
     <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs text-rp-muted" aria-label="Legend">
+        {colourBy === 'type' ? types.map(t => <li key={t.id} className="flex items-center gap-1.5"><span className={cn('size-3 rounded-full', TINT[t.color]?.swatch ?? 'bg-rp-muted')} aria-hidden /> {t.name}</li>) : null}
         <li className="flex items-center gap-1.5"><span className="size-3 rounded-full bg-rp-mustard" aria-hidden /> Planned</li>
         <li className="flex items-center gap-1.5"><span className="size-3 rounded-full bg-rp-green" aria-hidden /> Confirmed</li>
         <li className="flex items-center gap-1.5"><span className="size-3 rounded-full bg-rp-ink" aria-hidden /> Travelling now</li>
