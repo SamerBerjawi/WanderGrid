@@ -13,7 +13,7 @@ import {
 } from '../../../services/airportOverlayStyle';
 import { OPENAIP_AIRSPACE_SOURCE_ID, ensureOpenAipIcons, getOpenAipOverlayLayers } from '../../../services/openAipStyle';
 import {
-    OPENAIP_PROXY_TILES, OPENFREEMAP_STYLES, RAILROADS_GEOJSON_URL, COUNTRIES_GEOJSON_URL, TERRARIUM_DEM_TILES,
+    OPENAIP_PROXY_TILES, OPENFREEMAP_STYLES, RAILROADS_GEOJSON_URL, COUNTRIES_GEOJSON_URL, COUNTRIES_FINE_GEOJSON_URL, COUNTRIES_FINE_MIN_ZOOM, TERRARIUM_DEM_TILES,
     getBasemapTileConfig, gibsDailyTiles, withApiAuth, isLightEffectiveBasemap,
 } from '../../../services/mapStyle';
 import { getCachedMultiModalRoute, fetchMultiModalRoute, getGeodesicArcPoints } from '../../../services/multiModalRouting';
@@ -416,13 +416,23 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
 
     /* ------------------------------------------------------------------ data for deck layers */
 
-    // Countries for the scratch map, loaded once from the app's own copy.
+    // Countries for the scratch map, from the app's own copies: the 50m borders draw first (fast), and the
+    // finer 10m ones replace them once the map is zoomed in, so a coastline stays crisp up close.
+    const [fineCountries, setFineCountries] = useState<any>(null);
     useEffect(() => {
         if (mode !== 'scratch' || countries) return;
         let alive = true;
         fetch(COUNTRIES_GEOJSON_URL).then(r => r.json()).then(d => { if (alive) setCountries(d); }).catch(() => undefined);
         return () => { alive = false; };
     }, [mode, countries]);
+    const wantFine = mode === 'scratch' && zoom >= COUNTRIES_FINE_MIN_ZOOM;
+    useEffect(() => {
+        if (!wantFine || fineCountries) return;
+        let alive = true;
+        fetch(COUNTRIES_FINE_GEOJSON_URL).then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); }).then(d => { if (alive) setFineCountries(d); }).catch(() => undefined);
+        return () => { alive = false; };
+    }, [wantFine, fineCountries]);
+    const borders = fineCountries ?? countries; // once the fine set is in, it stays
 
     // Day and night shading refreshes every minute.
     useEffect(() => {
@@ -539,10 +549,10 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
     }, [mode, airportsOnly, visitedPlaces, sizes.pins]);
 
     const countriesGeo = useMemo(() => {
-        if (mode !== 'scratch' || !countries || airportsOnly) return { type: 'FeatureCollection' as const, features: [] as any[] };
+        if (mode !== 'scratch' || !borders || airportsOnly) return { type: 'FeatureCollection' as const, features: [] as any[] };
         const visited = new Set(visitedCountryCodes.map(c => c.toUpperCase()));
         const toggles = scratchToggles(appearance);
-        const features = countries.features.map((f: any, i: number) => {
+        const features = borders.features.map((f: any, i: number) => {
             const code = countryCodeOf(f.properties);
             const name = String(f.properties?.NAME || code);
             const statuses = asList(countryStatusMap[code] ?? countryStatusMap[name.toUpperCase()]);
@@ -560,7 +570,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         return { type: 'FeatureCollection' as const, features };
         // appearance is read through scratchToggles; only its three toggles matter
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [mode, countries, airportsOnly, visitedCountryCodes, countryStatusMap, palette, appearance.showLivedCountries, appearance.showLayoverCountries, appearance.showWishlistCountries]);
+    }, [mode, borders, airportsOnly, visitedCountryCodes, countryStatusMap, palette, appearance.showLivedCountries, appearance.showLayoverCountries, appearance.showWishlistCountries]);
 
     // Eight stacked caps (civil, nautical, astronomical twilight, then night): each adds a little shade,
     // so the edge fades from dusk into deep night instead of a hard line.
@@ -582,7 +592,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
             else map.addSource(id, { type: 'geojson', data, ...extra } as any);
         };
         source('rp-night', nightGeo);
-        source('rp-countries', countriesGeo);
+        source('rp-countries', countriesGeo, { tolerance: 0.15 });
         source('rp-routes', routesGeo, { lineMetrics: true, promoteId: 'id' });
         source('rp-places', placesGeo, { promoteId: 'key' });
         source('rp-pins', pinsGeo);
