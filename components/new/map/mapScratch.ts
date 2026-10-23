@@ -8,7 +8,8 @@ import type { MapAppearanceSettings } from '../../../types/mapAppearance';
  *  - Lived in: lived countries (current or past) get their own colour. Off paints them as plain visited.
  *  - Visited: countries you have been to (by trips or by status), in the regional colours. Off hides them;
  *    lived countries still show while Lived in is on.
- *  - Layovers: countries you only changed planes in. Off hides them. A country you also visited stays scratched.
+ *  - Layovers: countries you only changed planes in. Off hides them. A country that is also on the wishlist
+ *    takes the wishlist colour while Wishlist is on. A country you also visited stays scratched.
  *  - Wishlist: countries you want to go to. Off hides them. A visited country stays scratched.
  *  - City pins: the size of every marker on the scratch map: the visited-city pins and the endpoints of any
  *    routes drawn over it. Off draws none (no dots, no labels).
@@ -39,8 +40,9 @@ export const scratchKindOf = (
     const lived = statuses.includes('lived_current') || statuses.includes('lived_past');
     if (lived && t.showLived) return 'lived';
     if (lived || visitedByTrips || statuses.includes('visited')) return t.showVisited ? 'visited' : 'none';
-    if (statuses.includes('layover') && t.showLayover) return 'layover';
+    // Wishlist is drawn over layover: a country that is both takes the wishlist colour.
     if (statuses.includes('wishlist') && t.showWishlist) return 'wishlist';
+    if (statuses.includes('layover') && t.showLayover) return 'layover';
     return 'none';
 };
 

@@ -14,6 +14,11 @@ describe('scratchKindOf', () => {
         expect(scratchKindOf(['layover'], false, on)).toBe('layover');
         expect(scratchKindOf(['layover'], false, { ...on, showLayover: false })).toBe('none');
     });
+    it('wishlist is drawn over layover, and layover shows when wishlist is off', () => {
+        expect(scratchKindOf(['layover', 'wishlist'], false, on)).toBe('wishlist');
+        expect(scratchKindOf(['wishlist', 'layover'], false, { ...on, showWishlist: false })).toBe('layover');
+        expect(scratchKindOf(['layover', 'wishlist'], false, { ...on, showLayover: false })).toBe('wishlist');
+    });
     it('wishlist shows only while the toggle is on', () => {
         expect(scratchKindOf(['wishlist'], false, on)).toBe('wishlist');
         expect(scratchKindOf(['wishlist'], false, { ...on, showWishlist: false })).toBe('none');
