@@ -4,6 +4,7 @@ import { useDashboardData } from '../../hooks/useDashboardData';
 import { WidgetGrid, type WidgetGridItem, type WidgetLayoutItem } from '../../components/kokonutui/bento-grid';
 import type { DockTool } from '../../components/kokonutui/tool-dock';
 import { RpPageToolbar } from '../../components/new/PageToolbar';
+import { HiddenWidgets } from '../../components/new/dashboard/HiddenWidgets';
 import { RpEmpty, useIsMobile } from '../../components/new/ui';
 import { openPage } from '../../utils/appNavigation';
 import {
@@ -218,6 +219,10 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
         },
     ], [data, nextTrip, member, leave, year, openTrip, onMemberClick, mobile]);
 
+    const hiddenWidgets = hidden.flatMap(id => { const item = items.find(i => i.id === id); return item ? [{ id, title: item.title }] : []; });
+    // Where focus goes when the tray goes away: the Edit/Done button of the tool bar.
+    const editButton = useCallback(() => document.querySelector<HTMLElement>('[aria-label="Dashboard tools"] button[aria-label="Done"], [aria-label="Dashboard tools"] button[aria-label="Edit widgets"]'), []);
+
     // On phones the tab bar's "+" starts a trip.
     const tools: DockTool[] = [
         { id: 'edit', label: editing ? 'Done' : 'Edit widgets', icon: (editing ? Check : PencilSimple) as any, action: () => setEditing(e => !e) },
@@ -269,22 +274,10 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
                         {[0, 1, 2, 3].map(i => <div key={i} className="h-56 animate-pulse rounded-rp-card bg-rp-surface rp-shadow-rest" />)}
                     </div>
                 ) : data.isEmpty ? null : (
-                    <>
-                        {editing || hidden.length ? (
-                            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Hidden widgets">
-                                {hidden.length ? <span className="text-sm text-rp-muted">Hidden</span> : null}
-                                {hidden.map(id => {
-                                    const item = items.find(i => i.id === id);
-                                    return item ? (
-                                        <button key={id} type="button" onClick={() => showItem(id)} aria-label={`Show ${item.title}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-rp-surface px-4 text-sm font-medium text-rp-ink outline-none rp-shadow-rest focus-visible:ring-2 focus-visible:ring-rp-muted">
-                                            <Plus size={14} aria-hidden />{item.title}
-                                        </button>
-                                    ) : null;
-                                })}
-                            </div>
-                        ) : null}
+                    <div>
+                        <HiddenWidgets editing={editing} widgets={hiddenWidgets} onShow={showItem} returnFocusTo={editButton} />
                         <WidgetGrid items={items.filter(i => !hidden.includes(i.id))} layout={layout} onLayoutChange={changeLayout} editing={editing} onMoveItem={moveItem} onHideItem={hideItem} rowHeight={160} />
-                    </>
+                    </div>
                 )}
             </div>
         </div>
