@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useId, useState } from 'react';
+import { RpMoreButton } from '../ui';
 import type { FlightAlert } from '../../../utils/flightAlerts';
 import { Bell, BellOff, Clock, Warning, X, XCircle, type Icon } from '../../ui/hugeicons';
 import { cn } from '../../../utils/cn';
@@ -23,10 +24,12 @@ export const FlightAlerts: React.FC<{
     onToggleNotify: () => void;
     watching: number;
 }> = ({ alerts, onDismiss, notify, canNotify, onToggleNotify, watching }) => {
+    const [all, setAll] = useState(false);
+    const moreId = useId();
     if (alerts.length === 0 && !(canNotify && watching > 0)) return null;
-    const shown = alerts.slice(0, 3);
+    const shown = all ? alerts : alerts.slice(0, 3);
     return (
-        <section aria-label="Flight alerts" className="flex flex-col gap-2">
+        <section id={moreId} aria-label="Flight alerts" className="flex flex-col gap-2">
             {shown.map(a => {
                 const look = LOOK[a.severity];
                 return (
@@ -40,7 +43,7 @@ export const FlightAlerts: React.FC<{
                     </div>
                 );
             })}
-            {alerts.length > shown.length ? <p className="rp-tabular px-1 text-xs text-rp-muted">+{alerts.length - shown.length} more alerts</p> : null}
+            {alerts.length > 3 ? <RpMoreButton count={alerts.length - 3} noun="alerts" expanded={all} onToggle={() => setAll(a => !a)} controls={moreId} /> : null}
             {canNotify && watching > 0 ? (
                 <button type="button" aria-pressed={notify} onClick={onToggleNotify} className="inline-flex min-h-11 items-center gap-2 self-start rounded-full bg-rp-surface px-4 text-sm font-medium text-rp-ink outline-none rp-shadow-rest hover:bg-rp-inset focus-visible:ring-2 focus-visible:ring-rp-muted">
                     {notify ? <Bell size={16} className="text-rp-ochre" aria-hidden /> : <BellOff size={16} className="text-rp-muted" aria-hidden />}

@@ -369,3 +369,20 @@ export const LogoChip: React.FC<{ sources: string[]; alt: string; fallback: Icon
         </span>
     );
 };
+
+/**
+ * The "+N more" / "Show fewer" toggle that reveals the rest of a capped list in place (decision 321). A real
+ * button: 44px tall, aria-expanded, aria-controls (the id of the revealed region), visible focus ring. The
+ * visible text is "+N more"; a screen reader hears it with the noun ("+5 more stamps").
+ */
+export const RpMoreButton: React.FC<{ count: number; noun: string; expanded: boolean; onToggle: () => void; controls: string; className?: string }> = ({ count, noun, expanded, onToggle, controls, className }) => (
+    <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        aria-controls={controls}
+        className={cn('rp-tabular -ml-3 inline-flex min-h-11 items-center self-start rounded-full px-3 text-sm font-medium text-rp-muted outline-none hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted', className)}
+    >
+        {expanded ? 'Show fewer' : <>+{count} more<span className="sr-only"> {noun}</span></>}
+    </button>
+);

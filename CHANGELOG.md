@@ -32,6 +32,12 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Fixed
 
+- **Hidden widgets only while editing.** The dashboard's list of hidden widgets shows only in Edit mode (phones
+  included), animates in and out, and leaves nothing behind otherwise. Restoring a widget keeps keyboard focus
+  in a sensible place.
+- **"+N more" opens the rest.** On the member page's Passport, "+N more" is now a button that reveals the
+  remaining stamps in place ("Show fewer" closes them). The same fix applies to the flight alerts, the flights
+  offered to a trip and the Flights page's "Who flew" and airline breakdowns, where "+N more" was only text.
 - **Carrier logos on the Flights page now come from Settings > Carriers.** The Flights page, Road trips, trip pages, map sheets and the flight finder share one lookup that finds the carrier you set up (by code, name or the letters of the flight number, so "KLM Royal Dutch Airlines" finds "KLM") and draws its logo the way the Carriers section does. Changing a carrier shows up without a reload. A carrier you have not set up shows the mode icon instead of a guessed Clearbit or favicon image, unless Brandfetch knows it.
 - The Dashboard World map showed wrong points: a trip to "California" pinned in Central America, dots in the
   ocean and at (0, 0), straight dark lines across the US and Scandinavia. Points now need real coordinates,
