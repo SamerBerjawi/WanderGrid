@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useState } from 'react';
 import type { Transport } from '../../../types';
 import type { TripDraft } from '../../../hooks/useTripsData';
 import { dataService } from '../../../services/mockDb';
 import { Airplane, ArrowRight, Plus } from '../../ui/hugeicons';
-import { RpLogo } from '../ui';
+import { RpLogo, RpMoreButton } from '../ui';
 import { formatDate } from '../../../utils/formatters';
 import { placeCode } from '../../../utils/journeysModel';
 
@@ -44,13 +44,15 @@ export const LoggedFlights: React.FC<{
             .sort((a, b) => `${a.departureDate}${a.departureTime}`.localeCompare(`${b.departureDate}${b.departureTime}`));
     }, [flights, start, end, onTrip]);
 
+    const [all, setAll] = useState(false);
+    const moreId = useId();
     if (matches.length === 0) return null;
 
     const add = (list: Transport[]) => {
         set('transports', [...(draft.transports || []), ...list]);
         set('adoptedFlightIds', [...(draft.adoptedFlightIds || []), ...list.map(f => f.id)]);
     };
-    const shown = matches.slice(0, 3);
+    const shown = all ? matches : matches.slice(0, 3);
 
     return (
         <section aria-label="Flights in your log" className="flex flex-col gap-2 rounded-rp-inset bg-rp-green/10 p-3 ring-1 ring-rp-green/30">
@@ -60,7 +62,7 @@ export const LoggedFlights: React.FC<{
                     <button type="button" onClick={() => add(matches)} className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-rp-ink px-4 text-sm font-medium text-rp-on-ink outline-none hover:bg-rp-ink/90 focus-visible:ring-2 focus-visible:ring-rp-muted"><Plus size={16} aria-hidden /> Add all</button>
                 ) : null}
             </div>
-            <ul className="flex flex-col">
+            <ul id={moreId} className="flex flex-col">
                 {shown.map(f => (
                     <li key={f.id} className="flex min-h-14 items-center justify-between gap-3 border-t border-rp-green/20 py-1.5 first:border-t-0">
                         <span className="flex min-w-0 items-center gap-3">
@@ -73,8 +75,8 @@ export const LoggedFlights: React.FC<{
                         <button type="button" onClick={() => add([f])} aria-label={`Add ${f.origin} to ${f.destination} to the trip`} className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-rp-surface px-4 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted">Add</button>
                     </li>
                 ))}
-                {matches.length > shown.length ? <li className="rp-tabular py-1 text-center text-xs text-rp-muted">+{matches.length - shown.length} more</li> : null}
             </ul>
+            {matches.length > 3 ? <RpMoreButton count={matches.length - 3} noun="flights" expanded={all} onToggle={() => setAll(a => !a)} controls={moreId} /> : null}
         </section>
     );
 };

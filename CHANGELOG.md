@@ -4,6 +4,17 @@ All notable changes to WanderGrid are listed here, newest first. The format foll
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow the tags in this repository
 (v0.1 to v0.5, then 1.0.0).
 
+## [1.1.0] - Unreleased
+
+### Fixed
+
+- **Hidden widgets only while editing.** The dashboard's list of hidden widgets shows only in Edit mode (phones
+  included), animates in and out, and leaves nothing behind otherwise. Restoring a widget keeps keyboard focus
+  in a sensible place.
+- **"+N more" opens the rest.** On the member page's Passport, "+N more" is now a button that reveals the
+  remaining stamps in place ("Show fewer" closes them). The same fix applies to the flight alerts, the flights
+  offered to a trip and the Flights page's "Who flew" and airline breakdowns, where "+N more" was only text.
+
 ## [1.0.0] - Unreleased
 
 The redesign release. Every page, dialog and message of the app was rebuilt in one new design language
