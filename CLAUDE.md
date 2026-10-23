@@ -62,7 +62,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 | `backend_files/` | Express server (`server.js`, ~2.9k lines), upstream helpers (`upstream.js`, `geocodingChain.js`, `routeProxy.js`, `aviationStack.js`, `carrierMapping.js`, `integrationsTester.js`), the `test/` folder, and the Dockerfile |
 | `public/` | PWA icons, `manifest.json`, GeoJSON (`data/`), map styles, `airport-overlay.pmtiles` (gitignored and must be present locally) |
 | `docs/` | Change registries: `gev-changes.md` (GEV feature ports with reversal recipes) and `mission-control-changes.md` |
-| `scripts/bump-version.cjs` | Writes `v0.5-YYMMDD.N` to `version.ts` and `package.json` |
+| `scripts/bump-version.cjs` | Writes `v1.1-YYMMDD.N` to `version.ts` and `package.json` (the release line is the `RELEASE_LINE` constant at the top of the script) |
 | `dist/`, `scratch/` | Build output and an empty scratch dir. Both are untracked/ignored |
 
 ## Architecture
