@@ -61,7 +61,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 | `types.ts`, `types/` | Shared TS types. Path alias `@/*` points at the repo root |
 | `backend_files/` | Express server (`server.js`, ~2.9k lines), upstream helpers (`upstream.js`, `geocodingChain.js`, `routeProxy.js`, `aviationStack.js`, `carrierMapping.js`, `integrationsTester.js`), the `test/` folder, and the Dockerfile |
 | `public/` | PWA icons, `manifest.json`, GeoJSON (`data/`), map styles, `airport-overlay.pmtiles` (gitignored and must be present locally) |
-| `docs/` | Change registries: `gev-changes.md` (GEV feature ports with reversal recipes) and `mission-control-changes.md` |
+| `docs/` | `logo-concepts/` (logo sources and generator scripts) |
 | `scripts/bump-version.cjs` | Writes `v0.5-YYMMDD.N` to `version.ts` and `package.json` |
 | `dist/`, `scratch/` | Build output and an empty scratch dir. Both are untracked/ignored |
 
@@ -105,7 +105,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
   - Server responses go through `sendError(res, err, status, msg)`, which sanitizes messages in production. Logs are structured JSON when `NODE_ENV=production` or `STRUCTURED_LOGGING=true`.
   - On the client, `ErrorBoundary` wraps the root (`index.tsx`) and `AppErrorBoundary` wraps views.
   - External calls fail fast and return empty results rather than throwing to the UI.
-- **Feature work:** new user-facing features go behind a flag in `config/featureFlags.ts`, default OFF. Record GEV ports in `docs/gev-changes.md`. Exception: bug and security fixes are never flagged, and new flows that replace broken behaviour (e.g. password reset, trip archive) are flagged but default ON.
+- **Feature work:** new user-facing features go behind a flag in `config/featureFlags.ts`, default OFF. Exception: bug and security fixes are never flagged, and new flows that replace broken behaviour (e.g. password reset, trip archive) are flagged but default ON.
 
 ## Fragile, legacy, or out of scope
 
