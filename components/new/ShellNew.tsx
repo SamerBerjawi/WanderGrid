@@ -152,7 +152,7 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
                         hideBrandOnMobile ? 'hidden md:flex' : 'flex'
                     )}
                 >
-                    <span className="flex size-8 items-center justify-center rounded-[10px] bg-rp-ink text-sm font-semibold text-rp-on-ink">W</span>
+                    <img src="/icon.svg" alt="" aria-hidden="true" className="size-8 rounded-[10px]" />
                     <span className="hidden text-base font-medium text-rp-ink sm:inline">WanderGrid</span>
                 </button>
 

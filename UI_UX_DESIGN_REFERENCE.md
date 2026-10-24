@@ -408,7 +408,7 @@ npx shadcn@latest add @kokonutui/<slug>
 - **Vaul.** Smooth Drawer depends on the shadcn `drawer` (Vaul) and `button` registry items.
 - **Tokens.** Replace colour literals (`zinc-*`, arbitrary hex) and any arbitrary `z-[…]` with WanderGrid tokens so that `npm run lint:tokens` passes.
 - **Demo data.** Several components default to demo content (event ticket, checkout order, sample article). Always pass real props.
-- **Tracking.** Record each port, with its KokonutUI version (most are 1.0–2.0, dated October 2026), in a change registry like `docs/gev-changes.md`.
+- **Tracking.** Record each port, with its KokonutUI version (most are 1.0–2.0, dated October 2026), in this document.
 
 ### 4.5 Ports already in `components/kokonutui/`
 
