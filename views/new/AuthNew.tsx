@@ -167,7 +167,7 @@ export const AuthNew: React.FC<AuthNewProps> = ({ onLogin, isDark, onThemeChange
                 <div className="mx-auto flex min-h-full w-full max-w-[1680px] flex-col px-1 pb-[calc(16px+env(safe-area-inset-bottom,0px))] sm:px-4">
                     <header className="flex items-center justify-between gap-3 px-2 pt-[calc(12px+env(safe-area-inset-top,0px))] sm:px-0">
                         <div className="flex min-h-11 items-center gap-2.5 rounded-full bg-rp-surface py-1.5 pr-4 pl-1.5 rp-shadow-soft">
-                            <span className="flex size-8 items-center justify-center rounded-[10px] bg-rp-ink text-sm font-semibold text-rp-on-ink">W</span>
+                            <img src="/icon.svg" alt="" aria-hidden="true" className="size-8 rounded-[10px]" />
                             <span className="text-base font-medium">WanderGrid</span>
                         </div>
                         <div className="flex items-center gap-2">
