@@ -32,8 +32,7 @@ export const getEffectiveBasemap = (
     basemap: string | undefined,
     isDark: boolean,
     defaultLight?: string,
-    defaultDark?: string,
-    _deprecatedCartoKey?: string
+    defaultDark?: string
 ): EffectiveBasemap => {
     // Explicit layer requested other than 'default'
     if (basemap && basemap !== 'default') {

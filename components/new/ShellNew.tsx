@@ -10,6 +10,7 @@ import { RpSheet } from './ui';
 import { cn } from '../../utils/cn';
 import { PATHS, resolveRoute } from '../../utils/routes';
 import './new.css';
+import { CarrierLogoProvider } from './CarrierLogos';
 
 /**
  * App shell for the New pages (UI_UX_DESIGN_REFERENCE.md §2.1, §2.4, §5.0): grouped top tabs on
@@ -175,7 +176,7 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
                 </div>
             </header>
 
-            <main className="relative min-h-0 flex-1">{children}</main>
+            <main className="relative min-h-0 flex-1"><CarrierLogoProvider>{children}</CarrierLogoProvider></main>
 
             {/* Mobile bottom tab bar (decision 7) */}
             <nav aria-label="Main" className="pointer-events-none absolute inset-x-0 bottom-0 z-sticky px-3 pb-[calc(10px+env(safe-area-inset-bottom,0px))] md:hidden">

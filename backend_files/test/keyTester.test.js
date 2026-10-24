@@ -5,12 +5,12 @@ const { SERVICE_KEYS, testKey } = require('../keyTester.js');
 const reply = (status, body = {}) => async () => ({ status, ok: status >= 200 && status < 300, json: async () => body });
 
 describe('API key tester', () => {
-  test('covers the five keyed services', () => {
-    assert.deepEqual([...SERVICE_KEYS].sort(), ['aerodatabox', 'aviationstack', 'brandfetch', 'gemini', 'openaip']);
+  test('covers the four keyed services', () => {
+    assert.deepEqual([...SERVICE_KEYS].sort(), ['aerodatabox', 'aviationstack', 'brandfetch', 'openaip']);
   });
 
   test('accepts a key the provider accepts, and says so without the key', async () => {
-    const r = await testKey('gemini', 'secret-key', {}, reply(200));
+    const r = await testKey('openaip', 'secret-key', {}, reply(200));
     assert.equal(r.success, true);
     assert.ok(!JSON.stringify(r).includes('secret-key'));
   });
@@ -39,7 +39,7 @@ describe('API key tester', () => {
 
   test('no key means no request', async () => {
     let called = false;
-    const r = await testKey('gemini', '', {}, async () => { called = true; return { status: 200 }; });
+    const r = await testKey('openaip', '', {}, async () => { called = true; return { status: 200 }; });
     assert.equal(r.success, false);
     assert.equal(called, false);
   });

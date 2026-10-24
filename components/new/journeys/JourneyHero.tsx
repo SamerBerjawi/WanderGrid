@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useState } from 'react';
 import { cn } from '../../../utils/cn';
 import NumberFlow from '@number-flow/react';
 import { BarChart } from '../../bklit/bar-chart';
+import { RpMoreButton } from '../ui';
 import { RoutesMap } from './RoutesMap';
 import { Airplane, ArrowUpRight, Buildings, Clock, CurrencyDollar, Globe, Leaf, Seat, Tree, Users, type Icon } from '../../ui/hugeicons';
 import { getActiveCurrency, formatCurrency } from '../../../utils/formatters';
@@ -60,13 +61,15 @@ const TITLE_LAND: Record<Metric, string> = { count: 'Journeys per year', km: 'Ki
 
 /** Top few with a bar for how many, then "+N more". */
 const Breakdown: React.FC<{ title: string; icon: Icon; rows: Tally[]; unit: string }> = ({ title, icon: IconC, rows, unit }) => {
-    const top = rows.slice(0, 3);
+    const [all, setAll] = useState(false);
+    const moreId = useId();
+    const top = all ? rows : rows.slice(0, 3);
     const max = Math.max(1, ...top.map(r => r.count));
     return (
         <div className="flex min-w-0 flex-col gap-2 rounded-rp-inset bg-rp-inset/60 p-3">
             <p className="flex items-center gap-1.5 text-xs font-medium text-rp-muted"><IconC size={14} className="text-rp-ochre" aria-hidden /> {title}</p>
             {top.length === 0 ? <p className="text-sm text-rp-muted">None yet</p> : (
-                <ul className="flex flex-col gap-2">
+                <ul id={moreId} className="flex flex-col gap-2">
                     {top.map(r => (
                         <li key={r.key} className="flex flex-col gap-1">
                             <span className="flex items-baseline justify-between gap-2 text-sm"><span className="truncate text-rp-ink">{r.label}</span><span className="rp-tabular shrink-0 font-medium text-rp-ink">{r.count}<span className="font-normal text-rp-muted"> {r.count === 1 && unit.endsWith('s') && unit !== 'visits' ? unit.slice(0, -1) : r.count === 1 && unit === 'visits' ? 'visit' : unit}</span></span></span>
@@ -75,7 +78,7 @@ const Breakdown: React.FC<{ title: string; icon: Icon; rows: Tally[]; unit: stri
                     ))}
                 </ul>
             )}
-            {rows.length > top.length ? <p className="rp-tabular text-xs text-rp-muted">+{rows.length - top.length} more</p> : null}
+            {rows.length > 3 ? <RpMoreButton count={rows.length - 3} noun={title.toLowerCase()} expanded={all} onToggle={() => setAll(a => !a)} controls={moreId} /> : null}
         </div>
     );
 };

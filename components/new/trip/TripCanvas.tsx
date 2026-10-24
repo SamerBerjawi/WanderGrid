@@ -11,6 +11,7 @@ import { STAY_ACCENT, TRANSPORT_ACCENT } from '../trips/accents';
 import { modeLook } from '../trips/transportModes';
 import type { EditStep } from './TripPanels';
 import { cn } from '../../../utils/cn';
+import { RpCarrierLogo } from '../CarrierLogos';
 
 /**
  * Canvas: the whole plan on one page (UI_UX_DESIGN_REFERENCE.md §8). One row per day, and across it
@@ -108,7 +109,7 @@ const TransportChip: React.FC<{ item: Extract<DayItem, { kind: 'transport' }>; b
     const arrive = item.part === 'arrive';
     return (
         <button type="button" onClick={onClick} className={CHIP}>
-            <RpLogo size="sm" name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={Mode} iconClassName={modeLook(t.mode).text} />
+            <RpCarrierLogo size="sm" provider={t.provider} identifier={t.identifier} src={t.logoUrl} fallback={Mode} iconClassName={modeLook(t.mode).text} />
             <span className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-medium text-rp-ink">{arrive ? `Arrive ${t.destination}` : `${t.origin} → ${t.destination}`}</span>
                 <span className="block truncate text-2xs text-rp-muted">{[item.time, t.provider, t.identifier].filter(Boolean).join(' · ')}</span>

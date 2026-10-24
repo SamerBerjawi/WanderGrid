@@ -1,11 +1,11 @@
 import React from 'react';
 import type { Transport } from '../../../types';
-import { AirplaneLanding, AirplaneTilt, CheckCircle, Clock, XCircle, type Icon } from '../../ui/hugeicons';
-import { RpLogo } from '../ui';
+import { AirplaneLanding, AirplaneTilt, Broadcast, CheckCircle, Clock, XCircle, type Icon } from '../../ui/hugeicons';
 import { modeLook } from '../trips/transportModes';
 import { carrierLabel, type JourneyState, type JourneyStatus } from '../../../utils/journeysModel';
 import { cn } from '../../../utils/cn';
 import type { Carrier } from '../../../types';
+import { RpCarrierLogo } from '../CarrierLogos';
 
 /** Small pieces shared by the journey table, board and sheet (Flights now, Road trips next). */
 
@@ -48,10 +48,13 @@ export const CarrierCell: React.FC<{ t: Transport; brandfetchApiKey?: string; ca
     const look = modeLook(t.mode);
     return (
         <span className={cn('flex min-w-0 items-center gap-3', className)}>
-            <RpLogo name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} carriers={carriers} fallback={look.icon} iconClassName={look.text} size={size} />
+            <RpCarrierLogo provider={t.provider} identifier={t.identifier} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} carriers={carriers} fallback={look.icon} iconClassName={look.text} size={size} />
             <span className="flex min-w-0 flex-col">
                 <span className={cn('truncate text-sm font-medium', tone === 'onInk' ? 'text-rp-on-ink' : 'text-rp-ink')}>{carrierLabel(t) || look.label}</span>
-                <span className={cn('rp-tabular truncate text-xs', tone === 'onInk' ? 'text-rp-on-ink/70' : 'text-rp-muted')}>{t.identifier || look.label}</span>
+                <span className={cn('rp-tabular flex min-w-0 items-center gap-1 text-xs', tone === 'onInk' ? 'text-rp-on-ink/70' : 'text-rp-muted')}>
+                    <span className="truncate">{t.identifier || look.label}</span>
+                    {t.liveDataSource ? <span className="inline-flex shrink-0" title="Live flight data (AeroDataBox)"><Broadcast size={12} className="text-rp-green" aria-label="Live flight data" role="img" /></span> : null}
+                </span>
             </span>
         </span>
     );

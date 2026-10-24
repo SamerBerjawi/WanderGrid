@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useId, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import type { User } from '../../../types';
 import { getFlagEmoji } from '../../../services/geoData';
 import { formatDate } from '../../../utils/formatters';
 import { cn } from '../../../utils/cn';
 import { Eye, EyeSlash, Globe, PencilSimple } from '../../ui/hugeicons';
+import { RpMoreButton } from '../ui';
 import { initials } from '../trips/TripDetailsModal';
 
 /**
@@ -19,7 +21,14 @@ const STAMP_TONES = [
     'border-rp-plum text-rp-plum',
 ] as const;
 const STAMP_TILT = ['-rotate-3', 'rotate-2', '-rotate-1', 'rotate-3'] as const;
-const STAMPS_SHOWN = 6;
+const STAMPS_SHOWN = 8;
+
+const Stamp: React.FC<{ stamp: { name: string; date: string; code?: string }; index: number }> = ({ stamp: p, index: i }) => (
+    <li className={cn('flex min-h-16 min-w-28 max-w-full flex-col items-center justify-center rounded-rp-inset border-2 border-dashed px-3 py-2 text-center', STAMP_TONES[i % STAMP_TONES.length], STAMP_TILT[i % STAMP_TILT.length])}>
+        <span className="max-w-40 truncate text-sm font-semibold uppercase tracking-wide">{p.code ? <span aria-hidden className="mr-1.5">{getFlagEmoji(p.code)}</span> : null}{p.name}</span>
+        <span className="rp-tabular text-xs">{formatDate(p.date, 'month-year')}</span>
+    </li>
+);
 
 const Field: React.FC<{ label: string; children: React.ReactNode; className?: string; mono?: boolean }> = ({ label, children, className, mono }) => (
     <div className={cn('min-w-0', className)}>
@@ -41,6 +50,10 @@ export const PassportCard: React.FC<{
     const given = parts.length > 1 ? parts.slice(0, -1).join(' ') : member.name;
     const number = member.passportNumber ? (reveal ? member.passportNumber : `•••• ${member.passportNumber.slice(-4)}`) : '';
     const shown = countries.slice(0, STAMPS_SHOWN);
+    const rest = countries.length - STAMPS_SHOWN;
+    const [expanded, setExpanded] = useState(false);
+    const reduce = useReducedMotion();
+    const restId = useId();
 
     return (
         <div className="overflow-hidden rounded-rp-card bg-rp-surface rp-shadow-rest">
@@ -84,15 +97,32 @@ export const PassportCard: React.FC<{
                 {shown.length === 0 ? (
                     <p className="text-sm text-rp-muted">No stamps yet. A finished trip leaves one per country.</p>
                 ) : (
-                    <ul className="flex flex-wrap gap-3">
-                        {shown.map((p, i) => (
-                            <li key={p.name} className={cn('flex min-h-16 min-w-28 max-w-full flex-col items-center justify-center rounded-rp-inset border-2 border-dashed px-3 py-2 text-center', STAMP_TONES[i % STAMP_TONES.length], STAMP_TILT[i % STAMP_TILT.length])}>
-                                <span className="max-w-40 truncate text-sm font-semibold uppercase tracking-wide">{p.code ? <span aria-hidden className="mr-1.5">{getFlagEmoji(p.code)}</span> : null}{p.name}</span>
-                                <span className="rp-tabular text-xs">{formatDate(p.date, 'month-year')}</span>
-                            </li>
-                        ))}
-                        {countries.length > STAMPS_SHOWN ? <li className="flex min-h-16 items-center px-2 text-sm text-rp-muted">+{countries.length - STAMPS_SHOWN} more</li> : null}
-                    </ul>
+                    <>
+                        <ul className="flex flex-wrap gap-3">
+                            {shown.map((p, i) => <Stamp key={p.name} stamp={p} index={i} />)}
+                        </ul>
+                        {/* The rest mount only once asked for, and animate as one block (no per-stamp motion), so 60+ stamps stay cheap. */}
+                        <AnimatePresence initial={false}>
+                            {expanded && rest > 0 ? (
+                                <motion.div
+                                    key="rest"
+                                    id={restId}
+                                    initial={reduce ? false : { height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={reduce ? { opacity: 0, transition: { duration: 0 } } : { height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                                    className="-mx-2 overflow-hidden px-2"
+                                >
+                                    <ul className="flex flex-wrap gap-3 pt-3 pb-1" aria-label="More stamps">
+                                        {countries.slice(STAMPS_SHOWN).map((p, i) => <Stamp key={p.name} stamp={p} index={STAMPS_SHOWN + i} />)}
+                                    </ul>
+                                </motion.div>
+                            ) : null}
+                        </AnimatePresence>
+                        {rest > 0 ? (
+                            <RpMoreButton count={rest} noun="stamps" expanded={expanded} onToggle={() => setExpanded(e => !e)} controls={restId} className="mt-2" />
+                        ) : null}
+                    </>
                 )}
             </div>
         </div>

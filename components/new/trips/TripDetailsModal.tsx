@@ -13,6 +13,7 @@ import { stayIcon } from './stayIcon';
 import { STAY_ACCENT } from './accents';
 import { MODE_LOOKS, modeLook } from './transportModes';
 import { cn } from '../../../utils/cn';
+import { RpCarrierLogo } from '../CarrierLogos';
 
 /**
  * A trip's details (UI_UX_DESIGN_REFERENCE.md §5.2 row 5, the "deal modal"): a card in the trip's
@@ -217,7 +218,7 @@ const Body: React.FC<{
                             <Row
                                 key={t.id}
                                 skin={skin}
-                                logo={<RpLogo name={t.provider} src={t.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={Mode} iconClassName={modeLook(t.mode).text} />}
+                                logo={<RpCarrierLogo provider={t.provider} identifier={t.identifier} src={t.logoUrl} fallback={Mode} iconClassName={modeLook(t.mode).text} />}
                                 title={`${t.origin} → ${t.destination}`}
                                 meta={[t.provider, t.identifier, when(t.departureDate, t.departureTime)].filter(Boolean).join(' · ')}
                                 cost={money(t.cost)}

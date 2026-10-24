@@ -179,7 +179,7 @@ function toPublicUser(user) {
 }
 
 // Paid third-party API keys never leave the server in backups (decision C-5).
-const SECRET_SETTING_KEYS_LOWER = new Set(['googlegeminiapikey', 'aviationstackapikey', 'aerodataboxapikey', 'openaipapikey']);
+const SECRET_SETTING_KEYS_LOWER = new Set(['aviationstackapikey', 'aerodataboxapikey', 'openaipapikey']);
 
 function removeSensitiveData(obj) {
     if (obj === null || obj === undefined) {
@@ -1679,7 +1679,7 @@ app.get('/api/proxy/test/:provider', async (req, res) => {
 });
 
 // Tests a stored API key (Settings › Integrations). Admin only; the key is read here and never sent back.
-const KEY_SERVICE_SETTING = { gemini: 'googleGeminiApiKey', aviationstack: 'aviationStackApiKey', aerodatabox: 'aeroDataBoxApiKey', openaip: 'openAipApiKey' };
+const KEY_SERVICE_SETTING = { aviationstack: 'aviationStackApiKey', aerodatabox: 'aeroDataBoxApiKey', openaip: 'openAipApiKey' };
 app.post('/api/integrations/test-key/:service', requireAdmin, async (req, res) => {
     const service = String(req.params.service || '').toLowerCase();
     if (!SERVICE_KEYS.includes(service)) return res.status(400).json({ error: 'Unknown service' });
@@ -3122,18 +3122,24 @@ app.delete('/api/visited/:id', deleteResource('visited'));
 // --- Workspace settings & third-party secrets (SEC-010) ---
 // Paid API keys are write-only for clients: GET returns a mask when a key is set, PUT keeps the
 // stored key when it receives the mask, and the /api/proxy/* routes inject keys server-side.
-// (Brandfetch and CARTO keys are public client identifiers used in image/tile URLs and stay readable.)
-const SECRET_SETTING_KEYS = ['googleGeminiApiKey', 'aviationStackApiKey', 'aeroDataBoxApiKey', 'openAipApiKey'];
+// (The Brandfetch key is a public client identifier used in image URLs and stays readable.)
+const SECRET_SETTING_KEYS = ['aviationStackApiKey', 'aeroDataBoxApiKey', 'openAipApiKey'];
 const SECRET_MASK = '••••••••';
 const SECRET_ENV_FALLBACKS = {
     aviationStackApiKey: 'INTEGRATIONS_AVIATION_STACK_KEY',
     aeroDataBoxApiKey: 'INTEGRATIONS_AERO_DATA_BOX_KEY',
     openAipApiKey: 'INTEGRATIONS_OPEN_AIP_KEY',
-    googleGeminiApiKey: 'GEMINI_API_KEY',
+};
+// Keys of integrations that were removed. Workspaces and backups made before may still carry them: they are
+// ignored, never sent to a client, and dropped the next time the settings are saved.
+const OBSOLETE_SETTING_KEYS = ['googleGeminiApiKey', 'cartoApiKey'];
+const dropObsoleteSettings = (obj) => {
+    if (obj && typeof obj === 'object') for (const k of OBSOLETE_SETTING_KEYS) delete obj[k];
+    return obj;
 };
 
 const maskSettings = (settings) => {
-    const masked = { ...settings };
+    const masked = dropObsoleteSettings({ ...settings });
     const configuredKeys = {};
     const keySources = {};
     for (const key of SECRET_SETTING_KEYS) {
@@ -3167,7 +3173,7 @@ app.get('/api/settings', async (req, res) => {
 
 app.put('/api/settings', requireAdmin, async (req, res) => {
     try {
-        const incoming = { ...(req.body || {}) };
+        const incoming = dropObsoleteSettings({ ...(req.body || {}) });
         delete incoming.configuredKeys;
         delete incoming.keySources;
         const saved = await withTransaction(async (client) => {
@@ -3195,12 +3201,12 @@ app.put('/api/settings', requireAdmin, async (req, res) => {
 // Settings page) editing different fields can't silently undo each other (REL-005).
 app.patch('/api/settings', requireAdmin, async (req, res) => {
     try {
-        const changes = { ...(req.body || {}) };
+        const changes = dropObsoleteSettings({ ...(req.body || {}) });
         delete changes.configuredKeys;
         delete changes.keySources;
         for (const key of SECRET_SETTING_KEYS) if (changes[key] === SECRET_MASK) delete changes[key];
         const saved = await withTransaction(async (client) => {
-            const merged = { ...(await readWorkspaceSettings(client)), ...changes };
+            const merged = dropObsoleteSettings({ ...(await readWorkspaceSettings(client)), ...changes });
             await client.query(
                 `INSERT INTO settings (key, data) VALUES ('workspace', $1) ON CONFLICT (key) DO UPDATE SET data = $1`,
                 [JSON.stringify(merged)]
@@ -3211,36 +3217,6 @@ app.patch('/api/settings', requireAdmin, async (req, res) => {
         res.json(maskSettings(saved));
     } catch (err) {
         sendError(res, err, 500, 'Failed to update workspace settings');
-    }
-});
-
-// Gemini runs server-side: the key never reaches the browser and the SDK isn't shipped to clients.
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
-app.post('/api/ai/generate', async (req, res) => {
-    const { contents, responseMimeType } = req.body || {};
-    if (!Array.isArray(contents) || contents.length === 0 || contents.length > 50) {
-        return res.status(400).json({ error: 'contents must be a non-empty array of messages' });
-    }
-    const apiKey = await workspaceSecret('googleGeminiApiKey');
-    if (!apiKey) return res.status(412).json({ error: 'Please configure Google Gemini API Key in Settings › Integrations.' });
-    try {
-        const upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-            body: JSON.stringify({
-                contents: contents.map(c => ({ role: c.role === 'model' ? 'model' : 'user', parts: [{ text: String(c.text || '').slice(0, 20000) }] })),
-                ...(responseMimeType === 'application/json' ? { generationConfig: { responseMimeType: 'application/json' } } : {})
-            }),
-            signal: AbortSignal.timeout(30000)
-        });
-        const data = await upstream.json().catch(() => ({}));
-        if (!upstream.ok) {
-            return res.status(502).json({ error: data?.error?.message ? `Gemini: ${data.error.message}` : `Gemini returned HTTP ${upstream.status}` });
-        }
-        const text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
-        res.json({ text });
-    } catch (err) {
-        sendError(res, err, 502, 'The AI service could not be reached');
     }
 });
 
@@ -3339,7 +3315,7 @@ app.post('/api/jobs/backup', (req, res) => {
         }
         
         const settingsRes = await pool.query(`SELECT data FROM settings WHERE key = 'workspace'`);
-        backup.workspaceSettings = settingsRes.rows.length > 0 ? settingsRes.rows[0].data : {};
+        backup.workspaceSettings = dropObsoleteSettings(settingsRes.rows.length > 0 ? { ...settingsRes.rows[0].data } : {});
         progress(90);
         
         const cleanBackup = removeSensitiveData(backup);
@@ -3393,7 +3369,7 @@ app.get('/api/backup', requireAdmin, async (req, res) => {
         }
         
         const settingsRes = await pool.query(`SELECT data FROM settings WHERE key = 'workspace'`);
-        backup.workspaceSettings = settingsRes.rows.length > 0 ? settingsRes.rows[0].data : {};
+        backup.workspaceSettings = dropObsoleteSettings(settingsRes.rows.length > 0 ? { ...settingsRes.rows[0].data } : {});
         
         const cleanBackup = removeSensitiveData(backup);
         res.json(cleanBackup);
@@ -3624,8 +3600,9 @@ app.post('/api/restore', requireAdmin, async (req, res) => {
                 ? { ...currentSettings, ...data.workspaceSettings } 
                 : { ...data.workspaceSettings };
                 
-            const keysToCheck = ['aviationStackApiKey', 'aeroDataBoxApiKey', 'aeroDataBoxEndpoint', 'openAipApiKey', 'brandfetchApiKey', 'googleGeminiApiKey', 'cartoApiKey'];
+            const keysToCheck = ['aviationStackApiKey', 'aeroDataBoxApiKey', 'aeroDataBoxEndpoint', 'openAipApiKey', 'brandfetchApiKey'];
             delete mergedSettings.configuredKeys;
+            dropObsoleteSettings(mergedSettings);
             keysToCheck.forEach(k => {
                 if (mergedSettings[k] === SECRET_MASK) delete mergedSettings[k]; // masked values are never real keys
                 if (!mergedSettings[k] && currentSettings && currentSettings[k]) {

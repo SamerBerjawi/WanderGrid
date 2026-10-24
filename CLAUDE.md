@@ -62,7 +62,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 | `backend_files/` | Express server (`server.js`, ~2.9k lines), upstream helpers (`upstream.js`, `geocodingChain.js`, `routeProxy.js`, `aviationStack.js`, `carrierMapping.js`, `integrationsTester.js`), the `test/` folder, and the Dockerfile |
 | `public/` | PWA icons, `manifest.json`, GeoJSON (`data/`), map styles, `airport-overlay.pmtiles` (gitignored and must be present locally) |
 | `docs/` | `logo-concepts/` (logo sources and generator scripts) |
-| `scripts/bump-version.cjs` | Writes `v0.5-YYMMDD.N` to `version.ts` and `package.json` |
+| `scripts/bump-version.cjs` | Writes `v1.1-YYMMDD.N` to `version.ts` and `package.json` (the release line is the `RELEASE_LINE` constant at the top of the script) |
 | `dist/`, `scratch/` | Build output and an empty scratch dir. Both are untracked/ignored |
 
 ## Architecture
@@ -88,8 +88,8 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 - Geocoding: Open-Meteo, then Photon, then Nominatim (`geocodingChain.js`). Results are cached in the `geocoding_cache` table, the timeout is 3s, and the fallback on failure is `[]`.
 - Routing: FOSSGIS OSRM, then project-osrm, then Valhalla for road. OpenRailRouting for rail (tries the `all_tracks`, `non_tgv`, `tgv_all`, `all_tracks_1435` profiles in turn). `searoute-js` for maritime. Road and rail legs are resolved by `backend_files/routeStore.js` behind `POST /api/proxy/routes/resolve` (batched, requires the session token) and persisted in `cached_routes`, including definitive "no route" answers; the client (`services/multiModalRouting.ts`) polls only for pending legs.
 - Public holidays (calendar > Holidays > Add a country calendar): Nager.Date, then OpenHolidays, behind `GET /api/proxy/holidays/countries` and `/:year/:countryCode` (`backend_files/holidays.js`, one-day cache). In local mode the browser calls Nager.Date directly.
-- Flights: AviationStack, AeroDataBox (RapidAPI), adsbdb, adsb.lol and OpenSky. Map tiles: OpenFreeMap, CARTO, OSM, NASA GIBS, AWS Terrarium and OpenAIP (keyed). Logos: Brandfetch. Holidays: Nager.Date. Weather radar: RainViewer.
-- Gemini: the client-side AI guide was removed with the original interface (git tag `classic-final`); the server keeps `/api/ai/generate`.
+- Flights: AviationStack, AeroDataBox (RapidAPI), adsbdb, adsb.lol and OpenSky. Map tiles: OpenFreeMap, OSM, Esri, NASA GIBS, AWS Terrarium and OpenAIP (keyed). Logos: Brandfetch. Holidays: Nager.Date. Weather radar: RainViewer.
+- There is no AI feature. The Gemini API (the trip AI guide, AI packing list and flight analysis, `/api/ai/generate`) and the CARTO basemap key were removed in 1.1; stored `googleGeminiApiKey` and `cartoApiKey` values in old settings and backups are ignored and dropped on the next save.
 - Most third-party API keys are stored in workspace settings and sent by the client as headers, for example `X-AeroDataBox-Key` and `X-OpenAIP-Key`. A key can also be set through env vars (`INTEGRATIONS_*`).
 
 **Env vars** (see `.env.example`): `DATABASE_URL`, `JWT_SECRET`, `PORT`, `NODE_ENV`, `STRUCTURED_LOGGING`, `DB_POOL_SIZE`, `DB_CONNECTION_TIMEOUT_MS`, `DB_STATEMENT_TIMEOUT_MS`, `API_CACHE_TTL_MS`, `FLIGHT_FETCH_TIMEOUT_MS`, `GLOBAL_DATA_REFRESH_MS`, `GEOCODE_CACHE_TTL_MS`, `EXTERNAL_FETCH_TIMEOUT_MS`, `INTEGRATIONS_*`, `FLIGHT_LOOKUP_FLIGHTSTATS` (`off` disables the keyless FlightStats source of the flight lookup). Frontend: `VITE_FF_*`.

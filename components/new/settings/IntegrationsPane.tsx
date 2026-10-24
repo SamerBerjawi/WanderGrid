@@ -8,7 +8,7 @@ import ParticleButton from '../../kokonutui/particle-button';
 import HoldButton from '../../kokonutui/hold-button';
 import { RpChip, RpSheet } from '../ui';
 import { RpField } from '../fields';
-import { ArrowSquareOut, Compass, Database, Eye, EyeSlash, Globe, MapsGlobal, Plugs, Pulse, Sparkle, Airplane, Key, WifiHigh, Cloud, Path, MapPin, Planet, type Icon } from '../../ui/hugeicons';
+import { ArrowSquareOut, Compass, Database, Eye, EyeSlash, Globe, Plugs, Pulse, Airplane, Key, WifiHigh, Cloud, Path, MapPin, Planet, type Icon } from '../../ui/hugeicons';
 import { cn } from '../../../utils/cn';
 import { keyInfo, countKeys, type KeyField } from '../../../utils/settingsModel';
 import { card, FIELD, CANCEL_BTN, PaneHeader, StatusChip } from './SettingsParts';
@@ -26,12 +26,10 @@ interface KeyService {
 }
 
 const KEY_SERVICES: KeyService[] = [
-    { id: 'gemini', label: 'Google Gemini', purpose: 'Trip planning and packing ideas', icon: Sparkle, field: 'googleGeminiApiKey', secret: true, test: 'gemini', docs: 'https://aistudio.google.com/apikey' },
     { id: 'aviationstack', label: 'AviationStack', purpose: 'Flight lookup by number and date', icon: Airplane, field: 'aviationStackApiKey', secret: true, test: 'aviationstack', docs: 'https://aviationstack.com' },
     { id: 'aerodatabox', label: 'AeroDataBox', purpose: 'Gates, terminals, schedules and aircraft', icon: Database, field: 'aeroDataBoxApiKey', secret: true, test: 'aerodatabox', docs: 'https://aerodatabox.com' },
     { id: 'openaip', label: 'OpenAIP', purpose: 'Airspaces and navigation aids on the map', icon: Compass, field: 'openAipApiKey', secret: true, test: 'openaip', docs: 'https://www.openaip.net' },
     { id: 'brandfetch', label: 'Brandfetch', purpose: 'Airline and hotel logos', icon: Globe, field: 'brandfetchApiKey', secret: false, test: 'brandfetch', docs: 'https://brandfetch.com/developers' },
-    { id: 'carto', label: 'CARTO', purpose: 'Optional key for CARTO basemaps', icon: MapsGlobal, field: 'cartoApiKey', secret: false, docs: 'https://carto.com' },
 ];
 
 const FREE_SERVICES: Array<{ id: KeylessProvider; label: string; purpose: string; icon: Icon; docs: string }> = [
