@@ -24,7 +24,8 @@ test.describe('signed in', () => {
       const errors: string[] = [];
       page.on('pageerror', (e) => errors.push(e.message));
       await gotoNew(page, path);
-      await expect(page.getByRole('button', { name: 'WanderGrid home' })).toBeVisible({ timeout: 20_000 });
+      // The full-bleed map hides the brand button on phones (hideBrandOnMobile), so accept the bottom nav there.
+      await expect(page.getByRole('button', { name: 'WanderGrid home' }).or(page.getByRole('button', { name: 'Dashboard' })).first()).toBeVisible({ timeout: 20_000 });
       await expect(page.getByText(/Page not found|Try Again|Stopped Unexpectedly/i)).toHaveCount(0);
       expect(errors).toEqual([]);
     });
