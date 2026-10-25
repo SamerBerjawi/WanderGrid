@@ -411,7 +411,7 @@ app.use(express.static(path.join(__dirname, 'client_build'), {
             res.setHeader('Accept-Ranges', 'bytes');
             res.setHeader('Content-Type', 'application/vnd.pmtiles');
         }
-        if (filePath.endsWith('.html') || filePath.endsWith('sw.js') || filePath.endsWith('registerSW.js') || filePath.endsWith('manifest.json') || filePath.endsWith('icon.svg')) {
+        if (filePath.endsWith('.html') || filePath.endsWith('sw.js') || filePath.endsWith('registerSW.js') || filePath.endsWith('manifest.json') || /(?:^|[\\/])(?:icon\.svg|favicon[^\\/]*|apple-touch-icon\.png|app-icon[^\\/]*\.png)$/.test(filePath)) {
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, proxy-revalidate, max-age=0');
             res.setHeader('Pragma', 'no-cache');
         }

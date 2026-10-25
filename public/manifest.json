@@ -26,25 +26,25 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/app-icon-192.png",
+      "src": "/app-icon-192.png?v=2",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "/app-icon-512.png",
+      "src": "/app-icon-512.png?v=2",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "/app-icon-512.png",
+      "src": "/app-icon-512.png?v=2",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"
     },
     {
-      "src": "/apple-touch-icon.png",
+      "src": "/apple-touch-icon.png?v=2",
       "type": "image/png",
       "sizes": "180x180",
       "purpose": "any"
@@ -58,7 +58,7 @@
       "url": "/planner?source=pwa",
       "icons": [
         {
-          "src": "/app-icon-192.png",
+          "src": "/app-icon-192.png?v=2",
           "sizes": "192x192"
         }
       ]
@@ -70,7 +70,7 @@
       "url": "/flights?source=pwa",
       "icons": [
         {
-          "src": "/app-icon-192.png",
+          "src": "/app-icon-192.png?v=2",
           "sizes": "192x192"
         }
       ]
@@ -82,7 +82,7 @@
       "url": "/atlas?source=pwa",
       "icons": [
         {
-          "src": "/app-icon-192.png",
+          "src": "/app-icon-192.png?v=2",
           "sizes": "192x192"
         }
       ]
@@ -94,7 +94,7 @@
       "url": "/calendar?source=pwa",
       "icons": [
         {
-          "src": "/app-icon-192.png",
+          "src": "/app-icon-192.png?v=2",
           "sizes": "192x192"
         }
       ]
@@ -106,7 +106,7 @@
       "url": "/map?source=pwa",
       "icons": [
         {
-          "src": "/app-icon-192.png",
+          "src": "/app-icon-192.png?v=2",
           "sizes": "192x192"
         }
       ]
