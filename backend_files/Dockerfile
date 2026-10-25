@@ -1,4 +1,5 @@
-FROM node:20-alpine AS frontend-build
+# The SPA bundle is platform-independent, so build it natively instead of under QEMU emulation.
+FROM --platform=$BUILDPLATFORM node:20-alpine AS frontend-build
 
 WORKDIR /app
 

@@ -85,6 +85,10 @@ jobs:
         working-directory: tests/e2e
         run: npm ci --no-audit --no-fund
 
+      - name: Install backend dependencies
+        working-directory: backend_files
+        run: npm ci --no-audit --no-fund
+
       - name: End-to-end tests (Playwright, production build + in-memory Postgres)
         working-directory: tests/e2e
         run: npx playwright test
