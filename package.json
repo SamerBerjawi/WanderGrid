@@ -1,7 +1,7 @@
 {
   "name": "wandergrid-v0.2",
   "private": true,
-  "version": "1.1-261025.5",
+  "version": "1.1-261029.1",
   "type": "module",
   "scripts": {
     "dev": "vite",

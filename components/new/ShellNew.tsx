@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { MorphicNavbar } from '../kokonutui/split-nav';
 import SwitchButton from '../kokonutui/switch-button';
 import {
-    Airplane, CalendarBlank, DotsThreeOutline, Gear, Globe, House, MapTrifold, Plus, SignOut, Suitcase, Train, UserCircle, type Icon,
+    Airplane, CalendarBlank, DotsThreeOutline, Gear, Globe, House, MapTrifold, SignOut, Suitcase, UserCircle, type Icon,
 } from '../ui/hugeicons';
 import type { User } from '../../types';
 import { RpSheet } from './ui';
@@ -34,7 +34,7 @@ export const SHELL_NAV: ShellNavItem[] = [
     { path: '/map', label: 'Map', icon: MapTrifold },
 ];
 
-const MOBILE_TABS = ['/dashboard', '/trips', '/map', '/flights'];
+const MOBILE_TABS = ['/dashboard', '/map', '/trips', '/flights'];
 
 export interface ShellNewProps {
     currentPath: string;
@@ -128,11 +128,9 @@ const AccountButton: React.FC<{ user: User | null; onNavigate: (p: string) => vo
 };
 
 export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, user, isDark, onThemeChange, onLogout, localMode, fullBleed, hideBrandOnMobile, children }) => {
-    const [sheet, setSheet] = useState<'more' | 'add' | null>(null);
+    const [sheet, setSheet] = useState<'more' | null>(null);
     const navItems = Object.fromEntries(SHELL_NAV.map(i => [i.path, { name: i.label, icon: i.icon }]));
     const go = (path: string) => { setSheet(null); onNavigate(path); };
-    // currentPath is the tab (Road trips sits under Flights), so the quick actions ask the URL which page is open.
-    const onPage = (page: 'trips' | 'flights' | 'roadtrips') => { const r = resolveRoute(window.location.pathname); return r.page === page; };
 
     return (
         <div className="rp-root rp-canvas-glow fixed inset-0 flex h-full w-full flex-col overflow-hidden bg-rp-canvas font-rp text-rp-ink antialiased">
@@ -181,16 +179,7 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
             {/* Mobile bottom tab bar (decision 7) */}
             <nav aria-label="Main" className="pointer-events-none absolute inset-x-0 bottom-0 z-sticky px-3 pb-[calc(10px+env(safe-area-inset-bottom,0px))] md:hidden">
                 <div className="pointer-events-auto mx-auto flex max-w-md items-center justify-between rounded-full bg-rp-surface p-1.5 rp-shadow-soft">
-                    {MOBILE_TABS.slice(0, 2).map(path => <TabButton key={path} path={path} active={currentPath === path} onClick={() => go(path)} />)}
-                    <button
-                        type="button"
-                        aria-label="Quick actions"
-                        onClick={() => setSheet('add')}
-                        className="flex size-12 items-center justify-center rounded-full bg-rp-mustard text-rp-on-mustard outline-none focus-visible:ring-2 focus-visible:ring-rp-muted"
-                    >
-                        <Plus size={22} />
-                    </button>
-                    {MOBILE_TABS.slice(2).map(path => <TabButton key={path} path={path} active={currentPath === path} onClick={() => go(path)} />)}
+                    {MOBILE_TABS.map(path => <TabButton key={path} path={path} active={currentPath === path} onClick={() => go(path)} />)}
                     <button
                         type="button"
                         aria-label="More"
@@ -220,19 +209,6 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
                     </button>
                     <button type="button" onClick={() => { setSheet(null); onLogout(); }} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
                         <SignOut size={20} /> Sign out
-                    </button>
-                </div>
-            </RpSheet>
-            <RpSheet modal open={sheet === 'add'} onClose={() => setSheet(null)} title="Quick actions">
-                <div className="flex flex-col gap-1">
-                    <button type="button" onClick={() => (currentPath === '/trips' ? (setSheet(null), window.dispatchEvent(new Event('rp:new-trip'))) : go('/trips?new=1'))} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
-                        <Suitcase size={20} /> New trip
-                    </button>
-                    <button type="button" onClick={() => (window.location.pathname === '/flights' ? (setSheet(null), window.dispatchEvent(new Event('rp:new-flight'))) : go('/flights?new=1'))} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
-                        <Airplane size={20} /> Log a flight
-                    </button>
-                    <button type="button" onClick={() => (window.location.pathname === '/roadtrips' ? (setSheet(null), window.dispatchEvent(new Event('rp:new-roadtrip'))) : go('/roadtrips?new=1'))} className="flex min-h-12 items-center gap-3 rounded-rp-inset px-3 text-base text-rp-ink hover:bg-rp-inset">
-                        <Train size={20} /> Log a road trip
                     </button>
                 </div>
             </RpSheet>

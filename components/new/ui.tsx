@@ -198,7 +198,7 @@ export interface RpSheetProps {
     topOffset?: number;
     /**
      * Phone only: trap focus, lock page scroll and blur the page behind (Vaul's modal mode). Off by default,
-     * so a map stays explorable behind a settings sheet; the shell's More and Quick actions sheets turn it on.
+     * so a map stays explorable behind a settings sheet; the shell's More sheet turns it on.
      */
     modal?: boolean;
 }

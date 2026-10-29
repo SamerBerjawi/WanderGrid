@@ -675,7 +675,7 @@ Not rebuilt in this step, by decision: every item above. What was still worth a 
 | 4 | Glass versus this reference | **This reference wins** for New pages, augmented with every `Design.md` / `AGENTS.md` rule it doesn't override (§6) |
 | 5 | Palette source | **Video colours only.** No Golden Hour or glass tokens |
 | 6 | Desktop navigation | **Grouped top tabs**: Dashboard, Trips, Flights (+ Road trips), Calendar, Atlas, Map. Settings and members in the Account Menu |
-| 7 | Mobile navigation | **Bottom tab bar** with a centre "+" for actions |
+| 7 | Mobile navigation | **Bottom tab bar**: Dashboard, Map, Trips, Flights, More (no centre "+"; decision 294) |
 | 8 | Motion extras | **Card tilt while dragging: yes.** Click ripple: no. Chart draw-in: no |
 | 9 | Permanent delete | **Hold Button everywhere** |
 | 10 | Rollout | **Separate `-new` URLs**, no feature flag |
@@ -827,7 +827,7 @@ Not rebuilt in this step, by decision: every item above. What was still worth a 
 | 179 | Error screens | Both boundaries keep their props. `ErrorPanel` shows a message only (never a stack), on one line, with web addresses reduced to their host, file paths dropped and a 300-character cap, plus **Copy details** (message, page path, version, time). Focus moves to the heading when it appears. `components/new/new.css` is imported by every shared host, so the tokens exist even when the root boundary renders before any lazy chunk |
 | 180 | Toasts yield to bottom sheets | While a bottom sheet is open on a phone, `<html data-rp-sheet>` is set (`useSheetFlag`, called by Smooth Drawer and `RpSheet`) and the toast stack moves to the top, so a toast never covers a sheet's buttons |
 | 181 | Scrim for phone sheets | Smooth Drawer's overlay was portalled outside `rp-root` and drew nothing. It now carries `rp-root` and the same light blur as the dialog (`bg-rp-canvas/50 backdrop-blur-xl`, §3.1: blur with a light veil, no dark dimming) |
-| 182 | Shell sheets are modal | `RpSheet` takes `modal` (phones only, default off so a map stays explorable behind its settings). The shell's More and Quick actions sheets turn it on: focus trap, scroll lock, blur, focus moves in on open and returns to the tab bar button on close |
+| 182 | Shell sheets are modal | `RpSheet` takes `modal` (phones only, default off so a map stays explorable behind its settings). The shell's More sheet turns it on: focus trap, scroll lock, blur, focus moves in on open and returns to the tab bar button on close |
 | 183 | Account menu | Follows the menu-button contract like the trip menu: focus moves to the first item, ↑ ↓ move between items, Escape closes and returns focus to the button, Tab or a click outside closes it |
 | 184 | The toast list lives in the service | `services/toast.ts` holds the list, so a toast survives the host being remounted when the app swaps between the New shell, an old page and the sign-in screen. A lost session (401) now says "Your session ended. Sign in again to continue." on the sign-in screen, which mounts the host |
 | 185 | Golden Hour variants retired for feedback | The Golden Hour toast and confirm variants are gone; the New hosts replace them for every theme |
@@ -900,6 +900,7 @@ Not rebuilt in this step, by decision: every item above. What was still worth a 
 | 291 | A trip's pin fits the trip | The Dashboard World widget pins a trip's own stops (else its stays, else its single coordinate), one per 25 km, not only `trip.coordinates`. A stop more than 2,000 km from every end of the trip's own legs is the geocoder's wrong match and is not drawn; the pin then goes to where the trip's farthest leg arrives. A pin that is not on land (or within about 45 km of it) is not drawn |
 | 292 | A state outranks a village | The place search gave states, provinces and countries no importance when a provider sends no population, so a hamlet called "California" in Central America beat the state. A region now scores +24 and a country +30, which keeps a city of the same name below its state only when the query asks for the state (exact name wins, then importance) |
 | 293 | Land and sea legs follow their traced line | The widget's rail, road and sea legs use the cached traced geometry (`getCachedMultiModalRoute`, the same as the Map page) and fall back to the great circle; at most 24 missing legs are requested once, never per render. `ChoroplethRoutes` takes an optional `path` of [lng, lat] vertices |
+| 294 | Symmetric phone tab bar | The centre "+" Quick actions button and its sheet are gone; the bar is Dashboard, Map, Trips, Flights, More. New trip / flight / road trip are started from each page. The `rp:new-*` listeners and `?new=1` arrivals stay |
 ---
 
 ## 8. Review adjustments: what the user changed after MapNew, AtlasNew and TripsNew were built
@@ -987,7 +988,7 @@ These are mounted by `App.tsx` and render the same above the New shell and above
 | `components/PWAInstallBanner.tsx` (+ `hooks/usePWA.ts`) | no props | Sticky toasts and `components/new/IosInstallHelp.tsx` (decision 177) |
 | `components/skeletons/ViewSkeleton.tsx`, `InlineSkeleton.tsx` | `view`, new `fullScreen`; `className`, `rounded` | Same files, New look (decision 178) |
 | `components/TooltipContent.tsx` | `title`, `rows`, `children` | Same file, `rp-surface` card (decision 187) |
-| `components/new/ui.tsx` `RpSheet` | *New:* `modal` | Used modal by the shell's More and Quick actions sheets |
+| `components/new/ui.tsx` `RpSheet` | *New:* `modal` | Used modal by the shell's More sheet |
 | `components/kokonutui/smooth-drawer.tsx` | A drawer with no `children` is one snap point as tall as its peek | Used by `RpDialog` on phones |
 
 Not converted, because no New page renders them (the cutover retires them with their old pages): `FlightTrackerModal` (Dashboard, GoldenDashboard, GoldenFlights), `MapAppearanceModal` (ExpeditionMapView, DeckFlightMap, GoldenMap), `StandardDrawer` (`components/ui.tsx`, CarriersTab), `Modal` and the Golden dialogs in `components/ui.tsx` and `components/golden/`, `DataCreditsPopover` (imported nowhere). A grep of imports from `views/new`, `components/new`, `components/kokonutui`, `hooks` and `App.tsx` finds no old overlay component; the only old components `App.tsx` imports are the hosts above, `AmbientBackground` and the Golden registry.
