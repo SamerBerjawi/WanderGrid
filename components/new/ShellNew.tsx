@@ -135,7 +135,7 @@ export const ShellNew: React.FC<ShellNewProps> = ({ currentPath, onNavigate, use
     const onPage = (page: 'trips' | 'flights' | 'roadtrips') => { const r = resolveRoute(window.location.pathname); return r.page === page; };
 
     return (
-        <div className="rp-root rp-canvas-glow relative flex h-[100dvh] w-full flex-col overflow-hidden bg-rp-canvas font-rp text-rp-ink antialiased">
+        <div className="rp-root rp-canvas-glow fixed inset-0 flex h-full w-full flex-col overflow-hidden bg-rp-canvas font-rp text-rp-ink antialiased">
             {/* Header: floats over full-bleed pages */}
             <header
                 className={cn(

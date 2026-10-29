@@ -191,6 +191,19 @@
   transition: transform 80ms ease-out, opacity 80ms ease-out;
 }
 
+/* Fill the whole screen (no gap under the app in standalone/PWA mode) */
+html, body, #root {
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+@media (display-mode: standalone) {
+  html, body, #root {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+}
+
 /* Prevent overscroll bounce on the body (PWA standalone) */
 @media (display-mode: standalone) {
   html, body {
