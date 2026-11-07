@@ -457,6 +457,18 @@ const AIRPORT_PAIR = /\(?\b([A-Z]{3})\b\)?\s*(?:-|–|—|→|->|>|to|✈)\s*(?:
 const BRACKETED = /\(([A-Z]{3})\)/g;
 const FLIGHT_NO = /\b(?:flight\s*(?:no\.?|number|#)?\s*:?\s*)?([A-Z][A-Z0-9]|[0-9][A-Z])\s?(\d{1,4})\b/g;
 
+/** True for a line that begins a flight segment: a flight number with two airport codes beside it. */
+const startsSegment = (line: string): boolean => {
+    FLIGHT_NO.lastIndex = 0;
+    const flight = FLIGHT_NO.exec(line);
+    FLIGHT_NO.lastIndex = 0;
+    if (!flight) return false;
+    AIRPORT_PAIR.lastIndex = 0;
+    const pair = AIRPORT_PAIR.test(line);
+    AIRPORT_PAIR.lastIndex = 0;
+    return pair || (line.match(BRACKETED) || []).length >= 2;
+};
+
 /** Flight segments found in plain text: flight number, two airport codes and a date in the same block. */
 export const textFlights = (text: string, ref: string): ParsedTransport[] => {
     const lines = text.replace(/\r/g, '').split('\n').map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
@@ -464,8 +476,11 @@ export const textFlights = (text: string, ref: string): ParsedTransport[] => {
     const out: ParsedTransport[] = [];
     const seen = new Set<string>();
     for (let i = 0; i < lines.length; i++) {
-        // A segment is a small block of lines: this one and the next few.
-        const block = lines.slice(Math.max(0, i - 1), i + 5).join('\n');
+        // A segment is a small block of lines: this one and the next few, up to where the next segment starts.
+        let end = Math.min(lines.length, i + 5);
+        for (let j = i + 1; j < end; j++) if (startsSegment(lines[j])) { end = j; break; }
+        const blockLines = lines.slice(Math.max(0, i - 1), end);
+        const block = blockLines.join('\n');
         const here = lines[i];
         FLIGHT_NO.lastIndex = 0;
         let fm: RegExpExecArray | null;
@@ -495,7 +510,10 @@ export const textFlights = (text: string, ref: string): ParsedTransport[] => {
             const depDate = dates[0].date;
             const depTime = times[0]?.time || '';
             const arrTime = times[1]?.time || '';
-            let arrDate = dates[1]?.date && dates[1].date >= depDate ? dates[1].date : depDate;
+            // The arrival date is the one written beside the arrival time (the next segment's date is not it).
+            const arrLine = times[1] ? blockLines.find(l => findTimes(l).some(t => t.time === times[1].time)) : undefined;
+            const arrDates = arrLine ? findDates(arrLine, depDate).map(d => d.date).filter(d => d >= depDate) : [];
+            let arrDate = arrDates.length ? arrDates[arrDates.length - 1] : depDate;
             if (arrDate === depDate && depTime && arrTime && arrTime < depTime) {
                 const d = new Date(`${depDate}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + 1); arrDate = toIsoDay(d);
             }

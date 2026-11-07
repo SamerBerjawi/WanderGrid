@@ -157,6 +157,21 @@ Total paid: EUR 289.50`;
         expect(bookings.every(b => b.source === 'text')).toBe(true);
     });
 
+    it('takes the arrival date from beside the arrival time, not from the next segment', () => {
+        const text = `Booking reference: QX7P2L
+Outbound - Tue 3 Mar 2026
+Flight TP1351  Brussels (BRU) → Lisbon (LIS)
+Departs 10:15   Arrives 12:05
+Return - Sat 7 Mar 2026
+Flight TP1352  Lisbon (LIS) → Brussels (BRU)
+Departs 18:40   Arrives 22:20`;
+        const [out, back] = parseBookings(text, '2026-01-10').bookings.map(b => (b.kind === 'transport' ? b.transport : null));
+        expect(out).toMatchObject({ departureDate: '2026-03-03', arrivalDate: '2026-03-03' });
+        expect(back).toMatchObject({ departureDate: '2026-03-07', arrivalDate: '2026-03-07' });
+        const dated = 'Flight EK 30 LHR - DXB\nDeparts Fri 20 Feb 2026 21:40\nArrives Sat 21 Feb 2026 07:45';
+        expect(parseBookings(dated, '2026-01-10').bookings[0].kind === 'transport' && (parseBookings(dated, '2026-01-10').bookings[0] as any).transport).toMatchObject({ departureDate: '2026-02-20', arrivalDate: '2026-02-21', arrivalTime: '07:45' });
+    });
+
     it('rolls an overnight arrival to the next day and places a date without a year', () => {
         const text = 'Your flight\nEK 30 LHR - DXB\nDeparts Fri 20 Feb 21:40, arrives 07:45';
         const { bookings } = parseBookings(text, '2026-01-10');
