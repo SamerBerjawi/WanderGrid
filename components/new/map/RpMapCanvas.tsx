@@ -25,7 +25,7 @@ import { attachMissingImageLoader, initMapLibre } from './mapEngineInit';
 import { normalizePlaceLabels } from './basemapLabels';
 import { cn } from '../../../utils/cn';
 import { readRpPalette, rpTokensReady, rgba, css, mix, type RGB, type RpPalette } from './mapPalette';
-import { featureCentroid, geoColor, gradientRuns } from './mapGeoColor';
+import { featureCentroid, geoColor, gradientRuns, staticRouteColor } from './mapGeoColor';
 import type { MapModel, MapPlace, MapRoute, LngLat } from './mapModel';
 import { markerSizes, scratchKindOf, scratchToggles } from './mapScratch';
 
@@ -487,9 +487,11 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
 
     // Land and sea legs keep one colour each; flights take the regional gradient (or frequency).
     // Past / upcoming / planning is no longer a colour: it shows in the opacity.
+    // "Static" colours every route the same, picked for the basemap underneath (see staticRouteColor).
     const fixedColor = useCallback((m: MapRoute['mode']): RGB | null => (
-        m === 'sea' ? mix(palette.green, palette.ink, 0.3) : m === 'flight' ? null : palette.ink
-    ), [palette]);
+        appearance.routeColorMode === 'static' ? staticRouteColor(lightBasemap)
+            : m === 'sea' ? mix(palette.green, palette.ink, 0.3) : m === 'flight' ? null : palette.ink
+    ), [palette, appearance.routeColorMode, lightBasemap]);
 
     /* ------------------------------------------------------------------ travel data (native MapLibre layers) */
 
@@ -497,7 +499,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
     const hex = (c: RGB) => `#${c.map(v => v.toString(16).padStart(2, '0')).join('')}`;
     const showRoutes = !airportsOnly && mode !== 'none' && (mode !== 'scratch' || model.routes.length > 0);
     // 'default' (the old Status colouring) no longer exists: stored settings fall back to the gradient.
-    const colorMode = appearance.routeColorMode === 'frequency' ? 'frequency' : 'gradient';
+    const colorMode = appearance.routeColorMode === 'frequency' ? 'frequency' : appearance.routeColorMode === 'static' ? 'static' : 'gradient';
 
     const routesGeo = useMemo(() => {
         const base = ROUTE_WIDTH[appearance.routeScale || 'normal'];

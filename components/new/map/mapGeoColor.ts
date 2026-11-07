@@ -56,3 +56,13 @@ export const gradientRuns = (path: [number, number][], from: RGB, to: RGB, chunk
     }
     return runs;
 };
+
+/**
+ * The "Static" route colour: one colour for every route, chosen by the basemap it is drawn on, not by the app
+ * theme (a dark app theme can show a light basemap and the other way round). A deep rust on light basemaps
+ * (4.4:1 or better against Positron's water, the darkest large area) and the sun-yellow mustard on dark
+ * basemaps, satellite and night imagery (well above 7:1 against the dark styles).
+ */
+export const STATIC_ROUTE_ON_LIGHT: RGB = [176, 52, 18];
+export const STATIC_ROUTE_ON_DARK: RGB = [244, 211, 106];
+export const staticRouteColor = (lightBasemap: boolean): RGB => (lightBasemap ? STATIC_ROUTE_ON_LIGHT : STATIC_ROUTE_ON_DARK);

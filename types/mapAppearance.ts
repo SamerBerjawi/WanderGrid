@@ -124,7 +124,7 @@ export interface MapAppearanceSettings {
     citySize?: 'off' | 'small' | 'medium' | 'large';
     routeWidthMode: 'uniform' | 'frequency';
     routeScale: 'thin' | 'normal' | 'thick';
-    routeColorMode: 'default' | 'frequency' | 'gradient';
+    routeColorMode: 'default' | 'frequency' | 'gradient' | 'static';
 
     // Route Intelligence & Tracing (Road & Rail)
     routeTracing?: boolean; // Realistic road (OSRM) and rail (OSM) tracing
