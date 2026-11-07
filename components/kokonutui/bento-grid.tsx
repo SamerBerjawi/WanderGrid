@@ -589,7 +589,7 @@ function WidgetCell({
           <span aria-hidden className={cn(filled ? "opacity-80" : "text-rp-muted")}>
             {item.icon}
           </span>
-          <span className={cn("truncate font-medium text-sm", filled ? "opacity-90" : "text-rp-muted")}>
+          <span className={cn("truncate font-semibold text-[15px] tracking-[-0.005em]", filled ? "opacity-90" : "text-rp-ink")}>
             {item.title}
           </span>
           <div className="-mr-3 ml-auto flex items-center">
@@ -622,7 +622,7 @@ function WidgetCell({
                 aria-label={item.openLabel ?? `Open ${item.title}`}
                 className={cn(
                   "flex size-11 shrink-0 items-center justify-center rounded-full outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-rp-muted",
-                  filled ? TONE_HOVER[tone] : "text-rp-muted hover:bg-rp-inset hover:text-rp-ink"
+                  filled ? TONE_HOVER[tone] : "text-rp-muted ring-1 ring-inset ring-rp-ink/15 hover:bg-rp-inset hover:text-rp-ink"
                 )}
                 data-no-press
                 onClick={item.onOpen}

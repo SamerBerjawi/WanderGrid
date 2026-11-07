@@ -208,7 +208,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = ({ onTripClick }) => {
             >
                 <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6">
                     <div className="flex flex-wrap items-center justify-between gap-x-3">
-                        <h1 className="text-[2.25rem] font-medium leading-[1.05] tracking-tight text-rp-ink sm:text-[2.5rem]">Travel Atlas</h1>
+                        <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.025em] text-rp-ink sm:text-[2.34rem]">Travel Atlas</h1>
                         <RpPageToolbar
                             tools={tools}
                             value={view}
@@ -419,7 +419,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = ({ onTripClick }) => {
 };
 
 const StatTile: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <div className="flex min-w-0 flex-col justify-center rounded-rp-tile bg-rp-surface p-3 rp-shadow-rest sm:p-4 lg:justify-between lg:p-5">{children}</div>
+    <div className="flex min-w-0 flex-col justify-center rounded-rp-card bg-rp-surface p-3 rp-shadow-rest sm:p-4 lg:justify-between lg:p-5">{children}</div>
 );
 
 const TabCount: React.FC<{ n: number }> = ({ n }) => <span className="rp-tabular text-xs opacity-70">{n}</span>;

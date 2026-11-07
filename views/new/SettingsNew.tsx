@@ -103,9 +103,9 @@ export const SettingsNew: React.FC<SettingsNewProps> = ({ theme, isDark, onTheme
     return (
         <div className="custom-scrollbar h-full overflow-y-auto px-3 pt-2 pb-32 sm:px-6 md:pb-16">
             <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-4 lg:gap-6">
-                <h1 className="text-[1.75rem] leading-[1.1] font-medium tracking-tight sm:text-[2.25rem]">Settings</h1>
+                <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.025em] sm:text-[2.34rem]">Settings</h1>
 
-                <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
+                <div className="grid grid-cols-3 items-start gap-2 sm:gap-3 lg:gap-4">
                     <StatTile tone="ink" icon={Users} value={users.length} unit={users.length === 1 ? 'member' : 'members'} sub={`${admins} ${admins === 1 ? 'admin' : 'admins'}`} />
                     <StatTile tone="green" icon={Plugs} value={keysSet} unit={keysSet === 1 ? 'key' : 'keys'} sub={fromHost > 0 ? `${fromHost} from the host` : `of ${keyTotal} services`} />
                     <StatTile tone="mustard" icon={Backpack} value={gearCount} unit="gear" sub={`${carrierCount} ${carrierCount === 1 ? 'carrier' : 'carriers'}`} />

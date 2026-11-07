@@ -249,7 +249,7 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
             <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6">
                 <JourneySwitch current="flights" />
                 <div className="flex flex-wrap items-center justify-between gap-x-3">
-                    <h1 className="text-[2.25rem] font-medium leading-[1.05] tracking-tight text-rp-ink sm:text-[2.5rem]">Flights</h1>
+                    <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.025em] text-rp-ink sm:text-[2.34rem]">Flights</h1>
                     <RpPageToolbar
                         tools={tools}
                         ariaLabel="Flight tools"

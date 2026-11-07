@@ -3,12 +3,17 @@
  * Scoped to .rp-root so the original pages are unaffected. Values are RGB triplets for
  * Tailwind's `rp-*` colours (tailwind.config.js). Dark mode follows the app's `dark` class on <html>.
  */
-@import '@fontsource-variable/outfit';
+@import '@fontsource-variable/urbanist';
 
 .rp-root {
-  --rp-canvas: 234 232 223;
+  --rp-canvas: 235 232 225;
   --rp-glow: 238 227 197;
-  --rp-surface: 244 242 236;
+  /* Mesh blobs behind the glass cards (measured on the Rapport demo: peach, sage, butter). */
+  --rp-mesh-a: 242 211 189;
+  --rp-mesh-b: 207 223 205;
+  --rp-mesh-c: 241 228 191;
+  /* Solid surface: overlays, inputs and anything that must stay opaque. Page cards use the glass recipe below. */
+  --rp-surface: 246 244 239;
   --rp-inset: 236 234 227;
   --rp-line: 222 219 210;
   /* Primary text and ink fills (dock, dark buttons, toasts, "travelling now"). Inverted in dark mode. */
@@ -17,7 +22,7 @@
   --rp-on-ink: 255 255 255;
   /* Text on saturated green and rust fills. */
   --rp-paper: 255 255 255;
-  --rp-muted: 110 103 92;
+  --rp-muted: 103 106 102;
   --rp-green: 44 93 79;
   --rp-rust: 199 68 30;
   --rp-mustard: 240 201 76;
@@ -30,19 +35,22 @@
   /* Text on mustard: always dark, in both themes. */
   --rp-on-mustard: 24 26 26;
 
-  font-family: 'Outfit Variable', Outfit, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Urbanist Variable', Urbanist, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 :root.dark .rp-root {
-  --rp-canvas: 23 22 20;
+  --rp-canvas: 17 20 18;
   --rp-glow: 42 36 24;
-  --rp-surface: 33 31 28;
-  --rp-inset: 42 40 36;
-  --rp-line: 52 49 44;
-  --rp-ink: 237 234 227;
-  --rp-on-ink: 23 22 20;
+  --rp-mesh-a: 59 33 23;
+  --rp-mesh-b: 31 55 49;
+  --rp-mesh-c: 42 36 24;
+  --rp-surface: 28 32 30;
+  --rp-inset: 36 41 39;
+  --rp-line: 52 55 53;
+  --rp-ink: 241 238 232;
+  --rp-on-ink: 23 25 26;
   --rp-paper: 242 239 232;
-  --rp-muted: 163 156 143;
+  --rp-muted: 163 166 160;
   --rp-green: 59 116 100;
   --rp-rust: 199 68 30;
   --rp-mustard: 244 211 106;
@@ -56,9 +64,34 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Canvas glow: a soft radial wash at the top of the page. */
+/* Canvas: the Rapport mesh. Three soft colour blobs on the flat canvas; the glass cards below pick them up. */
 .rp-canvas-glow {
-  background-image: radial-gradient(120% 60% at 50% -10%, rgb(var(--rp-glow)) 0%, rgb(var(--rp-glow) / 0) 70%);
+  background-image:
+    radial-gradient(60% 50% at 8% 6%, rgb(var(--rp-mesh-a) / 0.85) 0%, rgb(var(--rp-mesh-a) / 0) 70%),
+    radial-gradient(55% 45% at 92% 94%, rgb(var(--rp-mesh-b) / 0.9) 0%, rgb(var(--rp-mesh-b) / 0) 70%),
+    radial-gradient(60% 50% at 52% 0%, rgb(var(--rp-mesh-c) / 0.9) 0%, rgb(var(--rp-mesh-c) / 0) 70%);
+  background-attachment: fixed;
+}
+
+/*
+ * Glass page cards (measured on the Rapport demo): translucent white over the mesh, a white rim, an inset top
+ * highlight and a long soft shadow. Applies to the 28px page cards only; overlays (rp-shadow-float) and
+ * solid-by-design surfaces (rp-solid) stay opaque. No backdrop blur: the mesh already tints the card and
+ * blur on every card is a scrolling cost.
+ */
+.rp-root .rounded-rp-card.bg-rp-surface:not(.rp-shadow-float):not(.rp-solid) {
+  background-color: rgb(255 255 255 / 0.46);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.78),
+    inset 0 1px 0 rgb(255 255 255 / 0.7),
+    0 24px 48px -30px rgb(70 50 30 / 0.28);
+}
+:root.dark .rp-root .rounded-rp-card.bg-rp-surface:not(.rp-shadow-float):not(.rp-solid) {
+  background-color: rgb(255 255 255 / 0.05);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.08),
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    0 24px 48px -30px rgb(0 0 0 / 0.7);
 }
 
 /* Elevation. Dark mode swaps shadows for a hairline, because shadows don't read on a dark canvas. */
@@ -96,10 +129,11 @@
 
 /* Floating chrome over the map (brand, avatar, switches, tab pills): a soft drop shadow in both themes. */
 .rp-shadow-soft {
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 8px 24px rgb(0 0 0 / 0.1);
+  /* The white rim is Rapport's glass edge (decision 315); it keeps a pill defined over a pale map or canvas. */
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.78), 0 1px 3px rgb(0 0 0 / 0.08), 0 8px 24px rgb(0 0 0 / 0.1);
 }
 :root.dark .rp-shadow-soft {
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 1px 3px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
 }
 
 /* Ink surfaces (dock, toasts): a soft drop shadow only, never the dark-mode hairline. */

@@ -100,28 +100,26 @@ const writeHidden = (userId: string | null, hidden: string[]) => {
     } catch { /* blocked storage */ }
 };
 
+/** Icon colour per tile: the accent survives, the fill does not (Rapport's KPI triplet is unboxed). */
 const TILE_TONE = {
-    ink: { card: 'bg-rp-ink text-rp-on-ink', muted: 'text-rp-on-ink/70', circle: 'bg-rp-on-ink/15' },
-    green: { card: 'bg-rp-green text-rp-paper', muted: 'text-rp-paper/80', circle: 'bg-rp-paper/20' },
-    mustard: { card: 'bg-rp-mustard text-rp-on-mustard', muted: 'text-rp-on-mustard/70', circle: 'bg-rp-on-mustard/10' },
+    ink: 'text-rp-ink',
+    green: 'text-rp-green',
+    mustard: 'text-rp-ochre',
 } as const;
 
-/** A tile of the totals: a rolling figure with its unit and one line of detail, filled with its accent. */
-const Tile: React.FC<{ icon: Icon; tone: keyof typeof TILE_TONE; value: number; unit: string; sub: string }> = ({ icon: IconC, tone, value, unit, sub }) => {
-    const t = TILE_TONE[tone];
-    return (
-        <div className={cn('flex min-w-0 items-center gap-3 rounded-rp-tile p-3 rp-shadow-rest sm:p-4', t.card)}>
-            <span className={cn('hidden size-10 shrink-0 items-center justify-center rounded-full sm:flex', t.circle)}><IconC size={18} aria-hidden /></span>
-            <span className="min-w-0">
-                <span className="flex flex-col sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-1.5">
-                    <NumberFlow value={value} format={{ maximumFractionDigits: 0 }} className="rp-tabular text-xl leading-tight font-semibold" />
-                    <span className={cn('text-sm', t.muted)}>{unit}</span>
-                </span>
-                <span className={cn('block text-xs leading-snug sm:truncate', t.muted)}>{sub}</span>
+/** A figure of the totals, Rapport style: an icon in a glass circle, a rolling value with its unit, one muted line. */
+const Tile: React.FC<{ icon: Icon; tone: keyof typeof TILE_TONE; value: number; unit: string; sub: string }> = ({ icon: IconC, tone, value, unit, sub }) => (
+    <div className="flex min-w-0 items-center gap-3">
+        <span className={cn('hidden size-10 shrink-0 items-center justify-center rounded-full bg-white/65 ring-1 ring-inset ring-white/80 dark:bg-white/10 dark:ring-white/10 sm:flex', TILE_TONE[tone])}><IconC size={18} aria-hidden /></span>
+        <span className="min-w-0">
+            <span className="flex flex-col sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-1.5">
+                <NumberFlow value={value} format={{ maximumFractionDigits: 0 }} className="rp-tabular text-xl leading-tight font-semibold" />
+                <span className="text-sm text-rp-muted">{unit}</span>
             </span>
-        </div>
-    );
-};
+            <span className="block text-xs leading-snug text-rp-muted sm:truncate">{sub}</span>
+        </span>
+    </div>
+);
 
 const WidgetIcon: React.FC<{ icon: Icon }> = ({ icon: IconC }) => <IconC size={16} aria-hidden />;
 
@@ -237,7 +235,7 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
         <div className="custom-scrollbar h-full overflow-y-auto px-3 pt-2 pb-32 sm:px-6 md:pb-16">
             <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6">
                 <div className="flex flex-wrap items-center justify-between gap-x-3">
-                    <h1 className="text-[2.25rem] font-medium leading-[1.05] tracking-tight text-rp-ink sm:text-[2.5rem]">Dashboard</h1>
+                    <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.025em] text-rp-ink sm:text-[2.34rem]">Dashboard</h1>
                     <RpPageToolbar tools={tools} ariaLabel="Dashboard tools" className="-my-2" />
                 </div>
 
@@ -249,7 +247,7 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
                     </div>
                 ) : null}
 
-                <div className="grid grid-cols-3 gap-3 lg:gap-6">
+                <div className="grid grid-cols-3 items-start gap-3 px-1 lg:gap-6">
                     <Tile icon={Path} tone="green" value={t.km} unit="km" sub={`${t.flights} ${t.flights === 1 ? 'flight' : 'flights'}${orbits >= 0.1 ? ` · ${orbits.toFixed(1)}× round the Earth` : ''}`} />
                     <Tile icon={Moon} tone="ink" value={t.nights} unit={t.nights === 1 ? 'night' : 'nights'} sub={`${t.trips} ${t.trips === 1 ? 'trip' : 'trips'}`} />
                     <Tile icon={Globe} tone="mustard" value={data.countries.length} unit={data.countries.length === 1 ? 'country' : 'countries'} sub={`${data.cities.length} ${data.cities.length === 1 ? 'city' : 'cities'} · ${data.worldShare}% of the world`} />
