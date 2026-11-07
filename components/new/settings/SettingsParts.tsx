@@ -31,28 +31,26 @@ export const PaneHeader: React.FC<{ icon: Icon; title: string; count?: number | 
     </div>
 );
 
+/** Accent per tile: the icon colour. The tile itself is unboxed, like Rapport's KPI triplet. */
 const TILE_TONE = {
-    ink: { card: 'bg-rp-ink text-rp-on-ink', muted: 'text-rp-on-ink/70', circle: 'bg-rp-on-ink/15' },
-    green: { card: 'bg-rp-green text-rp-paper', muted: 'text-rp-paper/80', circle: 'bg-rp-paper/20' },
-    mustard: { card: 'bg-rp-mustard text-rp-on-mustard', muted: 'text-rp-on-mustard/70', circle: 'bg-rp-on-mustard/10' },
+    ink: 'text-rp-ink',
+    green: 'text-rp-green',
+    mustard: 'text-rp-ochre',
 } as const;
 
-/** A filled count tile: icon beside a rolling figure, its unit and one line of detail. */
-export const StatTile: React.FC<{ icon: Icon; tone: keyof typeof TILE_TONE; value: number; unit: string; sub: string }> = ({ icon: IconC, tone, value, unit, sub }) => {
-    const t = TILE_TONE[tone];
-    return (
-        <div className={cn('flex min-w-0 items-center gap-3 rounded-rp-tile p-3 rp-shadow-rest sm:p-4', t.card)}>
-            <span className={cn('hidden size-10 shrink-0 items-center justify-center rounded-full sm:flex', t.circle)}><IconC size={18} aria-hidden /></span>
-            <span className="min-w-0">
-                <span className="flex flex-wrap items-baseline gap-x-1.5">
-                    <NumberFlow value={value} format={{ maximumFractionDigits: 0 }} className="rp-tabular text-xl leading-tight font-semibold" />
-                    <span className={cn('text-sm', t.muted)}>{unit}</span>
-                </span>
-                <span className={cn('block text-xs leading-snug sm:truncate', t.muted)}>{sub}</span>
+/** A count: a glass icon circle beside a rolling figure, its unit and one muted line of detail. */
+export const StatTile: React.FC<{ icon: Icon; tone: keyof typeof TILE_TONE; value: number; unit: string; sub: string }> = ({ icon: IconC, tone, value, unit, sub }) => (
+    <div className="flex min-w-0 items-center gap-3 px-1">
+        <span className={cn('hidden size-10 shrink-0 items-center justify-center rounded-full bg-white/65 ring-1 ring-inset ring-white/80 dark:bg-white/10 dark:ring-white/10 sm:flex', TILE_TONE[tone])}><IconC size={18} aria-hidden /></span>
+        <span className="min-w-0">
+            <span className="flex flex-wrap items-baseline gap-x-1.5">
+                <NumberFlow value={value} format={{ maximumFractionDigits: 0 }} className="rp-tabular text-xl leading-tight font-semibold" />
+                <span className="text-sm text-rp-muted">{unit}</span>
             </span>
-        </div>
-    );
-};
+            <span className="block text-xs leading-snug text-rp-muted sm:truncate">{sub}</span>
+        </span>
+    </div>
+);
 
 const CHIP_TONE = {
     green: 'bg-rp-green text-rp-paper',
