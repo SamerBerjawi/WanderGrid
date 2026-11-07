@@ -11,6 +11,12 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Added
 
+- **Import a booking** (behind `VITE_FF_BOOKING_IMPORT`, off by default): Trips › Import a booking reads a
+  confirmation email, pasted or saved as `.eml` / `.html`, and adds its flights, trains, buses, ferries, car hire,
+  hotel stays and restaurant or event reservations to the trip whose dates they fall in, or to a new trip named
+  after the destination. It reads the schema.org booking data most airlines, rail operators and hotels put in their
+  emails, and otherwise finds flight segments and check-in/check-out dates in the text. Items already in the trip
+  are skipped; a flight already in the log as an independent flight moves into the trip. Undo takes it all back.
 - An airport or place sheet draws a vertical Sankey of its routes: arrivals across the top, departures across
   the bottom, each as wide as the number of times you travelled it, with the top 8 per side and a "+N others"
   node. Hover, focus or tap a node to see the count or open the route; the routes list stays below.
