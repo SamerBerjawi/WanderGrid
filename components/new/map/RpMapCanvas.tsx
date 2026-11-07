@@ -74,7 +74,7 @@ export interface RpMapCanvasProps {
     className?: string;
 }
 
-const FONT = '"Outfit Variable", Outfit, -apple-system, sans-serif';
+const FONT = '"Urbanist Variable", Urbanist, -apple-system, sans-serif';
 const WORLD = { center: [12, 28] as LngLat, zoom: 1.4 };
 const ROUTE_WIDTH = { thin: 1.25, normal: 2, thick: 3.25 } as const;
 /** Animated routes move at one speed everywhere, so a long route takes longer than a short one. */

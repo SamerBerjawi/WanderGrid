@@ -228,7 +228,7 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
         <div className="custom-scrollbar h-full overflow-y-auto px-3 pt-2 pb-32 sm:px-6 md:pb-16">
             <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6">
                 <div className="flex flex-wrap items-center justify-between gap-x-3">
-                    <h1 className="text-[2.25rem] font-medium leading-[1.05] tracking-tight text-rp-ink sm:text-[2.5rem]">Trips</h1>
+                    <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.025em] text-rp-ink sm:text-[2.34rem]">Trips</h1>
                     <RpPageToolbar
                         tools={tools}
                         value={view}
@@ -254,7 +254,7 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
                     </div>
                 ) : null}
 
-                <div className="grid grid-cols-3 gap-3 lg:gap-6">
+                <div className="grid grid-cols-3 items-start gap-3 lg:gap-6">
                     <StatTile><RpKpi accent="green" icon={Suitcase} value={data.stats.coming} label="Trips coming" /></StatTile>
                     <StatTile><RpKpi accent="ink" icon={CalendarBlank} value={data.stats.days} label="Days away" /></StatTile>
                     <StatTile><RpKpi accent="mustard" icon={MapPin} value={data.stats.places} label="Places" /></StatTile>
@@ -383,7 +383,7 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
 };
 
 const StatTile: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <div className="flex min-w-0 flex-col justify-center rounded-rp-tile bg-rp-surface p-3 rp-shadow-rest sm:p-4 lg:p-5">{children}</div>
+    <div className="flex min-w-0 flex-col justify-center px-1">{children}</div>
 );
 
 const EmptyCard: React.FC<{ children: React.ReactNode }> = ({ children }) => (

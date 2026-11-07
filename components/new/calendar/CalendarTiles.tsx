@@ -3,11 +3,11 @@ import NumberFlow from '@number-flow/react';
 import type { Icon } from '../../ui/hugeicons';
 import { cn } from '../../../utils/cn';
 
-/** The page's filled tiles: a rolling figure with its unit and one line of detail (as on Member and Trip). */
+/** The page's figures, unboxed like Rapport's KPI triplet: a glass icon circle, a rolling value and unit, one muted line. The accent is the icon colour. */
 const TONE = {
-    ink: { card: 'bg-rp-ink text-rp-on-ink', muted: 'text-rp-on-ink/70', circle: 'bg-rp-on-ink/15' },
-    green: { card: 'bg-rp-green text-rp-paper', muted: 'text-rp-paper/80', circle: 'bg-rp-paper/20' },
-    mustard: { card: 'bg-rp-mustard text-rp-on-mustard', muted: 'text-rp-on-mustard/70', circle: 'bg-rp-on-mustard/10' },
+    ink: 'text-rp-ink',
+    green: 'text-rp-green',
+    mustard: 'text-rp-ochre',
 } as const;
 
 export const CalendarTile: React.FC<{
@@ -18,18 +18,17 @@ export const CalendarTile: React.FC<{
     unit: string;
     sub: string;
 }> = ({ icon: IconC, tone, value, unit, sub }) => {
-    const t = TONE[tone];
     return (
-        <div className={cn('flex min-w-0 items-center gap-3 rounded-rp-tile p-3 rp-shadow-rest sm:p-4', t.card)}>
-            <span className={cn('hidden size-10 shrink-0 items-center justify-center rounded-full sm:flex', t.circle)}><IconC size={18} aria-hidden /></span>
+        <div className="flex min-w-0 items-center gap-3 px-1">
+            <span className={cn('hidden size-10 shrink-0 items-center justify-center rounded-full bg-white/65 ring-1 ring-inset ring-white/80 dark:bg-white/10 dark:ring-white/10 sm:flex', TONE[tone])}><IconC size={18} aria-hidden /></span>
             <span className="min-w-0">
                 <span className="flex flex-col sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-1.5">
                     {typeof value === 'number'
                         ? <NumberFlow value={value} format={{ maximumFractionDigits: 1 }} className="rp-tabular text-xl leading-tight font-semibold" />
                         : <span className="rp-tabular text-xl leading-tight font-semibold">{value}</span>}
-                    <span className={cn('text-sm', t.muted)}>{unit}</span>
+                    <span className="text-sm text-rp-muted">{unit}</span>
                 </span>
-                <span className={cn('block text-xs leading-snug sm:truncate', t.muted)}>{sub}</span>
+                <span className="block text-xs leading-snug text-rp-muted sm:truncate">{sub}</span>
             </span>
         </div>
     );

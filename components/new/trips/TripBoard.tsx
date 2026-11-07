@@ -58,15 +58,19 @@ const Column: React.FC<{
     const { setNodeRef, isOver } = useDroppable({ id: `column:${bucket}`, disabled: !dragEnabled });
     const days = trips.reduce((sum, t) => sum + tripDays(t), 0);
     return (
-        <section aria-label={BUCKET_LABEL[bucket]} className={cn('flex min-w-0 flex-col gap-3', className)}>
+        <section aria-label={BUCKET_LABEL[bucket]} className={cn('flex min-w-0 flex-col gap-2', !bare && 'rounded-rp-card bg-rp-surface p-3 rp-shadow-rest', className)}>
             <header className="flex min-h-11 items-center justify-between gap-2 px-1">
-                <h2 className="flex min-w-0 items-center gap-2.5 text-base font-medium text-rp-ink">
+                <h2 className="flex min-w-0 items-center gap-2.5 text-rp-ink">
                     <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full', BUCKET_HEAD[bucket].circle)}>
                         <HeadIcon bucket={bucket} />
                     </span>
-                    {BUCKET_LABEL[bucket]}
-                    <NumberFlow value={trips.length} className="rp-tabular text-2xl leading-none font-semibold text-rp-ink" aria-label={`${trips.length} trips`} />
-                    {days > 0 ? <span className="rp-tabular text-xs font-normal text-rp-muted">{days} {days === 1 ? 'day' : 'days'}</span> : null}
+                    <span className="min-w-0">
+                        <span className="flex items-center gap-2 text-[15px] leading-tight font-semibold">
+                            {BUCKET_LABEL[bucket]}
+                            <NumberFlow value={trips.length} className="rp-tabular rounded-full bg-rp-ink/10 px-2 py-0.5 text-xs leading-none font-semibold" aria-label={`${trips.length} trips`} />
+                        </span>
+                        {days > 0 ? <span className="rp-tabular block text-xs leading-tight font-normal text-rp-muted">{days} {days === 1 ? 'day' : 'days'}</span> : null}
+                    </span>
                 </h2>
                 <RpIconButton label={`Add a trip to ${BUCKET_LABEL[bucket]}`} tone="ghost" onClick={() => onAdd(bucket)}>
                     <Plus size={20} />
@@ -75,9 +79,7 @@ const Column: React.FC<{
             <div
                 ref={setNodeRef}
                 className={cn(
-                    'flex min-h-40 flex-col gap-3 transition-shadow duration-150',
-                    // Darker than the page in light mode, lighter than it in dark mode, so the cards sit in a visible lane.
-                    !bare && 'rounded-rp-card bg-rp-line/80 p-3 dark:bg-rp-inset/60',
+                    'flex min-h-40 flex-col gap-3 rounded-rp-inset transition-shadow duration-150',
                     isOver && 'ring-2 ring-rp-ink'
                 )}
             >
