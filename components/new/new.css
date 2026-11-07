@@ -129,10 +129,11 @@
 
 /* Floating chrome over the map (brand, avatar, switches, tab pills): a soft drop shadow in both themes. */
 .rp-shadow-soft {
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 8px 24px rgb(0 0 0 / 0.1);
+  /* The white rim is Rapport's glass edge (decision 315); it keeps a pill defined over a pale map or canvas. */
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.78), 0 1px 3px rgb(0 0 0 / 0.08), 0 8px 24px rgb(0 0 0 / 0.1);
 }
 :root.dark .rp-shadow-soft {
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 1px 3px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
 }
 
 /* Ink surfaces (dock, toasts): a soft drop shadow only, never the dark-mode hairline. */
