@@ -74,6 +74,11 @@ detailed calendar feed. The release line is also what the app shows in its build
   `googleGeminiApiKey` or `cartoApiKey` load and restore normally; the server never sends them to a browser or
   exports them, and drops them the next time settings are saved. Remove `GEMINI_API_KEY` from your
   environment if you set it.
+- **The `GEV_*` feature flags and the map layers they hid.** OpenFreeMap vector basemaps are now always on
+  (`VITE_FF_GEV_P04B_OPENFREEMAP` no longer exists). The "Daily satellite" (NASA GIBS true colour) and
+  "3D elevation" map layers, both off by default and never shown in production, are gone with
+  `VITE_FF_GEV_P04C_GIBS_DAILY` and `VITE_FF_GEV_P04D_TERRAIN`. Relief shading and the Night lights basemap are
+  unchanged; saved map settings for the removed layers are dropped when they load.
 
 ## [1.0.0] - 2026-10-23
 

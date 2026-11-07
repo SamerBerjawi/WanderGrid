@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const { PROVIDER_CONFIGS, testProvider } = require('../integrationsTester.js');
 
 describe('P-06 Integrations Provider Tester', () => {
-  test('defines valid test configs for all five core GEV providers', () => {
+  test('defines valid test configs for all five keyless providers', () => {
     const requiredKeys = ['adsbdb', 'osrm', 'geocoding', 'openfreemap', 'gibs'];
     for (const key of requiredKeys) {
       assert.ok(PROVIDER_CONFIGS[key], `Provider config for ${key} should exist`);

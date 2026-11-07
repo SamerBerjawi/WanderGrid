@@ -96,7 +96,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 
 ## Conventions
 
-- **Naming:** PascalCase `.tsx` files for components and views, with named exports (e.g. `export const Flights`). camelCase `.ts` files for services and utils. Hooks are named `useX`. Backend files use camelCase CommonJS. Feature-flag IDs follow `GEV_P0x_*`.
+- **Naming:** PascalCase `.tsx` files for components and views, with named exports (e.g. `export const Flights`). camelCase `.ts` files for services and utils. Hooks are named `useX`. Backend files use camelCase CommonJS.
 - **State:** there is no global store (no Redux or Zustand). Each view keeps local `useState` and reads through `dataService` and `useWanderSync`. Settings are loaded via `dataService.getWorkspaceSettings()`.
 - **Styling:** Tailwind utility classes with design tokens from `tailwind.config.js`, such as `light-text`/`dark-text`, `primary-*`, the `z-modal`/`z-popover`/… scale and `text-2xs`. The New pages use the `rp-*` tokens and `components/new/new.css`. Use the Hugeicons adapter icons. Dark mode is class-based.
 - **Formatting:** always use `formatDate`, `formatDateRange` and `formatCurrency` from `utils/formatters.ts`. Never call `toLocaleDateString` directly.

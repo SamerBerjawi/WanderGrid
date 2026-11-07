@@ -5,16 +5,15 @@ import { MapboxOverlay } from '@deck.gl/mapbox';
 import { TripsLayer } from '@deck.gl/geo-layers';
 import { PathLayer } from '@deck.gl/layers';
 import { RpGlobeCullExtension } from './RpGlobeCullExtension';
-import { FEATURE_FLAGS } from '../../../config/featureFlags';
 import type { CountryResidenceStatus, PredefinedMapMode } from '../../../types';
-import { getEffectiveBasemap, normalizeAirportDetail, type MapAppearanceSettings, getYesterdayDateString } from '../../../types/mapAppearance';
+import { getEffectiveBasemap, normalizeAirportDetail, type MapAppearanceSettings } from '../../../types/mapAppearance';
 import {
     AIRPORT_SOURCE_ID, GLYPHS_URL, createAirportOverlaySource, createAirportOverlayLayers, getAirportOverlayGroups,
 } from '../../../services/airportOverlayStyle';
 import { OPENAIP_AIRSPACE_SOURCE_ID, ensureOpenAipIcons, getOpenAipOverlayLayers } from '../../../services/openAipStyle';
 import {
     OPENAIP_PROXY_TILES, OPENFREEMAP_STYLES, RAILROADS_GEOJSON_URL, COUNTRIES_GEOJSON_URL, COUNTRIES_FINE_GEOJSON_URL, COUNTRIES_FINE_MIN_ZOOM, TERRARIUM_DEM_TILES,
-    getBasemapTileConfig, gibsDailyTiles, withApiAuth, isLightEffectiveBasemap,
+    getBasemapTileConfig, withApiAuth, isLightEffectiveBasemap,
 } from '../../../services/mapStyle';
 import { getCachedMultiModalRoute, fetchMultiModalRoute, getGeodesicArcPoints } from '../../../services/multiModalRouting';
 import { NIGHT_LIGHTS_SOURCE_ID, composeNightLightsStyle, nightLightsTileSize } from '../../../services/nightLights';
@@ -31,7 +30,7 @@ import { markerSizes, scratchKindOf, scratchToggles } from './mapScratch';
 
 /**
  * The New map engine: MapLibre for the basemap and its native overlays (airport detail, aviation
- * charts, relief, 3D terrain, rail, rain radar, daily satellite), deck.gl for the travel data
+ * charts, relief, rail, rain radar), deck.gl for the travel data
  * (routes, airports, places, scratch countries, day/night). Colours come from the rp-* tokens.
  */
 
@@ -176,7 +175,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
     // Set when the chosen basemap keeps failing to load; cleared whenever another basemap is chosen.
     const [basemapFailed, setBasemapFailed] = useState(false);
     useEffect(() => setBasemapFailed(false), [effectiveBasemap]);
-    const nightComposite = FEATURE_FLAGS.GEV_P04B_OPENFREEMAP && effectiveBasemap === 'citylights' && !basemapFailed;
+    const nightComposite = effectiveBasemap === 'citylights' && !basemapFailed;
     const styleOptions = useCallback((): maplibregl.StyleSwapOptions & maplibregl.StyleOptions => ({
         diff: false,
         transformStyle: nightComposite
@@ -189,7 +188,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         // Night lights is NASA imagery under OpenFreeMap's dark vector detail: the dark style is loaded and
         // recomposed by `styleOptions` (the raster-only style below is the fallback when it is not available).
         if (nightComposite) return OPENFREEMAP_STYLES.dark!;
-        const vector = FEATURE_FLAGS.GEV_P04B_OPENFREEMAP ? OPENFREEMAP_STYLES[effectiveBasemap] : undefined;
+        const vector = OPENFREEMAP_STYLES[effectiveBasemap];
         // Backup basemaps come from the other provider: a failed vector style falls back to Esri's grey
         // raster, and a failed raster (Esri, NASA) falls back to OpenFreeMap's vector light or dark map.
         if (basemapFailed && !vector) return OPENFREEMAP_STYLES[lightBasemap ? 'positron' : 'dark']!;
@@ -241,7 +240,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         if (import.meta.env.DEV) (window as any).__rpMap = map;
 
         map.on('style.load', () => setStyleVersion(v => v + 1));
-        const OVERLAY_SOURCES = new Set(['rp-dem', 'rp-dem-3d', 'rp-rail', 'rp-radar', 'rp-gibs', 'rp-night', NIGHT_LIGHTS_SOURCE_ID, 'rp-countries', 'rp-routes', 'rp-places', 'rp-pins', 'rp-airports', AIRPORT_SOURCE_ID, OPENAIP_AIRSPACE_SOURCE_ID]);
+        const OVERLAY_SOURCES = new Set(['rp-dem', 'rp-rail', 'rp-radar', 'rp-night', NIGHT_LIGHTS_SOURCE_ID, 'rp-countries', 'rp-routes', 'rp-places', 'rp-pins', 'rp-airports', AIRPORT_SOURCE_ID, OPENAIP_AIRSPACE_SOURCE_ID]);
         let errorTimes: number[] = [];
         map.on('error', (e: any) => {
             const f = fallbackRef.current;
@@ -367,13 +366,6 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
 
         const below = beforeFirstSymbol(map);
 
-        // Daily satellite (NASA GIBS).
-        removeLayer(map, 'rp-gibs'); removeSource(map, 'rp-gibs');
-        if (appearance.gibsDaily && !airportsOnly) {
-            map.addSource('rp-gibs', { type: 'raster', tiles: gibsDailyTiles(appearance.gibsDailyDate || getYesterdayDateString()), tileSize: 256, maxzoom: 9, attribution: 'NASA EOSDIS GIBS' });
-            map.addLayer({ id: 'rp-gibs', type: 'raster', source: 'rp-gibs', paint: { 'raster-opacity': appearance.gibsDailyOpacity ?? 0.9 } }, below);
-        }
-
         // Relief shading from the Terrarium elevation tiles.
         removeLayer(map, 'rp-hillshade');
         if (appearance.terrainHillshade) {
@@ -388,20 +380,9 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
                     'hillshade-accent-color': lightBasemap ? css(palette.ink, 0.25) : css([255, 255, 255], 0.18),
                 },
             }, below);
-        } else if (!appearance.terrain3d) {
+        } else {
             removeSource(map, 'rp-dem');
         }
-
-        // 3D elevation.
-        try {
-            if (appearance.terrain3d) {
-                if (!map.getSource('rp-dem-3d')) map.addSource('rp-dem-3d', { type: 'raster-dem', tiles: [TERRARIUM_DEM_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 15 });
-                map.setTerrain({ source: 'rp-dem-3d', exaggeration: appearance.terrain3dExaggeration ?? 1 });
-            } else {
-                map.setTerrain(null);
-                removeSource(map, 'rp-dem-3d');
-            }
-        } catch { /* terrain unsupported in this projection */ }
 
         // Rail lines.
         removeLayer(map, 'rp-rail');
@@ -421,8 +402,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
     }, [
         styleVersion, isDark, palette, airportsOnly, radarUrl, openAipAvailable, lightBasemap,
         appearance.airportDetail, appearance.openAipOverlay, appearance.openAipGroups, appearance.openAipOpacity, appearance.openAipAirportCategories,
-        appearance.gibsDaily, appearance.gibsDailyDate, appearance.gibsDailyOpacity,
-        appearance.terrainHillshade, appearance.terrainHillshadeOpacity, appearance.terrain3d, appearance.terrain3dExaggeration,
+        appearance.terrainHillshade, appearance.terrainHillshadeOpacity,
         appearance.transitOverlay, appearance.transitOverlayOpacity, appearance.rainRadar, appearance.rainRadarOpacity,
     ]);
 
