@@ -47,7 +47,7 @@ The recording is fast and heavily compressed. The following details could not be
 4. **The left dock has no hover or tooltip states** because the cursor never visits it. Magnification behaviour is unknown. → Use no magnification; give each dock icon a tooltip on desktop (inherited rule: `aria-label` on icon-only buttons).
 5. **Schedule and Projects pages are never shown.** The Tasks Schedule card (month picker "October") is cut off at the bottom of Customer Information. → CalendarNew is designed from first principles using the patterns in this document.
 6. **Dark mode is never shown.** The dock has a moon icon, so a theme toggle exists. → **Decided: a derived warm dark theme** (§1.4).
-7. **Typeface.** It is a geometric grotesk (round "a" and "o", low contrast) that resembles *Outfit*, *Urbanist* or *General Sans*. The exact face is unconfirmed. → **Decided: Outfit** (§1.2).
+7. **Typeface.** It is a geometric grotesk (round "a" and "o", low contrast) that resembles *Outfit*, *Urbanist* or *General Sans*. The exact face is unconfirmed. → **Decided: Outfit** (§1.2). *Superseded by decision 306: the live site uses Urbanist.*
 
 ---
 
@@ -84,7 +84,7 @@ The palette is warm and paper-like. Four saturated "ink" colours carry all the m
 
 There is one typeface (a geometric grotesk) at a few sizes, and weight does most of the work.
 
-**Decided typeface: Outfit** (variable, weights 400–700), self-hosted from the app's own origin so the CSP needs no new font host. Use tabular figures (`font-variant-numeric: tabular-nums`) for every amount, date and count. The **11px floor** from `Design.md` still applies: 11px is for chips and counters only, and informational text is 12px or larger.
+**Typeface: Urbanist** (decision 306; Outfit was the video-era guess) (variable, weights 400–700), self-hosted from the app's own origin so the CSP needs no new font host. Use tabular figures (`font-variant-numeric: tabular-nums`) for every amount, date and count. The **11px floor** from `Design.md` still applies: 11px is for chips and counters only, and informational text is 12px or larger.
 
 | Level | Approx. size / weight | Line height | Example |
 | --- | --- | --- | --- |
@@ -1004,3 +1004,6 @@ Not converted, because no New page renders them (the cutover retires them with t
 | 304 | Settings count | Integrations has four keyed services (AviationStack, AeroDataBox, OpenAIP, Brandfetch) and the Keys tile counts out of four. Decision 125 and 131's "six" is history |
 | 305 | No key in the bundle | `vite.config.ts` has no `define` of an API key and no server key is read by the client; a production build contains no `AIza` or `GEMINI` string |
 
+| 306 | Typeface | The real Rapport site (`demo.codeandchill.store/rapport`) uses **Urbanist**, not Outfit. Swapped (`@fontsource-variable/urbanist`, self-hosted; Outfit dependency removed). Supersedes decision 1 and §1.2 |
+| 307 | Glass page cards and mesh | The live site's cards are translucent (white 46% over a white 78% rim, inset top highlight, `0 24px 48px -30px` shadow), over a mesh of peach, sage and butter blobs, not opaque paper. 28px page cards now use that recipe (`new.css`, applied to `.rounded-rp-card.bg-rp-surface`, excluding `rp-shadow-float` overlays and an `rp-solid` opt-out). No backdrop blur (scroll cost). Dark: white 5% cards over a green-black canvas (`17 20 18`) with tinted blobs. Muted is now `103 106 102`. Supersedes "no glassmorphism" in §1.1 and §1.3 |
+| 308 | Action dock: tried, reverted | Rapport's left action dock (Search, Create, Today, Copy link, Settings, Theme) and its phone bottom bar were built and then removed at the owner's request. The shell keeps the top tabs and the phone bottom tab bar with "More" (decisions 6 and 7). Inbox and Notifications circles were never added (the app has no such data) |

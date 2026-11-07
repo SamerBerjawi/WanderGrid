@@ -24,7 +24,7 @@ export default {
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"SF Pro Display"', '"SF Pro"', 'sans-serif'],
         // New pages (UI_UX_DESIGN_REFERENCE.md §1.2)
-        rp: ['"Outfit Variable"', 'Outfit', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        rp: ['"Urbanist Variable"', 'Urbanist', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       fontSize: {
         // Smallest size in the system: 11px, for pills and counters only (UI-002, decision C-2).
