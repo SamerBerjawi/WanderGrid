@@ -320,7 +320,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
         <div className="custom-scrollbar h-full overflow-y-auto px-3 pt-2 pb-32 sm:px-6 md:pb-16">
             <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-4 lg:gap-6">
                 <div className="flex flex-wrap items-center justify-between gap-x-3">
-                    <h1 className="text-[2.25rem] font-medium leading-[1.05] tracking-tight text-rp-ink sm:text-[2.5rem]">Calendar</h1>
+                    <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.025em] text-rp-ink sm:text-[2.34rem]">Calendar</h1>
                     <RpPageToolbar
                         tools={tools}
                         // Every tool is an action: no plate marks one as selected.
@@ -347,7 +347,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                 ) : null}
 
                 {summary ? (
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
+                    <div className="grid grid-cols-3 items-start gap-2 sm:gap-3 lg:gap-4">
                         <CalendarTile tone="ink" icon={CalendarCheck} value={summary.used} unit={summary.used === 1 ? 'day taken' : 'days taken'} sub={`${summary.planned} planned in ${balanceYear}`} />
                         <CalendarTile tone="green" icon={SunHorizon} value={summary.left} unit="days left" sub={summary.total > 0 ? `of ${summary.total} in ${balanceYear}` : `in ${balanceYear}`} />
                         {next && daysToNext !== null ? (

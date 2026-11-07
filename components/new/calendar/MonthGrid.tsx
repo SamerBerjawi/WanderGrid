@@ -93,7 +93,7 @@ export const MonthGrid: React.FC<{
         <div ref={gridRef} role="grid" aria-label={`${MONTH_NAMES[month0]} ${year}`} aria-readonly onKeyDown={onKeyDown} className="flex flex-col gap-px overflow-hidden rounded-rp-inset border border-rp-line bg-rp-line">
             <div role="row" className="grid grid-cols-7 gap-px">
                 {order.map(d => (
-                    <div key={d} role="columnheader" aria-label={WEEKDAY_LONG[d]} className="bg-rp-inset py-2 text-center text-xs font-medium text-rp-muted">
+                    <div key={d} role="columnheader" aria-label={WEEKDAY_LONG[d]} className="bg-rp-inset py-2 text-center text-xs font-semibold text-rp-muted">
                         {compact ? WEEKDAY_SHORT[d][0] : WEEKDAY_SHORT[d]}
                     </div>
                 ))}
