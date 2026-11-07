@@ -253,7 +253,7 @@ export const RoadTripsNew: React.FC<RoadTripsNewProps> = ({ onTripClick }) => {
             <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6">
                 <JourneySwitch current="roadtrips" />
                 <div className="flex flex-wrap items-center justify-between gap-x-3">
-                    <h1 className="text-[2.25rem] font-medium leading-[1.05] tracking-tight text-rp-ink sm:text-[2.5rem]">Road trips</h1>
+                    <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.025em] text-rp-ink sm:text-[2.34rem]">Road trips</h1>
                     <RpPageToolbar
                         tools={tools}
                         ariaLabel="Road trip tools"

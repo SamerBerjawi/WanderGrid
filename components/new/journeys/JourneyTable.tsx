@@ -32,7 +32,7 @@ const HeadButton: React.FC<{ label: string; sortKey: JourneySortKey; sort: Journ
             type="button"
             onClick={() => onSort(sortKey)}
             aria-label={`Sort by ${label.toLowerCase()}`}
-            className={cn('-ml-2 inline-flex min-h-11 items-center gap-1 rounded-full px-2 text-xs font-medium outline-none hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted', active ? 'text-rp-ink' : 'text-rp-muted', className)}
+            className={cn('-ml-2 inline-flex min-h-11 items-center gap-1 rounded-full px-2 text-xs font-semibold outline-none hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted', active ? 'text-rp-ink' : 'text-rp-muted', className)}
         >
             {label}
             <ArrowUp size={12} className={cn('transition-transform duration-150', active ? (asc ? '' : 'rotate-180') : 'opacity-0')} aria-hidden />
@@ -311,8 +311,8 @@ export const JourneyTable: React.FC<{
                 <span role="columnheader"><HeadButton label="Route" sortKey="route" sort={sort} asc={asc} onSort={onSort} /></span>
                 <span role="columnheader"><HeadButton label="Date" sortKey="date" sort={sort} asc={asc} onSort={onSort} /></span>
                 <span role="columnheader" className="hidden lg:block"><HeadButton label="Length" sortKey="duration" sort={sort} asc={asc} onSort={onSort} /></span>
-                <span role="columnheader" className="hidden text-xs font-medium text-rp-muted lg:block">Trip</span>
-                <span role="columnheader" className="text-xs font-medium text-rp-muted">Status</span>
+                <span role="columnheader" className="hidden text-xs font-semibold text-rp-muted lg:block">Trip</span>
+                <span role="columnheader" className="text-xs font-semibold text-rp-muted">Status</span>
                 <span role="columnheader" className="sr-only">Actions</span>
             </div>
 
