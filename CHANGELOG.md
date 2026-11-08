@@ -11,6 +11,9 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Added
 
+- Loyalty wallet (behind `LOYALTY_WALLET`): add frequent-flyer and hotel numbers to a member under Documents. They appear
+  on the back of the matching airline's boarding pass and on the trip's bookings and stays. Set your own status levels
+  to see how far this year's flights are towards the next one.
 - **Leave meets trips** (behind `VITE_FF_LEAVE_PLANNER`, off by default): a trip now shows what it costs in leave
   and whether the leave is there. A chip on the trip's card and page says "Needs 4 days of leave", "4 days of
   Annual leave" or, in red, "3 days over Annual leave". **Plan leave** opens a day-by-day view of the trip with the

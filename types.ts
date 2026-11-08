@@ -1,3 +1,4 @@
+import type { LoyaltyProgram } from './utils/loyalty';
 
 export interface User {
   id: string;
@@ -22,6 +23,8 @@ export interface User {
   passportIssuingEntity?: string;
   passportIssueDate?: string;
   passportExpiryDate?: string;
+  /** Frequent-flyer and hotel numbers, matched to the carrier or hotel they are for. */
+  loyalty?: LoyaltyProgram[];
 }
 
 export interface UserPolicy {

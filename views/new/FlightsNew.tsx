@@ -451,6 +451,7 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                 onShowOnMap={rec => openPage(mapLink({ route: [rec.flight.origin, rec.flight.destination] }))}
                 onSaveDetails={saveDetails}
                 brandfetchApiKey={brandfetchApiKey}
+                members={log.users}
             />
             <JourneyTimeline
                 group={timelineGroup}

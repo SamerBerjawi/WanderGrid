@@ -1,3 +1,4 @@
+import { isFeatureEnabled } from '../../config/featureFlags';
 import React, { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import type { PackingItem, Trip, User } from '../../types';
 import { useTripsData, type TripDraft } from '../../hooks/useTripsData';
@@ -12,7 +13,6 @@ import NumberFlow from '@number-flow/react';
 import { openPage } from '../../utils/appNavigation';
 import { LeavePlanSheet } from '../../components/new/trips/LeavePlanSheet';
 import { takeLeave, useLeavePlanner } from '../../hooks/useLeavePlanner';
-import { isFeatureEnabled } from '../../config/featureFlags';
 import { NextFlight } from '../../components/new/journeys/NextFlight';
 import { RpHugeicon } from '../../components/new/RpHugeicon';
 import { useUndoToast } from '../../components/new/UndoToast';
@@ -381,7 +381,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                             }}
                         />
                     ) : null}
-                    {tab === 'bookings' ? <BookingsPanel trip={trip} brandfetchApiKey={data.brandfetchApiKey} onEdit={edit} /> : null}
+                    {tab === 'bookings' ? <BookingsPanel trip={trip} brandfetchApiKey={data.brandfetchApiKey} members={isFeatureEnabled('LOYALTY_WALLET') ? members : undefined} onEdit={edit} /> : null}
                     {tab === 'costs' ? (
                         <>
                             <CostsPanel trip={trip} members={members.length} onSaveBudget={target => attempt(async () => { await data.patch(trip.id, { targetBudget: target }); })} />
