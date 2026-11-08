@@ -11,6 +11,11 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Added
 
+- **Where next ideas** (behind `VITE_FF_WHERE_NEXT_IDEAS`, off by default): the Dashboard's Where next widget can show your
+  coming days off, each with a wishlist place that is worth the trip in that time: three days off suggest somewhere
+  within a couple of hours' flight, a long break somewhere farther. Long weekends come from your public holidays (or a
+  weekend plus one leave day when there are none), skip dates you are already away, and open a new trip with the
+  dates and place filled in.
 - **Trip expenses with exchange rates** (behind `VITE_FF_TRIP_EXPENSES`, off by default): the Costs tab of a trip gets a ledger.
   Log what you spend in the currency you paid in; it is converted at the European Central Bank's rate for that day
   (looked up for you, and yours to change), shared equally or by amount between the travellers, and totalled with the
