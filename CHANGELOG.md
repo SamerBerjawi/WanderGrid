@@ -16,6 +16,17 @@ detailed calendar feed. The release line is also what the app shows in its build
   months with a trip, distance (laps round the Earth), your longest flight, aircraft types, airlines, the 25 busiest
   airports, rail kilometres, ferry crossings, crossing the equator and going inside a polar circle. They are counted
   from your trips, flights and places, so they stay right as your log changes, and "Next up" shows what is closest.
+- **Year in review** (behind `VITE_FF_YEAR_IN_REVIEW`, off by default): a Dashboard tool that opens a story of a
+  year of travel, one slide at a time: distance (with the times round the Earth and the split by flights, rail,
+  road and sea), nights away by month, countries (and the new ones), the longest flight, favourite route, airline,
+  airport and aircraft, estimated CO₂, leave used, and a summary you can copy. Pick any year that has travel; a
+  quiet year skips the slides it has no figures for. Nothing advances by itself.
+- **Import a booking** (behind `VITE_FF_BOOKING_IMPORT`, off by default): Trips › Import a booking reads a
+  confirmation email, pasted or saved as `.eml` / `.html`, and adds its flights, trains, buses, ferries, car hire,
+  hotel stays and restaurant or event reservations to the trip whose dates they fall in, or to a new trip named
+  after the destination. It reads the schema.org booking data most airlines, rail operators and hotels put in their
+  emails, and otherwise finds flight segments and check-in/check-out dates in the text. Items already in the trip
+  are skipped; a flight already in the log as an independent flight moves into the trip. Undo takes it all back.
 - An airport or place sheet draws a vertical Sankey of its routes: arrivals across the top, departures across
   the bottom, each as wide as the number of times you travelled it, with the top 8 per side and a "+N others"
   node. Hover, focus or tap a node to see the count or open the route; the routes list stays below.
