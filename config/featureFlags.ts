@@ -34,6 +34,9 @@ export const FEATURE_FLAGS = {
   // WP-1.7: "Archived" planner view (Archive no longer deletes trips)
   AUDIT_TRIP_ARCHIVE_VIEW: getEnvFlag('VITE_FF_AUDIT_TRIP_ARCHIVE_VIEW', true),
 
+  // Year in review: a swipeable story of a year of travel, opened from the Dashboard (default OFF)
+  YEAR_IN_REVIEW: getEnvFlag('VITE_FF_YEAR_IN_REVIEW', false),
+
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;
