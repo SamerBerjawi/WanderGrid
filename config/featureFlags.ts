@@ -34,6 +34,9 @@ export const FEATURE_FLAGS = {
   // WP-1.7: "Archived" planner view (Archive no longer deletes trips)
   AUDIT_TRIP_ARCHIVE_VIEW: getEnvFlag('VITE_FF_AUDIT_TRIP_ARCHIVE_VIEW', true),
 
+
+  // Loyalty wallet: frequent-flyer and hotel numbers per member, shown on passes and stays, with status progress (default OFF)
+  LOYALTY_WALLET: getEnvFlag('VITE_FF_LOYALTY_WALLET', false),
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;

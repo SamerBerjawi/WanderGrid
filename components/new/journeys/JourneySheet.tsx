@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type { Carrier, Transport, Trip } from '../../../types';
+import type { Carrier, Transport, Trip, User } from '../../../types';
+import { cardsForFlight } from '../../../utils/loyalty';
+import { isFeatureEnabled } from '../../../config/featureFlags';
 import SmoothDrawer from '../../kokonutui/smooth-drawer';
 import HoldButton from '../../kokonutui/hold-button';
 import { ArrowUpRight, MapTrifold, PencilSimple, Plus, Seat, Suitcase, Trash, X } from '../../ui/hugeicons';
@@ -43,7 +45,9 @@ export const JourneySheet: React.FC<{
     onSaveDetails?: (record: JourneyRecord, patch: Partial<Transport>) => Promise<void>;
     brandfetchApiKey?: string;
     carriers?: Carrier[];
-}> = ({ record, trips, noun, onClose, onEdit, onDelete, onAssign, onCreateTrip, onOpenTrip, onShowOnMap, onSaveDetails, brandfetchApiKey, carriers }) => {
+    /** Members whose loyalty numbers can show on the pass. */
+    members?: User[];
+}> = ({ record, trips, noun, onClose, onEdit, onDelete, onAssign, onCreateTrip, onOpenTrip, onShowOnMap, onSaveDetails, brandfetchApiKey, carriers, members }) => {
     const mobile = useIsMobile();
     const shown = useLast(record);
     const [confirming, setConfirming] = useState(false);
@@ -91,7 +95,7 @@ export const JourneySheet: React.FC<{
         </div>
     ) : (
         <div className="flex flex-col gap-5">
-            <BoardingPass t={t} brandfetchApiKey={brandfetchApiKey} carriers={carriers} />
+            <BoardingPass t={t} brandfetchApiKey={brandfetchApiKey} carriers={carriers} wallet={members && isFeatureEnabled('LOYALTY_WALLET') ? cardsForFlight(shown, members) : undefined} />
             <RpSection title="Trip" icon={Suitcase}>
                 <div className="flex min-h-11 items-center justify-between gap-3 py-1">
                     <span className="min-w-0 truncate text-sm text-rp-ink">{independent ? 'Not on a trip' : shown.trip.name}</span>

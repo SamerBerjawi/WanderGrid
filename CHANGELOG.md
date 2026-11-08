@@ -11,6 +11,9 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Added
 
+- Loyalty wallet (behind `LOYALTY_WALLET`): add frequent-flyer and hotel numbers to a member under Documents. They appear
+  on the back of the matching airline's boarding pass and on the trip's bookings and stays. Set your own status levels
+  to see how far this year's flights are towards the next one.
 - An airport or place sheet draws a vertical Sankey of its routes: arrivals across the top, departures across
   the bottom, each as wide as the number of times you travelled it, with the top 8 per side and a "+N others"
   node. Hover, focus or tap a node to see the count or open the route; the routes list stays below.

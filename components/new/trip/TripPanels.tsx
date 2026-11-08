@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { Accommodation, PackingItem, Trip, Transport, User } from '../../../types';
+import { cardsForFlight, cardsForStay, walletText } from '../../../utils/loyalty';
 import { buildDays, costSplit, targetBudgetOf, type DayItem, type TripDay } from '../../../utils/tripItinerary';
 import { tripDays } from '../../../utils/tripsModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
@@ -134,7 +135,7 @@ export const ItineraryPanel: React.FC<{ trip: Trip; brandfetchApiKey?: string; o
 /* Bookings */
 /* ------------------------------------------------------------------ */
 
-const TransportRow: React.FC<{ t: Transport; brandfetchApiKey?: string; onEdit: () => void }> = ({ t, brandfetchApiKey, onEdit }) => {
+const TransportRow: React.FC<{ t: Transport; brandfetchApiKey?: string; wallet?: string; onEdit: () => void }> = ({ t, brandfetchApiKey, wallet, onEdit }) => {
     const Mode = MODE_ICON[t.mode] || Airplane;
     return (
         <li className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto_auto] items-center gap-3 border-t border-rp-line py-3 first:border-t-0">
@@ -142,7 +143,7 @@ const TransportRow: React.FC<{ t: Transport; brandfetchApiKey?: string; onEdit: 
             <span className="min-w-0">
                 <span className="block truncate text-sm font-medium text-rp-ink">{t.origin} → {t.destination}</span>
                 <span className="block truncate text-xs text-rp-muted">
-                    {[t.provider, t.identifier, when(t.departureDate, t.departureTime), t.confirmationCode ? `Ref ${t.confirmationCode}` : ''].filter(Boolean).join(' · ')}
+                    {[t.provider, t.identifier, when(t.departureDate, t.departureTime), t.confirmationCode ? `Ref ${t.confirmationCode}` : '', wallet || ''].filter(Boolean).join(' · ')}
                 </span>
             </span>
             <span className="rp-tabular text-right text-sm font-medium text-rp-ink">{money(t.cost) ?? ''}</span>
@@ -151,13 +152,13 @@ const TransportRow: React.FC<{ t: Transport; brandfetchApiKey?: string; onEdit: 
     );
 };
 
-const StayRow: React.FC<{ a: Accommodation; brandfetchApiKey?: string; onEdit: () => void }> = ({ a, brandfetchApiKey, onEdit }) => (
+const StayRow: React.FC<{ a: Accommodation; brandfetchApiKey?: string; wallet?: string; onEdit: () => void }> = ({ a, brandfetchApiKey, wallet, onEdit }) => (
     <li className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto_auto] items-center gap-3 border-t border-rp-line py-3 first:border-t-0">
         <RpLogo name={a.name} src={a.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={stayIcon(a.type)} iconClassName={STAY_ACCENT} />
         <span className="min-w-0">
             <span className="block truncate text-sm font-medium text-rp-ink">{a.name}</span>
             <span className="block truncate text-xs text-rp-muted">
-                {[a.checkInDate && a.checkOutDate ? `${formatDate(a.checkInDate, 'short')} – ${formatDate(a.checkOutDate, 'short')}` : '', nights(a.checkInDate, a.checkOutDate), a.confirmationCode ? `Ref ${a.confirmationCode}` : ''].filter(Boolean).join(' · ')}
+                {[a.checkInDate && a.checkOutDate ? `${formatDate(a.checkInDate, 'short')} – ${formatDate(a.checkOutDate, 'short')}` : '', nights(a.checkInDate, a.checkOutDate), a.confirmationCode ? `Ref ${a.confirmationCode}` : '', wallet || ''].filter(Boolean).join(' · ')}
             </span>
         </span>
         <span className="rp-tabular text-right text-sm font-medium text-rp-ink">{money(a.cost) ?? ''}</span>
@@ -165,7 +166,10 @@ const StayRow: React.FC<{ a: Accommodation; brandfetchApiKey?: string; onEdit: (
     </li>
 );
 
-export const BookingsPanel: React.FC<{ trip: Trip; brandfetchApiKey?: string; onEdit: (step: EditStep) => void }> = ({ trip, brandfetchApiKey, onEdit }) => {
+export const BookingsPanel: React.FC<{ trip: Trip; brandfetchApiKey?: string; members?: User[]; onEdit: (step: EditStep) => void }> = ({ trip, brandfetchApiKey, members, onEdit }) => {
+    // Loyalty numbers for the airline or hotel of each booking, when the wallet is on and a member has one.
+    const flightWallet = (t: Transport) => (members ? walletText(cardsForFlight({ flight: t, trip }, members)) : '');
+    const stayWallet = (a: Accommodation) => (members ? walletText(cardsForStay(a, members)) : '');
     const transports = useMemo(() => [...(trip.transports || [])].sort((a, b) => `${a.departureDate}${a.departureTime}`.localeCompare(`${b.departureDate}${b.departureTime}`)), [trip.transports]);
     const stays = useMemo(() => [...(trip.accommodations || [])].sort((a, b) => (a.checkInDate || '').localeCompare(b.checkInDate || '')), [trip.accommodations]);
     return (
@@ -173,13 +177,13 @@ export const BookingsPanel: React.FC<{ trip: Trip; brandfetchApiKey?: string; on
             <section className={CARD}>
                 <Heading icon={Airplane} accent={TRANSPORT_ACCENT} title="Transport" count={transports.length} action={<AddButton label="Add" onClick={() => onEdit(1)} />} />
                 {transports.length === 0 ? <RpEmpty title="No transport yet">Add flights, trains, ferries and rentals.</RpEmpty> : (
-                    <ul>{transports.map(t => <TransportRow key={t.id} t={t} brandfetchApiKey={brandfetchApiKey} onEdit={() => onEdit(1)} />)}</ul>
+                    <ul>{transports.map(t => <TransportRow key={t.id} t={t} brandfetchApiKey={brandfetchApiKey} wallet={flightWallet(t)} onEdit={() => onEdit(1)} />)}</ul>
                 )}
             </section>
             <section className={CARD}>
                 <Heading icon={Bed} accent={STAY_ACCENT} title="Stays" count={stays.length} action={<AddButton label="Add" onClick={() => onEdit(2)} />} />
                 {stays.length === 0 ? <RpEmpty title="No stays yet">Add hotels, rentals and friends' places.</RpEmpty> : (
-                    <ul>{stays.map(a => <StayRow key={a.id} a={a} brandfetchApiKey={brandfetchApiKey} onEdit={() => onEdit(2)} />)}</ul>
+                    <ul>{stays.map(a => <StayRow key={a.id} a={a} brandfetchApiKey={brandfetchApiKey} wallet={stayWallet(a)} onEdit={() => onEdit(2)} />)}</ul>
                 )}
             </section>
         </div>
