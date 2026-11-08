@@ -28,6 +28,9 @@ import { regionOf } from '../../../utils/atlasModel';
 import { cn } from '../../../utils/cn';
 import { simplifyPath } from '../../../utils/simplifyPath';
 import { useTracedPaths } from '../../../hooks/useTracedPaths';
+import { useWhereNextIdeas } from '../../../hooks/useWhereNext';
+import { describeBreak, ideaLink } from '../../../utils/whereNext';
+import { isFeatureEnabled } from '../../../config/featureFlags';
 
 /**
  * The widgets of the New Dashboard (UI_UX_DESIGN_REFERENCE.md §5.2 rows 2 and 14). Each one is a body for
@@ -523,8 +526,17 @@ export const PassportWidget: React.FC<{ data: DashboardData; size: WidgetSize }>
 
 /* -------------------------------- where next ------------------------------ */
 
-/** Where next? A Throw Deck of the Atlas wishlist: flick one away to keep it, or mark it visited. */
+const WHERE_NEXT_VIEW_KEY = 'wandergrid_wherenext_view';
+
+/**
+ * Where next? Your coming days off, each with a wishlist place that fits it (Where next ideas, behind its flag),
+ * and the Throw Deck of the Atlas wishlist: flick one away to keep it, or mark it visited.
+ */
 export const WhereNextWidget: React.FC<{ data: DashboardData }> = ({ data }) => {
+    const ideasOn = isFeatureEnabled('WHERE_NEXT_IDEAS');
+    const ideas = useWhereNextIdeas(data, ideasOn);
+    const [view, setView] = useState<'ideas' | 'deck'>(() => { try { return localStorage.getItem(WHERE_NEXT_VIEW_KEY) === 'deck' ? 'deck' : 'ideas'; } catch { return 'ideas'; } });
+    const chooseView = (next: 'ideas' | 'deck') => { setView(next); try { localStorage.setItem(WHERE_NEXT_VIEW_KEY, next); } catch { /* storage unavailable */ } };
     const items = data.wishlist;
     const cards = useMemo<DeckCard[]>(() => items.map(item => ({
         id: item.id,
@@ -541,7 +553,7 @@ export const WhereNextWidget: React.FC<{ data: DashboardData }> = ({ data }) => 
             </RpEmpty>
         );
     }
-    return (
+    const deck = (
         <div className="-mx-3 h-full overflow-y-auto [scrollbar-width:none]">
             <ThrowDeck
                 key={cards.map(c => c.id).join('|')}
@@ -554,6 +566,40 @@ export const WhereNextWidget: React.FC<{ data: DashboardData }> = ({ data }) => 
                 onTopAction={card => { const item = byId.get(card.id); if (item) void data.markVisited(item); }}
                 className="min-h-0 py-2"
             />
+        </div>
+    );
+    if (!ideasOn || ideas.length === 0) return deck;
+    return (
+        <div className="flex h-full min-h-0 flex-col gap-2">
+            <div role="group" aria-label="Where next" className="flex shrink-0 flex-wrap gap-2">
+                <RpChip selected={view === 'ideas'} onClick={() => chooseView('ideas')}>For your days off</RpChip>
+                <RpChip selected={view === 'deck'} onClick={() => chooseView('deck')}>Wishlist</RpChip>
+            </div>
+            {view === 'deck' ? <div className="min-h-0 flex-1">{deck}</div> : (
+                <ul className="custom-scrollbar flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto" aria-label="Ideas for your coming days off">
+                    {ideas.map(idea => (
+                        <li key={idea.id}>
+                            <button
+                                type="button"
+                                onClick={() => openPage(ideaLink(idea))}
+                                aria-label={`${idea.place.name}, ${formatDateRange(idea.window.start, idea.window.end)}, ${describeBreak(idea.window)}. Plan a trip`}
+                                className="flex min-h-14 w-full items-center gap-3 rounded-rp-inset bg-rp-inset px-3 py-2 text-left outline-none transition-colors duration-150 hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted"
+                            >
+                                <FlagBadge code={idea.place.code} />
+                                <span className="flex min-w-0 flex-1 flex-col">
+                                    <span className="truncate text-sm font-medium text-rp-ink">{idea.place.name}</span>
+                                    <span className="rp-tabular truncate text-xs text-rp-muted">{formatDateRange(idea.window.start, idea.window.end)}</span>
+                                    <span className="text-xs text-rp-muted">{describeBreak(idea.window)}</span>
+                                </span>
+                                <span className="flex shrink-0 flex-col items-end">
+                                    {idea.km !== null ? <span className="rp-tabular text-xs text-rp-muted">{idea.km.toLocaleString('en-US')} km</span> : null}
+                                    <ArrowUpRight size={14} className="text-rp-muted" aria-hidden />
+                                </span>
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     );
 };

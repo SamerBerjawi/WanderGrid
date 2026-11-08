@@ -1,3 +1,4 @@
+import { isFeatureEnabled } from '../../config/featureFlags';
 import React, { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import type { PackingItem, Trip, User } from '../../types';
 import { useTripsData, type TripDraft } from '../../hooks/useTripsData';
@@ -10,6 +11,8 @@ import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import { RpEmpty } from '../../components/new/ui';
 import NumberFlow from '@number-flow/react';
 import { openPage } from '../../utils/appNavigation';
+import { LeavePlanSheet } from '../../components/new/trips/LeavePlanSheet';
+import { takeLeave, useLeavePlanner } from '../../hooks/useLeavePlanner';
 import { NextFlight } from '../../components/new/journeys/NextFlight';
 import { RpHugeicon } from '../../components/new/RpHugeicon';
 import { useUndoToast } from '../../components/new/UndoToast';
@@ -19,13 +22,15 @@ import { MODE_ICON, SKINS, STEPS, initials, nextMove } from '../../components/ne
 import { DeleteTripSheet, TripSheet, type TripSheetTarget } from '../../components/new/trips/TripSheets';
 import { useOfflinePacks } from '../../hooks/useOfflinePacks';
 import { removePack, savePack } from '../../services/offlinePack';
-import { isFeatureEnabled } from '../../config/featureFlags';
+import { DocumentsSheet } from '../../components/new/trip/DocumentsSheet';
+import { checkTrip, summarise, tripCountries } from '../../utils/entryCheck';
 import { TripCanvas } from '../../components/new/trip/TripCanvas';
 const TripHeroMap = lazy(() => import('../../components/new/trip/TripMapPanel'));
 import { RoutePlanner } from '../../components/new/trip/RoutePlanner';
 import { WeatherChip } from '../../components/new/WeatherChip';
+import { ExpensesPanel } from '../../components/new/trip/ExpensesPanel';
 import { BookingsPanel, CostsPanel, GearPanel, ItineraryPanel, NotesPanel, type EditStep } from '../../components/new/trip/TripPanels';
-import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, DownloadSimple, FileText, Kanban, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket, type Icon } from '../../components/ui/hugeicons';
+import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, CalendarCheck, DownloadSimple, FileText, IdentificationCard, Kanban, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket, type Icon } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -76,6 +81,11 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
     const [deleting, setDeleting] = useState<Trip | null>(null);
     const offlineOn = isFeatureEnabled('OFFLINE_PACKS');
     const offline = useOfflinePacks();
+    const leaveOn = isFeatureEnabled('LEAVE_PLANNER');
+    const planner = useLeavePlanner(data.trips, data.users, data.entitlements, leaveOn);
+    const [leaveOpen, setLeaveOpen] = useState(false);
+    const [docsOpen, setDocsOpen] = useState(false);
+    const entryOn = isFeatureEnabled('ENTRY_REQUIREMENTS');
     const trip = useMemo(() => data.trips.find(t => t.id === tripId), [data.trips, tripId]);
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -126,6 +136,8 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
     const days = tripDays(trip);
     const stats = tripStats(trip);
     const members = (trip.participants || []).map(id => data.users.find(u => u.id === id)).filter((u): u is User => Boolean(u));
+    const docsChecks = entryOn ? checkTrip(trip, data.users) : [];
+    const docsSummary = entryOn ? summarise(docsChecks, trip) : null;
     const hero = split.total > 0
         ? { text: formatCurrency(split.total), unit: 'Total cost' }
         : timing.value !== null && timing.state !== 'past' ? { text: String(timing.value), unit: timing.unit } : null;
@@ -168,6 +180,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
             } catch (e) { toast.dismiss('offline-save'); throw e; }
         }) : undefined,
         isOffline: (t: Trip) => offline.has(t.id),
+        onPlanLeave: leaveOn ? () => setLeaveOpen(true) : undefined,
     };
     // "Open trip" would reopen this page, so it is not in this menu.
     const menu = tripMenuItems(trip, bucket, actions).filter(i => i.id !== 'open');
@@ -282,6 +295,29 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                         {offlineOn && offline.has(trip.id) ? (
                             <p className={cn('mt-3 inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium', skin.panel)}><DownloadSimple size={14} aria-hidden /> Saved for offline</p>
                         ) : null}
+                        {leaveOn && bucket !== 'past' && planner.noteFor(trip) ? (() => {
+                            const note = planner.noteFor(trip)!;
+                            return (
+                                <button
+                                    type="button"
+                                    onClick={() => setLeaveOpen(true)}
+                                    aria-label={`${note.text}. Plan leave for ${trip.name}`}
+                                    className={cn('mt-3 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-current', note.tone === 'short' ? 'bg-rp-rust text-rp-paper' : skin.panel, note.tone === 'needed' && 'underline decoration-dotted underline-offset-4')}
+                                >
+                                    <CalendarCheck size={16} aria-hidden /> {note.text}
+                                </button>
+                            );
+                        })() : null}
+                        {entryOn && bucket !== 'past' && docsSummary ? (
+                            <button
+                                type="button"
+                                onClick={() => setDocsOpen(true)}
+                                aria-label={`${docsSummary.text}. Open documents for ${trip.name}`}
+                                className={cn('mt-3 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-current', docsSummary.state === 'problem' ? 'bg-rp-rust text-rp-paper' : docsSummary.state === 'check' ? 'bg-rp-mustard text-rp-on-mustard' : skin.panel, docsSummary.state === 'missing' && 'underline decoration-dotted underline-offset-4')}
+                            >
+                                <IdentificationCard size={16} aria-hidden /> {docsSummary.text}
+                            </button>
+                        ) : null}
 
                         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -361,8 +397,13 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                             }}
                         />
                     ) : null}
-                    {tab === 'bookings' ? <BookingsPanel trip={trip} brandfetchApiKey={data.brandfetchApiKey} onEdit={edit} /> : null}
-                    {tab === 'costs' ? <CostsPanel trip={trip} members={members.length} onSaveBudget={target => attempt(async () => { await data.patch(trip.id, { targetBudget: target }); })} /> : null}
+                    {tab === 'bookings' ? <BookingsPanel trip={trip} brandfetchApiKey={data.brandfetchApiKey} members={isFeatureEnabled('LOYALTY_WALLET') ? members : undefined} onEdit={edit} /> : null}
+                    {tab === 'costs' ? (
+                        <>
+                            <CostsPanel trip={trip} members={members.length} onSaveBudget={target => attempt(async () => { await data.patch(trip.id, { targetBudget: target }); })} />
+                            {isFeatureEnabled('TRIP_EXPENSES') ? <ExpensesPanel trip={trip} members={members} onSave={async patch => { await data.patch(trip.id, patch); }} /> : null}
+                        </>
+                    ) : null}
                     {tab === 'gear' ? <GearPanel items={trip.packingList || []} onChange={savePacking} /> : null}
                     {tab === 'notes' ? (
                         <NotesPanel
@@ -385,6 +426,17 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                 onDelete={setDeleting}
                 onOpenTrip={() => setSheet(null)}
             />
+            {leaveOn ? (
+                <LeavePlanSheet
+                    trip={leaveOpen ? trip : null}
+                    planner={planner}
+                    entitlements={data.entitlements}
+                    onClose={() => setLeaveOpen(false)}
+                    onApply={(t, id) => takeLeave(t, id, data.entitlements, data.patch, undo)}
+                    onOpenCalendar={() => { setLeaveOpen(false); openPage('/calendar'); }}
+                />
+            ) : null}
+            {entryOn ? <DocumentsSheet open={docsOpen} onClose={() => setDocsOpen(false)} trip={trip} checks={docsChecks} countries={tripCountries(trip)} onOpenMember={onOpenMember ? id => { setDocsOpen(false); onOpenMember(id); } : undefined} /> : null}
             <DeleteTripSheet
                 trip={deleting}
                 onClose={() => setDeleting(null)}

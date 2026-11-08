@@ -13,6 +13,9 @@ import { RpHugeicon } from '../../components/new/RpHugeicon';
 import { Avatar } from '../../components/new/member/Avatar';
 import { FlagBadge } from '../../components/new/atlas/AtlasParts';
 import { PassportCard, PassportValidity } from '../../components/new/member/PassportCard';
+import { LoyaltyPanel } from '../../components/new/member/LoyaltyPanel';
+import { isFeatureEnabled } from '../../config/featureFlags';
+import type { JourneyRecord } from '../../utils/journeysModel';
 import { MemberRing, leaveColor, type RingSegment } from '../../components/new/member/MemberRing';
 import { MemberSheet, RemoveMemberSheet, type MemberTopic } from '../../components/new/member/MemberSheets';
 import { ArrowLeft, CalendarBlank, Envelope, Eye, EyeSlash, Globe, IdentificationCard, Lock, MapPin, PencilSimple, Plus, SignOut, SunHorizon, Suitcase, Trash, User as UserIcon, UserCircle, type Icon } from '../../components/ui/hugeicons';
@@ -123,6 +126,9 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
     const attempt = async (run: () => Promise<void>, fallback = "That didn't save. Try again.") => {
         try { await run(); } catch (e) { toast.error(errorMessage(e, fallback)); }
     };
+    const loyaltyOn = isFeatureEnabled('LOYALTY_WALLET');
+    // The flights on the member's trips, for the status progress in their wallet.
+    const memberRecords: JourneyRecord[] = loyaltyOn ? data.trips.flatMap(trip => (trip.transports || []).filter(t => t.mode === 'Flight').map(flight => ({ flight, trip }))) : [];
     const passport = passportStatus(member.passportExpiryDate);
     const hasPassport = Boolean(member.passportNumber || member.nationality || member.dateOfBirth || member.passportIssuingEntity || member.passportIssueDate || member.passportExpiryDate);
     const weekendRule = member.holidayWeekendRule || 'none';
@@ -423,7 +429,7 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                         )
                     ) : null}
 
-                    {activeTab === 'documents' ? (
+                    {activeTab === 'documents' ? (<div className="flex flex-col gap-3 lg:gap-4">{
                         hasPassport ? (
                             <div className={cn('grid gap-3 lg:gap-4', member.passportExpiryDate && 'lg:grid-cols-2')}>
                                 <div className={cn(card, 'p-2 sm:p-3')}>
@@ -441,7 +447,7 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                                 </RpEmpty>
                             </div>
                         )
-                    ) : null}
+                    }{loyaltyOn ? <div className={card}><LoyaltyPanel member={member} records={memberRecords} today={data.today} onEdit={data.canEdit ? () => setTopic('loyalty') : undefined} /></div> : null}</div>) : null}
 
                     {activeTab === 'settings' && data.canEdit ? (
                         <div className="grid items-start gap-3 lg:grid-cols-2 lg:gap-4">

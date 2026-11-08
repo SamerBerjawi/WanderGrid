@@ -17,6 +17,55 @@ detailed calendar feed. The release line is also what the app shows in its build
   without a connection from the **Saved for offline** tool (or from "Open saved trips" when the trips fail to load),
   follows the trip when it changes while you are online, and is removed from the same place. The map tile cache holds
   up to 2,500 tiles for 60 days, enough for several trips.
+- Loyalty wallet (behind `LOYALTY_WALLET`): add frequent-flyer and hotel numbers to a member under Documents. They appear
+  on the back of the matching airline's boarding pass and on the trip's bookings and stays. Set your own status levels
+  to see how far this year's flights are towards the next one.
+- **Leave meets trips** (behind `VITE_FF_LEAVE_PLANNER`, off by default): a trip now shows what it costs in leave
+  and whether the leave is there. A chip on the trip's card and page says "Needs 4 days of leave", "4 days of
+  Annual leave" or, in red, "3 days over Annual leave". **Plan leave** opens a day-by-day view of the trip with the
+  weekends and public holidays left out (and the days per year when a trip crosses New Year), each leave type with
+  what it has left and would have after, and a suggested type; one button books it, with Undo. It counts exactly as
+  the Calendar does, and also checks everyone else on the trip.
+- **Jet lag and time-zone helper** (behind `VITE_FF_JET_LAG_HELPER`, off by default): a journey's sheet now shows how far ahead
+  or behind the destination is, the time there now, and when it lands on both clocks. A flight gets a **Jet lag** section
+  with a sleep and light plan for the days after: when to start shifting, when to sleep on the flight, what to do on
+  landing for the hour you arrive, which hours to seek and avoid light, and about how many days it takes to catch up. It
+  follows daylight saving, so a crossing when the US and Europe are on different clocks shows the real gap.
+- **Where next ideas** (behind `VITE_FF_WHERE_NEXT_IDEAS`, off by default): the Dashboard's Where next widget can show your
+  coming days off, each with a wishlist place that is worth the trip in that time: three days off suggest somewhere
+  within a couple of hours' flight, a long break somewhere farther. Long weekends come from your public holidays (or a
+  weekend plus one leave day when there are none), skip dates you are already away, and open a new trip with the
+  dates and place filled in.
+- **Trip expenses with exchange rates** (behind `VITE_FF_TRIP_EXPENSES`, off by default): the Costs tab of a trip gets a ledger.
+  Log what you spend in the currency you paid in; it is converted at the European Central Bank's rate for that day
+  (looked up for you, and yours to change), shared equally or by amount between the travellers, and totalled with the
+  budget. **Who owes whom** shows the fewest payments that settle everyone up. New `GET /api/proxy/fx/:date?from=&to=`
+  on the server (Frankfurter, cached for a month per past day). Expenses are saved on the trip with the rate they were
+  entered at, so totals never drift.
+- **Entry requirements and document checks** (behind `VITE_FF_ENTRY_REQUIREMENTS`, off by default): a chip on a trip's page
+  checks each traveller's passport against every country the trip goes to: too short for a destination that asks for six
+  months (or three after leaving the Schengen area), ending before the trip does, or a permit to arrange (ESTA, UK ETA,
+  eTA, eVisitor, NZeTA, an e-Visa or a visa). The **Documents** sheet lists it per traveller and country and sends you to
+  the passport details to fix what is missing. The visa table is a small starter set for common passports and destinations,
+  dated, and says to confirm with the official site.
+- Fixed: a country typed as "France" was read as the retired code FX (and "Germany" would have been DD, "United Kingdom"
+  UK) wherever a country name is turned into a code.
+- **Achievements in the Atlas** (behind `VITE_FF_ATLAS_ACHIEVEMENTS`, off by default): a trophy tool opens the stamps you
+  have earned, in the look of a passport page, each with levels: continents, countries, trips, nights away, a run of
+  months with a trip, distance (laps round the Earth), your longest flight, aircraft types, airlines, the 25 busiest
+  airports, rail kilometres, ferry crossings, crossing the equator and going inside a polar circle. They are counted
+  from your trips, flights and places, so they stay right as your log changes, and "Next up" shows what is closest.
+- **Year in review** (behind `VITE_FF_YEAR_IN_REVIEW`, off by default): a Dashboard tool that opens a story of a
+  year of travel, one slide at a time: distance (with the times round the Earth and the split by flights, rail,
+  road and sea), nights away by month, countries (and the new ones), the longest flight, favourite route, airline,
+  airport and aircraft, estimated CO₂, leave used, and a summary you can copy. Pick any year that has travel; a
+  quiet year skips the slides it has no figures for. Nothing advances by itself.
+- **Import a booking** (behind `VITE_FF_BOOKING_IMPORT`, off by default): Trips › Import a booking reads a
+  confirmation email, pasted or saved as `.eml` / `.html`, and adds its flights, trains, buses, ferries, car hire,
+  hotel stays and restaurant or event reservations to the trip whose dates they fall in, or to a new trip named
+  after the destination. It reads the schema.org booking data most airlines, rail operators and hotels put in their
+  emails, and otherwise finds flight segments and check-in/check-out dates in the text. Items already in the trip
+  are skipped; a flight already in the log as an independent flight moves into the trip. Undo takes it all back.
 - An airport or place sheet draws a vertical Sankey of its routes: arrivals across the top, departures across
   the bottom, each as wide as the number of times you travelled it, with the top 8 per side and a "+N others"
   node. Hover, focus or tap a node to see the count or open the route; the routes list stays below.
