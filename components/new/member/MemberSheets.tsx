@@ -4,15 +4,16 @@ import { RpChip, RpSection, RpSheet } from '../ui';
 import { RP_FIELD, RpField } from '../fields';
 import HoldButton from '../../kokonutui/hold-button';
 import ParticleButton from '../../kokonutui/particle-button';
-import { Camera, Trash } from '../../ui/hugeicons';
+import { Camera, Plus, Trash } from '../../ui/hugeicons';
+import { checkProgram, levelsText, newProgram, parseLevels, type LoyaltyKind, type LoyaltyProgram } from '../../../utils/loyalty';
 import { errorMessage, toast } from '../../../services/toast';
 import { cn } from '../../../utils/cn';
 import { Avatar } from './Avatar';
 
 /** Which part of the profile a sheet edits. */
-export type MemberTopic = 'profile' | 'passport' | 'account' | 'leave';
+export type MemberTopic = 'profile' | 'passport' | 'account' | 'leave' | 'loyalty';
 
-export const TOPIC_TITLE: Record<MemberTopic, string> = { profile: 'Edit profile', passport: 'Passport', account: 'Change password', leave: 'Leave allowance' };
+export const TOPIC_TITLE: Record<MemberTopic, string> = { profile: 'Edit profile', passport: 'Passport', account: 'Change password', leave: 'Leave allowance', loyalty: 'Loyalty wallet' };
 
 const DATE = cn(RP_FIELD, 'rp-date rp-tabular');
 const ROLES: User['role'][] = ['Admin', 'Partner', 'Child'];
@@ -49,11 +50,13 @@ export const MemberSheet: React.FC<{
     const [draft, setDraft] = useState<User>(member);
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    // Levels are typed as text ("Silver 25000, Gold 50000") and read when saved, so half-typed text is never lost.
+    const [levelText, setLevelText] = useState<Record<string, string>>({});
     const fileRef = useRef<HTMLInputElement>(null);
 
     // A fresh copy each time the sheet opens, so a cancelled edit never lingers.
     useEffect(() => {
-        if (topic) { setDraft(member); setPassword(''); setError(''); }
+        if (topic) { setDraft(member); setPassword(''); setError(''); setLevelText(Object.fromEntries((member.loyalty || []).map(p => [p.id, levelsText(p.levels)]))); }
     }, [topic, member]);
 
     const set = <K extends keyof User>(key: K, value: User[K]) => setDraft(d => ({ ...d, [key]: value }));
@@ -62,7 +65,23 @@ export const MemberSheet: React.FC<{
         try { set('profilePicture', await shrinkImage(file)); setError(''); } catch (e) { setError(errorMessage(e, 'That image could not be read.')); }
     };
 
+    const programs = draft.loyalty || [];
+    const setProgram = (id: string, changes: Partial<LoyaltyProgram>) => set('loyalty', programs.map(p => (p.id === id ? { ...p, ...changes } : p)));
+    const addProgram = (kind: LoyaltyKind) => set('loyalty', [...programs, newProgram(kind)]);
+
     const save = async () => {
+        if (topic === 'loyalty') {
+            // A card left completely blank is dropped; a half-filled one is a mistake to fix.
+            const kept = programs.filter(p => p.provider.trim() || p.number.trim()).map(p => {
+                const levels = p.kind === 'airline' ? parseLevels(levelText[p.id] || '') : [];
+                return { ...p, provider: p.provider.trim(), programme: p.programme?.trim() || undefined, number: p.number.trim(), tier: p.tier?.trim() || undefined, levels: levels.length ? levels : undefined };
+            });
+            const problem = kept.map(checkProgram).find(Boolean);
+            if (problem) { setError(problem); throw new Error(problem); }
+            setError('');
+            try { await onSave({ ...member, loyalty: kept }); onClose(); } catch (e) { setError(errorMessage(e, "That didn't save. Try again.")); throw e; }
+            return;
+        }
         if (!draft.name.trim()) { setError('Name is required.'); throw new Error('Name is required.'); }
         if (password.trim() && password.trim().length < 8) { setError('Password must be at least 8 characters.'); throw new Error('Password too short'); }
         setError('');
@@ -154,6 +173,40 @@ export const MemberSheet: React.FC<{
                         </RpField>
                     </div>
                     </RpSection>
+                ) : null}
+
+                {topic === 'loyalty' ? (
+                    <>
+                        {programs.length === 0 ? <p className="text-sm text-rp-muted">Add a frequent-flyer or hotel number. It will appear on the matching boarding pass and stay.</p> : null}
+                        {programs.map((p, i) => (
+                            <RpSection key={p.id} title={p.kind === 'airline' ? 'Airline' : 'Hotel'}>
+                                <RpField label={p.kind === 'airline' ? 'Airline' : 'Hotel brand'}>{id => <input id={id} value={p.provider} onChange={e => setProgram(p.id, { provider: e.target.value })} className={RP_FIELD} placeholder={p.kind === 'airline' ? 'KLM or KL' : 'Marriott'} autoFocus={i === programs.length - 1 && !p.provider} />}</RpField>
+                                <RpField label="Programme (optional)">{id => <input id={id} value={p.programme || ''} onChange={e => setProgram(p.id, { programme: e.target.value })} className={RP_FIELD} placeholder={p.kind === 'airline' ? 'Flying Blue' : 'Bonvoy'} />}</RpField>
+                                <RpField label="Membership number">{id => <input id={id} value={p.number} onChange={e => setProgram(p.id, { number: e.target.value })} className={cn(RP_FIELD, 'font-mono')} autoComplete="off" />}</RpField>
+                                <RpField label="Status today (optional)">{id => <input id={id} value={p.tier || ''} onChange={e => setProgram(p.id, { tier: e.target.value })} className={RP_FIELD} placeholder="e.g. Gold" />}</RpField>
+                                {p.kind === 'airline' ? (
+                                    <>
+                                        <div className="flex flex-col gap-1.5 py-1.5">
+                                            <span className="text-xs text-rp-muted" id={`measure-${p.id}`}>Status is counted in</span>
+                                            <div role="group" aria-labelledby={`measure-${p.id}`} className="flex flex-wrap gap-2">
+                                                <RpChip selected={(p.measure ?? 'km') === 'km'} onClick={() => setProgram(p.id, { measure: 'km' })}>Kilometres</RpChip>
+                                                <RpChip selected={p.measure === 'flights'} onClick={() => setProgram(p.id, { measure: 'flights' })}>Flights</RpChip>
+                                            </div>
+                                        </div>
+                                        <RpField label="Status levels (optional)">{id => <input id={id} value={levelText[p.id] || ''} onChange={e => setLevelText(t => ({ ...t, [p.id]: e.target.value }))} className={RP_FIELD} placeholder="Silver 25000, Gold 50000" />}</RpField>
+                                        <p className="text-xs text-rp-muted">Progress counts this calendar year's flights with this airline. Use your airline's own thresholds.</p>
+                                    </>
+                                ) : null}
+                                <button type="button" onClick={() => set('loyalty', programs.filter(x => x.id !== p.id))} className="mt-1 inline-flex min-h-11 items-center gap-2 self-start rounded-full px-4 text-sm font-medium text-rp-muted outline-none hover:bg-rp-inset focus-visible:ring-2 focus-visible:ring-rp-muted">
+                                    <Trash size={16} aria-hidden /> Remove
+                                </button>
+                            </RpSection>
+                        ))}
+                        <div className="flex flex-wrap gap-2">
+                            <button type="button" onClick={() => addProgram('airline')} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-inset px-4 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted"><Plus size={16} aria-hidden /> Airline</button>
+                            <button type="button" onClick={() => addProgram('hotel')} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-inset px-4 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted"><Plus size={16} aria-hidden /> Hotel</button>
+                        </div>
+                    </>
                 ) : null}
 
                 {error ? <p role="alert" className="text-sm text-rp-rust">{error}</p> : null}
