@@ -321,7 +321,7 @@ async function searchGeocodingChain(query, { lat, lon } = {}) {
 
         const types = classifyOsmType(props.osm_key, props.osm_value);
         let viewport = undefined;
-        // properties.extent is [west, north, east, south] (GEV trap warning)
+        // properties.extent is [west, north, east, south]
         if (Array.isArray(props.extent) && props.extent.length === 4) {
           const [west, north, east, south] = props.extent;
           if (west <= east && south <= north) {

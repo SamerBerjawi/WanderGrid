@@ -1,5 +1,5 @@
 /**
- * Central Feature Flags configuration for WanderGrid (GEV Modular Architecture)
+ * Central feature flags for WanderGrid
  * 
  * Each flag defaults according to the specification:
  * - Fixes & Improvements: default ON
@@ -18,15 +18,6 @@ function getEnvFlag(key: string, defaultValue: boolean): boolean {
 }
 
 export const FEATURE_FLAGS = {
-  // P-04b: OpenFreeMap vector basemaps (liberty, bright, positron)
-  GEV_P04B_OPENFREEMAP: getEnvFlag('VITE_FF_GEV_P04B_OPENFREEMAP', true),
-
-  // P-04c: NASA GIBS Recent Satellite daily layer (default OFF)
-  GEV_P04C_GIBS_DAILY: getEnvFlag('VITE_FF_GEV_P04C_GIBS_DAILY', false),
-
-  // P-04d: 3D terrain + hillshade via AWS Terrarium DEM (default OFF)
-  GEV_P04D_TERRAIN: getEnvFlag('VITE_FF_GEV_P04D_TERRAIN', false),
-
   // Audit remediation flows that replace broken behaviour (default ON, see CLAUDE.md "Feature work")
   // WP-2.1: "Forgot password?" with admin-issued one-time reset codes
   AUDIT_PASSWORD_RESET: getEnvFlag('VITE_FF_AUDIT_PASSWORD_RESET', true),

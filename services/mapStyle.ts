@@ -20,7 +20,7 @@ export const withApiAuth = (url: string) => {
 const LIGHT_BASEMAPS: ReadonlySet<EffectiveBasemap> = new Set(['liberty', 'bright', 'positron']);
 export const isLightEffectiveBasemap = (layer: EffectiveBasemap): boolean => LIGHT_BASEMAPS.has(layer);
 
-/** OpenFreeMap vector styles, used for the street basemaps when GEV_P04B_OPENFREEMAP is on. */
+/** OpenFreeMap vector styles, used for the street basemaps. */
 export const OPENFREEMAP_STYLES: Partial<Record<EffectiveBasemap, string>> = {
     liberty: 'https://tiles.openfreemap.org/styles/liberty',
     '3d': 'https://tiles.openfreemap.org/styles/liberty',
@@ -91,5 +91,3 @@ export const COUNTRIES_GEOJSON_URL = '/data/ne_50m_admin_0_countries.geojson';
 export const COUNTRIES_FINE_GEOJSON_URL = '/data/ne_10m_admin_0_countries.geojson';
 /** From this zoom the scratch map swaps the 50m borders for the 10m ones. */
 export const COUNTRIES_FINE_MIN_ZOOM = 3.2;
-export const gibsDailyTiles = (date: string) =>
-    ['a', 'b', 'c'].map(s => `https://gibs-${s}.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA21_CorrectedReflectance_TrueColor/default/${date}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`);

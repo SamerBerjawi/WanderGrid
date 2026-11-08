@@ -1,12 +1,11 @@
 import React, { useRef, useState } from 'react';
 import SwipeTabs from '../../kokonutui/swipe-tabs';
 import UndoButton from '../../kokonutui/undo-button';
-import { FEATURE_FLAGS } from '../../../config/featureFlags';
 import {
-    DEFAULT_MAP_APPEARANCE, ALL_AIRPORT_CATEGORIES, getYesterdayDateString,
+    DEFAULT_MAP_APPEARANCE, ALL_AIRPORT_CATEGORIES,
     type AirportCategory, type MapAppearanceSettings,
 } from '../../../types/mapAppearance';
-import { Airplane, AirplaneTilt, Airport, Boat, Check, CheckCircle, EditRoad, MapsGlobal, SquaresUnite, AirplaneLanding, ArrowCounterClockwise, Buildings, CalendarBlank, ChartBar, CirclesThree, CloudRain, Eye, Globe, Heart, House, Lightning, Maping, MapPin, MapTrifold, Moon, Mountains, MountainSnow, Palette, Path, Planet, RoadHorizon, SlidersHorizontal, Sparkle, Stack, Sun, SunHorizon, Train, TrendUp } from '../../ui/hugeicons';
+import { Airplane, AirplaneTilt, Airport, Boat, Check, CheckCircle, EditRoad, MapsGlobal, SquaresUnite, AirplaneLanding, ArrowCounterClockwise, Buildings, ChartBar, CirclesThree, CloudRain, Eye, Globe, Heart, House, Lightning, Maping, MapPin, MapTrifold, Moon, Mountains, Palette, Path, RoadHorizon, SlidersHorizontal, Sparkle, Stack, Sun, SunHorizon, Train, TrendUp } from '../../ui/hugeicons';
 import { cn } from '../../../utils/cn';
 import { RpChip, RpRow, RpSection, RpSheet, RpSlider, RpToggle, useIsMobile } from '../ui';
 
@@ -177,31 +176,6 @@ export const MapSettingsSheet: React.FC<MapSettingsSheetProps> = ({
                 {a.rainRadar ? <RpSlider label="Opacity" value={a.rainRadarOpacity ?? 0.85} min={0.2} max={1} step={0.05} format={pct} onChange={v => onChange({ rainRadarOpacity: v })} /> : null}
                 <RpToggle icon={Mountains} label="Relief shading" checked={Boolean(a.terrainHillshade)} onChange={v => onChange({ terrainHillshade: v })} />
                 {a.terrainHillshade ? <RpSlider label="Strength" value={a.terrainHillshadeOpacity ?? 0.8} min={0.1} max={1} step={0.05} format={pct} onChange={v => onChange({ terrainHillshadeOpacity: v })} /> : null}
-                {FEATURE_FLAGS.GEV_P04D_TERRAIN ? (
-                    <>
-                        <RpToggle icon={MountainSnow} label="3D elevation" checked={Boolean(a.terrain3d)} onChange={v => onChange({ terrain3d: v })} />
-                        {a.terrain3d ? <RpSlider label="Height" value={a.terrain3dExaggeration ?? 1} min={0.5} max={3} step={0.1} format={v => `${v.toFixed(1)}×`} onChange={v => onChange({ terrain3dExaggeration: v })} /> : null}
-                    </>
-                ) : null}
-                {FEATURE_FLAGS.GEV_P04C_GIBS_DAILY ? (
-                    <>
-                        <RpToggle icon={Planet} label="Daily satellite" checked={Boolean(a.gibsDaily)} onChange={v => onChange({ gibsDaily: v, gibsDailyDate: a.gibsDailyDate || getYesterdayDateString() })} />
-                        {a.gibsDaily ? (
-                            <>
-                                <RpRow icon={CalendarBlank} label="Imagery date">
-                                    <input
-                                        type="date"
-                                        value={a.gibsDailyDate || getYesterdayDateString()}
-                                        max={getYesterdayDateString()}
-                                        onChange={e => onChange({ gibsDailyDate: e.target.value })}
-                                        className="min-h-11 rounded-full bg-rp-surface px-4 text-sm text-rp-ink outline-none focus-visible:ring-2 focus-visible:ring-rp-muted [color-scheme:light] dark:[color-scheme:dark]"
-                                    />
-                                </RpRow>
-                                <RpSlider label="Opacity" value={a.gibsDailyOpacity ?? 0.9} min={0.2} max={1} step={0.05} format={pct} onChange={v => onChange({ gibsDailyOpacity: v })} />
-                            </>
-                        ) : null}
-                    </>
-                ) : null}
             </RpSection>
             <RpSection icon={Train} title="Transport">
                 <RpToggle icon={Train} label="Rail lines" checked={Boolean(a.transitOverlay)} onChange={v => onChange({ transitOverlay: v })} />

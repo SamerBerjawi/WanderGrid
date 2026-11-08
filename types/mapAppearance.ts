@@ -149,14 +149,6 @@ export interface MapAppearanceSettings {
     transitOverlay?: boolean; // OpenRailwayMap global transit & rail infrastructure
     transitOverlayOpacity?: number; // 0.1 to 1.0
 
-    // NASA GIBS Recent Satellite (Daily True-Color Mosaic) (P-04c)
-    gibsDaily?: boolean;
-    gibsDailyDate?: string;
-    gibsDailyOpacity?: number;
-
-    // 3D Terrain Elevation via AWS Terrarium DEM (P-04d)
-    terrain3d?: boolean;
-    terrain3dExaggeration?: number;
 
     // Scratch Map Mode Filters & Toggles
     scratchCitySize?: 'off' | 'small' | 'medium' | 'large';
@@ -192,11 +184,6 @@ export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     terrainHillshadeOpacity: 0.8,
     transitOverlay: false,
     transitOverlayOpacity: 0.4,
-    gibsDaily: false,
-    gibsDailyDate: '',
-    gibsDailyOpacity: 0.9,
-    terrain3d: false,
-    terrain3dExaggeration: 1.0,
     scratchCitySize: 'medium',
     showVisitedCountries: true,
     showLivedCountries: true,
@@ -216,6 +203,8 @@ export const loadMapAppearanceSettings = (): MapAppearanceSettings => {
             if (parsed.airportDetail === 'standard' && !localStorage.getItem('wandergrid_user_customized_airport_detail')) {
                 parsed.airportDetail = 'detailed';
             }
+            // Settings from the removed daily-satellite and 3D-elevation layers.
+            for (const key of ['gibsDaily', 'gibsDailyDate', 'gibsDailyOpacity', 'terrain3d', 'terrain3dExaggeration']) delete parsed[key];
             return { ...DEFAULT_MAP_APPEARANCE, ...parsed };
         }
     } catch (e) {
@@ -233,20 +222,3 @@ export const saveMapAppearanceSettings = (settings: MapAppearanceSettings): void
         console.warn('Failed to save map appearance settings:', e);
     }
 };
-
-export function getYesterdayDateString(): string {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return d.toISOString().split('T')[0];
-}
-
-export function adjustDateString(dateStr: string, deltaDays: number): string {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return getYesterdayDateString();
-    d.setDate(d.getDate() + deltaDays);
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    if (d > yesterday) return yesterday.toISOString().split('T')[0];
-    return d.toISOString().split('T')[0];
-}
-
