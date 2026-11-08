@@ -5,13 +5,16 @@ import { WidgetGrid, type WidgetGridItem, type WidgetLayoutItem } from '../../co
 import type { DockTool } from '../../components/kokonutui/tool-dock';
 import { RpPageToolbar } from '../../components/new/PageToolbar';
 import { HiddenWidgets } from '../../components/new/dashboard/HiddenWidgets';
+import { YearReview } from '../../components/new/dashboard/YearReview';
+import { isFeatureEnabled } from '../../config/featureFlags';
+import { reviewYears } from '../../utils/yearReview';
 import { RpEmpty, useIsMobile } from '../../components/new/ui';
 import { openPage } from '../../utils/appNavigation';
 import {
     LeaveWidget, MapWidget, MetricWidget, NextWidget, PassportWidget, RecentWidget, UpcomingWidget, WhereNextWidget, YearsWidget, nextTone,
 } from '../../components/new/dashboard/DashboardWidgets';
 import {
-    Airplane, ArrowCounterClockwise, ChartBar, Check, PencilSimple, ClockCounterClockwise, Compass, Globe, IdentificationCard, Moon, Path, Plus, SunHorizon, Suitcase, type Icon,
+    Airplane, ArrowCounterClockwise, ChartBar, Check, PencilSimple, ClockCounterClockwise, Sparkle, Compass, Globe, IdentificationCard, Moon, Path, Plus, SunHorizon, Suitcase, type Icon,
 } from '../../components/ui/hugeicons';
 import { mapLink } from '../../utils/mapLinks';
 import { ORBIT_KM, leaveByType, leaveTrips, type LeaveTrip, type LeaveUse } from '../../utils/dashboardModel';
@@ -131,6 +134,7 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
     const [memberId, setMemberId] = useState<string | null>(userId);
     const [hidden, setHidden] = useState<string[]>(() => readHidden(userId));
     const [editing, setEditing] = useState(false);
+    const [reviewOpen, setReviewOpen] = useState(false);
 
     // The grid only knows the visible widgets; hidden ones keep their place and size at the end.
     const changeLayout = useCallback((next: WidgetLayoutItem[]) => {
@@ -221,10 +225,14 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
     // Where focus goes when the tray goes away: the Edit/Done button of the tool bar.
     const editButton = useCallback(() => document.querySelector<HTMLElement>('[aria-label="Dashboard tools"] button[aria-label="Done"], [aria-label="Dashboard tools"] button[aria-label="Edit widgets"]'), []);
 
+    // Year in review needs a year with travel in it.
+    const reviewEnabled = isFeatureEnabled('YEAR_IN_REVIEW') && reviewYears(data.trips, data.legs, data.today).length > 0;
+
     // On phones the tab bar's "+" starts a trip.
     const tools: DockTool[] = [
         { id: 'edit', label: editing ? 'Done' : 'Edit widgets', icon: (editing ? Check : PencilSimple) as any, action: () => setEditing(e => !e) },
         ...(mobile ? [] : [{ id: 'new', label: 'New trip', icon: Plus as any, action: () => openPage('/trips?new=1') }]),
+        ...(reviewEnabled ? [{ id: 'review', label: 'Year in review', icon: Sparkle as any, action: () => setReviewOpen(true) }] : []),
         { id: 'reset', label: 'Reset widgets', icon: ArrowCounterClockwise as any, action: resetLayout },
     ];
 
@@ -278,6 +286,9 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
                     </div>
                 )}
             </div>
+            {isFeatureEnabled('YEAR_IN_REVIEW') ? (
+                <YearReview open={reviewOpen} onClose={() => setReviewOpen(false)} trips={data.trips} legs={data.legs} today={data.today} users={data.users} types={data.types} />
+            ) : null}
         </div>
     );
 };

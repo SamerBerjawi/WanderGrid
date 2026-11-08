@@ -16,7 +16,16 @@ import { TripMenu } from '../../components/new/trips/TripMenu';
 import { BUCKET_HEAD, BUCKET_LABEL, type TripActions } from '../../components/new/trips/TripCard';
 import { TripDetailsModal, type TripOrigin } from '../../components/new/trips/TripDetailsModal';
 import { DeleteTripSheet, TripSheet, type TripSheetTarget } from '../../components/new/trips/TripSheets';
-import { Archive, ArrowDown, CalendarBlank, Kanban, List, MagnifyingGlass, MapPin, MapTrifold, Plus, Receipt, Stack, Suitcase, Tag, XCircle } from '../../components/ui/hugeicons';
+import { OfflinePacksSheet } from '../../components/new/trips/OfflinePacksSheet';
+import { useOfflinePacks, useOnline } from '../../hooks/useOfflinePacks';
+import { getPack, refreshPack, removePack, savePack, syncPacks } from '../../services/offlinePack';
+import { isFeatureEnabled } from '../../config/featureFlags';
+import { LeavePlanSheet } from '../../components/new/trips/LeavePlanSheet';
+import { LeavePlannerContext, takeLeave, useLeavePlanner } from '../../hooks/useLeavePlanner';
+import { openPage } from '../../utils/appNavigation';
+import { BookingImportSheet, type BookingImportResult } from '../../components/new/trips/BookingImportSheet';
+import { dataService } from '../../services/mockDb';
+import { Archive, ArrowDown, ArrowUpRight, CalendarBlank, DownloadSimple, Envelope, Kanban, List, MagnifyingGlass, MapPin, MapTrifold, Plus, Receipt, Stack, Suitcase, Tag, XCircle } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -101,6 +110,17 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     const [detailsOrigin, setDetailsOrigin] = useState<TripOrigin | null>(null);
     const [sheet, setSheet] = useState<TripSheetTarget | null>(null);
     const [deleting, setDeleting] = useState<Trip | null>(null);
+    const offlineOn = isFeatureEnabled('OFFLINE_PACKS');
+    const offline = useOfflinePacks();
+    const online = useOnline();
+    const [packsOpen, setPacksOpen] = useState(false);
+    const [packTripId, setPackTripId] = useState<string | null>(null);
+    // A saved copy of a trip that is now different follows it, while there is a connection to read the change from.
+    useEffect(() => { if (offlineOn && online && data.trips.length) syncPacks(data.trips); }, [offlineOn, online, data.trips]);
+    const leaveOn = isFeatureEnabled('LEAVE_PLANNER');
+    const planner = useLeavePlanner(data.trips, data.users, data.entitlements, leaveOn);
+    const [leaveTripId, setLeaveTripId] = useState<string | null>(null);
+    const [bookingOpen, setBookingOpen] = useState(false);
 
     const changeView = (next: View) => {
         setView(next);
@@ -116,9 +136,16 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
         try {
             const url = new URL(window.location.href);
             if (url.searchParams.get('new') === '1') {
-                url.searchParams.delete('new');
+                // A suggested break and place (Where next ideas) arrive as ?start=&end=&to=.
+                const start = url.searchParams.get('start') || '', end = url.searchParams.get('end') || '', to = url.searchParams.get('to') || '';
+                ['new', 'start', 'end', 'to'].forEach(k => url.searchParams.delete(k));
                 window.history.replaceState({}, '', url.pathname + url.search);
-                setSheet({ kind: 'create', bucket: 'planned' });
+                const iso = /^\d{4}-\d{2}-\d{2}$/;
+                const prefill = {
+                    ...(iso.test(start) ? { startDate: start } : {}), ...(iso.test(end) ? { endDate: end } : {}),
+                    ...(to ? { destination: to.slice(0, 80), name: to.slice(0, 80) } : {}),
+                };
+                setSheet({ kind: 'create', bucket: 'planned', prefill: Object.keys(prefill).length ? prefill : undefined });
             }
         } catch { /* ignore */ }
         const onNew = () => setSheet({ kind: 'create', bucket: 'planned' });
@@ -179,6 +206,16 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
         undo.show(`Duplicated ${trip.name}`, () => attempt(() => data.remove(copy.id)));
     });
     const openTrip = (trip: Trip) => { if (onTripClick) onTripClick(trip.id); };
+
+    const bookingImported = ({ trip, previous, adopted, added }: BookingImportResult) => {
+        void data.reload();
+        const what = `${added} ${added === 1 ? 'booking' : 'bookings'}`;
+        undo.show(previous ? `Added ${what} to ${trip.name}` : `Created ${trip.name} with ${what}`, () => attempt(async () => {
+            if (previous) await dataService.applyBatch({ upsertTrips: [previous], upsertFlights: adopted }, { skipGeocoding: true });
+            else await dataService.applyBatch({ deleteTrips: [trip.id], upsertFlights: adopted });
+            await data.reload();
+        }), { duration: 8000, action: onTripClick ? { label: 'Open', icon: ArrowUpRight, onClick: () => onTripClick(trip.id) } : undefined });
+    };
     const confirmDelete = (trip: Trip) => attempt(async () => {
         await data.remove(trip.id);
         setDeleting(null);
@@ -186,6 +223,17 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
         setDetailsId(null);
     });
 
+    const toggleOffline = async (trip: Trip) => {
+        if (offline.has(trip.id)) { removePack(trip.id); toast.info(`${trip.name} removed from this device`); return; }
+        toast.info(`Saving ${trip.name} for offline...`, { key: 'offline-save', duration: 0 });
+        try {
+            const meta = await savePack(trip);
+            toast.success(meta.tiles ? `${trip.name} saved for offline, with ${meta.tiles} map tiles` : `${trip.name} saved for offline`, { key: 'offline-save' });
+        } catch (e) {
+            toast.dismiss('offline-save');
+            toast.error(errorMessage(e, "Couldn't save it for offline."));
+        }
+    };
     const actions: TripActions = {
         onDetails: (trip, from) => {
             setDetailsOrigin(from ? { x: from.left + from.width / 2, y: from.top + from.height / 2, width: from.width } : null);
@@ -199,6 +247,9 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
         onDuplicate: duplicateTrip,
         onCancel: cancelTrip,
         onDelete: setDeleting,
+        onToggleOffline: offlineOn ? (trip: Trip) => { void toggleOffline(trip); } : undefined,
+        isOffline: (trip: Trip) => offline.has(trip.id),
+        onPlanLeave: leaveOn ? (trip: Trip) => setLeaveTripId(trip.id) : undefined,
     };
 
     const stageItems = (['planned', 'confirmed', 'past'] as TripBucket[]).map(b => ({
@@ -217,6 +268,8 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
         { id: 'list', label: 'List', icon: List as any },
         { id: 'search', label: 'Search trips', icon: MagnifyingGlass as any, action: () => setSearchOpen(o => !o), dividerBefore: true },
         { id: 'new', label: 'New trip', icon: Plus as any, action: () => setSheet({ kind: 'create', bucket: 'planned' }) },
+        ...(offlineOn && offline.packs.length > 0 ? [{ id: 'offline', label: 'Saved for offline', icon: DownloadSimple as any, action: () => setPacksOpen(true) }] : []),
+        ...(isFeatureEnabled('BOOKING_IMPORT') ? [{ id: 'booking', label: 'Import a booking', icon: Envelope as any, action: () => setBookingOpen(true) }] : []),
     ];
 
     const dragEnabled = !mobile && view !== 'list' && scope === 'active';
@@ -225,6 +278,7 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     const sortLabel = SORTS.find(o => o.id === sort)!.label;
 
     return (
+        <LeavePlannerContext.Provider value={leaveOn ? planner : null}>
         <div className="custom-scrollbar h-full overflow-y-auto px-3 pt-2 pb-32 sm:px-6 md:pb-16">
             <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6">
                 <div className="flex flex-wrap items-center justify-between gap-x-3">
@@ -248,7 +302,12 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
 
                 {data.error ? (
                     <div className="rounded-rp-card bg-rp-surface rp-shadow-rest">
-                        <RpEmpty title="Couldn't load your trips" action={<button type="button" className={cn(PILL, 'bg-rp-ink text-rp-on-ink')} onClick={() => void data.reload()}>Try again</button>}>
+                        <RpEmpty title="Couldn't load your trips" action={
+                            <div className="flex flex-wrap items-center justify-center gap-2">
+                                <button type="button" className={cn(PILL, 'bg-rp-ink text-rp-on-ink')} onClick={() => void data.reload()}>Try again</button>
+                                {offlineOn && offline.packs.length > 0 ? <button type="button" className={cn(PILL, 'bg-rp-inset text-rp-ink hover:bg-rp-line')} onClick={() => setPacksOpen(true)}><DownloadSimple size={16} aria-hidden /> Open saved trips</button> : null}
+                            </div>
+                        }>
                             {data.error}
                         </RpEmpty>
                     </div>
@@ -376,9 +435,52 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
                 onOpenTrip={trip => { setDetailsId(null); openTrip(trip); }}
                 onMove={move}
             />
+            {offlineOn ? (
+                <>
+                    <OfflinePacksSheet
+                        open={packsOpen}
+                        onClose={() => setPacksOpen(false)}
+                        packs={offline.packs}
+                        online={online}
+                        canUpdate={id => data.trips.some(t => t.id === id)}
+                        onOpen={id => { setPacksOpen(false); setPackTripId(id); }}
+                        onUpdate={id => attempt(async () => {
+                            const live = data.trips.find(t => t.id === id);
+                            if (!live) return;
+                            refreshPack(live);
+                            toast.success(`${live.name} updated on this device`);
+                        })}
+                        onRemove={id => { removePack(id); toast.info('Removed from this device'); }}
+                    />
+                    <TripDetailsModal
+                        trip={packTripId ? getPack(packTripId)?.trip ?? null : null}
+                        origin={null}
+                        users={data.users}
+                        readOnly
+                        onClose={() => setPackTripId(null)}
+                        onEdit={() => undefined}
+                        onOpenTrip={() => undefined}
+                        onMove={() => undefined}
+                    />
+                </>
+            ) : null}
+            {leaveOn ? (
+                <LeavePlanSheet
+                    trip={leaveTripId ? data.trips.find(t => t.id === leaveTripId) ?? null : null}
+                    planner={planner}
+                    entitlements={data.entitlements}
+                    onClose={() => setLeaveTripId(null)}
+                    onApply={(trip, id) => takeLeave(trip, id, data.entitlements, data.patch, undo)}
+                    onOpenCalendar={() => { setLeaveTripId(null); openPage('/calendar'); }}
+                />
+            ) : null}
+            {isFeatureEnabled('BOOKING_IMPORT') ? (
+                <BookingImportSheet open={bookingOpen} trips={data.trips} brandfetchApiKey={data.brandfetchApiKey} onClose={() => setBookingOpen(false)} onImported={bookingImported} />
+            ) : null}
             <DeleteTripSheet trip={deleting} onClose={() => setDeleting(null)} onConfirm={confirmDelete} />
             {undo.host}
         </div>
+        </LeavePlannerContext.Provider>
     );
 };
 

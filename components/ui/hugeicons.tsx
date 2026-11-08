@@ -51,6 +51,8 @@ import {
   Bus01Icon,
   Calendar03Icon,
   CalendarCheckIn01Icon,
+  PauseIcon,
+  PlayIcon,
   Camera01Icon,
   Cancel01Icon,
   CancelCircleIcon,
@@ -270,6 +272,8 @@ export const Bus = make(Bus01Icon, 'Bus');
 export const Calendar = make(Calendar03Icon, 'Calendar');
 export const CalendarBlank = make(Calendar03Icon, 'CalendarBlank');
 export const CalendarCheck = make(CalendarCheckIn01Icon, 'CalendarCheck');
+export const Pause = make(PauseIcon, 'Pause');
+export const Play = make(PlayIcon, 'Play');
 export const Camera = make(Camera01Icon, 'Camera');
 export const Car = make(Car01Icon, 'Car');
 export const CarProfile = make(Car05Icon, 'CarProfile');

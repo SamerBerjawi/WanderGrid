@@ -31,7 +31,7 @@ import { RpCarrierLogo } from '../CarrierLogos';
  */
 
 /** `step` opens an edit on a given step: 0 Basics, 1 Transport, 2 Stays, 3 Activities. */
-export type TripSheetTarget = { kind: 'create'; bucket: TripBucket } | { kind: 'edit'; trip: Trip; step?: number };
+export type TripSheetTarget = { kind: 'create'; bucket: TripBucket; /** Fields to start with (a suggested break and place). */ prefill?: Partial<Pick<TripDraft, 'name' | 'destination' | 'startDate' | 'endDate'>> } | { kind: 'edit'; trip: Trip; step?: number };
 
 const STATUS_CHOICES: { status: Trip['status']; label: string; icon: Icon; on: string }[] = [
     { status: 'Planning', label: 'Planned', icon: Clock, on: 'bg-rp-mustard text-rp-on-mustard hover:bg-rp-mustard' },
@@ -600,7 +600,7 @@ export const TripSheet: React.FC<{
         setReached(target.kind === 'edit' ? EDIT_STEPS.length - 1 : 0);
         setDraft(target.kind === 'edit'
             ? draftOf(target.trip)
-            : { ...emptyDraft(BUCKET_STATUS[target.bucket]), participants: currentUserId ? [currentUserId] : [] });
+            : { ...emptyDraft(BUCKET_STATUS[target.bucket]), ...target.prefill, participants: currentUserId ? [currentUserId] : [] });
     }, [target, currentUserId]);
 
     if (!target) return <RpSheet open={false} onClose={onClose} title="">{null}</RpSheet>;

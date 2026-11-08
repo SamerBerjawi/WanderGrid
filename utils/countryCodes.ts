@@ -8,6 +8,9 @@ const ALIASES: Record<string, string> = {
     burma: 'MM', 'cape verde': 'CV', swaziland: 'SZ', macedonia: 'MK', palestine: 'PS', 'hong kong': 'HK',
 };
 
+/** Codes the browser still names but that are retired or reserved: they share a name with the real country (FX is "France", DD is "Germany", UK is "United Kingdom"). */
+const RETIRED = new Set(['AN', 'BU', 'CS', 'DD', 'FX', 'NT', 'SU', 'TP', 'UK', 'YD', 'YU', 'ZR']);
+
 let byName: Map<string, string> | null = null;
 
 const build = (): Map<string, string> => {
@@ -19,7 +22,7 @@ const build = (): Map<string, string> => {
             for (let j = 0; j < 26; j++) {
                 const code = String.fromCharCode(A + i, A + j);
                 const name = display.of(code);
-                if (name && name !== code) map.set(name.toLowerCase(), code);
+                if (name && name !== code && !RETIRED.has(code)) map.set(name.toLowerCase(), code);
             }
         }
     } catch { /* Intl.DisplayNames unavailable: only the aliases work */ }

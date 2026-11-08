@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Carrier, Transport } from '../../../types';
+import { programLabel, type WalletCard } from '../../../utils/loyalty';
 import CardFlip from '../../kokonutui/card-flip';
 import { CarrierCell, DelayChip, STATUS_LOOK, StatusPill } from './JourneyParts';
 import { modeLook } from '../trips/transportModes';
@@ -29,7 +30,7 @@ const gate = (terminal?: string, g?: string): React.ReactNode => (terminal || g 
     </span>
 ) : undefined);
 
-export const BoardingPass: React.FC<{ t: Transport; brandfetchApiKey?: string; carriers?: Carrier[]; className?: string }> = ({ t, brandfetchApiKey, carriers, className }) => {
+export const BoardingPass: React.FC<{ t: Transport; brandfetchApiKey?: string; carriers?: Carrier[]; wallet?: WalletCard[]; className?: string }> = ({ t, brandfetchApiKey, carriers, wallet, className }) => {
     const look = modeLook(t.mode);
     const status = journeyStatus(t);
     const fill = STATUS_LOOK[status.state];
@@ -82,6 +83,8 @@ export const BoardingPass: React.FC<{ t: Transport; brandfetchApiKey?: string; c
         ['Cost', t.cost != null ? formatCurrency(t.cost) : undefined],
     ];
     const shown = details.filter(([, v]) => v);
+    // Frequent-flyer numbers of the people on this flight, for the airline it is on.
+    const miles = (wallet || []).map(c => ({ key: `${c.member.id}-${c.program.id}`, who: c.member.name.split(' ')[0], label: programLabel(c.program), number: c.program.number.trim(), tier: c.program.tier?.trim() }));
 
     const back = (
         <div className="flex h-full flex-col gap-3 p-4">
@@ -93,9 +96,20 @@ export const BoardingPass: React.FC<{ t: Transport; brandfetchApiKey?: string; c
                 <dl className="grid grid-cols-3 gap-x-3 gap-y-3">
                     {shown.map(([label, value, icon]) => <Field key={label} label={label} value={value} icon={icon} className={label === 'Confirmation' ? 'col-span-2' : undefined} />)}
                 </dl>
-            ) : (
+            ) : miles.length === 0 ? (
                 <p className="my-auto text-center text-sm text-rp-muted">No booking details yet. Edit the flight to add them.</p>
-            )}
+            ) : null}
+            {miles.length ? (
+                <dl className="mt-auto grid gap-1.5 border-t border-dashed border-rp-line pt-2.5" aria-label="Frequent flyer numbers">
+                    {miles.slice(0, 3).map(m => (
+                        <div key={m.key} className="flex items-baseline justify-between gap-3 text-xs">
+                            <dt className="min-w-0 truncate text-rp-muted">{miles.length > 1 ? `${m.who} · ` : ''}{m.label}{m.tier ? ` · ${m.tier}` : ''}</dt>
+                            <dd className="rp-tabular shrink-0 font-mono font-medium tracking-wide text-rp-ink">{m.number}</dd>
+                        </div>
+                    ))}
+                    {miles.length > 3 ? <p className="text-2xs text-rp-muted">and {miles.length - 3} more</p> : null}
+                </dl>
+            ) : null}
         </div>
     );
 
