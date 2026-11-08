@@ -34,6 +34,9 @@ export const FEATURE_FLAGS = {
   // WP-1.7: "Archived" planner view (Archive no longer deletes trips)
   AUDIT_TRIP_ARCHIVE_VIEW: getEnvFlag('VITE_FF_AUDIT_TRIP_ARCHIVE_VIEW', true),
 
+  // Entry requirements: check each traveller's passport and visas against a trip's destinations (default OFF)
+  ENTRY_REQUIREMENTS: getEnvFlag('VITE_FF_ENTRY_REQUIREMENTS', false),
+
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;
