@@ -68,6 +68,14 @@ CREATE TABLE IF NOT EXISTS cached_routes (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Public trip links (backend_files/sharedTrip.js): one row per shared trip, the token is the only key
+CREATE TABLE IF NOT EXISTS trip_shares (
+  token TEXT PRIMARY KEY CHECK (token <> ''),
+  trip_id TEXT NOT NULL UNIQUE,
+  created_by TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 4. Database Core Performance & Search GIN Indexes
 
 -- 5. Strict Unique Functional User Email Index (Unique user email index)

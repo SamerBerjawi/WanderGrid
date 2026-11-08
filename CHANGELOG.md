@@ -11,6 +11,9 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Added
 
+- Public trip links (behind `PUBLIC_TRIP_LINKS`): Share link on a trip creates a read-only page for family, no account
+  needed, with the map, the plans by day and each flight's status. Costs, booking references, seats and notes are never
+  included, and turning the link off ends it at once.
 - An airport or place sheet draws a vertical Sankey of its routes: arrivals across the top, departures across
   the bottom, each as wide as the number of times you travelled it, with the top 8 per side and a "+N others"
   node. Hover, focus or tap a node to see the count or open the route; the routes list stays below.

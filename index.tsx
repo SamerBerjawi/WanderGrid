@@ -1,8 +1,14 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles.css';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { isFeatureEnabled } from './config/featureFlags';
+import { sharedTokenFrom } from './utils/sharedTrip';
+
+// A public trip link opens on its own page, with no sign-in and none of the app around it.
+const SharedTripPage = lazy(() => import('./views/new/SharedTrip').then(m => ({ default: m.SharedTripPage })));
+const sharedToken = isFeatureEnabled('PUBLIC_TRIP_LINKS') ? sharedTokenFrom(window.location.pathname) : null;
 
 const originalWarn = console.warn;
 console.warn = (...args) => {
@@ -39,7 +45,7 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      {sharedToken ? <Suspense fallback={null}><SharedTripPage token={sharedToken} /></Suspense> : <App />}
     </ErrorBoundary>
   </React.StrictMode>
 );

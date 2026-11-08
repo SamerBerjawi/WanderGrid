@@ -12,6 +12,7 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { fetchUpstream } = require('./upstream');
+const sharedTrip = require('./sharedTrip');
 const { resolveIcaoCallsign } = require('./carrierMapping');
 const { handleRouteProxy, handleRailRouteProxy } = require('./routeProxy');
 const { createRouteService } = require('./routeStore');
@@ -219,8 +220,8 @@ function authenticateToken(req, res, next) {
     
     const fullPath = req.baseUrl + req.path;
     
-    // Bypass authentication for public paths and calendar feeds
-    const isPublic = publicPaths.some(p => fullPath === p) || (fullPath.startsWith('/api/calendar/') && fullPath.endsWith('/feed.ics'));
+    // Bypass authentication for public paths, calendar feeds and public trip links
+    const isPublic = publicPaths.some(p => fullPath === p) || (fullPath.startsWith('/api/calendar/') && fullPath.endsWith('/feed.ics')) || fullPath.startsWith('/api/public/trips/');
     
     if (isPublic) {
         return next();
@@ -517,6 +518,16 @@ const initDb = async (retries = 10, delayMs = 3000) => {
               route_key VARCHAR(255) UNIQUE CHECK (route_key <> ''),
               payload JSONB NOT NULL,
               updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Public trip links: one row per trip that is shared; the token is the only key (sharedTrip.js)
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS trip_shares (
+              token TEXT PRIMARY KEY CHECK (token <> ''),
+              trip_id TEXT NOT NULL UNIQUE,
+              created_by TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
 
@@ -2999,6 +3010,11 @@ app.post('/api/batch', async (req, res) => {
     }
 });
 
+const shareHandlers = sharedTrip.createHandlers({ pool, canWrite: OWNERSHIP.trips.canWrite, sendError });
+app.get('/api/public/trips/:token', shareHandlers.publicTrip);
+app.get('/api/trips/:id/share', shareHandlers.status);
+app.post('/api/trips/:id/share', shareHandlers.create);
+app.delete('/api/trips/:id/share', shareHandlers.revoke);
 app.get('/api/trips', getResources('trips'));
 app.post('/api/trips', createResource('trips'));
 app.post('/api/trips/bulk', async (req, res) => {
