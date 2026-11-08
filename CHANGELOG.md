@@ -11,6 +11,11 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Added
 
+- **Jet lag and time-zone helper** (behind `VITE_FF_JET_LAG_HELPER`, off by default): a journey's sheet now shows how far ahead
+  or behind the destination is, the time there now, and when it lands on both clocks. A flight gets a **Jet lag** section
+  with a sleep and light plan for the days after: when to start shifting, when to sleep on the flight, what to do on
+  landing for the hour you arrive, which hours to seek and avoid light, and about how many days it takes to catch up. It
+  follows daylight saving, so a crossing when the US and Europe are on different clocks shows the real gap.
 - **Where next ideas** (behind `VITE_FF_WHERE_NEXT_IDEAS`, off by default): the Dashboard's Where next widget can show your
   coming days off, each with a wishlist place that is worth the trip in that time: three days off suggest somewhere
   within a couple of hours' flight, a long break somewhere farther. Long weekends come from your public holidays (or a

@@ -552,7 +552,7 @@ export const fromLog = (items: JourneyRecord[], flightNumber: string): Transport
     return same[0] ?? null;
 };
 
-const zoneOf = (iata: string): string | undefined => getAirportTimezone(iata.trim().toUpperCase()) || getCoordinatesSync(iata)?.tz || knownZone(iata);
+export const zoneOf = (iata: string): string | undefined => getAirportTimezone(iata.trim().toUpperCase()) || getCoordinatesSync(iata)?.tz || knownZone(iata);
 
 /**
  * Local arrival date and time at the destination for a flight that leaves at a local time and takes
