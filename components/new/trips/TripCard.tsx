@@ -7,7 +7,7 @@ import { formatDateRange } from '../../../utils/formatters';
 import { useLeavePlannerContext } from '../../../hooks/useLeavePlanner';
 import { bucketOf, destinationLabel, isTravelling, timingOf, tripDays, tripNeeds, type TripBucket } from '../../../utils/tripsModel';
 import {
-    Airplane, Archive, ArrowCounterClockwise, ArrowUpRight, Bed, CalendarBlank, CalendarCheck, CheckCircle, Clock, Copy, PencilSimple, Suitcase, Trash, XCircle, type Icon,
+    Airplane, Archive, ArrowCounterClockwise, ArrowUpRight, Bed, CalendarBlank, CalendarCheck, CheckCircle, Clock, Copy, DownloadSimple, PencilSimple, Suitcase, Trash, XCircle, type Icon,
 } from '../../ui/hugeicons';
 import { RpHugeicon } from '../RpHugeicon';
 import { calendarService } from '../../../services/calendarExport';
@@ -73,6 +73,9 @@ export interface TripActions {
     onDuplicate: (trip: Trip) => void;
     onCancel: (trip: Trip) => void;
     onDelete: (trip: Trip) => void;
+    /** Keeps the trip on this device to read offline, or removes the copy (off unless offline packs is on). */
+    onToggleOffline?: (trip: Trip) => void;
+    isOffline?: (trip: Trip) => boolean;
     /** Opens the leave planner for the trip (off unless the leave planner flag is on). */
     onPlanLeave?: (trip: Trip) => void;
 }
@@ -84,6 +87,9 @@ export const tripMenuItems = (trip: Trip, bucket: TripBucket, actions: TripActio
         { id: 'open', label: 'Open trip', icon: ArrowUpRight, onSelect: () => actions.onOpenTrip(trip) },
     ];
     items.push({ id: 'duplicate', label: 'Duplicate', icon: Copy, onSelect: () => actions.onDuplicate(trip) });
+    if (actions.onToggleOffline && bucket !== 'past' && trip.status !== 'Cancelled' && !trip.archived) {
+        items.push({ id: 'offline', label: actions.isOffline?.(trip) ? 'Remove offline copy' : 'Save for offline', icon: DownloadSimple, onSelect: () => actions.onToggleOffline!(trip) });
+    }
     if (actions.onPlanLeave && bucket !== 'past' && trip.status !== 'Cancelled' && !trip.archived) {
         items.push({ id: 'leave', label: 'Plan leave', icon: CalendarCheck, onSelect: () => actions.onPlanLeave!(trip) });
     }

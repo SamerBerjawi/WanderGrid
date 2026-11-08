@@ -435,7 +435,8 @@ export default defineConfig(({ mode }) => {
                 handler: 'StaleWhileRevalidate',
                 options: {
                   cacheName: 'openfreemap-tiles',
-                  expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 14 },
+                  // Room for the tiles of several saved offline trips (utils/offlinePack.ts keeps up to 300 each).
+                  expiration: { maxEntries: 2500, maxAgeSeconds: 60 * 60 * 24 * 60 },
                   cacheableResponse: {
                     statuses: [0, 200],
                   },

@@ -20,6 +20,8 @@ import { TripMenu } from '../../components/new/trips/TripMenu';
 import { BUCKET_LABEL, tripMenuItems, type TripActions } from '../../components/new/trips/TripCard';
 import { MODE_ICON, SKINS, STEPS, initials, nextMove } from '../../components/new/trips/TripDetailsModal';
 import { DeleteTripSheet, TripSheet, type TripSheetTarget } from '../../components/new/trips/TripSheets';
+import { useOfflinePacks } from '../../hooks/useOfflinePacks';
+import { removePack, savePack } from '../../services/offlinePack';
 import { DocumentsSheet } from '../../components/new/trip/DocumentsSheet';
 import { checkTrip, summarise, tripCountries } from '../../utils/entryCheck';
 import { TripCanvas } from '../../components/new/trip/TripCanvas';
@@ -28,7 +30,7 @@ import { RoutePlanner } from '../../components/new/trip/RoutePlanner';
 import { WeatherChip } from '../../components/new/WeatherChip';
 import { ExpensesPanel } from '../../components/new/trip/ExpensesPanel';
 import { BookingsPanel, CostsPanel, GearPanel, ItineraryPanel, NotesPanel, type EditStep } from '../../components/new/trip/TripPanels';
-import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, CalendarCheck, FileText, IdentificationCard, Kanban, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket, type Icon } from '../../components/ui/hugeicons';
+import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, CalendarCheck, DownloadSimple, FileText, IdentificationCard, Kanban, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket, type Icon } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -77,6 +79,8 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
     const [tab, setTab] = useState<TabId>(readTab);
     const [sheet, setSheet] = useState<TripSheetTarget | null>(null);
     const [deleting, setDeleting] = useState<Trip | null>(null);
+    const offlineOn = isFeatureEnabled('OFFLINE_PACKS');
+    const offline = useOfflinePacks();
     const leaveOn = isFeatureEnabled('LEAVE_PLANNER');
     const planner = useLeavePlanner(data.trips, data.users, data.entitlements, leaveOn);
     const [leaveOpen, setLeaveOpen] = useState(false);
@@ -167,6 +171,15 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
             undo.show(`Cancelled ${t.name}`, () => attempt(async () => { if (previous) await data.setStatus(t.id, previous); }));
         }),
         onDelete: setDeleting,
+        onToggleOffline: offlineOn ? (t: Trip) => attempt(async () => {
+            if (offline.has(t.id)) { removePack(t.id); toast.info(`${t.name} removed from this device`); return; }
+            toast.info(`Saving ${t.name} for offline...`, { key: 'offline-save', duration: 0 });
+            try {
+                const meta = await savePack(t);
+                toast.success(meta.tiles ? `${t.name} saved for offline, with ${meta.tiles} map tiles` : `${t.name} saved for offline`, { key: 'offline-save' });
+            } catch (e) { toast.dismiss('offline-save'); throw e; }
+        }) : undefined,
+        isOffline: (t: Trip) => offline.has(t.id),
         onPlanLeave: leaveOn ? () => setLeaveOpen(true) : undefined,
     };
     // "Open trip" would reopen this page, so it is not in this menu.
@@ -279,6 +292,9 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                             ))}
                         </ol>
 
+                        {offlineOn && offline.has(trip.id) ? (
+                            <p className={cn('mt-3 inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium', skin.panel)}><DownloadSimple size={14} aria-hidden /> Saved for offline</p>
+                        ) : null}
                         {leaveOn && bucket !== 'past' && planner.noteFor(trip) ? (() => {
                             const note = planner.noteFor(trip)!;
                             return (
