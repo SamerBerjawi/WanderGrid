@@ -34,6 +34,9 @@ export const FEATURE_FLAGS = {
   // WP-1.7: "Archived" planner view (Archive no longer deletes trips)
   AUDIT_TRIP_ARCHIVE_VIEW: getEnvFlag('VITE_FF_AUDIT_TRIP_ARCHIVE_VIEW', true),
 
+  // Offline trip packs: keep a trip, its bookings and its map area on the device to read without a connection (default OFF)
+  OFFLINE_PACKS: getEnvFlag('VITE_FF_OFFLINE_PACKS', false),
+
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;

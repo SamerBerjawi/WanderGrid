@@ -85,12 +85,13 @@ const Section: React.FC<{ title: string; icon: Icon; count: number; skin: Skin; 
     </section>
 );
 
-const Row: React.FC<{ logo: React.ReactNode; title: string; meta: string; cost?: string; skin: Skin }> = ({ logo, title, meta, cost, skin }) => (
+const Row: React.FC<{ logo: React.ReactNode; title: string; meta: string; cost?: string; skin: Skin; /** A second, wrapping line: booking reference, seat, address (an offline copy shows these). */ detail?: string }> = ({ logo, title, meta, cost, skin, detail }) => (
     <li className={cn('grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3 border-t py-2.5 first:border-t-0', skin.line)}>
         {logo}
         <span className="min-w-0">
             <span className="block truncate text-sm font-medium">{title}</span>
             {meta ? <span className={cn('block truncate text-xs', skin.muted)}>{meta}</span> : null}
+            {detail ? <span className="rp-tabular mt-0.5 block text-xs font-medium">{detail}</span> : null}
         </span>
         <span className="rp-tabular text-right text-sm font-medium">{cost ?? ''}</span>
     </li>
@@ -105,7 +106,10 @@ const Body: React.FC<{
     onOpenTrip: (trip: Trip) => void;
     onMove: (trip: Trip, bucket: TripBucket) => void;
     titleId: string;
-}> = ({ trip, users, brandfetchApiKey, onClose, onEdit, onOpenTrip, onMove, titleId }) => {
+    /** A saved offline copy: everything is listed (no "+N more" that leads to the trip page) and there is nothing to edit or move. */
+    readOnly?: boolean;
+}> = ({ trip, users, brandfetchApiKey, onClose, onEdit, onOpenTrip, onMove, titleId, readOnly }) => {
+    const show = readOnly ? Number.POSITIVE_INFINITY : SHOW;
     const today = todayISO();
     const bucket = bucketOf(trip, today);
     const now = isTravelling(trip, today);
@@ -138,7 +142,7 @@ const Body: React.FC<{
                     {trip.startDate ? formatDateRange(trip.startDate, trip.endDate || trip.startDate) : 'No dates yet'}
                 </p>
                 <div className="flex shrink-0 gap-2">
-                    <button type="button" aria-label={`Edit ${trip.name}`} onClick={() => onEdit(trip)} className={circleBtn}><PencilSimple size={18} aria-hidden /></button>
+                    {readOnly ? null : <button type="button" aria-label={`Edit ${trip.name}`} onClick={() => onEdit(trip)} className={circleBtn}><PencilSimple size={18} aria-hidden /></button>}
                     <button type="button" aria-label="Close" onClick={onClose} className={circleBtn}><X size={18} aria-hidden /></button>
                 </div>
             </div>
@@ -202,17 +206,17 @@ const Body: React.FC<{
                 <section className="flex flex-col gap-2">
                     <h3 className={cn('flex items-center gap-1.5 px-0.5 text-xs font-medium', skin.muted)}><MapPin size={14} aria-hidden /> Cities <span className="rp-tabular opacity-80">{data.cities.length}</span></h3>
                     <ul className="flex flex-wrap gap-2">
-                        {data.cities.slice(0, SHOW).map(c => <li key={c} className={cn('inline-flex min-h-8 items-center rounded-full px-3 text-xs font-medium', skin.panel)}>{c}</li>)}
-                        {data.cities.length > SHOW ? (
-                            <li><button type="button" onClick={() => onOpenTrip(trip)} className={cn('inline-flex min-h-8 items-center rounded-full px-3 text-xs font-medium', skin.panel)}>+{data.cities.length - SHOW}</button></li>
+                        {data.cities.slice(0, show).map(c => <li key={c} className={cn('inline-flex min-h-8 items-center rounded-full px-3 text-xs font-medium', skin.panel)}>{c}</li>)}
+                        {data.cities.length > show ? (
+                            <li><button type="button" onClick={() => onOpenTrip(trip)} className={cn('inline-flex min-h-8 items-center rounded-full px-3 text-xs font-medium', skin.panel)}>+{data.cities.length - show}</button></li>
                         ) : null}
                     </ul>
                 </section>
             ) : null}
 
             {data.transports.length > 0 ? (
-                <Section title="Transport" icon={Airplane} count={data.transports.length} skin={skin} more={data.transports.length - SHOW} onMore={() => onOpenTrip(trip)}>
-                    {data.transports.slice(0, SHOW).map(t => {
+                <Section title="Transport" icon={Airplane} count={data.transports.length} skin={skin} more={data.transports.length - show} onMore={() => onOpenTrip(trip)}>
+                    {data.transports.slice(0, show).map(t => {
                         const Mode = MODE_ICON[t.mode] || Airplane;
                         return (
                             <Row
@@ -221,6 +225,7 @@ const Body: React.FC<{
                                 logo={<RpCarrierLogo provider={t.provider} identifier={t.identifier} src={t.logoUrl} fallback={Mode} iconClassName={modeLook(t.mode).text} />}
                                 title={`${t.origin} → ${t.destination}`}
                                 meta={[t.provider, t.identifier, when(t.departureDate, t.departureTime)].filter(Boolean).join(' · ')}
+                                detail={readOnly ? [t.confirmationCode && `Booking ${t.confirmationCode}`, t.seatNumber && `Seat ${t.seatNumber}`, t.departureTerminal && `Terminal ${t.departureTerminal}`, t.departureGate && `Gate ${t.departureGate}`, t.travelClass].filter(Boolean).join(' · ') : undefined}
                                 cost={money(t.cost)}
                             />
                         );
@@ -229,14 +234,15 @@ const Body: React.FC<{
             ) : null}
 
             {data.stays.length > 0 ? (
-                <Section title="Stays" icon={Bed} count={data.stays.length} skin={skin} more={data.stays.length - SHOW} onMore={() => onOpenTrip(trip)}>
-                    {data.stays.slice(0, SHOW).map(a => (
+                <Section title="Stays" icon={Bed} count={data.stays.length} skin={skin} more={data.stays.length - show} onMore={() => onOpenTrip(trip)}>
+                    {data.stays.slice(0, show).map(a => (
                         <Row
                             key={a.id}
                             skin={skin}
                             logo={<RpLogo name={a.name} src={a.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={stayIcon(a.type)} iconClassName={STAY_ACCENT} />}
                             title={a.name}
                             meta={[a.checkInDate && a.checkOutDate ? `${formatDate(a.checkInDate, 'short')} – ${formatDate(a.checkOutDate, 'short')}` : '', nights(a.checkInDate, a.checkOutDate)].filter(Boolean).join(' · ')}
+                            detail={readOnly ? [a.confirmationCode && `Booking ${a.confirmationCode}`, a.checkInTime && `Check-in ${a.checkInTime}`, a.address].filter(Boolean).join(' · ') : undefined}
                             cost={money(a.cost)}
                         />
                     ))}
@@ -244,8 +250,8 @@ const Body: React.FC<{
             ) : null}
 
             {data.activities.length > 0 ? (
-                <Section title="Activities" icon={CalendarBlank} count={data.activities.length} skin={skin} more={data.activities.length - SHOW} onMore={() => onOpenTrip(trip)}>
-                    {data.activities.slice(0, SHOW).map(a => (
+                <Section title="Activities" icon={CalendarBlank} count={data.activities.length} skin={skin} more={data.activities.length - show} onMore={() => onOpenTrip(trip)}>
+                    {data.activities.slice(0, show).map(a => (
                         <Row
                             key={a.id}
                             skin={skin}
@@ -258,7 +264,7 @@ const Body: React.FC<{
                 </Section>
             ) : null}
 
-            <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+            {readOnly ? null : <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
                 <button type="button" onClick={() => onOpenTrip(trip)} className={cn(pill, 'border', skin.outline)}>
                     Open trip <ArrowUpRight size={16} aria-hidden />
                 </button>
@@ -271,7 +277,7 @@ const Body: React.FC<{
                         Edit trip <PencilSimple size={16} aria-hidden />
                     </button>
                 )}
-            </div>
+            </div>}
         </div>
     );
 };
@@ -289,7 +295,9 @@ export const TripDetailsModal: React.FC<{
     onEdit: (trip: Trip) => void;
     onOpenTrip: (trip: Trip) => void;
     onMove: (trip: Trip, bucket: TripBucket) => void;
-}> = ({ trip, origin, users, brandfetchApiKey, onClose, onEdit, onOpenTrip, onMove }) => {
+    /** Shows a saved offline copy: all of it, with nothing to edit or move. */
+    readOnly?: boolean;
+}> = ({ trip, origin, users, brandfetchApiKey, onClose, onEdit, onOpenTrip, onMove, readOnly }) => {
     const mobile = useIsMobile();
     const reduce = useReducedMotion();
     const panelRef = useRef<HTMLDivElement>(null);
@@ -325,7 +333,7 @@ export const TripDetailsModal: React.FC<{
                         <Drawer.Title className="sr-only">{trip?.name ?? 'Trip'}</Drawer.Title>
                         <div className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-current opacity-25" aria-hidden />
                         <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-5 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]" data-vaul-no-drag>
-                            {trip ? <Body trip={trip} users={users} brandfetchApiKey={brandfetchApiKey} onClose={onClose} onEdit={onEdit} onOpenTrip={onOpenTrip} onMove={onMove} titleId={titleId} /> : null}
+                            {trip ? <Body trip={trip} users={users} brandfetchApiKey={brandfetchApiKey} onClose={onClose} onEdit={onEdit} onOpenTrip={onOpenTrip} onMove={onMove} titleId={titleId} readOnly={readOnly} /> : null}
                         </div>
                     </Drawer.Content>
                 </Drawer.Portal>
@@ -369,7 +377,7 @@ export const TripDetailsModal: React.FC<{
                         transition={{ type: 'spring', duration: 0.5, bounce: 0.05 }}
                         className={cn('custom-scrollbar relative max-h-[90dvh] w-full max-w-[560px] overflow-y-auto rounded-rp-card p-6 outline-none rp-shadow-float sm:p-8', skin.card)}
                     >
-                        <Body trip={trip} users={users} brandfetchApiKey={brandfetchApiKey} onClose={onClose} onEdit={onEdit} onOpenTrip={onOpenTrip} onMove={onMove} titleId={titleId} />
+                        <Body trip={trip} users={users} brandfetchApiKey={brandfetchApiKey} onClose={onClose} onEdit={onEdit} onOpenTrip={onOpenTrip} onMove={onMove} titleId={titleId} readOnly={readOnly} />
                     </motion.div>
                 </div>
             ) : null}

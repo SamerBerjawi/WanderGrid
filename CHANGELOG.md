@@ -11,6 +11,12 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Added
 
+- **Offline trip packs** (behind `VITE_FF_OFFLINE_PACKS`, off by default): **Save for offline** in a trip's menu keeps the
+  trip on your device: its dates, every leg with its booking reference, seat, terminal and gate, your stays with their
+  references and addresses, activities and notes, and the map tiles of the area, fetched ahead. A saved trip opens
+  without a connection from the **Saved for offline** tool (or from "Open saved trips" when the trips fail to load),
+  follows the trip when it changes while you are online, and is removed from the same place. The map tile cache holds
+  up to 2,500 tiles for 60 days, enough for several trips.
 - An airport or place sheet draws a vertical Sankey of its routes: arrivals across the top, departures across
   the bottom, each as wide as the number of times you travelled it, with the top 8 per side and a "+N others"
   node. Hover, focus or tap a node to see the count or open the route; the routes list stays below.
