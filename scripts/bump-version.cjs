@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // The release line (major.minor). Change it here when a new minor or major version starts; the counter resets.
-const RELEASE_LINE = '1.1';
+const RELEASE_LINE = '1.2';
 
 const versionFilePath = path.join(__dirname, '..', 'version.ts');
 const packageFilePath = path.join(__dirname, '..', 'package.json');
