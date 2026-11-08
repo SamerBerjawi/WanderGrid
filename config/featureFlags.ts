@@ -34,6 +34,9 @@ export const FEATURE_FLAGS = {
   // WP-1.7: "Archived" planner view (Archive no longer deletes trips)
   AUDIT_TRIP_ARCHIVE_VIEW: getEnvFlag('VITE_FF_AUDIT_TRIP_ARCHIVE_VIEW', true),
 
+  // Achievements: stamps earned by how you travel, in the Atlas (default OFF)
+  ATLAS_ACHIEVEMENTS: getEnvFlag('VITE_FF_ATLAS_ACHIEVEMENTS', false),
+
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;
