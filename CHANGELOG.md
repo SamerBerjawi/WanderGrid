@@ -2,16 +2,16 @@
 
 All notable changes to WanderGrid are listed here, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow the tags in this repository
-(v0.1 to v0.5, then 1.0.0 and 1.1.0).
+(v0.1 to v0.5, then 1.0.0, 1.1.0 and 1.2.0).
 
-## [1.1.0] - Unreleased
+## [1.2.0] - 2026-11-08
 
-The first update after the redesign: fixes found while using 1.0, a Sankey chart for airports and a much more
-detailed calendar feed. The release line is also what the app shows in its build number now (`v1.1-YYMMDD.N`).
+Twelve new features for planning, travelling and sharing a trip. Each one is behind its own `VITE_FF_*` flag and is
+off by default, so nothing changes until you turn it on. The build number now reads `v1.2-YYMMDD.N`.
 
 ### Added
 
-- Public trip links (behind `PUBLIC_TRIP_LINKS`): Share link on a trip creates a read-only page for family, no account
+- Public trip links (behind `VITE_FF_PUBLIC_TRIP_LINKS`, off by default): Share link on a trip creates a read-only page for family, no account
   needed, with the map, the plans by day and each flight's status. Costs, booking references, seats and notes are never
   included, and turning the link off ends it at once.
 - **Route replay on the Map** (behind `VITE_FF_MAP_REPLAY`, off by default): a clock tool on the Map's dock plays your
@@ -24,7 +24,7 @@ detailed calendar feed. The release line is also what the app shows in its build
   without a connection from the **Saved for offline** tool (or from "Open saved trips" when the trips fail to load),
   follows the trip when it changes while you are online, and is removed from the same place. The map tile cache holds
   up to 2,500 tiles for 60 days, enough for several trips.
-- Loyalty wallet (behind `LOYALTY_WALLET`): add frequent-flyer and hotel numbers to a member under Documents. They appear
+- Loyalty wallet (behind `VITE_FF_LOYALTY_WALLET`, off by default): add frequent-flyer and hotel numbers to a member under Documents. They appear
   on the back of the matching airline's boarding pass and on the trip's bookings and stays. Set your own status levels
   to see how far this year's flights are towards the next one.
 - **Leave meets trips** (behind `VITE_FF_LEAVE_PLANNER`, off by default): a trip now shows what it costs in leave
@@ -55,8 +55,6 @@ detailed calendar feed. The release line is also what the app shows in its build
   eTA, eVisitor, NZeTA, an e-Visa or a visa). The **Documents** sheet lists it per traveller and country and sends you to
   the passport details to fix what is missing. The visa table is a small starter set for common passports and destinations,
   dated, and says to confirm with the official site.
-- Fixed: a country typed as "France" was read as the retired code FX (and "Germany" would have been DD, "United Kingdom"
-  UK) wherever a country name is turned into a code.
 - **Achievements in the Atlas** (behind `VITE_FF_ATLAS_ACHIEVEMENTS`, off by default): a trophy tool opens the stamps you
   have earned, in the look of a passport page, each with levels: continents, countries, trips, nights away, a run of
   months with a trip, distance (laps round the Earth), your longest flight, aircraft types, airlines, the 25 busiest
@@ -73,6 +71,25 @@ detailed calendar feed. The release line is also what the app shows in its build
   after the destination. It reads the schema.org booking data most airlines, rail operators and hotels put in their
   emails, and otherwise finds flight segments and check-in/check-out dates in the text. Items already in the trip
   are skipped; a flight already in the log as an independent flight moves into the trip. Undo takes it all back.
+
+### Fixed
+
+- A country typed as "France" was read as the retired code FX (and "Germany" would have been DD, "United Kingdom"
+  UK) wherever a country name is turned into a code.
+
+### Upgrading from 1.1
+
+- No action is needed. The server creates the new `trip_shares` table (public trip links) when it starts, and `GET
+  /api/proxy/fx/:date` (trip expenses) and `GET /api/public/trips/:token` (public trip links) are new routes.
+- Turn a feature on by setting its flag, for example `VITE_FF_TRIP_EXPENSES=true`, when building the app.
+
+## [1.1.0] - 2026-10-25
+
+The first update after the redesign: fixes found while using 1.0, a Sankey chart for airports and a much more
+detailed calendar feed. The release line is also what the app shows in its build number now (`v1.1-YYMMDD.N`).
+
+### Added
+
 - An airport or place sheet draws a vertical Sankey of its routes: arrivals across the top, departures across
   the bottom, each as wide as the number of times you travelled it, with the top 8 per side and a "+N others"
   node. Hover, focus or tap a node to see the count or open the route; the routes list stays below.
