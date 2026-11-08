@@ -34,6 +34,9 @@ export const FEATURE_FLAGS = {
   // WP-1.7: "Archived" planner view (Archive no longer deletes trips)
   AUDIT_TRIP_ARCHIVE_VIEW: getEnvFlag('VITE_FF_AUDIT_TRIP_ARCHIVE_VIEW', true),
 
+  // Jet lag helper: the time shift, a sleep and light plan, and local-time chips on a flight's sheet (default OFF)
+  JET_LAG_HELPER: getEnvFlag('VITE_FF_JET_LAG_HELPER', false),
+
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;

@@ -11,6 +11,11 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Added
 
+- **Jet lag and time-zone helper** (behind `VITE_FF_JET_LAG_HELPER`, off by default): a journey's sheet now shows how far ahead
+  or behind the destination is, the time there now, and when it lands on both clocks. A flight gets a **Jet lag** section
+  with a sleep and light plan for the days after: when to start shifting, when to sleep on the flight, what to do on
+  landing for the hour you arrive, which hours to seek and avoid light, and about how many days it takes to catch up. It
+  follows daylight saving, so a crossing when the US and Europe are on different clocks shows the real gap.
 - An airport or place sheet draws a vertical Sankey of its routes: arrivals across the top, departures across
   the bottom, each as wide as the number of times you travelled it, with the top 8 per side and a "+N others"
   node. Hover, focus or tap a node to see the count or open the route; the routes list stays below.
