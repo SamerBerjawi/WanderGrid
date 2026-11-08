@@ -11,6 +11,10 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Added
 
+- **Route replay on the Map** (behind `VITE_FF_MAP_REPLAY`, off by default): a clock tool on the Map's dock plays your
+  past journeys back in the order you made them, from your first route to your latest, with the newest strongest and
+  the date, route count and distance so far. Play, pause and scrub, at 1x, 2x or 4x; it follows the map's filters,
+  so you can replay a single year. A long history still takes about twenty seconds.
 - An airport or place sheet draws a vertical Sankey of its routes: arrivals across the top, departures across
   the bottom, each as wide as the number of times you travelled it, with the top 8 per side and a "+N others"
   node. Hover, focus or tap a node to see the count or open the route; the routes list stays below.

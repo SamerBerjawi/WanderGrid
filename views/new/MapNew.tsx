@@ -5,7 +5,7 @@ import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import ActionSearchBar, { type CommandItem } from '../../components/kokonutui/command-palette';
 import {
     Airplane, ArrowExpand, ArrowShrink, CornersOut, Funnel, Globe, GlobeHemisphereWest, MapPin, MapTrifold, Maping, MagnifyingGlass, MountainSnow, Path, Settings04,
-    Minus, NavigationArrow, Plus, Suitcase,
+    Minus, NavigationArrow, Plus, Suitcase, ClockCounterClockwise,
 } from '../../components/ui/hugeicons';
 import { useExpeditionMapData } from '../../hooks/useExpeditionMapData';
 import { dataService } from '../../services/mockDb';
@@ -18,6 +18,10 @@ import { RpMapCanvas, type RpMapHandle, type RpMapHover } from '../../components
 import { buildMapModel, type MapRoute } from '../../components/new/map/mapModel';
 import { MapSettingsSheet } from '../../components/new/map/MapSettingsSheet';
 import { MapFilterSheet } from '../../components/new/map/MapFilterSheet';
+import { ReplayBar } from '../../components/new/map/ReplayBar';
+import { useMapReplay } from '../../hooks/useMapReplay';
+import { replaySteps, revealRoutes } from '../../utils/mapReplay';
+import { isFeatureEnabled } from '../../config/featureFlags';
 import { MapDetailSheet, type MapSelection } from '../../components/new/map/MapDetailSheet';
 import { RpEmpty, useIsMobile } from '../../components/new/ui';
 import { cn } from '../../utils/cn';
@@ -110,6 +114,14 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
     const changeGroup = (v: boolean) => { setGroupAirports(v); writeLocal(GROUP_KEY, v); };
 
     const model = useMemo(() => buildMapModel(data.filteredTrips, { mode, groupAirports, scratchRoutes: appearance.scratchRoutes }), [data.filteredTrips, mode, groupAirports, appearance.scratchRoutes]);
+    // Route replay: the model grows from your first route to your latest while a replay is open.
+    const replayEnabled = isFeatureEnabled('MAP_REPLAY');
+    const steps = useMemo(() => (replayEnabled ? replaySteps(model.routes) : []), [replayEnabled, model.routes]);
+    const [replayOpen, setReplayOpen] = useState(false);
+    const replay = useMapReplay(steps.length, replayOpen && steps.length > 0);
+    const revealed = useMemo(() => (replayOpen && steps.length > 0 ? revealRoutes(model, steps, replay.index) : null), [replayOpen, steps, model, replay.index]);
+    const canvasModel = revealed?.model ?? model;
+    useEffect(() => { if (replayOpen && steps.length === 0) setReplayOpen(false); }, [replayOpen, steps.length]);
     const openAipAvailable = Boolean(settings?.openAipApiKey || settings?.configuredKeys?.openAipApiKey);
     const metrics = data.expeditionTypeMetrics;
 
@@ -197,11 +209,15 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
             { id: 'layers', label: 'Map settings', icon: Settings04 as any, shortcut: 'L' },
             { id: 'filter', label: data.activeFilterCount ? `Filter (${data.activeFilterCount})` : 'Filter', icon: Funnel as any, shortcut: 'F' },
         ];
+        const replayTool: DockTool[] = replayEnabled && steps.length > 0
+            ? [{ id: 'replay', label: replayOpen ? 'Close replay' : 'Replay your travels', icon: ClockCounterClockwise as any, action: () => { setReplayOpen(o => !o); setSelection(null); }, dividerBefore: true }]
+            : [];
         const fit: DockTool = { id: 'fit', label: 'Fit all', icon: CornersOut as any, action: () => mapRef.current?.fitAll(), dividerBefore: true };
-        if (mobile) return [...panels, fit];
+        if (mobile) return [...panels, ...replayTool, { ...fit, dividerBefore: replayTool.length === 0 }];
         return [
             ...panels,
-            fit,
+            ...replayTool,
+            { ...fit, dividerBefore: replayTool.length === 0 },
             { id: 'zoom-in', label: 'Zoom in', icon: Plus as any, action: () => mapRef.current?.zoomIn() },
             { id: 'zoom-out', label: 'Zoom out', icon: Minus as any, action: () => mapRef.current?.zoomOut() },
             {
@@ -212,7 +228,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
             },
             { id: 'fullscreen', label: fullscreen ? 'Exit full screen' : 'Full screen', icon: (fullscreen ? ArrowShrink : ArrowExpand) as any, action: toggleFullscreen },
         ];
-    }, [mobile, appearance.projection, fullscreen, data.activeFilterCount, updateAppearance]);
+    }, [mobile, appearance.projection, fullscreen, data.activeFilterCount, updateAppearance, replayEnabled, replayOpen, steps.length]);
 
     /* -------------------------------------------------- search */
 
@@ -283,7 +299,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
             <RpMapCanvas
                 ref={mapRef}
                 className="absolute inset-0"
-                model={model}
+                model={canvasModel}
                 mode={mode}
                 appearance={appearance}
                 isDark={isDark}
@@ -298,7 +314,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                 onPlaceClick={place => select({ kind: 'place', place })}
                 onCountryClick={(code, name) => select({ kind: 'country', code, name })}
                 onHover={mobile ? undefined : setHover}
-                highlightRouteIds={highlightRouteIds}
+                highlightRouteIds={revealed ? revealed.latest : highlightRouteIds}
                 onBasemapFallback={() => setFallbackNotice("That basemap isn't loading, so a backup map is showing.")}
             />
 
@@ -326,6 +342,23 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                     mobile ? 'bottom-[calc(88px+env(safe-area-inset-bottom,0px))]' : 'bottom-4'
                 )}
             >
+                    {revealed ? (
+                        <ReplayBar
+                            steps={steps}
+                            index={replay.index}
+                            playing={replay.playing}
+                            finished={replay.finished}
+                            speed={replay.speed}
+                            date={revealed.date}
+                            routes={revealed.model.totals.routes}
+                            distanceKm={revealed.model.totals.distanceKm}
+                            onPlay={replay.play}
+                            onPause={replay.pause}
+                            onScrub={replay.scrub}
+                            onSpeed={replay.setSpeed}
+                            onClose={() => setReplayOpen(false)}
+                        />
+                    ) : (
                     <div className="pointer-events-auto max-w-full">
                         <SwipeTabs
                             items={modeItems}
@@ -339,6 +372,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                             activeTextColor={MODE_PILL[mode].text}
                         />
                     </div>
+                    )}
             </div>
 
             {/* The tool dock: left edge on tablet and desktop; on phones, in the header row beside the theme toggle and avatar */}
