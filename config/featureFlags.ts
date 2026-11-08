@@ -36,6 +36,14 @@ export const FEATURE_FLAGS = {
 
   // Trip expenses: a ledger of what was spent on a trip, in any currency at the day's rate, with who owes whom (default OFF)
   TRIP_EXPENSES: getEnvFlag('VITE_FF_TRIP_EXPENSES', false),
+  // Entry requirements: check each traveller's passport and visas against a trip's destinations (default OFF)
+  ENTRY_REQUIREMENTS: getEnvFlag('VITE_FF_ENTRY_REQUIREMENTS', false),
+  // Achievements: stamps earned by how you travel, in the Atlas (default OFF)
+  ATLAS_ACHIEVEMENTS: getEnvFlag('VITE_FF_ATLAS_ACHIEVEMENTS', false),
+  // Year in review: a swipeable story of a year of travel, opened from the Dashboard (default OFF)
+  YEAR_IN_REVIEW: getEnvFlag('VITE_FF_YEAR_IN_REVIEW', false),
+  // Import a booking: read flights, trains, car hire, stays and reservations from a confirmation email (default OFF)
+  BOOKING_IMPORT: getEnvFlag('VITE_FF_BOOKING_IMPORT', false),
 
 } as const;
 
