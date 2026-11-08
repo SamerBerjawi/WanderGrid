@@ -36,6 +36,8 @@ export const FEATURE_FLAGS = {
 
   // Year in review: a swipeable story of a year of travel, opened from the Dashboard (default OFF)
   YEAR_IN_REVIEW: getEnvFlag('VITE_FF_YEAR_IN_REVIEW', false),
+  // Import a booking: read flights, trains, car hire, stays and reservations from a confirmation email (default OFF)
+  BOOKING_IMPORT: getEnvFlag('VITE_FF_BOOKING_IMPORT', false),
 
 } as const;
 
