@@ -21,6 +21,8 @@ import { TripCanvas } from '../../components/new/trip/TripCanvas';
 const TripHeroMap = lazy(() => import('../../components/new/trip/TripMapPanel'));
 import { RoutePlanner } from '../../components/new/trip/RoutePlanner';
 import { WeatherChip } from '../../components/new/WeatherChip';
+import { ExpensesPanel } from '../../components/new/trip/ExpensesPanel';
+import { isFeatureEnabled } from '../../config/featureFlags';
 import { BookingsPanel, CostsPanel, GearPanel, ItineraryPanel, NotesPanel, type EditStep } from '../../components/new/trip/TripPanels';
 import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, FileText, Kanban, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket, type Icon } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
@@ -344,7 +346,12 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                         />
                     ) : null}
                     {tab === 'bookings' ? <BookingsPanel trip={trip} brandfetchApiKey={data.brandfetchApiKey} onEdit={edit} /> : null}
-                    {tab === 'costs' ? <CostsPanel trip={trip} members={members.length} onSaveBudget={target => attempt(async () => { await data.patch(trip.id, { targetBudget: target }); })} /> : null}
+                    {tab === 'costs' ? (
+                        <>
+                            <CostsPanel trip={trip} members={members.length} onSaveBudget={target => attempt(async () => { await data.patch(trip.id, { targetBudget: target }); })} />
+                            {isFeatureEnabled('TRIP_EXPENSES') ? <ExpensesPanel trip={trip} members={members} onSave={async patch => { await data.patch(trip.id, patch); }} /> : null}
+                        </>
+                    ) : null}
                     {tab === 'gear' ? <GearPanel items={trip.packingList || []} onChange={savePacking} /> : null}
                     {tab === 'notes' ? (
                         <NotesPanel

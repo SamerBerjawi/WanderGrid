@@ -11,6 +11,12 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Added
 
+- **Trip expenses with exchange rates** (behind `VITE_FF_TRIP_EXPENSES`, off by default): the Costs tab of a trip gets a ledger.
+  Log what you spend in the currency you paid in; it is converted at the European Central Bank's rate for that day
+  (looked up for you, and yours to change), shared equally or by amount between the travellers, and totalled with the
+  budget. **Who owes whom** shows the fewest payments that settle everyone up. New `GET /api/proxy/fx/:date?from=&to=`
+  on the server (Frankfurter, cached for a month per past day). Expenses are saved on the trip with the rate they were
+  entered at, so totals never drift.
 - An airport or place sheet draws a vertical Sankey of its routes: arrivals across the top, departures across
   the bottom, each as wide as the number of times you travelled it, with the top 8 per side and a "+N others"
   node. Hover, focus or tap a node to see the count or open the route; the routes list stays below.

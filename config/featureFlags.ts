@@ -34,6 +34,9 @@ export const FEATURE_FLAGS = {
   // WP-1.7: "Archived" planner view (Archive no longer deletes trips)
   AUDIT_TRIP_ARCHIVE_VIEW: getEnvFlag('VITE_FF_AUDIT_TRIP_ARCHIVE_VIEW', true),
 
+  // Trip expenses: a ledger of what was spent on a trip, in any currency at the day's rate, with who owes whom (default OFF)
+  TRIP_EXPENSES: getEnvFlag('VITE_FF_TRIP_EXPENSES', false),
+
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;
