@@ -206,6 +206,31 @@ export interface PackingItem {
     isChecked: boolean;
 }
 
+/** How an expense is shared: equally among some travellers, or by amounts (in the expense's own currency). */
+export interface ExpenseSplit {
+  mode: 'equal' | 'custom';
+  /** The travellers who share it (user ids). */
+  among: string[];
+  /** Custom mode: each person's share, in the expense's own currency. */
+  shares?: Record<string, number>;
+}
+
+/** Spending logged on a trip, in the currency it was paid in, with the rate that turned it into the trip's ledger currency. */
+export interface Expense {
+  id: string;
+  date: string;
+  title: string;
+  category: 'Food' | 'Transport' | 'Stay' | 'Activities' | 'Shopping' | 'Other';
+  amount: number;
+  currency: string;
+  /** Ledger currency per one unit of `currency`, as of `date`. */
+  rate: number;
+  /** The traveller who paid (user id). */
+  paidBy: string;
+  split: ExpenseSplit;
+  note?: string;
+}
+
 export interface Trip {
   id: string;
   name: string;
@@ -243,6 +268,9 @@ export interface Trip {
   activities?: Activity[];
   locations?: LocationEntry[]; // Visual route planner entries
   packingList?: PackingItem[]; // Smart Gear List
+  /** Spending logged on the trip (the ledger behind "who owes whom"), and the currency it is totalled in. */
+  expenses?: Expense[];
+  ledgerCurrency?: string;
 
   // Map Data
   coordinates?: GeoCoordinates;

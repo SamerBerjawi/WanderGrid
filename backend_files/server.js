@@ -19,6 +19,7 @@ const { searchGeocodingChain, searchOpenMeteo, searchPhoton, searchNominatim, re
 const { testProvider } = require('./integrationsTester');
 const { SERVICE_KEYS, testKey } = require('./keyTester');
 const holidays = require('./holidays');
+const fxRates = require('./fxRates');
 
 const pbkdf2Async = util.promisify(crypto.pbkdf2);
 
@@ -864,7 +865,7 @@ const RECORD_RULES = {
     trips: (r) => {
         if (!isStringOrMissing(r.name, 500)) return 'name must be text (max 500 characters)';
         if (!isValidDayOrEmpty(r.startDate) || !isValidDayOrEmpty(r.endDate)) return 'startDate/endDate must be YYYY-MM-DD dates';
-        for (const field of ['participants', 'transports', 'accommodations', 'activities', 'locations', 'packingList']) {
+        for (const field of ['participants', 'transports', 'accommodations', 'activities', 'locations', 'packingList', 'expenses']) {
             if (!isArrayOrMissing(r[field])) return `${field} must be a list`;
         }
         if (Array.isArray(r.participants) && !r.participants.every(p => typeof p === 'string')) return 'participants must be user ids';
@@ -2227,6 +2228,8 @@ const handleGeocodingSearch = async (req, res) => {
 // Public holidays for the calendar's "Add a country calendar" (Nager.Date, OpenHolidays as fallback).
 app.get('/api/proxy/holidays/countries', holidays.handleCountries);
 app.get('/api/proxy/holidays/:year/:countryCode', holidays.handleHolidays);
+// Exchange rates for trip expenses (Frankfurter, the ECB's reference rates), one day's rate cached for a month.
+app.get('/api/proxy/fx/:date', fxRates.handleRate);
 app.get('/api/proxy/geocoding', handleGeocodingSearch);
 app.get('/api/geocode/search', handleGeocodingSearch);
 

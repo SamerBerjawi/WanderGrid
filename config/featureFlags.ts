@@ -37,6 +37,23 @@ export const FEATURE_FLAGS = {
 
   // Loyalty wallet: frequent-flyer and hotel numbers per member, shown on passes and stays, with status progress (default OFF)
   LOYALTY_WALLET: getEnvFlag('VITE_FF_LOYALTY_WALLET', false),
+  // Leave meets trips: plan a trip's leave from its dates, with the leave it needs shown on the trip (default OFF)
+  LEAVE_PLANNER: getEnvFlag('VITE_FF_LEAVE_PLANNER', false),
+  // Jet lag helper: the time shift, a sleep and light plan, and local-time chips on a flight's sheet (default OFF)
+  JET_LAG_HELPER: getEnvFlag('VITE_FF_JET_LAG_HELPER', false),
+  // Where next ideas: your coming days off matched with wishlist places that fit them (default OFF)
+  WHERE_NEXT_IDEAS: getEnvFlag('VITE_FF_WHERE_NEXT_IDEAS', false),
+  // Trip expenses: a ledger of what was spent on a trip, in any currency at the day's rate, with who owes whom (default OFF)
+  TRIP_EXPENSES: getEnvFlag('VITE_FF_TRIP_EXPENSES', false),
+  // Entry requirements: check each traveller's passport and visas against a trip's destinations (default OFF)
+  ENTRY_REQUIREMENTS: getEnvFlag('VITE_FF_ENTRY_REQUIREMENTS', false),
+  // Achievements: stamps earned by how you travel, in the Atlas (default OFF)
+  ATLAS_ACHIEVEMENTS: getEnvFlag('VITE_FF_ATLAS_ACHIEVEMENTS', false),
+  // Year in review: a swipeable story of a year of travel, opened from the Dashboard (default OFF)
+  YEAR_IN_REVIEW: getEnvFlag('VITE_FF_YEAR_IN_REVIEW', false),
+  // Import a booking: read flights, trains, car hire, stays and reservations from a confirmation email (default OFF)
+  BOOKING_IMPORT: getEnvFlag('VITE_FF_BOOKING_IMPORT', false),
+
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;

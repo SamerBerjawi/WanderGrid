@@ -4,9 +4,10 @@ import { motion, useReducedMotion } from 'motion/react';
 import { useDraggable } from '@dnd-kit/core';
 import type { Trip, User } from '../../../types';
 import { formatDateRange } from '../../../utils/formatters';
+import { useLeavePlannerContext } from '../../../hooks/useLeavePlanner';
 import { bucketOf, destinationLabel, isTravelling, timingOf, tripDays, tripNeeds, type TripBucket } from '../../../utils/tripsModel';
 import {
-    Airplane, Archive, ArrowCounterClockwise, ArrowUpRight, Bed, CalendarBlank, CheckCircle, Clock, Copy, PencilSimple, Suitcase, Trash, XCircle, type Icon,
+    Airplane, Archive, ArrowCounterClockwise, ArrowUpRight, Bed, CalendarBlank, CalendarCheck, CheckCircle, Clock, Copy, PencilSimple, Suitcase, Trash, XCircle, type Icon,
 } from '../../ui/hugeicons';
 import { RpHugeicon } from '../RpHugeicon';
 import { calendarService } from '../../../services/calendarExport';
@@ -72,6 +73,8 @@ export interface TripActions {
     onDuplicate: (trip: Trip) => void;
     onCancel: (trip: Trip) => void;
     onDelete: (trip: Trip) => void;
+    /** Opens the leave planner for the trip (off unless the leave planner flag is on). */
+    onPlanLeave?: (trip: Trip) => void;
 }
 
 /** The menu for a trip: the keyboard and tap version of every drag. */
@@ -81,6 +84,9 @@ export const tripMenuItems = (trip: Trip, bucket: TripBucket, actions: TripActio
         { id: 'open', label: 'Open trip', icon: ArrowUpRight, onSelect: () => actions.onOpenTrip(trip) },
     ];
     items.push({ id: 'duplicate', label: 'Duplicate', icon: Copy, onSelect: () => actions.onDuplicate(trip) });
+    if (actions.onPlanLeave && bucket !== 'past' && trip.status !== 'Cancelled' && !trip.archived) {
+        items.push({ id: 'leave', label: 'Plan leave', icon: CalendarCheck, onSelect: () => actions.onPlanLeave!(trip) });
+    }
     items.push({ id: 'calendar', label: 'Add to calendar', icon: CalendarBlank, onSelect: () => { calendarService.downloadTrip(trip); toast.success('Calendar file downloaded'); } });
     if (trip.status === 'Cancelled') {
         items.push({ id: 'restore', label: 'Restore as Planned', icon: ArrowCounterClockwise, separated: true, onSelect: () => actions.onRestore(trip) });
@@ -125,6 +131,8 @@ export const TripCardBody: React.FC<CardProps> = ({ trip, users, today, actions,
     const members = useMemo(() => (trip.participants || []).map(id => users.find(u => u.id === id)).filter((u): u is User => Boolean(u)), [trip.participants, users]);
     const look = BUCKET_LOOK[bucket];
     const Circle = look.icon;
+    const planner = useLeavePlannerContext();
+    const leave = planner && actions.onPlanLeave && bucket !== 'past' ? planner.noteFor(trip) : null;
 
     const skin = SKINS[now ? 'ink' : bucket];
     const muted = skin.muted;
@@ -189,6 +197,20 @@ export const TripCardBody: React.FC<CardProps> = ({ trip, users, today, actions,
                 {days > 0 ? <span className={chip}><CalendarBlank size={12} aria-hidden /> {days} {days === 1 ? 'day' : 'days'}</span> : null}
                 {flights > 0 ? <span className={chip}><Airplane size={12} aria-hidden /> {flights}</span> : null}
                 {stays > 0 ? <span className={chip}><Bed size={12} aria-hidden /> {stays}</span> : null}
+                {leave ? (
+                    <button
+                        type="button"
+                        onClick={() => actions.onPlanLeave?.(trip)}
+                        aria-label={`${leave.text}. Plan leave for ${trip.name}`}
+                        className={cn(
+                            'relative inline-flex min-h-6 items-center gap-1 rounded-full px-2 text-2xs font-semibold outline-none before:absolute before:-inset-2.5 before:content-[""] focus-visible:ring-2 focus-visible:ring-current',
+                            leave.tone === 'short' ? 'bg-rp-rust text-rp-paper' : skin.chip,
+                            leave.tone === 'needed' && 'underline decoration-dotted underline-offset-2'
+                        )}
+                    >
+                        <CalendarCheck size={12} aria-hidden /> {leave.text}
+                    </button>
+                ) : null}
                 {needs.map(n => (
                     <span key={n} className="inline-flex min-h-6 items-center rounded-full bg-rp-rust px-2 text-2xs font-semibold text-rp-paper">
                         {n === 'flights' ? 'Add flights' : 'Add a stay'}
