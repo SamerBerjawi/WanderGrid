@@ -116,9 +116,16 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
         try {
             const url = new URL(window.location.href);
             if (url.searchParams.get('new') === '1') {
-                url.searchParams.delete('new');
+                // A suggested break and place (Where next ideas) arrive as ?start=&end=&to=.
+                const start = url.searchParams.get('start') || '', end = url.searchParams.get('end') || '', to = url.searchParams.get('to') || '';
+                ['new', 'start', 'end', 'to'].forEach(k => url.searchParams.delete(k));
                 window.history.replaceState({}, '', url.pathname + url.search);
-                setSheet({ kind: 'create', bucket: 'planned' });
+                const iso = /^\d{4}-\d{2}-\d{2}$/;
+                const prefill = {
+                    ...(iso.test(start) ? { startDate: start } : {}), ...(iso.test(end) ? { endDate: end } : {}),
+                    ...(to ? { destination: to.slice(0, 80), name: to.slice(0, 80) } : {}),
+                };
+                setSheet({ kind: 'create', bucket: 'planned', prefill: Object.keys(prefill).length ? prefill : undefined });
             }
         } catch { /* ignore */ }
         const onNew = () => setSheet({ kind: 'create', bucket: 'planned' });
