@@ -6,7 +6,6 @@ import type { DockTool } from '../../components/kokonutui/tool-dock';
 import { RpPageToolbar } from '../../components/new/PageToolbar';
 import { HiddenWidgets } from '../../components/new/dashboard/HiddenWidgets';
 import { YearReview } from '../../components/new/dashboard/YearReview';
-import { isFeatureEnabled } from '../../config/featureFlags';
 import { reviewYears } from '../../utils/yearReview';
 import { RpEmpty, useIsMobile } from '../../components/new/ui';
 import { openPage } from '../../utils/appNavigation';
@@ -226,7 +225,7 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
     const editButton = useCallback(() => document.querySelector<HTMLElement>('[aria-label="Dashboard tools"] button[aria-label="Done"], [aria-label="Dashboard tools"] button[aria-label="Edit widgets"]'), []);
 
     // Year in review needs a year with travel in it.
-    const reviewEnabled = isFeatureEnabled('YEAR_IN_REVIEW') && reviewYears(data.trips, data.legs, data.today).length > 0;
+    const reviewEnabled = reviewYears(data.trips, data.legs, data.today).length > 0;
 
     // On phones the tab bar's "+" starts a trip.
     const tools: DockTool[] = [
@@ -286,9 +285,7 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
                     </div>
                 )}
             </div>
-            {isFeatureEnabled('YEAR_IN_REVIEW') ? (
-                <YearReview open={reviewOpen} onClose={() => setReviewOpen(false)} trips={data.trips} legs={data.legs} today={data.today} users={data.users} types={data.types} />
-            ) : null}
+            <YearReview open={reviewOpen} onClose={() => setReviewOpen(false)} trips={data.trips} legs={data.legs} today={data.today} users={data.users} types={data.types} />
         </div>
     );
 };

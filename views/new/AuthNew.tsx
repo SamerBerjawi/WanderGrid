@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'motion/react';
-import { isFeatureEnabled } from '../../config/featureFlags';
 import { dataService } from '../../services/mockDb';
 import { startDemo } from '../../services/authDemo';
 import type { User as AppUser } from '../../types';
@@ -266,7 +265,7 @@ export const AuthNew: React.FC<AuthNewProps> = ({ onLogin, isDark, onThemeChange
                                     </RpField>
                                 ) : null}
 
-                                {mode === 'signin' && isFeatureEnabled('AUDIT_PASSWORD_RESET') ? (
+                                {mode === 'signin' ? (
                                     <div className="flex justify-end">
                                         <LinkButton onClick={() => goTo('reset')}>Forgot password?</LinkButton>
                                     </div>

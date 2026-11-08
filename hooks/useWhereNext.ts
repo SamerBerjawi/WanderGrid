@@ -10,21 +10,20 @@ import { buildIdeas, type Candidate, type Idea } from '../utils/whereNext';
 
 /**
  * Where next? ideas for the Dashboard: loads the holiday calendars and workspace settings, then pairs the member's
- * coming days off (utils/whereNext.ts) with the wishlist. Does nothing, and loads nothing, while `enabled` is false.
+ * coming days off (utils/whereNext.ts) with the wishlist.
  */
 
 const sessionUserId = (): string | undefined => {
     try { return JSON.parse(localStorage.getItem('wandergrid_session_user') || 'null')?.id; } catch { return undefined; }
 };
 
-export const useWhereNextIdeas = (data: DashboardData, enabled: boolean): Idea[] => {
+export const useWhereNextIdeas = (data: DashboardData): Idea[] => {
     const [configs, setConfigs] = useState<SavedConfig[]>([]);
     const [workingDays, setWorkingDays] = useState<number[]>(workingDaysOf(null));
     const [startAirport, setStartAirport] = useState<string | undefined>();
     const [centroids, setCentroids] = useState<Map<string, LatLng>>(new Map());
 
     useEffect(() => {
-        if (!enabled) return;
         let live = true;
         loadCentroids().then(c => { if (live) setCentroids(c); });
         const load = () => {
@@ -35,10 +34,10 @@ export const useWhereNextIdeas = (data: DashboardData, enabled: boolean): Idea[]
         const onUpdate = (e: Event) => { if (affectsCollections(e, ['configs', 'settings'])) load(); };
         window.addEventListener('wandergrid_db_updated', onUpdate);
         return () => { live = false; window.removeEventListener('wandergrid_db_updated', onUpdate); };
-    }, [enabled]);
+    }, []);
 
     return useMemo(() => {
-        if (!enabled || data.wishlist.length === 0) return [];
+        if (data.wishlist.length === 0) return [];
         const me = data.users.find(u => u.id === sessionUserId()) ?? data.users[0];
         const holidays = me ? holidayDays(configsFor(configs, [me]), me.holidayWeekendRule, workingDays) : [];
         const ctx = leaveContext(workingDays, holidays);
@@ -56,5 +55,5 @@ export const useWhereNextIdeas = (data: DashboardData, enabled: boolean): Idea[]
             trips: data.trips.filter(t => !me || (t.participants || []).includes(me.id)),
             home: homePoint ? { lat: homePoint.lat, lng: homePoint.lng } : undefined,
         });
-    }, [enabled, data.wishlist, data.users, data.trips, data.today, configs, workingDays, startAirport, centroids]);
+    }, [data.wishlist, data.users, data.trips, data.today, configs, workingDays, startAirport, centroids]);
 };

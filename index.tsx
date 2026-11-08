@@ -3,12 +3,11 @@ import ReactDOM from 'react-dom/client';
 import './styles.css';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { isFeatureEnabled } from './config/featureFlags';
 import { sharedTokenFrom } from './utils/sharedTrip';
 
 // A public trip link opens on its own page, with no sign-in and none of the app around it.
 const SharedTripPage = lazy(() => import('./views/new/SharedTrip').then(m => ({ default: m.SharedTripPage })));
-const sharedToken = isFeatureEnabled('PUBLIC_TRIP_LINKS') ? sharedTokenFrom(window.location.pathname) : null;
+const sharedToken = sharedTokenFrom(window.location.pathname);
 
 const originalWarn = console.warn;
 console.warn = (...args) => {

@@ -57,7 +57,6 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 | `services/` | Client-side domain logic. `mockDb.ts` is **the** data service (`dataService`), despite its name. The rest cover geocoding, routing (road/rail/maritime), flight tracking, import/export, map styles, and the solar terminator |
 | `hooks/` | `useWanderSync` (SWR cache), `usePWA`, `useExistingTripSuggestions` |
 | `utils/` | `formatters.ts` (date/currency; mandatory), `brandfetch.ts`, `flightData.ts`, static aviation and sticker data |
-| `config/` | `featureFlags.ts` (`VITE_FF_*` overrides) |
 | `types.ts`, `types/` | Shared TS types. Path alias `@/*` points at the repo root |
 | `backend_files/` | Express server (`server.js`, ~2.9k lines), upstream helpers (`upstream.js`, `geocodingChain.js`, `routeProxy.js`, `aviationStack.js`, `carrierMapping.js`, `integrationsTester.js`), the `test/` folder, and the Dockerfile |
 | `public/` | PWA icons, `manifest.json`, GeoJSON (`data/`), map styles, `airport-overlay.pmtiles` (gitignored and must be present locally) |
@@ -92,7 +91,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 - There is no AI feature. The Gemini API (the trip AI guide, AI packing list and flight analysis, `/api/ai/generate`) and the CARTO basemap key were removed in 1.1; stored `googleGeminiApiKey` and `cartoApiKey` values in old settings and backups are ignored and dropped on the next save.
 - Most third-party API keys are stored in workspace settings and sent by the client as headers, for example `X-AeroDataBox-Key` and `X-OpenAIP-Key`. A key can also be set through env vars (`INTEGRATIONS_*`).
 
-**Env vars** (see `.env.example`): `DATABASE_URL`, `JWT_SECRET`, `PORT`, `NODE_ENV`, `STRUCTURED_LOGGING`, `DB_POOL_SIZE`, `DB_CONNECTION_TIMEOUT_MS`, `DB_STATEMENT_TIMEOUT_MS`, `API_CACHE_TTL_MS`, `FLIGHT_FETCH_TIMEOUT_MS`, `GLOBAL_DATA_REFRESH_MS`, `GEOCODE_CACHE_TTL_MS`, `EXTERNAL_FETCH_TIMEOUT_MS`, `INTEGRATIONS_*`, `FLIGHT_LOOKUP_FLIGHTSTATS` (`off` disables the keyless FlightStats source of the flight lookup). Frontend: `VITE_FF_*`.
+**Env vars** (see `.env.example`): `DATABASE_URL`, `JWT_SECRET`, `PORT`, `NODE_ENV`, `STRUCTURED_LOGGING`, `DB_POOL_SIZE`, `DB_CONNECTION_TIMEOUT_MS`, `DB_STATEMENT_TIMEOUT_MS`, `API_CACHE_TTL_MS`, `FLIGHT_FETCH_TIMEOUT_MS`, `GLOBAL_DATA_REFRESH_MS`, `GEOCODE_CACHE_TTL_MS`, `EXTERNAL_FETCH_TIMEOUT_MS`, `INTEGRATIONS_*`, `FLIGHT_LOOKUP_FLIGHTSTATS` (`off` disables the keyless FlightStats source of the flight lookup). The frontend has no build-time settings.
 
 ## Conventions
 
@@ -105,7 +104,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
   - Server responses go through `sendError(res, err, status, msg)`, which sanitizes messages in production. Logs are structured JSON when `NODE_ENV=production` or `STRUCTURED_LOGGING=true`.
   - On the client, `ErrorBoundary` wraps the root (`index.tsx`) and `AppErrorBoundary` wraps views.
   - External calls fail fast and return empty results rather than throwing to the UI.
-- **Feature work:** new user-facing features go behind a flag in `config/featureFlags.ts`, default OFF. Exception: bug and security fixes are never flagged, and new flows that replace broken behaviour (e.g. password reset, trip archive) are flagged but default ON.
+- **Feature work:** there are no feature flags. A feature is finished, tested and on when it merges; unfinished work stays on a branch.
 
 ## Fragile, legacy, or out of scope
 

@@ -30,7 +30,6 @@ import { simplifyPath } from '../../../utils/simplifyPath';
 import { useTracedPaths } from '../../../hooks/useTracedPaths';
 import { useWhereNextIdeas } from '../../../hooks/useWhereNext';
 import { describeBreak, ideaLink } from '../../../utils/whereNext';
-import { isFeatureEnabled } from '../../../config/featureFlags';
 
 /**
  * The widgets of the New Dashboard (UI_UX_DESIGN_REFERENCE.md §5.2 rows 2 and 14). Each one is a body for
@@ -533,8 +532,7 @@ const WHERE_NEXT_VIEW_KEY = 'wandergrid_wherenext_view';
  * and the Throw Deck of the Atlas wishlist: flick one away to keep it, or mark it visited.
  */
 export const WhereNextWidget: React.FC<{ data: DashboardData }> = ({ data }) => {
-    const ideasOn = isFeatureEnabled('WHERE_NEXT_IDEAS');
-    const ideas = useWhereNextIdeas(data, ideasOn);
+    const ideas = useWhereNextIdeas(data);
     const [view, setView] = useState<'ideas' | 'deck'>(() => { try { return localStorage.getItem(WHERE_NEXT_VIEW_KEY) === 'deck' ? 'deck' : 'ideas'; } catch { return 'ideas'; } });
     const chooseView = (next: 'ideas' | 'deck') => { setView(next); try { localStorage.setItem(WHERE_NEXT_VIEW_KEY, next); } catch { /* storage unavailable */ } };
     const items = data.wishlist;
@@ -568,7 +566,7 @@ export const WhereNextWidget: React.FC<{ data: DashboardData }> = ({ data }) => 
             />
         </div>
     );
-    if (!ideasOn || ideas.length === 0) return deck;
+    if (ideas.length === 0) return deck;
     return (
         <div className="flex h-full min-h-0 flex-col gap-2">
             <div role="group" aria-label="Where next" className="flex shrink-0 flex-wrap gap-2">

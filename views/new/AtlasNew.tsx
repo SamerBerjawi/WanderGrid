@@ -19,7 +19,6 @@ import { AddCountrySheet, CitySheet, CountrySheet, ScanSheet, type CountryTarget
 import { WishlistPanel } from '../../components/new/atlas/WishlistPanel';
 import { AchievementsSheet } from '../../components/new/atlas/AchievementsSheet';
 import { useAchievements } from '../../hooks/useAchievements';
-import { isFeatureEnabled } from '../../config/featureFlags';
 import { MergeDrawer } from '../../components/new/atlas/MergeDrawer';
 import { TONE_LABEL, toneOf, type AtlasTone } from '../../components/new/atlas/atlasStatus';
 import { openPage } from '../../utils/appNavigation';
@@ -96,7 +95,6 @@ export const AtlasNew: React.FC<AtlasNewProps> = ({ onTripClick }) => {
     const [city, setCity] = useState<VisitedItem | null>(null);
     const [adding, setAdding] = useState<'visited' | 'wishlist' | null>(null);
     const [scanOpen, setScanOpen] = useState(false);
-    const achievementsOn = isFeatureEnabled('ATLAS_ACHIEVEMENTS');
     const [achievementsOpen, setAchievementsOpen] = useState(false);
     const achievements = useAchievements(achievementsOpen, data.visitedCountries.map(c => c.code));
     const [mergeOpen, setMergeOpen] = useState(false);
@@ -177,7 +175,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = ({ onTripClick }) => {
             ]
             : []),
         { id: 'search', label: 'Search places', icon: MagnifyingGlass as any, action: () => setSearchOpen(o => !o), dividerBefore: tab === 'countries' || tab === 'cities' },
-        ...(achievementsOn ? [{ id: 'achievements', label: 'Achievements', icon: Trophy as any, action: () => setAchievementsOpen(true) }] : []),
+        { id: 'achievements', label: 'Achievements', icon: Trophy as any, action: () => setAchievementsOpen(true) },
         {
             id: 'scan',
             label: 'Find in trips',
@@ -420,7 +418,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = ({ onTripClick }) => {
             <CityQuickAddSheet open={addingCity} onClose={() => { setAddingCity(false); setCityError(null); }} onAdd={addCity} error={cityError} />
             <FindNamesSheet open={findingNames} onClose={() => setFindingNames(false)} data={data} />
             <ScanSheet open={scanOpen} onClose={() => setScanOpen(false)} data={data} />
-            {achievementsOn ? <AchievementsSheet open={achievementsOpen} onClose={() => setAchievementsOpen(false)} stamps={achievements.stamps} loading={achievements.loading} failed={achievements.failed} /> : null}
+            <AchievementsSheet open={achievementsOpen} onClose={() => setAchievementsOpen(false)} stamps={achievements.stamps} loading={achievements.loading} failed={achievements.failed} />
             <MergeDrawer open={mergeOpen} onOpenChange={setMergeOpen} review={data.cleanup.review} merge={data.merge} />
         </div>
     );

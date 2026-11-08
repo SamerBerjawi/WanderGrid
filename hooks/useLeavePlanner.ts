@@ -26,12 +26,11 @@ const sessionUserId = (): string | undefined => {
     try { return JSON.parse(localStorage.getItem('wandergrid_session_user') || 'null')?.id; } catch { return undefined; }
 };
 
-export const useLeavePlanner = (trips: Trip[], users: User[], entitlements: EntitlementType[], enabled = true): LeavePlanner => {
+export const useLeavePlanner = (trips: Trip[], users: User[], entitlements: EntitlementType[]): LeavePlanner => {
     const [configs, setConfigs] = useState<SavedConfig[]>([]);
     const [workingDays, setWorkingDays] = useState<number[]>(workingDaysOf(null));
 
     useEffect(() => {
-        if (!enabled) return;
         let live = true;
         const load = () => {
             dataService.getSavedConfigs().then(c => { if (live) setConfigs(c || []); }).catch(() => { /* holidays are optional */ });
@@ -41,7 +40,7 @@ export const useLeavePlanner = (trips: Trip[], users: User[], entitlements: Enti
         const onUpdate = (e: Event) => { if (affectsCollections(e, ['configs', 'settings'])) load(); };
         window.addEventListener('wandergrid_db_updated', onUpdate);
         return () => { live = false; window.removeEventListener('wandergrid_db_updated', onUpdate); };
-    }, [enabled]);
+    }, []);
 
     return useMemo<LeavePlanner>(() => {
         const today = todayISO();
@@ -64,7 +63,7 @@ export const useLeavePlanner = (trips: Trip[], users: User[], entitlements: Enti
             const hit = statuses.get(key);
             if (hit) return hit;
             const user = memberFor(trip);
-            const state: LeaveState = enabled && user && entitlements.length > 0 ? leaveStatus(input(trip, user)) : { kind: 'none' };
+            const state: LeaveState = user && entitlements.length > 0 ? leaveStatus(input(trip, user)) : { kind: 'none' };
             statuses.set(key, state);
             return state;
         };
@@ -78,7 +77,7 @@ export const useLeavePlanner = (trips: Trip[], users: User[], entitlements: Enti
                 return user && entitlements.length > 0 ? planLeave(input(trip, user)) : null;
             },
         };
-    }, [trips, users, entitlements, configs, workingDays, enabled]);
+    }, [trips, users, entitlements, configs, workingDays]);
 };
 
 /** The planner for the cards of a board or list, so a card reads its chip without a prop through every layer. */

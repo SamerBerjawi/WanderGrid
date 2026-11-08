@@ -21,7 +21,6 @@ import { MapFilterSheet } from '../../components/new/map/MapFilterSheet';
 import { ReplayBar } from '../../components/new/map/ReplayBar';
 import { useMapReplay } from '../../hooks/useMapReplay';
 import { replaySteps, revealRoutes } from '../../utils/mapReplay';
-import { isFeatureEnabled } from '../../config/featureFlags';
 import { MapDetailSheet, type MapSelection } from '../../components/new/map/MapDetailSheet';
 import { RpEmpty, useIsMobile } from '../../components/new/ui';
 import { cn } from '../../utils/cn';
@@ -115,8 +114,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
 
     const model = useMemo(() => buildMapModel(data.filteredTrips, { mode, groupAirports, scratchRoutes: appearance.scratchRoutes }), [data.filteredTrips, mode, groupAirports, appearance.scratchRoutes]);
     // Route replay: the model grows from your first route to your latest while a replay is open.
-    const replayEnabled = isFeatureEnabled('MAP_REPLAY');
-    const steps = useMemo(() => (replayEnabled ? replaySteps(model.routes) : []), [replayEnabled, model.routes]);
+    const steps = useMemo(() => replaySteps(model.routes), [model.routes]);
     const [replayOpen, setReplayOpen] = useState(false);
     const replay = useMapReplay(steps.length, replayOpen && steps.length > 0);
     const revealed = useMemo(() => (replayOpen && steps.length > 0 ? revealRoutes(model, steps, replay.index) : null), [replayOpen, steps, model, replay.index]);
@@ -209,7 +207,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
             { id: 'layers', label: 'Map settings', icon: Settings04 as any, shortcut: 'L' },
             { id: 'filter', label: data.activeFilterCount ? `Filter (${data.activeFilterCount})` : 'Filter', icon: Funnel as any, shortcut: 'F' },
         ];
-        const replayTool: DockTool[] = replayEnabled && steps.length > 0
+        const replayTool: DockTool[] = steps.length > 0
             ? [{ id: 'replay', label: replayOpen ? 'Close replay' : 'Replay your travels', icon: ClockCounterClockwise as any, action: () => { setReplayOpen(o => !o); setSelection(null); }, dividerBefore: true }]
             : [];
         const fit: DockTool = { id: 'fit', label: 'Fit all', icon: CornersOut as any, action: () => mapRef.current?.fitAll(), dividerBefore: true };
@@ -228,7 +226,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
             },
             { id: 'fullscreen', label: fullscreen ? 'Exit full screen' : 'Full screen', icon: (fullscreen ? ArrowShrink : ArrowExpand) as any, action: toggleFullscreen },
         ];
-    }, [mobile, appearance.projection, fullscreen, data.activeFilterCount, updateAppearance, replayEnabled, replayOpen, steps.length]);
+    }, [mobile, appearance.projection, fullscreen, data.activeFilterCount, updateAppearance, replayOpen, steps.length]);
 
     /* -------------------------------------------------- search */
 

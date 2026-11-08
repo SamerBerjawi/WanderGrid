@@ -1,4 +1,3 @@
-import { isFeatureEnabled } from '../../config/featureFlags';
 import { ShareLinkSheet } from '../../components/new/trip/ShareLinkSheet';
 import React, { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import type { PackingItem, Trip, User } from '../../types';
@@ -81,13 +80,10 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
     const [sheet, setSheet] = useState<TripSheetTarget | null>(null);
     const [deleting, setDeleting] = useState<Trip | null>(null);
     const [sharing, setSharing] = useState(false);
-    const offlineOn = isFeatureEnabled('OFFLINE_PACKS');
     const offline = useOfflinePacks();
-    const leaveOn = isFeatureEnabled('LEAVE_PLANNER');
-    const planner = useLeavePlanner(data.trips, data.users, data.entitlements, leaveOn);
+    const planner = useLeavePlanner(data.trips, data.users, data.entitlements);
     const [leaveOpen, setLeaveOpen] = useState(false);
     const [docsOpen, setDocsOpen] = useState(false);
-    const entryOn = isFeatureEnabled('ENTRY_REQUIREMENTS');
     const trip = useMemo(() => data.trips.find(t => t.id === tripId), [data.trips, tripId]);
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -138,8 +134,8 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
     const days = tripDays(trip);
     const stats = tripStats(trip);
     const members = (trip.participants || []).map(id => data.users.find(u => u.id === id)).filter((u): u is User => Boolean(u));
-    const docsChecks = entryOn ? checkTrip(trip, data.users) : [];
-    const docsSummary = entryOn ? summarise(docsChecks, trip) : null;
+    const docsChecks = checkTrip(trip, data.users);
+    const docsSummary = summarise(docsChecks, trip);
     const hero = split.total > 0
         ? { text: formatCurrency(split.total), unit: 'Total cost' }
         : timing.value !== null && timing.state !== 'past' ? { text: String(timing.value), unit: timing.unit } : null;
@@ -173,23 +169,21 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
             undo.show(`Cancelled ${t.name}`, () => attempt(async () => { if (previous) await data.setStatus(t.id, previous); }));
         }),
         onDelete: setDeleting,
-        onToggleOffline: offlineOn ? (t: Trip) => attempt(async () => {
+        onToggleOffline: (t: Trip) => attempt(async () => {
             if (offline.has(t.id)) { removePack(t.id); toast.info(`${t.name} removed from this device`); return; }
             toast.info(`Saving ${t.name} for offline...`, { key: 'offline-save', duration: 0 });
             try {
                 const meta = await savePack(t);
                 toast.success(meta.tiles ? `${t.name} saved for offline, with ${meta.tiles} map tiles` : `${t.name} saved for offline`, { key: 'offline-save' });
             } catch (e) { toast.dismiss('offline-save'); throw e; }
-        }) : undefined,
+        }),
         isOffline: (t: Trip) => offline.has(t.id),
-        onPlanLeave: leaveOn ? () => setLeaveOpen(true) : undefined,
+        onPlanLeave: () => setLeaveOpen(true),
     };
     // "Open trip" would reopen this page, so it is not in this menu.
     const menu = tripMenuItems(trip, bucket, actions).filter(i => i.id !== 'open');
-    if (isFeatureEnabled('PUBLIC_TRIP_LINKS')) {
-        const at = menu.findIndex(i => i.id === 'calendar');
-        menu.splice(at + 1, 0, { id: 'share', label: 'Share link', icon: LinkSquare, onSelect: () => setSharing(true) });
-    }
+    const shareAt = menu.findIndex(i => i.id === 'calendar');
+    menu.splice(shareAt + 1, 0, { id: 'share', label: 'Share link', icon: LinkSquare, onSelect: () => setSharing(true) });
     const edit = (s: EditStep) => setSheet({ kind: 'edit', trip, step: s });
 
     // Canvas drags: each change is saved at once and can be undone.
@@ -298,10 +292,10 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                             ))}
                         </ol>
 
-                        {offlineOn && offline.has(trip.id) ? (
+                        {offline.has(trip.id) ? (
                             <p className={cn('mt-3 inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium', skin.panel)}><DownloadSimple size={14} aria-hidden /> Saved for offline</p>
                         ) : null}
-                        {leaveOn && bucket !== 'past' && planner.noteFor(trip) ? (() => {
+                        {bucket !== 'past' && planner.noteFor(trip) ? (() => {
                             const note = planner.noteFor(trip)!;
                             return (
                                 <button
@@ -314,7 +308,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                                 </button>
                             );
                         })() : null}
-                        {entryOn && bucket !== 'past' && docsSummary ? (
+                        {bucket !== 'past' && docsSummary ? (
                             <button
                                 type="button"
                                 onClick={() => setDocsOpen(true)}
@@ -403,11 +397,11 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                             }}
                         />
                     ) : null}
-                    {tab === 'bookings' ? <BookingsPanel trip={trip} brandfetchApiKey={data.brandfetchApiKey} members={isFeatureEnabled('LOYALTY_WALLET') ? members : undefined} onEdit={edit} /> : null}
+                    {tab === 'bookings' ? <BookingsPanel trip={trip} brandfetchApiKey={data.brandfetchApiKey} members={members} onEdit={edit} /> : null}
                     {tab === 'costs' ? (
                         <>
                             <CostsPanel trip={trip} members={members.length} onSaveBudget={target => attempt(async () => { await data.patch(trip.id, { targetBudget: target }); })} />
-                            {isFeatureEnabled('TRIP_EXPENSES') ? <ExpensesPanel trip={trip} members={members} onSave={async patch => { await data.patch(trip.id, patch); }} /> : null}
+                            <ExpensesPanel trip={trip} members={members} onSave={async patch => { await data.patch(trip.id, patch); }} />
                         </>
                     ) : null}
                     {tab === 'gear' ? <GearPanel items={trip.packingList || []} onChange={savePacking} /> : null}
@@ -432,23 +426,21 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                 onDelete={setDeleting}
                 onOpenTrip={() => setSheet(null)}
             />
-            {leaveOn ? (
-                <LeavePlanSheet
-                    trip={leaveOpen ? trip : null}
-                    planner={planner}
-                    entitlements={data.entitlements}
-                    onClose={() => setLeaveOpen(false)}
-                    onApply={(t, id) => takeLeave(t, id, data.entitlements, data.patch, undo)}
-                    onOpenCalendar={() => { setLeaveOpen(false); openPage('/calendar'); }}
-                />
-            ) : null}
-            {entryOn ? <DocumentsSheet open={docsOpen} onClose={() => setDocsOpen(false)} trip={trip} checks={docsChecks} countries={tripCountries(trip)} onOpenMember={onOpenMember ? id => { setDocsOpen(false); onOpenMember(id); } : undefined} /> : null}
+            <LeavePlanSheet
+                trip={leaveOpen ? trip : null}
+                planner={planner}
+                entitlements={data.entitlements}
+                onClose={() => setLeaveOpen(false)}
+                onApply={(t, id) => takeLeave(t, id, data.entitlements, data.patch, undo)}
+                onOpenCalendar={() => { setLeaveOpen(false); openPage('/calendar'); }}
+            />
+            <DocumentsSheet open={docsOpen} onClose={() => setDocsOpen(false)} trip={trip} checks={docsChecks} countries={tripCountries(trip)} onOpenMember={onOpenMember ? id => { setDocsOpen(false); onOpenMember(id); } : undefined} />
             <DeleteTripSheet
                 trip={deleting}
                 onClose={() => setDeleting(null)}
                 onConfirm={t => attempt(async () => { await data.remove(t.id); setDeleting(null); setSheet(null); onBack(); })}
             />
-            {isFeatureEnabled('PUBLIC_TRIP_LINKS') ? <ShareLinkSheet open={sharing} tripId={trip.id} tripName={trip.name} onClose={() => setSharing(false)} /> : null}
+            <ShareLinkSheet open={sharing} tripId={trip.id} tripName={trip.name} onClose={() => setSharing(false)} />
             {undo.host}
         </div>
     );

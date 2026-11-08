@@ -14,7 +14,6 @@ import { Avatar } from '../../components/new/member/Avatar';
 import { FlagBadge } from '../../components/new/atlas/AtlasParts';
 import { PassportCard, PassportValidity } from '../../components/new/member/PassportCard';
 import { LoyaltyPanel } from '../../components/new/member/LoyaltyPanel';
-import { isFeatureEnabled } from '../../config/featureFlags';
 import type { JourneyRecord } from '../../utils/journeysModel';
 import { MemberRing, leaveColor, type RingSegment } from '../../components/new/member/MemberRing';
 import { MemberSheet, RemoveMemberSheet, type MemberTopic } from '../../components/new/member/MemberSheets';
@@ -126,9 +125,8 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
     const attempt = async (run: () => Promise<void>, fallback = "That didn't save. Try again.") => {
         try { await run(); } catch (e) { toast.error(errorMessage(e, fallback)); }
     };
-    const loyaltyOn = isFeatureEnabled('LOYALTY_WALLET');
     // The flights on the member's trips, for the status progress in their wallet.
-    const memberRecords: JourneyRecord[] = loyaltyOn ? data.trips.flatMap(trip => (trip.transports || []).filter(t => t.mode === 'Flight').map(flight => ({ flight, trip }))) : [];
+    const memberRecords: JourneyRecord[] = data.trips.flatMap(trip => (trip.transports || []).filter(t => t.mode === 'Flight').map(flight => ({ flight, trip })));
     const passport = passportStatus(member.passportExpiryDate);
     const hasPassport = Boolean(member.passportNumber || member.nationality || member.dateOfBirth || member.passportIssuingEntity || member.passportIssueDate || member.passportExpiryDate);
     const weekendRule = member.holidayWeekendRule || 'none';
@@ -447,7 +445,7 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                                 </RpEmpty>
                             </div>
                         )
-                    }{loyaltyOn ? <div className={card}><LoyaltyPanel member={member} records={memberRecords} today={data.today} onEdit={data.canEdit ? () => setTopic('loyalty') : undefined} /></div> : null}</div>) : null}
+                    }<div className={card}><LoyaltyPanel member={member} records={memberRecords} today={data.today} onEdit={data.canEdit ? () => setTopic('loyalty') : undefined} /></div></div>) : null}
 
                     {activeTab === 'settings' && data.canEdit ? (
                         <div className="grid items-start gap-3 lg:grid-cols-2 lg:gap-4">

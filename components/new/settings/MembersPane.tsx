@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { SavedConfig, User } from '../../../types';
 import type { SettingsData } from '../../../hooks/useSettingsData';
-import { isFeatureEnabled } from '../../../config/featureFlags';
 import { dataService } from '../../../services/mockDb';
 import { formatDate } from '../../../utils/formatters';
 import { errorMessage, toast } from '../../../services/toast';
@@ -153,7 +152,7 @@ export const MembersPane: React.FC<{ data: SettingsData; onOpenMember: (id: stri
 
     const sorted = useMemo(() => [...users].sort((a, b) => ROLES.indexOf(a.role) - ROLES.indexOf(b.role) || a.name.localeCompare(b.name)), [users]);
     const shown = all ? sorted : sorted.slice(0, SHOWN);
-    const canReset = isAdmin && isFeatureEnabled('AUDIT_PASSWORD_RESET');
+    const canReset = isAdmin;
 
     const issueCode = async (member: User) => {
         try {

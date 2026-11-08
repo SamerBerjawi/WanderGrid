@@ -2,12 +2,38 @@
 
 All notable changes to WanderGrid are listed here, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow the tags in this repository
-(v0.1 to v0.5, then 1.0.0, 1.1.0 and 1.2.0).
+(v0.1 to v0.5, then 1.0.0, 1.1.0, 1.2.0 and 1.2.1).
+
+## [1.2.1] - 2026-11-08
+
+Every 1.2.0 feature is now on for everyone, and the feature-flag system is gone.
+
+### Changed
+
+- **All twelve 1.2.0 features are always on**: booking import, Year in review, Leave meets trips, Where next ideas,
+  Achievements, Route replay, Offline trip packs, Entry requirements, Trip expenses, Jet lag helper, Loyalty wallet
+  and Public trip links. Nothing needs turning on, and the `VITE_FF_*` build variables no longer do anything.
+- The forgot-password flow and the Archived planner view, which were behind flags that defaulted to on, are plain
+  features now.
+
+### Removed
+
+- **The feature-flag system** (`config/featureFlags.ts`, `isFeatureEnabled` and the `VITE_FF_*` variables).
+- **The `GEV_*` feature flags and the map layers they hid.** OpenFreeMap vector basemaps are now always on
+  (`VITE_FF_GEV_P04B_OPENFREEMAP` no longer exists). The "Daily satellite" (NASA GIBS true colour) and
+  "3D elevation" map layers, both off by default and never shown in production, are gone with
+  `VITE_FF_GEV_P04C_GIBS_DAILY` and `VITE_FF_GEV_P04D_TERRAIN`. Relief shading and the Night lights basemap are
+  unchanged; saved map settings for the removed layers are dropped when they load.
+
+### Upgrading from 1.2.0
+
+- No action is needed. If you built the app with `VITE_FF_*` variables, they are ignored; remove them from your
+  build settings.
 
 ## [1.2.0] - 2026-11-08
 
 Twelve new features for planning, travelling and sharing a trip. Each one is behind its own `VITE_FF_*` flag and is
-off by default, so nothing changes until you turn it on. The build number now reads `v1.2-YYMMDD.N`.
+off by default, so nothing changes until you turn it on (1.2.1 turns them all on). The build number now reads `v1.2-YYMMDD.N`.
 
 ### Added
 
@@ -153,11 +179,6 @@ detailed calendar feed. The release line is also what the app shows in its build
   `googleGeminiApiKey` or `cartoApiKey` load and restore normally; the server never sends them to a browser or
   exports them, and drops them the next time settings are saved. Remove `GEMINI_API_KEY` from your
   environment if you set it.
-- **The `GEV_*` feature flags and the map layers they hid.** OpenFreeMap vector basemaps are now always on
-  (`VITE_FF_GEV_P04B_OPENFREEMAP` no longer exists). The "Daily satellite" (NASA GIBS true colour) and
-  "3D elevation" map layers, both off by default and never shown in production, are gone with
-  `VITE_FF_GEV_P04C_GIBS_DAILY` and `VITE_FF_GEV_P04D_TERRAIN`. Relief shading and the Night lights basemap are
-  unchanged; saved map settings for the removed layers are dropped when they load.
 
 ## [1.0.0] - 2026-10-23
 
