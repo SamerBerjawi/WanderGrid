@@ -16,7 +16,10 @@ import { TripMenu } from '../../components/new/trips/TripMenu';
 import { BUCKET_HEAD, BUCKET_LABEL, type TripActions } from '../../components/new/trips/TripCard';
 import { TripDetailsModal, type TripOrigin } from '../../components/new/trips/TripDetailsModal';
 import { DeleteTripSheet, TripSheet, type TripSheetTarget } from '../../components/new/trips/TripSheets';
-import { Archive, ArrowDown, CalendarBlank, Kanban, List, MagnifyingGlass, MapPin, MapTrifold, Plus, Receipt, Stack, Suitcase, Tag, XCircle } from '../../components/ui/hugeicons';
+import { BookingImportSheet, type BookingImportResult } from '../../components/new/trips/BookingImportSheet';
+import { dataService } from '../../services/mockDb';
+import { isFeatureEnabled } from '../../config/featureFlags';
+import { Archive, ArrowDown, ArrowUpRight, CalendarBlank, Envelope, Kanban, List, MagnifyingGlass, MapPin, MapTrifold, Plus, Receipt, Stack, Suitcase, Tag, XCircle } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -101,6 +104,7 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     const [detailsOrigin, setDetailsOrigin] = useState<TripOrigin | null>(null);
     const [sheet, setSheet] = useState<TripSheetTarget | null>(null);
     const [deleting, setDeleting] = useState<Trip | null>(null);
+    const [bookingOpen, setBookingOpen] = useState(false);
 
     const changeView = (next: View) => {
         setView(next);
@@ -116,9 +120,16 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
         try {
             const url = new URL(window.location.href);
             if (url.searchParams.get('new') === '1') {
-                url.searchParams.delete('new');
+                // A suggested break and place (Where next ideas) arrive as ?start=&end=&to=.
+                const start = url.searchParams.get('start') || '', end = url.searchParams.get('end') || '', to = url.searchParams.get('to') || '';
+                ['new', 'start', 'end', 'to'].forEach(k => url.searchParams.delete(k));
                 window.history.replaceState({}, '', url.pathname + url.search);
-                setSheet({ kind: 'create', bucket: 'planned' });
+                const iso = /^\d{4}-\d{2}-\d{2}$/;
+                const prefill = {
+                    ...(iso.test(start) ? { startDate: start } : {}), ...(iso.test(end) ? { endDate: end } : {}),
+                    ...(to ? { destination: to.slice(0, 80), name: to.slice(0, 80) } : {}),
+                };
+                setSheet({ kind: 'create', bucket: 'planned', prefill: Object.keys(prefill).length ? prefill : undefined });
             }
         } catch { /* ignore */ }
         const onNew = () => setSheet({ kind: 'create', bucket: 'planned' });
@@ -179,6 +190,16 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
         undo.show(`Duplicated ${trip.name}`, () => attempt(() => data.remove(copy.id)));
     });
     const openTrip = (trip: Trip) => { if (onTripClick) onTripClick(trip.id); };
+
+    const bookingImported = ({ trip, previous, adopted, added }: BookingImportResult) => {
+        void data.reload();
+        const what = `${added} ${added === 1 ? 'booking' : 'bookings'}`;
+        undo.show(previous ? `Added ${what} to ${trip.name}` : `Created ${trip.name} with ${what}`, () => attempt(async () => {
+            if (previous) await dataService.applyBatch({ upsertTrips: [previous], upsertFlights: adopted }, { skipGeocoding: true });
+            else await dataService.applyBatch({ deleteTrips: [trip.id], upsertFlights: adopted });
+            await data.reload();
+        }), { duration: 8000, action: onTripClick ? { label: 'Open', icon: ArrowUpRight, onClick: () => onTripClick(trip.id) } : undefined });
+    };
     const confirmDelete = (trip: Trip) => attempt(async () => {
         await data.remove(trip.id);
         setDeleting(null);
@@ -217,6 +238,7 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
         { id: 'list', label: 'List', icon: List as any },
         { id: 'search', label: 'Search trips', icon: MagnifyingGlass as any, action: () => setSearchOpen(o => !o), dividerBefore: true },
         { id: 'new', label: 'New trip', icon: Plus as any, action: () => setSheet({ kind: 'create', bucket: 'planned' }) },
+        ...(isFeatureEnabled('BOOKING_IMPORT') ? [{ id: 'booking', label: 'Import a booking', icon: Envelope as any, action: () => setBookingOpen(true) }] : []),
     ];
 
     const dragEnabled = !mobile && view !== 'list' && scope === 'active';
@@ -376,6 +398,9 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
                 onOpenTrip={trip => { setDetailsId(null); openTrip(trip); }}
                 onMove={move}
             />
+            {isFeatureEnabled('BOOKING_IMPORT') ? (
+                <BookingImportSheet open={bookingOpen} trips={data.trips} brandfetchApiKey={data.brandfetchApiKey} onClose={() => setBookingOpen(false)} onImported={bookingImported} />
+            ) : null}
             <DeleteTripSheet trip={deleting} onClose={() => setDeleting(null)} onConfirm={confirmDelete} />
             {undo.host}
         </div>
