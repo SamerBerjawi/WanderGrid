@@ -11,6 +11,11 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Added
 
+- **Achievements in the Atlas** (behind `VITE_FF_ATLAS_ACHIEVEMENTS`, off by default): a trophy tool opens the stamps you
+  have earned, in the look of a passport page, each with levels: continents, countries, trips, nights away, a run of
+  months with a trip, distance (laps round the Earth), your longest flight, aircraft types, airlines, the 25 busiest
+  airports, rail kilometres, ferry crossings, crossing the equator and going inside a polar circle. They are counted
+  from your trips, flights and places, so they stay right as your log changes, and "Next up" shows what is closest.
 - **Year in review** (behind `VITE_FF_YEAR_IN_REVIEW`, off by default): a Dashboard tool that opens a story of a
   year of travel, one slide at a time: distance (with the times round the Earth and the split by flights, rail,
   road and sea), nights away by month, countries (and the new ones), the longest flight, favourite route, airline,

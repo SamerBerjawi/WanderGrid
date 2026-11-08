@@ -34,6 +34,8 @@ export const FEATURE_FLAGS = {
   // WP-1.7: "Archived" planner view (Archive no longer deletes trips)
   AUDIT_TRIP_ARCHIVE_VIEW: getEnvFlag('VITE_FF_AUDIT_TRIP_ARCHIVE_VIEW', true),
 
+  // Achievements: stamps earned by how you travel, in the Atlas (default OFF)
+  ATLAS_ACHIEVEMENTS: getEnvFlag('VITE_FF_ATLAS_ACHIEVEMENTS', false),
   // Year in review: a swipeable story of a year of travel, opened from the Dashboard (default OFF)
   YEAR_IN_REVIEW: getEnvFlag('VITE_FF_YEAR_IN_REVIEW', false),
   // Import a booking: read flights, trains, car hire, stays and reservations from a confirmation email (default OFF)
