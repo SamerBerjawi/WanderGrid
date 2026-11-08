@@ -34,6 +34,9 @@ export const FEATURE_FLAGS = {
   // WP-1.7: "Archived" planner view (Archive no longer deletes trips)
   AUDIT_TRIP_ARCHIVE_VIEW: getEnvFlag('VITE_FF_AUDIT_TRIP_ARCHIVE_VIEW', true),
 
+
+  // Public trip links: a read-only /s/:token page for family, no account needed (default OFF)
+  PUBLIC_TRIP_LINKS: getEnvFlag('VITE_FF_PUBLIC_TRIP_LINKS', false),
   // Route replay: watch your past journeys drawn in the order you made them, on the Map (default OFF)
   MAP_REPLAY: getEnvFlag('VITE_FF_MAP_REPLAY', false),
   // Offline trip packs: keep a trip, its bookings and its map area on the device to read without a connection (default OFF)

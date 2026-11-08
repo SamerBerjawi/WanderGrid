@@ -1,4 +1,5 @@
 import { isFeatureEnabled } from '../../config/featureFlags';
+import { ShareLinkSheet } from '../../components/new/trip/ShareLinkSheet';
 import React, { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import type { PackingItem, Trip, User } from '../../types';
 import { useTripsData, type TripDraft } from '../../hooks/useTripsData';
@@ -30,7 +31,7 @@ import { RoutePlanner } from '../../components/new/trip/RoutePlanner';
 import { WeatherChip } from '../../components/new/WeatherChip';
 import { ExpensesPanel } from '../../components/new/trip/ExpensesPanel';
 import { BookingsPanel, CostsPanel, GearPanel, ItineraryPanel, NotesPanel, type EditStep } from '../../components/new/trip/TripPanels';
-import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, CalendarCheck, DownloadSimple, FileText, IdentificationCard, Kanban, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket, type Icon } from '../../components/ui/hugeicons';
+import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, CalendarCheck, DownloadSimple, FileText, IdentificationCard, Kanban, LinkSquare, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket, type Icon } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -79,6 +80,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
     const [tab, setTab] = useState<TabId>(readTab);
     const [sheet, setSheet] = useState<TripSheetTarget | null>(null);
     const [deleting, setDeleting] = useState<Trip | null>(null);
+    const [sharing, setSharing] = useState(false);
     const offlineOn = isFeatureEnabled('OFFLINE_PACKS');
     const offline = useOfflinePacks();
     const leaveOn = isFeatureEnabled('LEAVE_PLANNER');
@@ -184,6 +186,10 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
     };
     // "Open trip" would reopen this page, so it is not in this menu.
     const menu = tripMenuItems(trip, bucket, actions).filter(i => i.id !== 'open');
+    if (isFeatureEnabled('PUBLIC_TRIP_LINKS')) {
+        const at = menu.findIndex(i => i.id === 'calendar');
+        menu.splice(at + 1, 0, { id: 'share', label: 'Share link', icon: LinkSquare, onSelect: () => setSharing(true) });
+    }
     const edit = (s: EditStep) => setSheet({ kind: 'edit', trip, step: s });
 
     // Canvas drags: each change is saved at once and can be undone.
@@ -442,6 +448,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                 onClose={() => setDeleting(null)}
                 onConfirm={t => attempt(async () => { await data.remove(t.id); setDeleting(null); setSheet(null); onBack(); })}
             />
+            {isFeatureEnabled('PUBLIC_TRIP_LINKS') ? <ShareLinkSheet open={sharing} tripId={trip.id} tripName={trip.name} onClose={() => setSharing(false)} /> : null}
             {undo.host}
         </div>
     );

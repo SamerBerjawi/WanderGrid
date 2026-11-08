@@ -11,6 +11,9 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Added
 
+- Public trip links (behind `PUBLIC_TRIP_LINKS`): Share link on a trip creates a read-only page for family, no account
+  needed, with the map, the plans by day and each flight's status. Costs, booking references, seats and notes are never
+  included, and turning the link off ends it at once.
 - **Route replay on the Map** (behind `VITE_FF_MAP_REPLAY`, off by default): a clock tool on the Map's dock plays your
   past journeys back in the order you made them, from your first route to your latest, with the newest strongest and
   the date, route count and distance so far. Play, pause and scrub, at 1x, 2x or 4x; it follows the map's filters,

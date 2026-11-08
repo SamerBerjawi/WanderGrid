@@ -12,7 +12,7 @@ import { cn } from '../../../utils/cn';
  * the page's scroll, and a trip across oceans fits as well as one across a country.
  */
 
-export const TripHeroMap: React.FC<{ trip: Trip; className?: string }> = ({ trip, className }) => {
+export const TripHeroMap: React.FC<{ trip: Trip; className?: string; /** What the map says when there is nothing to draw (the public page is read only, so it does not ask to plan). */ emptyMessage?: string }> = ({ trip, className, emptyMessage = 'Plan the route and pick places for your transport and stays: they appear here.' }) => {
     // The scratch mode lists every leg of the trip as a route.
     const model = useMemo(() => buildMapModel([trip], { mode: 'scratch', groupAirports: false, scratchRoutes: ['flight', 'land', 'sea'] }), [trip]);
     const routes = useMemo(
@@ -33,7 +33,7 @@ export const TripHeroMap: React.FC<{ trip: Trip; className?: string }> = ({ trip
             <RoutesMap routes={routes} pins={pins} className="absolute inset-0" label={`Map of ${trip.name}`} />
             {empty ? (
                 <p className="pointer-events-none absolute inset-x-3 bottom-3 rounded-rp-tile bg-rp-surface/95 px-4 py-3 text-sm text-rp-muted rp-shadow-float">
-                    Plan the route and pick places for your transport and stays: they appear here.
+                    {emptyMessage}
                 </p>
             ) : null}
         </div>
