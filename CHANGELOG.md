@@ -11,6 +11,12 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Added
 
+- **Trip expenses with exchange rates** (behind `VITE_FF_TRIP_EXPENSES`, off by default): the Costs tab of a trip gets a ledger.
+  Log what you spend in the currency you paid in; it is converted at the European Central Bank's rate for that day
+  (looked up for you, and yours to change), shared equally or by amount between the travellers, and totalled with the
+  budget. **Who owes whom** shows the fewest payments that settle everyone up. New `GET /api/proxy/fx/:date?from=&to=`
+  on the server (Frankfurter, cached for a month per past day). Expenses are saved on the trip with the rate they were
+  entered at, so totals never drift.
 - **Entry requirements and document checks** (behind `VITE_FF_ENTRY_REQUIREMENTS`, off by default): a chip on a trip's page
   checks each traveller's passport against every country the trip goes to: too short for a destination that asks for six
   months (or three after leaving the Schengen area), ending before the trip does, or a permit to arrange (ESTA, UK ETA,
