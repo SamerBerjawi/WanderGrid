@@ -34,6 +34,9 @@ export const FEATURE_FLAGS = {
   // WP-1.7: "Archived" planner view (Archive no longer deletes trips)
   AUDIT_TRIP_ARCHIVE_VIEW: getEnvFlag('VITE_FF_AUDIT_TRIP_ARCHIVE_VIEW', true),
 
+  // Leave meets trips: plan a trip's leave from its dates, with the leave it needs shown on the trip (default OFF)
+  LEAVE_PLANNER: getEnvFlag('VITE_FF_LEAVE_PLANNER', false),
+
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;

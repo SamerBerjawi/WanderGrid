@@ -11,6 +11,12 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Added
 
+- **Leave meets trips** (behind `VITE_FF_LEAVE_PLANNER`, off by default): a trip now shows what it costs in leave
+  and whether the leave is there. A chip on the trip's card and page says "Needs 4 days of leave", "4 days of
+  Annual leave" or, in red, "3 days over Annual leave". **Plan leave** opens a day-by-day view of the trip with the
+  weekends and public holidays left out (and the days per year when a trip crosses New Year), each leave type with
+  what it has left and would have after, and a suggested type; one button books it, with Undo. It counts exactly as
+  the Calendar does, and also checks everyone else on the trip.
 - An airport or place sheet draws a vertical Sankey of its routes: arrivals across the top, departures across
   the bottom, each as wide as the number of times you travelled it, with the top 8 per side and a "+N others"
   node. Hover, focus or tap a node to see the count or open the route; the routes list stays below.

@@ -16,6 +16,10 @@ import { TripMenu } from '../../components/new/trips/TripMenu';
 import { BUCKET_HEAD, BUCKET_LABEL, type TripActions } from '../../components/new/trips/TripCard';
 import { TripDetailsModal, type TripOrigin } from '../../components/new/trips/TripDetailsModal';
 import { DeleteTripSheet, TripSheet, type TripSheetTarget } from '../../components/new/trips/TripSheets';
+import { LeavePlanSheet } from '../../components/new/trips/LeavePlanSheet';
+import { LeavePlannerContext, takeLeave, useLeavePlanner } from '../../hooks/useLeavePlanner';
+import { isFeatureEnabled } from '../../config/featureFlags';
+import { openPage } from '../../utils/appNavigation';
 import { Archive, ArrowDown, CalendarBlank, Kanban, List, MagnifyingGlass, MapPin, MapTrifold, Plus, Receipt, Stack, Suitcase, Tag, XCircle } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
@@ -101,6 +105,9 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     const [detailsOrigin, setDetailsOrigin] = useState<TripOrigin | null>(null);
     const [sheet, setSheet] = useState<TripSheetTarget | null>(null);
     const [deleting, setDeleting] = useState<Trip | null>(null);
+    const leaveOn = isFeatureEnabled('LEAVE_PLANNER');
+    const planner = useLeavePlanner(data.trips, data.users, data.entitlements, leaveOn);
+    const [leaveTripId, setLeaveTripId] = useState<string | null>(null);
 
     const changeView = (next: View) => {
         setView(next);
@@ -199,6 +206,7 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
         onDuplicate: duplicateTrip,
         onCancel: cancelTrip,
         onDelete: setDeleting,
+        onPlanLeave: leaveOn ? (trip: Trip) => setLeaveTripId(trip.id) : undefined,
     };
 
     const stageItems = (['planned', 'confirmed', 'past'] as TripBucket[]).map(b => ({
@@ -225,6 +233,7 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     const sortLabel = SORTS.find(o => o.id === sort)!.label;
 
     return (
+        <LeavePlannerContext.Provider value={leaveOn ? planner : null}>
         <div className="custom-scrollbar h-full overflow-y-auto px-3 pt-2 pb-32 sm:px-6 md:pb-16">
             <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6">
                 <div className="flex flex-wrap items-center justify-between gap-x-3">
@@ -376,9 +385,20 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
                 onOpenTrip={trip => { setDetailsId(null); openTrip(trip); }}
                 onMove={move}
             />
+            {leaveOn ? (
+                <LeavePlanSheet
+                    trip={leaveTripId ? data.trips.find(t => t.id === leaveTripId) ?? null : null}
+                    planner={planner}
+                    entitlements={data.entitlements}
+                    onClose={() => setLeaveTripId(null)}
+                    onApply={(trip, id) => takeLeave(trip, id, data.entitlements, data.patch, undo)}
+                    onOpenCalendar={() => { setLeaveTripId(null); openPage('/calendar'); }}
+                />
+            ) : null}
             <DeleteTripSheet trip={deleting} onClose={() => setDeleting(null)} onConfirm={confirmDelete} />
             {undo.host}
         </div>
+        </LeavePlannerContext.Provider>
     );
 };
 

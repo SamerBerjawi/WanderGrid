@@ -10,6 +10,9 @@ import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import { RpEmpty } from '../../components/new/ui';
 import NumberFlow from '@number-flow/react';
 import { openPage } from '../../utils/appNavigation';
+import { LeavePlanSheet } from '../../components/new/trips/LeavePlanSheet';
+import { takeLeave, useLeavePlanner } from '../../hooks/useLeavePlanner';
+import { isFeatureEnabled } from '../../config/featureFlags';
 import { NextFlight } from '../../components/new/journeys/NextFlight';
 import { RpHugeicon } from '../../components/new/RpHugeicon';
 import { useUndoToast } from '../../components/new/UndoToast';
@@ -22,7 +25,7 @@ const TripHeroMap = lazy(() => import('../../components/new/trip/TripMapPanel'))
 import { RoutePlanner } from '../../components/new/trip/RoutePlanner';
 import { WeatherChip } from '../../components/new/WeatherChip';
 import { BookingsPanel, CostsPanel, GearPanel, ItineraryPanel, NotesPanel, type EditStep } from '../../components/new/trip/TripPanels';
-import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, FileText, Kanban, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket, type Icon } from '../../components/ui/hugeicons';
+import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, CalendarCheck, FileText, Kanban, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket, type Icon } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -71,6 +74,9 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
     const [tab, setTab] = useState<TabId>(readTab);
     const [sheet, setSheet] = useState<TripSheetTarget | null>(null);
     const [deleting, setDeleting] = useState<Trip | null>(null);
+    const leaveOn = isFeatureEnabled('LEAVE_PLANNER');
+    const planner = useLeavePlanner(data.trips, data.users, data.entitlements, leaveOn);
+    const [leaveOpen, setLeaveOpen] = useState(false);
     const trip = useMemo(() => data.trips.find(t => t.id === tripId), [data.trips, tripId]);
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -154,6 +160,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
             undo.show(`Cancelled ${t.name}`, () => attempt(async () => { if (previous) await data.setStatus(t.id, previous); }));
         }),
         onDelete: setDeleting,
+        onPlanLeave: leaveOn ? () => setLeaveOpen(true) : undefined,
     };
     // "Open trip" would reopen this page, so it is not in this menu.
     const menu = tripMenuItems(trip, bucket, actions).filter(i => i.id !== 'open');
@@ -265,6 +272,20 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                             ))}
                         </ol>
 
+                        {leaveOn && bucket !== 'past' && planner.noteFor(trip) ? (() => {
+                            const note = planner.noteFor(trip)!;
+                            return (
+                                <button
+                                    type="button"
+                                    onClick={() => setLeaveOpen(true)}
+                                    aria-label={`${note.text}. Plan leave for ${trip.name}`}
+                                    className={cn('mt-3 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-current', note.tone === 'short' ? 'bg-rp-rust text-rp-paper' : skin.panel, note.tone === 'needed' && 'underline decoration-dotted underline-offset-4')}
+                                >
+                                    <CalendarCheck size={16} aria-hidden /> {note.text}
+                                </button>
+                            );
+                        })() : null}
+
                         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                                 {members.slice(0, 4).map(u => (
@@ -367,6 +388,16 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                 onDelete={setDeleting}
                 onOpenTrip={() => setSheet(null)}
             />
+            {leaveOn ? (
+                <LeavePlanSheet
+                    trip={leaveOpen ? trip : null}
+                    planner={planner}
+                    entitlements={data.entitlements}
+                    onClose={() => setLeaveOpen(false)}
+                    onApply={(t, id) => takeLeave(t, id, data.entitlements, data.patch, undo)}
+                    onOpenCalendar={() => { setLeaveOpen(false); openPage('/calendar'); }}
+                />
+            ) : null}
             <DeleteTripSheet
                 trip={deleting}
                 onClose={() => setDeleting(null)}
