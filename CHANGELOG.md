@@ -11,6 +11,10 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Added
 
+- **Route replay on the Map** (behind `VITE_FF_MAP_REPLAY`, off by default): a clock tool on the Map's dock plays your
+  past journeys back in the order you made them, from your first route to your latest, with the newest strongest and
+  the date, route count and distance so far. Play, pause and scrub, at 1x, 2x or 4x; it follows the map's filters,
+  so you can replay a single year. A long history still takes about twenty seconds.
 - **Offline trip packs** (behind `VITE_FF_OFFLINE_PACKS`, off by default): **Save for offline** in a trip's menu keeps the
   trip on your device: its dates, every leg with its booking reference, seat, terminal and gate, your stays with their
   references and addresses, activities and notes, and the map tiles of the area, fetched ahead. A saved trip opens
