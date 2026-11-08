@@ -20,6 +20,7 @@ import {
   AnchorIcon,
   AntennaIcon,
   LinkSquare02Icon,
+  ListRestartIcon,
   Undo03Icon,
   ArchiveIcon,
   ArmchairIcon,
@@ -249,6 +250,7 @@ export const ArrowSquareOut = make(SquareArrowUpRightIcon, 'ArrowSquareOut');
 export const ArrowUp = make(ArrowUp01Icon, 'ArrowUp');
 export const ArrowUpRight = make(ArrowUpRight01Icon, 'ArrowUpRight');
 export const LinkSquare = make(LinkSquare02Icon, 'LinkSquare');
+export const ListRestart = make(ListRestartIcon, 'ListRestart');
 export const ArrowUndo = make(Undo03Icon, 'ArrowUndo');
 export const ArrowsClockwise = make(RefreshIcon, 'ArrowsClockwise');
 export const ArrowsIn = make(ArrowShrink02Icon, 'ArrowsIn');

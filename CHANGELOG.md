@@ -19,6 +19,10 @@ Fixes and upgrades from using 1.2.1: Plan leave, Import a booking and Route repl
   on the next line, and Arrival and Departure for a stay. A stay is no longer dropped for lacking a hotel name, and trains
   (Eurostar, SNCF, Trenitalia and more) are read from "Brussels-Midi → London St Pancras" lines.
 
+### Changed
+
+- The Dashboard's **Reset widgets** button only shows in Edit mode, and uses the list-restart icon.
+
 ### Added
 
 - **PDF tickets in Import a booking.** Choose or drop one or more PDFs (e-tickets, boarding passes, hotel vouchers); the text is

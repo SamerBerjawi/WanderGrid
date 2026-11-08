@@ -13,7 +13,7 @@ import {
     LeaveWidget, MapWidget, MetricWidget, NextWidget, PassportWidget, RecentWidget, UpcomingWidget, WhereNextWidget, YearsWidget, nextTone,
 } from '../../components/new/dashboard/DashboardWidgets';
 import {
-    Airplane, ArrowCounterClockwise, ChartBar, Check, PencilSimple, ClockCounterClockwise, Sparkle, Compass, Globe, IdentificationCard, Moon, Path, Plus, SunHorizon, Suitcase, type Icon,
+    Airplane, ChartBar, Check, ListRestart, PencilSimple, ClockCounterClockwise, Sparkle, Compass, Globe, IdentificationCard, Moon, Path, Plus, SunHorizon, Suitcase, type Icon,
 } from '../../components/ui/hugeicons';
 import { mapLink } from '../../utils/mapLinks';
 import { ORBIT_KM, leaveByType, leaveTrips, type LeaveTrip, type LeaveUse } from '../../utils/dashboardModel';
@@ -232,7 +232,8 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
         { id: 'edit', label: editing ? 'Done' : 'Edit widgets', icon: (editing ? Check : PencilSimple) as any, action: () => setEditing(e => !e) },
         ...(mobile ? [] : [{ id: 'new', label: 'New trip', icon: Plus as any, action: () => openPage('/trips?new=1') }]),
         ...(reviewEnabled ? [{ id: 'review', label: 'Year in review', icon: Sparkle as any, action: () => setReviewOpen(true) }] : []),
-        { id: 'reset', label: 'Reset widgets', icon: ArrowCounterClockwise as any, action: resetLayout },
+        // Resetting the layout is part of editing it, so the button only shows in Edit mode.
+        ...(editing ? [{ id: 'reset', label: 'Reset widgets', icon: ListRestart as any, action: resetLayout }] : []),
     ];
 
     const t = data.totals;
