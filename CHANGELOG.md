@@ -11,6 +11,12 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Added
 
+- **Leave meets trips** (behind `VITE_FF_LEAVE_PLANNER`, off by default): a trip now shows what it costs in leave
+  and whether the leave is there. A chip on the trip's card and page says "Needs 4 days of leave", "4 days of
+  Annual leave" or, in red, "3 days over Annual leave". **Plan leave** opens a day-by-day view of the trip with the
+  weekends and public holidays left out (and the days per year when a trip crosses New Year), each leave type with
+  what it has left and would have after, and a suggested type; one button books it, with Undo. It counts exactly as
+  the Calendar does, and also checks everyone else on the trip.
 - **Jet lag and time-zone helper** (behind `VITE_FF_JET_LAG_HELPER`, off by default): a journey's sheet now shows how far ahead
   or behind the destination is, the time there now, and when it lands on both clocks. A flight gets a **Jet lag** section
   with a sleep and light plan for the days after: when to start shifting, when to sleep on the flight, what to do on

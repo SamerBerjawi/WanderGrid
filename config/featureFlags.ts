@@ -34,6 +34,8 @@ export const FEATURE_FLAGS = {
   // WP-1.7: "Archived" planner view (Archive no longer deletes trips)
   AUDIT_TRIP_ARCHIVE_VIEW: getEnvFlag('VITE_FF_AUDIT_TRIP_ARCHIVE_VIEW', true),
 
+  // Leave meets trips: plan a trip's leave from its dates, with the leave it needs shown on the trip (default OFF)
+  LEAVE_PLANNER: getEnvFlag('VITE_FF_LEAVE_PLANNER', false),
   // Jet lag helper: the time shift, a sleep and light plan, and local-time chips on a flight's sheet (default OFF)
   JET_LAG_HELPER: getEnvFlag('VITE_FF_JET_LAG_HELPER', false),
   // Where next ideas: your coming days off matched with wishlist places that fit them (default OFF)
