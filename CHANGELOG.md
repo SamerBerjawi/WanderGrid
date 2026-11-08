@@ -11,6 +11,14 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Added
 
+- **Entry requirements and document checks** (behind `VITE_FF_ENTRY_REQUIREMENTS`, off by default): a chip on a trip's page
+  checks each traveller's passport against every country the trip goes to: too short for a destination that asks for six
+  months (or three after leaving the Schengen area), ending before the trip does, or a permit to arrange (ESTA, UK ETA,
+  eTA, eVisitor, NZeTA, an e-Visa or a visa). The **Documents** sheet lists it per traveller and country and sends you to
+  the passport details to fix what is missing. The visa table is a small starter set for common passports and destinations,
+  dated, and says to confirm with the official site.
+- Fixed: a country typed as "France" was read as the retired code FX (and "Germany" would have been DD, "United Kingdom"
+  UK) wherever a country name is turned into a code.
 - **Achievements in the Atlas** (behind `VITE_FF_ATLAS_ACHIEVEMENTS`, off by default): a trophy tool opens the stamps you
   have earned, in the look of a passport page, each with levels: continents, countries, trips, nights away, a run of
   months with a trip, distance (laps round the Earth), your longest flight, aircraft types, airlines, the 25 busiest
