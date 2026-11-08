@@ -21,7 +21,7 @@ export type ParsedStay = Omit<Accommodation, 'id'>;
 export type ParsedActivity = Omit<Activity, 'id'>;
 
 export type ParsedBooking =
-    | { kind: 'transport'; source: BookingSource; transport: ParsedTransport }
+    | { kind: 'transport'; source: BookingSource; transport: ParsedTransport; /** A flight number and date were found but not both airports: the sheet fills them in. */ incomplete?: boolean }
     | { kind: 'stay'; source: BookingSource; stay: ParsedStay }
     | { kind: 'activity'; source: BookingSource; activity: ParsedActivity };
 
@@ -391,6 +391,7 @@ const DATE_RES: { re: RegExp; read: (m: RegExpMatchArray) => [number | null, num
     { re: /\b(\d{4})-(\d{2})-(\d{2})\b/g, read: m => [+m[1], +m[2], +m[3]] },
     { re: new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+${MONTH_RE}(?:\\s+|,\\s*)?(\\d{4})?`, 'gi'), read: m => [m[3] ? +m[3] : null, MONTHS[m[2].toLowerCase().replace('.', '')], +m[1]] },
     { re: new RegExp(`\\b${MONTH_RE}\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?`, 'gi'), read: m => [m[3] ? +m[3] : null, MONTHS[m[1].toLowerCase().replace('.', '')], +m[2]] },
+    { re: /\b(\d{1,2})(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)(\d{2})?\b/gi, read: m => [m[3] ? 2000 + +m[3] : null, MONTHS[m[2].toLowerCase()], +m[1]] },
     { re: /\b(\d{1,2})[/.](\d{1,2})[/.](\d{4})\b/g, read: m => (+m[2] > 12 ? [+m[3], +m[1], +m[2]] : [+m[3], +m[2], +m[1]]) },
 ];
 
@@ -455,7 +456,34 @@ const isAirportCode = (code: string, bracketed: boolean): boolean =>
 
 const AIRPORT_PAIR = /\(?\b([A-Z]{3})\b\)?\s*(?:-|–|—|→|->|>|to|✈)\s*(?:[A-Za-zÀ-ÿ .'-]{0,40})?\(?\b([A-Z]{3})\b\)?/g;
 const BRACKETED = /\(([A-Z]{3})\)/g;
-const FLIGHT_NO = /\b(?:flight\s*(?:no\.?|number|#)?\s*:?\s*)?([A-Z][A-Z0-9]|[0-9][A-Z])\s?(\d{1,4})\b/g;
+const FLIGHT_NO = /\b(?:flight\s*(?:no\.?|number|#)?\s*:?\s*)?([A-Z][A-Z0-9]|[0-9][A-Z]|[A-Z]{3})\s?(\d{1,4})\b/g;
+/** Three-letter airline designators that appear in confirmations, with the two-letter code the rest of the app uses. */
+const ICAO_TO_IATA: Record<string, string> = {
+    EZY: 'U2', BAW: 'BA', RYR: 'FR', DLH: 'LH', KLM: 'KL', AFR: 'AF', UAE: 'EK', SWR: 'LX', BEL: 'SN', TAP: 'TP', VLG: 'VY', WZZ: 'W6',
+    EWG: 'EW', SAS: 'SK', AUA: 'OS', IBE: 'IB', THY: 'TK', FIN: 'AY', NAX: 'DY', QTR: 'QR', ETD: 'EY', AAL: 'AA', DAL: 'DL', UAL: 'UA',
+    ACA: 'AC', JBU: 'B6', SWA: 'WN', VIR: 'VS', TVF: 'TO', EIN: 'EI', LOT: 'LO', ITY: 'AZ', AEE: 'A3', ELY: 'LY', MSR: 'MS', RAM: 'AT',
+};
+
+/** Airport codes in a piece of text in the order they appear: bracketed ones, or capitals that are a known airport. */
+const airportCodesIn = (text: string): string[] => {
+    const out: string[] = [];
+    for (const m of text.matchAll(/\(?\b([A-Z]{3})\b\)?/g)) {
+        const bracketed = m[0].startsWith('(') && m[0].endsWith(')');
+        if (isAirportCode(m[1], bracketed)) out.push(m[1]);
+    }
+    return out;
+};
+
+const MONTH_ABBR = '(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)';
+/** Times written as four digits ("0830", as in ticket receipts), found once the flight number and dates are taken out of the line. */
+const bareTimes = (line: string, flight: string): string[] => {
+    const cleaned = line
+        .replace(flight, ' ')
+        .replace(new RegExp(`\\b\\d{1,2}\\s?${MONTH_ABBR}\\w*\\s?\\d{0,4}\\b`, 'gi'), ' ')
+        .replace(/\b\d{4}-\d{2}-\d{2}\b/g, ' ')
+        .replace(/\b\d{1,2}[/.]\d{1,2}[/.]\d{2,4}\b/g, ' ');
+    return Array.from(cleaned.matchAll(/(?<![\d:./-])([01]\d|2[0-3])([0-5]\d)(?![\d:])/g)).map(m => `${m[1]}:${m[2]}`);
+};
 
 /** True for a line that begins a flight segment: a flight number with two airport codes beside it. */
 const startsSegment = (line: string): boolean => {
@@ -469,88 +497,211 @@ const startsSegment = (line: string): boolean => {
     return pair || (line.match(BRACKETED) || []).length >= 2;
 };
 
-/** Flight segments found in plain text: flight number, two airport codes and a date in the same block. */
-export const textFlights = (text: string, ref: string): ParsedTransport[] => {
+const TRAIN_WORDS = /\b(train|rail|eurostar|thalys|tgv|ice|sncf|sncb|nmbs|trenitalia|italo|renfe|ouigo|trainline|deutsche bahn|db bahn|oebb|öbb|sbb|amtrak|lner|avanti|national rail|intercity|frecciarossa)\b/i;
+const OPERATORS: [RegExp, string][] = [
+    [/eurostar/i, 'Eurostar'], [/thalys/i, 'Thalys'], [/\bsncf\b|\btgv\b|ouigo/i, 'SNCF'], [/\bsncb\b|nmbs/i, 'SNCB'], [/trenitalia|frecciarossa/i, 'Trenitalia'], [/italo/i, 'Italo'],
+    [/renfe/i, 'Renfe'], [/deutsche bahn|db bahn|\bICE\b/i, 'Deutsche Bahn'], [/oebb|öbb/i, 'ÖBB'], [/\bsbb\b/i, 'SBB'], [/amtrak/i, 'Amtrak'], [/lner/i, 'LNER'], [/avanti/i, 'Avanti West Coast'],
+];
+const PLACE = "[A-ZÀ-Ý][A-Za-zÀ-ÿ.'’ -]{1,34}?";
+const TRAIN_ROUTE = new RegExp(`(${PLACE})\\s*(?:→|->|➔|➝|–|—|\\sto\\s)\\s*(${PLACE})(?=\\s*(?:$|\\d|,|\\(|\\|))`, 'u');
+
+/** Train legs in plain text: two station names joined by an arrow or "to", with a date and times nearby. Needs a rail word somewhere in the text. */
+export const textTrains = (text: string, ref: string): ParsedTransport[] => {
+    if (!TRAIN_WORDS.test(text)) return [];
     const lines = text.replace(/\r/g, '').split('\n').map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
     const reference = findReference(text);
+    const operator = OPERATORS.find(([re]) => re.test(text))?.[1] || '';
     const out: ParsedTransport[] = [];
     const seen = new Set<string>();
-    for (let i = 0; i < lines.length; i++) {
-        // A segment is a small block of lines: this one and the next few, up to where the next segment starts.
-        let end = Math.min(lines.length, i + 5);
-        for (let j = i + 1; j < end; j++) if (startsSegment(lines[j])) { end = j; break; }
-        const blockLines = lines.slice(Math.max(0, i - 1), end);
-        const block = blockLines.join('\n');
-        const here = lines[i];
-        FLIGHT_NO.lastIndex = 0;
-        let fm: RegExpExecArray | null;
-        while ((fm = FLIGHT_NO.exec(here))) {
-            const labelled = /flight/i.test(fm[0]);
-            const code = fm[1];
-            if (!labelled && !/[A-Z]/.test(code)) continue;
-            if (!labelled && !/^[A-Z0-9]{2}$/.test(code)) continue;
-            // Codes that read as words or units ("NO 1", "TO 2") need the "flight" label.
-            if (!labelled && /^(NO|TO|AT|ON|IN|OF|OR|BY|UP|IS|IT|AM|PM|KG|CM|MM|ID|OK|VS|PO|ST|RD|ND|TH)$/.test(code)) continue;
-            const number = `${code} ${fm[2]}`;
-            let from = '', to = '';
-            AIRPORT_PAIR.lastIndex = 0;
-            let pm: RegExpExecArray | null;
-            while ((pm = AIRPORT_PAIR.exec(block))) {
-                const br = /\(/.test(pm[0]);
-                if (isAirportCode(pm[1], br) && isAirportCode(pm[2], br) && pm[1] !== pm[2]) { from = pm[1]; to = pm[2]; break; }
-            }
-            if (!from) {
-                const codes = Array.from(block.matchAll(BRACKETED)).map(m => m[1]).filter(c => isAirportCode(c, true));
-                if (codes.length >= 2 && codes[0] !== codes[1]) { from = codes[0]; to = codes[1]; }
-            }
-            if (!from) continue;
-            const dates = findDates(block, ref);
-            if (!dates.length) continue;
-            const times = findTimes(block);
-            const depDate = dates[0].date;
-            const depTime = times[0]?.time || '';
-            const arrTime = times[1]?.time || '';
-            // The arrival date is the one written beside the arrival time (the next segment's date is not it).
-            const arrLine = times[1] ? blockLines.find(l => findTimes(l).some(t => t.time === times[1].time)) : undefined;
-            const arrDates = arrLine ? findDates(arrLine, depDate).map(d => d.date).filter(d => d >= depDate) : [];
-            let arrDate = arrDates.length ? arrDates[arrDates.length - 1] : depDate;
-            if (arrDate === depDate && depTime && arrTime && arrTime < depTime) {
-                const d = new Date(`${depDate}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + 1); arrDate = toIsoDay(d);
-            }
-            const key = `${number}|${depDate}`;
-            if (seen.has(key)) continue;
-            seen.add(key);
-            out.push({
-                mode: 'Flight', provider: code, providerCode: code, identifier: number, confirmationCode: reference || '',
-                origin: from, destination: to, departureDate: depDate, departureTime: depTime, arrivalDate: arrDate, arrivalTime: arrTime,
-                seatNumber: block.match(/\bseat\s*:?\s*(\d{1,2}[A-K])\b/i)?.[1]?.toUpperCase(),
-                travelClass: cabinOf(block.match(/\b(first|business|premium economy|economy)\b/i)?.[1]),
-            });
-        }
-    }
+    lines.forEach((line, i) => {
+        const m = TRAIN_ROUTE.exec(line);
+        if (!m) return;
+        const from = m[1].trim().replace(/[-–\s]+$/, ''), to = m[2].trim();
+        if (/^[A-Z]{3}$/.test(from) && /^[A-Z]{3}$/.test(to)) return;
+        if (/\b(?:check|depart|arriv|return|outbound|inbound|from|to)\b$/i.test(from) || /^(?:the|a|an|your)\b/i.test(from)) return;
+        const block = lines.slice(Math.max(0, i - 2), Math.min(lines.length, i + 4)).join('\n');
+        let dates = findDates(block, ref);
+        if (!dates.length) { const above = findDates(lines.slice(0, i + 1).join('\n'), ref); dates = above.slice(-1); }
+        if (!dates.length) return;
+        const times = findTimes(block).map(t => t.time);
+        const depDate = dates[0].date;
+        const number = block.match(/\b(?:train|service|no\.?|#)\s*:?\s*([A-Z]{0,3}\s?\d{2,5})\b/i)?.[1]?.trim() || '';
+        const key = `${from}|${to}|${depDate}|${times[0] || ''}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        let arrDate = depDate;
+        if (times[0] && times[1] && times[1] < times[0]) { const d = new Date(`${depDate}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + 1); arrDate = toIsoDay(d); }
+        out.push({
+            mode: 'Train', provider: operator || 'Train', identifier: number, confirmationCode: reference || '',
+            origin: from, destination: to, departureDate: depDate, departureTime: times[0] || '', arrivalDate: arrDate, arrivalTime: times[1] || '',
+        });
+    });
     return out;
 };
 
-/** A hotel stay found in plain text: check-in and check-out dates, and a name from a label or a hotel-like line. */
-export const textStay = (text: string, ref: string, subject?: string): ParsedStay | null => {
-    const inM = text.match(/check[\s-]?in(?:\s*date)?\s*:?\s*([^\n]{0,60})/i);
-    const outM = text.match(/check[\s-]?out(?:\s*date)?\s*:?\s*([^\n]{0,60})/i);
-    if (!inM || !outM) return null;
-    const inD = findDates(inM[1], ref)[0]?.date;
-    const outD = findDates(outM[1], inD || ref)[0]?.date;
-    if (!inD || !outD || outD < inD) return null;
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    const labelled = text.match(/\b(?:hotel|property|accommodation|stay at)\s*(?:name)?\s*:\s*([^\n]{2,80})/i)?.[1]?.trim();
-    const hotelish = lines.find(l => l.length <= 80 && /\b(hotel|resort|hostel|inn|suites|apartments?|lodge|guest ?house|b&b|motel|villa|residence)\b/i.test(l) && !/check[\s-]?(in|out)/i.test(l) && !/:/.test(l));
+const FLIGHT_WORDS = /\b(flight|airlines?|airways|e-?ticket|boarding|itinerary|departure|arrival)\b/i;
+const NOT_CARRIER = /^(NO|TO|AT|ON|IN|OF|OR|BY|UP|IS|IT|AM|PM|KG|CM|MM|ID|OK|VS|PO|ST|RD|ND|TH)$/;
+
+/** The airports of a block of text: a pair joined by an arrow or "to", bracketed codes, or known codes in capitals. */
+const routeIn = (block: string): { from: string; to: string } | null => {
+    AIRPORT_PAIR.lastIndex = 0;
+    let pm: RegExpExecArray | null;
+    while ((pm = AIRPORT_PAIR.exec(block))) {
+        const br = /\(/.test(pm[0]);
+        if (isAirportCode(pm[1], br) && isAirportCode(pm[2], br) && pm[1] !== pm[2]) return { from: pm[1], to: pm[2] };
+    }
+    const codes = airportCodesIn(block).filter((c, i, all) => all.indexOf(c) === i);
+    if (codes.length >= 2) return { from: codes[0], to: codes[1] };
+    return null;
+};
+
+/**
+ * Flight segments found in plain text. Each flight number is read together with the lines around it: the
+ * ones that follow (the usual layout), then the ones before it (airports and times listed above a number, as
+ * in a ticket PDF), then both. A segment needs two airports and a date; with a flight number and a date but no
+ * airports it is still returned, with the airports empty, so the sheet can look them up or ask.
+ */
+export const textFlights = (text: string, ref: string): ParsedTransport[] => {
+    const lines = text.replace(/\r/g, '').split('\n').map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    const reference = findReference(text);
+    const flightWords = FLIGHT_WORDS.test(text);
+    type Hit = { line: number; code: string; digits: number | string; labelled: boolean; raw: string };
+    const hits: Hit[] = [];
+    lines.forEach((l, i) => {
+        FLIGHT_NO.lastIndex = 0;
+        let fm: RegExpExecArray | null;
+        while ((fm = FLIGHT_NO.exec(l))) {
+            const labelled = /flight/i.test(fm[0]);
+            let code = fm[1];
+            if (!labelled && !/[A-Z]/.test(code)) continue;
+            if (!labelled && NOT_CARRIER.test(code)) continue;
+            if (code.length === 3) {
+                if (ICAO_TO_IATA[code]) code = ICAO_TO_IATA[code];
+                else if (!labelled) continue;
+            }
+            hits.push({ line: i, code, digits: fm[2], labelled, raw: fm[0] });
+        }
+    });
+
+    const out: ParsedTransport[] = [];
+    const seen = new Set<string>();
+    hits.forEach((h, k) => {
+        const prev = k > 0 ? hits[k - 1].line : -1;
+        const next = k + 1 < hits.length ? hits[k + 1].line : lines.length;
+        const here = lines[h.line];
+        // Forward: this line, one before it, and up to four after, stopping where the next segment starts.
+        let fEnd = Math.min(lines.length, h.line + 5);
+        for (let j = h.line + 1; j < fEnd; j++) if (startsSegment(lines[j])) { fEnd = j; break; }
+        const windows = [
+            { from: prev === h.line - 1 ? h.line : Math.max(0, h.line - 1), to: fEnd },
+            { from: Math.max(prev + 1, h.line - 6), to: Math.min(lines.length, h.line + 2) },
+            { from: Math.max(prev + 1, h.line - 6), to: Math.min(next, h.line + 7) },
+        ];
+        const number = `${h.code} ${h.digits}`;
+        let found: { route: { from: string; to: string } | null; blockLines: string[] } | null = null;
+        let dateBlock: string[] | null = null;
+        for (const w of windows) {
+            const blockLines = lines.slice(w.from, w.to);
+            const block = blockLines.join('\n');
+            const hasDate = findDates(block, ref).length > 0;
+            if (hasDate && !dateBlock) dateBlock = blockLines;
+            const route = routeIn(block);
+            if (route && hasDate) { found = { route, blockLines }; break; }
+            if (route && !found) found = { route, blockLines };
+        }
+        // No date beside the segment: the nearest one above it, else the first in the text.
+        const whole = found?.blockLines ?? dateBlock ?? lines.slice(Math.max(0, h.line - 1), fEnd);
+        let dates = findDates(whole.join('\n'), ref);
+        let datedFarAway = false;
+        if (!dates.length) {
+            const above = findDates(lines.slice(0, h.line + 1).join('\n'), ref);
+            dates = above.length ? [above[above.length - 1]] : findDates(lines.join('\n'), ref).slice(0, 1);
+            datedFarAway = true;
+        }
+        if (!dates.length) return;
+        if (!found?.route && (datedFarAway || !(h.labelled || flightWords))) return;
+        const blockLines = whole;
+        const block = blockLines.join('\n');
+        const times = findTimes(block).map(t => t.time);
+        if (!times.length) times.push(...bareTimes(here, h.raw));
+        const depDate = dates[0].date;
+        const depTime = times[0] || '';
+        const arrTime = times[1] || '';
+        const arrLine = arrTime ? blockLines.find(l => findTimes(l).some(t => t.time === arrTime)) : undefined;
+        const arrDates = arrLine ? findDates(arrLine, depDate).map(d => d.date).filter(d => d >= depDate) : [];
+        let arrDate = arrDates.length ? arrDates[arrDates.length - 1] : depDate;
+        if (arrDate === depDate && depTime && arrTime && arrTime < depTime) {
+            const d = new Date(`${depDate}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + 1); arrDate = toIsoDay(d);
+        }
+        const key = `${number}|${depDate}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        out.push({
+            mode: 'Flight', provider: h.code, providerCode: h.code, identifier: number, confirmationCode: reference || '',
+            origin: found?.route?.from || '', destination: found?.route?.to || '', departureDate: depDate, departureTime: depTime, arrivalDate: arrDate, arrivalTime: arrTime,
+            seatNumber: block.match(/\bseat\s*:?\s*(\d{1,2}[A-K])\b/i)?.[1]?.toUpperCase(),
+            travelClass: cabinOf(block.match(/\b(first|business|premium economy|economy)\b/i)?.[1]),
+        });
+    });
+    return out;
+};
+
+/** The part of a label's value: the text after "Check-in" up to the next label, on this line and the next one or two. */
+const afterLabel = (text: string, label: RegExp, stop: RegExp): string | null => {
+    const m = label.exec(text);
+    if (!m) return null;
+    const rest = text.slice(m.index + m[0].length);
+    const lines = rest.split('\n');
+    const taken: string[] = [];
+    for (const [i, line] of lines.entries()) {
+        if (i > 0 && stop.test(line)) break;
+        taken.push(line);
+        if (taken.length >= 3) break;
+    }
+    return taken.join('\n').slice(0, 140);
+};
+
+const IN_LABEL = /\b(?:check[\s-]?in|arriv(?:al|e|ing)(?:\s*date)?|from)\b\s*(?:date|time)?\s*:?/i;
+const OUT_LABEL = /\b(?:check[\s-]?out|depart(?:ure|ing)?(?:\s*date)?|until|to)\b\s*(?:date|time)?\s*:?/i;
+const STAY_LABELS = /\b(?:check[\s-]?(?:in|out)|arriv(?:al|e|ing)|depart(?:ure|ing)?)\b/i;
+
+/** A name for the stay from the labels, the subject or a heading such as "Reservation confirmed - Cosy flat in Alfama". */
+const stayName = (text: string, lines: string[], subject?: string): string => {
+    const labelled = text.match(/\b(?:hotel|property|accommodation|stay at|apartment|listing)\s*(?:name)?\s*:\s*([^\n]{2,80})/i)?.[1]?.trim();
+    if (labelled) return labelled;
+    const hotelish = lines.find(l => l.length <= 80 && /\b(hotel|resort|hostel|inn|suites|apartments?|aparthotel|lodge|guest ?house|b&b|motel|villa|residence|flat|house|cabin|studio|room)\b/i.test(l) && !STAY_LABELS.test(l) && !/\b(confirm|booking|reservation|thank|your|receipt|reference|number)\b/i.test(l));
+    if (hotelish) return hotelish;
+    const heads = [subject, ...lines.slice(0, 8)].filter(Boolean).map(String);
+    const dash = heads.map(l => { const m = l.match(/^(.*?\b(?:confirmed|booking|reservation)\b[^-–:|]*)[-–:|]\s*(.{3,70})$/i); return m && !/\b(?:at|in|for)\s/i.test(m[1]) ? m[2] : undefined; }).find(Boolean);
+    if (dash) return dash.trim();
+    const at = heads.map(l => l.match(/\b(?:reservation|booking|stay)\b[^\n]*?\b(?:at|in|for)\s+(.{3,60}?)(?:\s*[-–|]|$)/i)?.[1]).find(Boolean);
+    if (at) return at.trim();
     const fromSubject = subject?.match(/(?:at|for|:)\s+(.{3,60}?)(?:\s+[-–|]|$)/)?.[1];
-    const name = labelled || hotelish || fromSubject;
-    if (!name) return null;
-    const address = text.match(/\baddress\s*:\s*([^\n]{4,140})/i)?.[1]?.trim() || '';
+    return fromSubject?.trim() || 'Stay';
+};
+
+/** A stay found in plain text: check-in and check-out (or arrival and departure) dates, and a name. */
+export const textStay = (text: string, ref: string, subject?: string): ParsedStay | null => {
+    const hasCheck = /check[\s-]?in/i.test(text) && /check[\s-]?out/i.test(text);
+    const lodging = /\b(hotel|resort|hostel|apartment|accommodation|room|nights?|guests?|reservation|stay|host)\b/i.test(text);
+    if (!hasCheck && !lodging) return null;
+    const inLabel = hasCheck ? /check[\s-]?in(?:\s*date)?\s*:?/i : /\barriv(?:al|e|ing)(?:\s*date)?\s*:?/i;
+    const outLabel = hasCheck ? /check[\s-]?out(?:\s*date)?\s*:?/i : /\bdepart(?:ure|ing)?(?:\s*date)?\s*:?/i;
+    const stop = hasCheck ? /check[\s-]?(?:in|out)/i : /\b(?:arriv|depart)/i;
+    const inV = afterLabel(text, inLabel, stop);
+    const outV = afterLabel(text, outLabel, stop);
+    if (!inV || !outV) return null;
+    const inD = findDates(inV, ref)[0]?.date;
+    const outD = findDates(outV, inD || ref)[0]?.date;
+    if (!inD || !outD || outD <= inD) return null;
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const address = text.match(/\baddress\s*:?\s*([^\n]{4,140})/i)?.[1]?.trim() || '';
+    const name = stayName(text, lines, subject);
     return {
         name, address, type: stayTypeOf(name),
-        checkInDate: inD, checkInTime: findTimes(inM[1])[0]?.time || '15:00',
-        checkOutDate: outD, checkOutTime: findTimes(outM[1])[0]?.time || '11:00',
-        confirmationCode: findReference(text),
+        checkInDate: inD, checkInTime: findTimes(inV)[0]?.time || '15:00',
+        checkOutDate: outD, checkOutTime: findTimes(outV)[0]?.time || '11:00',
+        confirmationCode: findReference(text) || text.match(/\bconfirmation\s*code\s*\n\s*([A-Z0-9]{6,14})\b/)?.[1],
     };
 };
 
@@ -586,9 +737,11 @@ export const parseBookings = (input: string, today = toIsoDay(new Date())): Pars
 
     if (bookings.length === 0) {
         const text = [email.text, html ? htmlToText(html) : ''].filter(Boolean).join('\n');
-        bookings = textFlights(text, ref).map(transport => ({ kind: 'transport' as const, source: 'text' as const, transport }));
+        bookings = textFlights(text, ref).map(transport => ({ kind: 'transport' as const, source: 'text' as const, transport, incomplete: !transport.origin || !transport.destination || undefined }));
+        if (bookings.length === 0) bookings = textTrains(text, ref).map(transport => ({ kind: 'transport' as const, source: 'text' as const, transport }));
         const stay = textStay(text, ref, email.subject);
-        if (stay) bookings.push({ kind: 'stay', source: 'text', stay });
+        // Arrival and departure dates alone would also match a flight: they count as a stay only when no flight was found.
+        if (stay && (bookings.length === 0 || /check[\s-]?in/i.test(text))) bookings.push({ kind: 'stay', source: 'text', stay });
     }
 
     const seen = new Set<string>();

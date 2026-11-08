@@ -1,7 +1,7 @@
 {
   "name": "wandergrid-v0.2",
   "private": true,
-  "version": "1.2-261108.4",
+  "version": "1.2-261108.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -29,6 +29,7 @@
     "deck.gl": "^9.3.10",
     "maplibre-gl": "^6.4.1",
     "motion": "^12.40.0",
+    "pdfjs-dist": "^4.10.38",
     "pmtiles": "^4.5.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

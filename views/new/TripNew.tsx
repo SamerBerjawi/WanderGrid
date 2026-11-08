@@ -12,10 +12,12 @@ import { RpEmpty } from '../../components/new/ui';
 import NumberFlow from '@number-flow/react';
 import { openPage } from '../../utils/appNavigation';
 import { LeavePlanSheet } from '../../components/new/trips/LeavePlanSheet';
-import { takeLeave, useLeavePlanner } from '../../hooks/useLeavePlanner';
+import { addStarterLeaveType, takeLeave, useLeavePlanner } from '../../hooks/useLeavePlanner';
 import { NextFlight } from '../../components/new/journeys/NextFlight';
 import { RpHugeicon } from '../../components/new/RpHugeicon';
 import { useUndoToast } from '../../components/new/UndoToast';
+import { BookingImportSheet, type BookingImportResult } from '../../components/new/trips/BookingImportSheet';
+import { dataService } from '../../services/mockDb';
 import { TripMenu } from '../../components/new/trips/TripMenu';
 import { BUCKET_LABEL, tripMenuItems, type TripActions } from '../../components/new/trips/TripCard';
 import { MODE_ICON, SKINS, STEPS, initials, nextMove } from '../../components/new/trips/TripDetailsModal';
@@ -30,7 +32,7 @@ import { RoutePlanner } from '../../components/new/trip/RoutePlanner';
 import { WeatherChip } from '../../components/new/WeatherChip';
 import { ExpensesPanel } from '../../components/new/trip/ExpensesPanel';
 import { BookingsPanel, CostsPanel, GearPanel, ItineraryPanel, NotesPanel, type EditStep } from '../../components/new/trip/TripPanels';
-import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, CalendarCheck, DownloadSimple, FileText, IdentificationCard, Kanban, LinkSquare, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket, type Icon } from '../../components/ui/hugeicons';
+import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, CalendarCheck, DownloadSimple, Envelope, FileText, IdentificationCard, Kanban, LinkSquare, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket, type Icon } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -80,6 +82,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
     const [sheet, setSheet] = useState<TripSheetTarget | null>(null);
     const [deleting, setDeleting] = useState<Trip | null>(null);
     const [sharing, setSharing] = useState(false);
+    const [importing, setImporting] = useState(false);
     const offline = useOfflinePacks();
     const planner = useLeavePlanner(data.trips, data.users, data.entitlements);
     const [leaveOpen, setLeaveOpen] = useState(false);
@@ -184,6 +187,14 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
     const menu = tripMenuItems(trip, bucket, actions).filter(i => i.id !== 'open');
     const shareAt = menu.findIndex(i => i.id === 'calendar');
     menu.splice(shareAt + 1, 0, { id: 'share', label: 'Share link', icon: LinkSquare, onSelect: () => setSharing(true) });
+    menu.splice(shareAt + 1, 0, { id: 'import', label: 'Import a booking', icon: Envelope, onSelect: () => setImporting(true) });
+    const bookingImported = ({ trip: updated, previous, adopted, added }: BookingImportResult) => {
+        void data.reload();
+        undo.show(`Added ${added} ${added === 1 ? 'booking' : 'bookings'} to ${updated.name}`, () => attempt(async () => {
+            if (previous) await dataService.applyBatch({ upsertTrips: [previous], upsertFlights: adopted }, { skipGeocoding: true });
+            await data.reload();
+        }), { duration: 8000 });
+    };
     const edit = (s: EditStep) => setSheet({ kind: 'edit', trip, step: s });
 
     // Canvas drags: each change is saved at once and can be undone.
@@ -433,6 +444,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                 onClose={() => setLeaveOpen(false)}
                 onApply={(t, id) => takeLeave(t, id, data.entitlements, data.patch, undo)}
                 onOpenCalendar={() => { setLeaveOpen(false); openPage('/calendar'); }}
+                onCreateType={() => addStarterLeaveType(planner.memberFor(trip), data.reload)}
             />
             <DocumentsSheet open={docsOpen} onClose={() => setDocsOpen(false)} trip={trip} checks={docsChecks} countries={tripCountries(trip)} onOpenMember={onOpenMember ? id => { setDocsOpen(false); onOpenMember(id); } : undefined} />
             <DeleteTripSheet
@@ -440,6 +452,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                 onClose={() => setDeleting(null)}
                 onConfirm={t => attempt(async () => { await data.remove(t.id); setDeleting(null); setSheet(null); onBack(); })}
             />
+            <BookingImportSheet open={importing} trips={data.trips} tripId={trip.id} brandfetchApiKey={data.brandfetchApiKey} onClose={() => setImporting(false)} onImported={bookingImported} />
             <ShareLinkSheet open={sharing} tripId={trip.id} tripName={trip.name} onClose={() => setSharing(false)} />
             {undo.host}
         </div>

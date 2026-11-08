@@ -3,6 +3,8 @@ import type { Transport, Trip } from '../../../types';
 import { dataService } from '../../../services/mockDb';
 import { errorMessage } from '../../../services/toast';
 import { parseBookings, type ParseResult, type ParsedBooking } from '../../../utils/bookingParser';
+import { pdfToText } from '../../../services/pdfText';
+import { candidateToLeg, lookupFlight } from '../../../services/flightLookup';
 import { addToTrip, bookingSpan, describeBookings, destinationOf, matchTrip, newTripFrom, placeLabel, planItems, type BookingChanges } from '../../../utils/bookingImport';
 import { formatDate, formatDateRange } from '../../../utils/formatters';
 import ParticleButton from '../../kokonutui/particle-button';
@@ -30,7 +32,8 @@ export interface BookingImportResult {
 
 const BTN = 'inline-flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-rp-muted';
 const NEW = '__new__';
-const ACCEPT = '.eml,.html,.htm,.txt,.mht';
+const AUTO = '__auto__';
+const ACCEPT = '.eml,.html,.htm,.txt,.mht,.pdf,application/pdf';
 
 const readText = (file: File) => new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -39,7 +42,43 @@ const readText = (file: File) => new Promise<string>((resolve, reject) => {
     reader.readAsText(file);
 });
 
+const readBuffer = (file: File) => new Promise<ArrayBuffer>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
+});
+const isPdf = (file: File) => file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+
 const today = () => new Date().toISOString().slice(0, 10);
+
+const isIncomplete = (b: ParsedBooking) => b.kind === 'transport' && Boolean(b.incomplete);
+const blankFlight = (): ParsedBooking => ({
+    kind: 'transport', source: 'text', incomplete: true,
+    transport: { mode: 'Flight', provider: '', identifier: '', confirmationCode: '', origin: '', destination: '', departureDate: today(), departureTime: '', arrivalDate: today(), arrivalTime: '' },
+});
+
+const SMALL = cn(RP_FIELD, '!min-h-11 !px-3 text-sm');
+
+/** A flight found without both airports (or added by hand): look it up, or type the airports. */
+const IncompleteRow: React.FC<{ booking: Extract<ParsedBooking, { kind: 'transport' }>; state: 'idle' | 'looking' | 'none'; onChange: (patch: Partial<Extract<ParsedBooking, { kind: 'transport' }>['transport']>) => void; onLookup: () => void }> = ({ booking, state, onChange, onLookup }) => {
+    const t = booking.transport;
+    const code = (v: string) => v.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+    return (
+        <span className="flex min-w-0 flex-1 flex-col gap-2 py-1">
+            <span className="text-xs text-rp-muted">
+                {state === 'looking' ? 'Looking the flight up…' : state === 'none' ? "The flight wasn't found. Check the number and date, or type the airports." : 'Add the details to include this flight.'}
+            </span>
+            <span className="grid grid-cols-2 gap-2">
+                <input aria-label="Flight number" value={t.identifier} onChange={e => onChange({ identifier: e.target.value.toUpperCase(), provider: e.target.value.trim().slice(0, 2).toUpperCase(), providerCode: e.target.value.trim().slice(0, 2).toUpperCase() })} placeholder="Flight, e.g. TP 1234" className={SMALL} />
+                <input aria-label="Flight date" type="date" value={t.departureDate} onChange={e => onChange({ departureDate: e.target.value, arrivalDate: e.target.value })} className={cn(SMALL, 'rp-date rp-tabular')} />
+                <input aria-label="From airport code" value={t.origin} onChange={e => onChange({ origin: code(e.target.value) })} placeholder="From, e.g. BRU" className={cn(SMALL, 'rp-tabular')} />
+                <input aria-label="To airport code" value={t.destination} onChange={e => onChange({ destination: code(e.target.value) })} placeholder="To, e.g. LIS" className={cn(SMALL, 'rp-tabular')} />
+            </span>
+            <button type="button" onClick={onLookup} disabled={state === 'looking' || !t.identifier.trim() || !t.departureDate} className="inline-flex min-h-11 items-center self-start rounded-full bg-rp-inset px-4 text-xs font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted disabled:opacity-40">Look it up from the number</button>
+        </span>
+    );
+};
 
 const ItemRow: React.FC<{ booking: ParsedBooking; brandfetchApiKey?: string }> = ({ booking, brandfetchApiKey }) => {
     if (booking.kind === 'transport') {
@@ -97,12 +136,15 @@ export const BookingImportSheet: React.FC<{
     const [bookings, setBookings] = useState<ParsedBooking[]>([]);
     const [subject, setSubject] = useState<string | undefined>();
     const [target, setTarget] = useState<string>(NEW);
+    const [choice, setChoice] = useState<string>(AUTO);
+    const [manual, setManual] = useState(false);
+    const [lookups, setLookups] = useState<Record<number, 'idle' | 'looking' | 'none'>>({});
     const [name, setName] = useState('');
     const [excluded, setExcluded] = useState<Set<number>>(new Set());
     const [independent, setIndependent] = useState<Transport[]>([]);
     const [error, setError] = useState('');
 
-    const reset = () => { setStep(0); setText(''); setPastedHtml(''); setFileName(''); setFileBody(''); setBookings([]); setSubject(undefined); setTarget(NEW); setName(''); setExcluded(new Set()); setError(''); };
+    const reset = () => { setStep(0); setText(''); setPastedHtml(''); setFileName(''); setFileBody(''); setBookings([]); setSubject(undefined); setTarget(NEW); setChoice(AUTO); setManual(false); setLookups({}); setName(''); setExcluded(new Set()); setError(''); };
     const close = () => { reset(); onClose(); };
 
     // Independent flights in the log: a booked flight that is already there moves into the trip.
@@ -116,15 +158,24 @@ export const BookingImportSheet: React.FC<{
     const usable = useMemo(() => trips.filter(t => !t.archived && t.status !== 'Cancelled').sort((a, b) => (b.startDate || '').localeCompare(a.startDate || '')), [trips]);
     const chosenTrip = target === NEW ? undefined : trips.find(t => t.id === target);
     const items = useMemo(() => planItems(bookings, chosenTrip, independent), [bookings, chosenTrip, independent]);
-    const picked = items.filter((it, i) => !it.inTrip && !excluded.has(i));
+    const picked = items.filter((it, i) => !it.inTrip && !excluded.has(i) && !isIncomplete(it.booking));
     const already = items.filter(it => it.inTrip).length;
     const adopting = picked.filter(it => it.adopt).length;
 
-    const takeFile = async (file: File) => {
+    const takeFiles = async (files: File[]) => {
         setError('');
+        if (!files.length) return;
         try {
-            setFileName(file.name);
-            setFileBody(await readText(file));
+            const parts: string[] = [];
+            for (const file of files) {
+                if (isPdf(file)) {
+                    const text = await pdfToText(await readBuffer(file));
+                    if (!text.trim()) throw new Error(`${file.name} has no text to read (it may be a scan). Try the confirmation email instead.`);
+                    parts.push(text);
+                } else parts.push(await readText(file));
+            }
+            setFileName(files.map(f => f.name).join(', '));
+            setFileBody(parts.join('\n\n'));
         } catch (e) {
             setError(errorMessage(e, "That file couldn't be read."));
         }
@@ -139,22 +190,60 @@ export const BookingImportSheet: React.FC<{
             if (result.bookings.length) break;
         }
         if (!result.bookings.length) {
-            setError("No bookings found in that. Try the whole email, or save it as a file (in Gmail: ⋮ › Download message; in Apple Mail: File › Save As › Raw Message Source) and choose it here.");
+            setError("No bookings found in that. Try the whole email, a PDF of the ticket, or save the email as a file (in Gmail: ⋮ › Download message; in Apple Mail: File › Save As › Raw Message Source). You can also add the flight by hand below.");
             return;
         }
         setBookings(result.bookings);
         setSubject(result.subject);
         setExcluded(new Set());
-        const match = presetTripId ? trips.find(t => t.id === presetTripId) : matchTrip(usable, result.bookings);
+        const match = presetTripId ? trips.find(t => t.id === presetTripId) : choice === AUTO ? matchTrip(usable, result.bookings) : choice === NEW ? undefined : trips.find(t => t.id === choice);
+        setManual(false);
+        setLookups({});
         setTarget(match ? match.id : NEW);
         setName(destinationOf(result.bookings));
         setStep(1);
     };
 
+    const patchLeg = (i: number, patch: Partial<Extract<ParsedBooking, { kind: 'transport' }>['transport']>) => setBookings(list => list.map((b, j) => {
+        if (j !== i || b.kind !== 'transport') return b;
+        const transport = { ...b.transport, ...patch };
+        return { ...b, transport, incomplete: !(transport.origin.length === 3 && transport.destination.length === 3 && transport.identifier.trim() && transport.departureDate) || undefined };
+    }));
+
+    const lookUp = async (i: number) => {
+        const b = bookings[i];
+        if (!b || b.kind !== 'transport') return;
+        setLookups(l => ({ ...l, [i]: 'looking' }));
+        try {
+            const result = await lookupFlight(b.transport.identifier, b.transport.departureDate);
+            const found = result.candidates.find(c => c.departure.iata && c.arrival.iata);
+            if (!found) { setLookups(l => ({ ...l, [i]: 'none' })); return; }
+            const leg = candidateToLeg(found);
+            patchLeg(i, { origin: leg.origin || '', destination: leg.destination || '', providerCode: leg.providerCode || b.transport.providerCode, provider: leg.provider || b.transport.provider, departureTime: b.transport.departureTime || leg.departureTime || '', arrivalDate: leg.arrivalDate || b.transport.arrivalDate, arrivalTime: b.transport.arrivalTime || leg.arrivalTime || '' });
+            setLookups(l => ({ ...l, [i]: 'idle' }));
+        } catch {
+            setLookups(l => ({ ...l, [i]: 'none' }));
+        }
+    };
+
+    // A flight found by number and date alone is looked up once, so its airports usually fill in by themselves.
+    const tried = useRef<Set<string>>(new Set());
+    useEffect(() => {
+        if (step !== 1) return;
+        bookings.forEach((b, i) => {
+            if (b.kind !== 'transport' || !b.incomplete || !b.transport.identifier.trim() || !b.transport.departureDate) return;
+            const key = `${i}|${b.transport.identifier}|${b.transport.departureDate}`;
+            if (tried.current.has(key)) return;
+            tried.current.add(key);
+            void lookUp(i);
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [step, bookings.length]);
+
     const run = async () => {
         if (!picked.length) throw new Error('Nothing to add.');
         try {
-            const kept = items.map((it, i) => (excluded.has(i) ? { ...it, inTrip: true } : it));
+            const kept = items.map((it, i) => (excluded.has(i) || isIncomplete(it.booking) ? { ...it, inTrip: true } : it));
             let changes: BookingChanges;
             if (chosenTrip) {
                 changes = addToTrip(chosenTrip, kept);
@@ -202,16 +291,16 @@ export const BookingImportSheet: React.FC<{
             }
         >
             <div className="flex flex-col gap-4">
-                <input ref={fileInput} type="file" accept={ACCEPT} className="sr-only" tabIndex={-1} aria-label="Email file to import" onChange={e => { const f = e.target.files?.[0]; if (f) void takeFile(f); e.target.value = ''; }} />
+                <input ref={fileInput} type="file" multiple accept={ACCEPT} className="sr-only" tabIndex={-1} aria-label="Email file to import" onChange={e => { const f = Array.from(e.target.files || []); if (f.length) void takeFiles(f); e.target.value = ''; }} />
                 {error ? <p role="alert" className="text-sm text-rp-rust">{error}</p> : null}
 
                 {step === 0 ? (
                     <>
-                        <p className="text-sm text-rp-muted">Flights, trains, buses, ferries, car hire, hotels and restaurant or event bookings are read from the confirmation email and added to the trip they belong to.</p>
+                        <p className="text-sm text-rp-muted">Flights, trains, buses, ferries, car hire, hotels and restaurant or event bookings are read from the confirmation email or PDF ticket and added to the trip they belong to.</p>
                         <div
                             onDragOver={e => { e.preventDefault(); setDragging(true); }}
                             onDragLeave={() => setDragging(false)}
-                            onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files?.[0]; if (f) void takeFile(f); }}
+                            onDrop={e => { e.preventDefault(); setDragging(false); const f = Array.from(e.dataTransfer.files || []); if (f.length) void takeFiles(f); }}
                         >
                             <button
                                 type="button"
@@ -219,10 +308,23 @@ export const BookingImportSheet: React.FC<{
                                 className={cn('flex min-h-28 w-full flex-col items-center justify-center gap-2 rounded-rp-tile border-2 border-dashed px-4 py-6 text-center outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-rp-muted', dragging ? 'border-rp-ink bg-rp-inset' : 'border-rp-line bg-rp-inset/60 hover:bg-rp-inset')}
                             >
                                 {fileName ? <FileText size={22} className="text-rp-muted" aria-hidden /> : <UploadSimple size={22} className="text-rp-muted" aria-hidden />}
-                                <span className="text-sm font-medium text-rp-ink">{fileName || (mobile ? 'Choose the email file' : 'Drop the email file here')}</span>
-                                <span className="text-xs text-rp-muted">{fileName ? 'Choose another file' : mobile ? 'A saved .eml or .html email' : '.eml or .html, or click to choose'}</span>
+                                <span className="text-sm font-medium text-rp-ink">{fileName || (mobile ? 'Choose the email or PDF' : 'Drop the email or PDF here')}</span>
+                                <span className="text-xs text-rp-muted">{fileName ? 'Choose other files' : mobile ? 'A PDF ticket or a saved email' : 'PDF, .eml or .html, or click to choose'}</span>
                             </button>
                         </div>
+                        {!presetTripId ? (
+                            <div className="flex min-h-11 items-center justify-between gap-3 rounded-rp-inset bg-rp-inset/60 px-4">
+                                <span className="flex min-w-0 flex-col">
+                                    <span className="text-xs text-rp-muted">Add to</span>
+                                    <span className="truncate text-sm font-medium text-rp-ink">{choice === AUTO ? 'The trip it matches, or a new trip' : choice === NEW ? 'A new trip' : trips.find(t => t.id === choice)?.name || 'A trip'}</span>
+                                </span>
+                                <TripMenu label="Choose where to add the booking" pill={{ label: 'Change', icon: Suitcase }} items={[
+                                    { id: AUTO, label: 'Match by dates', icon: Ticket, selected: choice === AUTO, onSelect: () => setChoice(AUTO) },
+                                    { id: NEW, label: 'New trip', icon: Plus, selected: choice === NEW, onSelect: () => setChoice(NEW) },
+                                    ...usable.slice(0, 40).map((t, i) => ({ id: t.id, label: t.name, icon: Suitcase, selected: choice === t.id, separated: i === 0, onSelect: () => setChoice(t.id) })),
+                                ]} />
+                            </div>
+                        ) : null}
                         {fileName ? (
                             <button type="button" onClick={() => { setFileName(''); setFileBody(''); }} className="inline-flex min-h-11 items-center gap-1.5 self-start rounded-full px-3 text-xs font-medium text-rp-muted outline-none hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted"><X size={14} aria-hidden /> Use pasted text instead</button>
                         ) : (
@@ -240,6 +342,9 @@ export const BookingImportSheet: React.FC<{
                                 )}
                             </RpField>
                         )}
+                        <button type="button" onClick={() => { const match = presetTripId ? trips.find(t => t.id === presetTripId) : choice !== AUTO && choice !== NEW ? trips.find(t => t.id === choice) : undefined; setManual(true); setBookings([blankFlight()]); setSubject(undefined); setExcluded(new Set()); setLookups({}); setTarget(match ? match.id : NEW); setName(''); setError(''); setStep(1); }} className="inline-flex min-h-11 items-center gap-1.5 self-start rounded-full px-3 text-xs font-medium text-rp-muted outline-none hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted">
+                            <Plus size={14} aria-hidden /> Add a flight by hand
+                        </button>
                     </>
                 ) : (
                     <>
@@ -283,13 +388,15 @@ export const BookingImportSheet: React.FC<{
                                             <input
                                                 type="checkbox"
                                                 checked={!off}
-                                                disabled={it.inTrip}
+                                                disabled={it.inTrip || isIncomplete(it.booking)}
                                                 onChange={() => setExcluded(ex => { const n = new Set(ex); if (n.has(i)) n.delete(i); else n.add(i); return n; })}
                                                 className="size-5 shrink-0 accent-rp-ink"
                                                 aria-label={`Include ${label}`}
                                             />
                                             <span className={cn('flex min-w-0 flex-1 flex-col gap-0.5', off && 'opacity-50')}>
-                                                <ItemRow booking={it.booking} brandfetchApiKey={brandfetchApiKey} />
+                                                {it.booking.kind === 'transport' && it.booking.incomplete
+                                                    ? <IncompleteRow booking={it.booking} state={lookups[i] || 'idle'} onChange={patch => patchLeg(i, patch)} onLookup={() => void lookUp(i)} />
+                                                    : <ItemRow booking={it.booking} brandfetchApiKey={brandfetchApiKey} />}
                                                 {it.inTrip ? <span className="pl-12 text-xs text-rp-muted">Already in this trip</span> : it.adopt ? <span className="pl-12 text-xs text-rp-green">In your flight log: moves into the trip</span> : null}
                                             </span>
                                         </label>
@@ -297,7 +404,7 @@ export const BookingImportSheet: React.FC<{
                                 );
                             })}
                         </ul>
-                        {bookings.some(b => b.source === 'text') ? (
+                        {!manual && bookings.some(b => b.source === 'text') ? (
                             <p className="text-xs text-rp-muted">This email has no booking data, so it was read as text. Check the times before adding.</p>
                         ) : null}
                     </>

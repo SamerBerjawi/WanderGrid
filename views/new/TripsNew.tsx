@@ -20,7 +20,7 @@ import { OfflinePacksSheet } from '../../components/new/trips/OfflinePacksSheet'
 import { useOfflinePacks, useOnline } from '../../hooks/useOfflinePacks';
 import { getPack, refreshPack, removePack, savePack, syncPacks } from '../../services/offlinePack';
 import { LeavePlanSheet } from '../../components/new/trips/LeavePlanSheet';
-import { LeavePlannerContext, takeLeave, useLeavePlanner } from '../../hooks/useLeavePlanner';
+import { LeavePlannerContext, addStarterLeaveType, takeLeave, useLeavePlanner } from '../../hooks/useLeavePlanner';
 import { openPage } from '../../utils/appNavigation';
 import { BookingImportSheet, type BookingImportResult } from '../../components/new/trips/BookingImportSheet';
 import { dataService } from '../../services/mockDb';
@@ -117,6 +117,7 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     useEffect(() => { if (online && data.trips.length) syncPacks(data.trips); }, [online, data.trips]);
     const planner = useLeavePlanner(data.trips, data.users, data.entitlements);
     const [leaveTripId, setLeaveTripId] = useState<string | null>(null);
+    const leaveTrip = leaveTripId ? data.trips.find(t => t.id === leaveTripId) ?? null : null;
     const [bookingOpen, setBookingOpen] = useState(false);
 
     const changeView = (next: View) => {
@@ -460,12 +461,13 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
                 />
             </>
             <LeavePlanSheet
-                trip={leaveTripId ? data.trips.find(t => t.id === leaveTripId) ?? null : null}
+                trip={leaveTrip}
                 planner={planner}
                 entitlements={data.entitlements}
                 onClose={() => setLeaveTripId(null)}
                 onApply={(trip, id) => takeLeave(trip, id, data.entitlements, data.patch, undo)}
                 onOpenCalendar={() => { setLeaveTripId(null); openPage('/calendar'); }}
+                onCreateType={() => addStarterLeaveType(leaveTrip ? planner.memberFor(leaveTrip) : undefined, data.reload)}
             />
             <BookingImportSheet open={bookingOpen} trips={data.trips} brandfetchApiKey={data.brandfetchApiKey} onClose={() => setBookingOpen(false)} onImported={bookingImported} />
             <DeleteTripSheet trip={deleting} onClose={() => setDeleting(null)} onConfirm={confirmDelete} />

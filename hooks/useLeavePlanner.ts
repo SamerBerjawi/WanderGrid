@@ -3,7 +3,7 @@ import type { EntitlementType, SavedConfig, Trip, User } from '../types';
 import { dataService } from '../services/mockDb';
 import { affectsCollections } from './useWanderSync';
 import { configsFor, holidayDays, workingDaysOf, type HolidayDay } from '../utils/calendarModel';
-import { leaveFields, leaveNote, leaveStatus, planLeave, type LeavePlan, type LeaveState } from '../utils/leavePlan';
+import { defaultAnnualType, leaveFields, leaveNote, leaveStatus, planLeave, type LeavePlan, type LeaveState } from '../utils/leavePlan';
 import { todayISO } from '../utils/tripsModel';
 
 /**
@@ -74,7 +74,7 @@ export const useLeavePlanner = (trips: Trip[], users: User[], entitlements: Enti
             noteFor: trip => leaveNote(statusFor(trip)),
             planFor: (trip, member) => {
                 const user = member ?? memberFor(trip);
-                return user && entitlements.length > 0 ? planLeave(input(trip, user)) : null;
+                return user ? planLeave(input(trip, user)) : null;
             },
         };
     }, [trips, users, entitlements, configs, workingDays]);
@@ -99,4 +99,10 @@ export const takeLeave = async (
     await patch(trip.id, leaveFields(entitlementId));
     const type = entitlements.find(e => e.id === entitlementId)?.name;
     undo.show(entitlementId ? `${type || 'Leave'} taken for ${trip.name}` : `Leave taken off ${trip.name}`, async () => { await patch(trip.id, before); }, 8000);
+};
+
+/** Adds the starter leave type (Annual leave) for a workspace that has none, then refreshes the page's data. */
+export const addStarterLeaveType = async (member: User | undefined, reload: () => unknown): Promise<void> => {
+    await dataService.saveEntitlementType(defaultAnnualType(member));
+    await reload();
 };

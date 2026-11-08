@@ -20,7 +20,10 @@ import { MapSettingsSheet } from '../../components/new/map/MapSettingsSheet';
 import { MapFilterSheet } from '../../components/new/map/MapFilterSheet';
 import { ReplayBar } from '../../components/new/map/ReplayBar';
 import { useMapReplay } from '../../hooks/useMapReplay';
-import { replaySteps, revealRoutes } from '../../utils/mapReplay';
+import { useCountryIndex, useReplaySettings } from '../../hooks/useReplaySettings';
+import { ReplayCaption } from '../../components/new/map/ReplayCaption';
+import { boundsOf, replayFacts, replaySteps, revealRoutes, richStepInterval, stepInterval, stepNews } from '../../utils/mapReplay';
+import { placeLabel } from '../../utils/bookingImport';
 import { MapDetailSheet, type MapSelection } from '../../components/new/map/MapDetailSheet';
 import { RpEmpty, useIsMobile } from '../../components/new/ui';
 import { cn } from '../../utils/cn';
@@ -116,9 +119,40 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
     // Route replay: the model grows from your first route to your latest while a replay is open.
     const steps = useMemo(() => replaySteps(model.routes), [model.routes]);
     const [replayOpen, setReplayOpen] = useState(false);
-    const replay = useMapReplay(steps.length, replayOpen && steps.length > 0);
+    const [replaySettings, changeReplaySettings] = useReplaySettings();
+    const richReplay = replaySettings.fly || replaySettings.captions;
+    const replay = useMapReplay(steps.length, replayOpen && steps.length > 0, richReplay);
     const revealed = useMemo(() => (replayOpen && steps.length > 0 ? revealRoutes(model, steps, replay.index) : null), [replayOpen, steps, model, replay.index]);
     const canvasModel = revealed?.model ?? model;
+    // What the replay has reached, and what the newest step brought: countries, places, airlines, milestones.
+    const countryIndex = useCountryIndex(replayOpen && (replaySettings.countries || replaySettings.captions || replaySettings.stats));
+    const countryOf = useMemo(() => (countryIndex ? (lng: number, lat: number) => countryIndex.find(lng, lat) : undefined), [countryIndex]);
+    const replayView = useMemo(() => {
+        if (!revealed || replay.index < 1) return null;
+        const facts = replayFacts(revealed.model, countryOf);
+        const before = replayFacts(revealRoutes(model, steps, replay.index - 1).model, countryOf);
+        const labels = new Map([...model.airports, ...model.places].map(p => [p.id, placeLabel(p.label)] as const));
+        const news = stepNews(steps[replay.index - 1], before, facts, revealed.model.routes, id => labels.get(id) ?? id);
+        return { facts, news };
+    }, [revealed, replay.index, model, steps, countryOf]);
+    const stepMs = (richReplay ? richStepInterval : stepInterval)(steps.length, replay.speed);
+
+    // The camera: frame each new route, or fly in to where it ends. It goes back to the whole map when the replay ends.
+    const wasOpen = useRef(false);
+    useEffect(() => {
+        if (!replayOpen) { if (wasOpen.current) mapRef.current?.fitAll(); wasOpen.current = false; return; }
+        wasOpen.current = true;
+        if (replaySettings.camera === 'world' || replay.index < 1) return;
+        const fresh = (revealed?.model.routes ?? []).filter(r => steps[replay.index - 1]?.routeIds.includes(r.id));
+        if (!fresh.length) return;
+        const duration = Math.max(500, Math.min(1400, stepMs * 0.9));
+        if (replaySettings.camera === 'close') mapRef.current?.flyTo(fresh[0].to[0], fresh[0].to[1], fresh[0].distanceKm > 3000 ? 3.2 : 5.5, duration);
+        else {
+            const box = boundsOf(fresh.flatMap(r => [r.from, r.to]));
+            if (box) mapRef.current?.fitBounds(box, { maxZoom: 5.5, duration });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [replayOpen, replay.index, replaySettings.camera]);
     useEffect(() => { if (replayOpen && steps.length === 0) setReplayOpen(false); }, [replayOpen, steps.length]);
     const openAipAvailable = Boolean(settings?.openAipApiKey || settings?.configuredKeys?.openAipApiKey);
     const metrics = data.expeditionTypeMetrics;
@@ -190,10 +224,11 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
     }, [fallbackNotice]);
 
     const sheetOpen = tool === 'layers' || tool === 'filter' || selection !== null;
+    // While a replay is open its bar sits at the bottom and its caption at the top, so the camera frames what is between them.
     const padding = useMemo(() => mobile
-        ? { top: HEADER + 24, right: 24, bottom: 170, left: 24 }
-        : { top: HEADER + 72, right: sheetOpen ? 460 : 40, bottom: 104, left: 104 },
-    [mobile, sheetOpen]);
+        ? { top: replayOpen ? HEADER + (replaySettings.captions ? 230 : 24) : HEADER + 24, right: 24, bottom: replayOpen ? 250 : 170, left: 24 }
+        : { top: replayOpen && replaySettings.captions ? HEADER + 190 : HEADER + 72, right: sheetOpen ? 460 : 40, bottom: replayOpen ? 190 : 104, left: 104 },
+    [mobile, sheetOpen, replayOpen, replaySettings.captions]);
 
     const toggleFullscreen = () => {
         if (document.fullscreenElement) void document.exitFullscreen();
@@ -301,7 +336,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                 mode={mode}
                 appearance={appearance}
                 isDark={isDark}
-                visitedCountryCodes={data.visitedCountryCodes}
+                visitedCountryCodes={revealed ? [] : data.visitedCountryCodes}
                 countryStatusMap={data.countryStatusMap}
                 visitedPlaces={data.visitedPlaces}
                 openAipAvailable={openAipAvailable}
@@ -313,6 +348,10 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                 onCountryClick={(code, name) => select({ kind: 'country', code, name })}
                 onHover={mobile ? undefined : setHover}
                 highlightRouteIds={revealed ? revealed.latest : highlightRouteIds}
+                replay={revealed ? {
+                    countries: replaySettings.countries && replayView ? { reached: [...replayView.facts.countries.keys()], newest: replayView.news.newCountries.map(c => c.code) } : null,
+                    flight: replaySettings.fly && replay.index > 0 ? { routeIds: steps[replay.index - 1].routeIds, key: `${replay.index}`, durationMs: Math.max(500, stepMs * 0.95) } : null,
+                } : undefined}
                 onBasemapFallback={() => setFallbackNotice("That basemap isn't loading, so a backup map is showing.")}
             />
 
@@ -332,6 +371,8 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                     </div>
                 </div>
             ) : null}
+
+            {revealed && replaySettings.captions ? <div className="pointer-events-none absolute inset-x-0 z-float" style={{ top: mobile ? 72 : sheetTop + 8 }}><ReplayCaption news={replayView?.news ?? null} /></div> : null}
 
             {/* Mode tabs at the bottom: above the tool dock on phones, bottom centre otherwise */}
             <div
@@ -355,6 +396,9 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                             onScrub={replay.scrub}
                             onSpeed={replay.setSpeed}
                             onClose={() => setReplayOpen(false)}
+                            facts={replayView?.facts}
+                            settings={replaySettings}
+                            onSettings={changeReplaySettings}
                         />
                     ) : (
                     <div className="pointer-events-auto max-w-full">

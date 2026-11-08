@@ -3,7 +3,7 @@ import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import { TripsLayer } from '@deck.gl/geo-layers';
-import { PathLayer } from '@deck.gl/layers';
+import { PathLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { RpGlobeCullExtension } from './RpGlobeCullExtension';
 import type { CountryResidenceStatus, PredefinedMapMode } from '../../../types';
 import { getEffectiveBasemap, normalizeAirportDetail, type MapAppearanceSettings } from '../../../types/mapAppearance';
@@ -38,8 +38,8 @@ export interface RpMapHandle {
     zoomIn: () => void;
     zoomOut: () => void;
     fitAll: () => void;
-    flyTo: (lng: number, lat: number, zoom?: number) => void;
-    fitBounds: (bounds: [LngLat, LngLat]) => void;
+    flyTo: (lng: number, lat: number, zoom?: number, duration?: number) => void;
+    fitBounds: (bounds: [LngLat, LngLat], options?: { maxZoom?: number; duration?: number }) => void;
 }
 
 export interface RpMapPadding { top: number; right: number; bottom: number; left: number }
@@ -68,6 +68,11 @@ export interface RpMapCanvasProps {
     onHover?: (hover: RpMapHover | null) => void;
     /** Routes to emphasise (a selected route, or the routes of a selected place); the rest fade back. */
     highlightRouteIds?: string[] | null;
+    /** Route replay extras: countries filled as they are first reached (in any mode), and a plane flying the newest routes. */
+    replay?: {
+        countries?: { reached: string[]; newest: string[] } | null;
+        flight?: { routeIds: string[]; key: string; durationMs: number } | null;
+    };
     /** Called once when the chosen basemap fails and a backup basemap is shown instead. */
     onBasemapFallback?: (failed: string) => void;
     className?: string;
@@ -131,7 +136,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
     const {
         model, mode, appearance, isDark, visitedCountryCodes, countryStatusMap, visitedPlaces,
         openAipAvailable, defaultBasemapLight, defaultBasemapDark, padding,
-        onRouteClick, onPlaceClick, onCountryClick, onHover, highlightRouteIds, onBasemapFallback, className,
+        onRouteClick, onPlaceClick, onCountryClick, onHover, highlightRouteIds, onBasemapFallback, className, replay,
     } = props;
 
     const containerRef = useRef<HTMLDivElement>(null);
@@ -142,6 +147,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
     const [routeVersion, setRouteVersion] = useState(0);
     const [now, setNow] = useState(() => new Date());
     const [animTime, setAnimTime] = useState(0);
+    const [flightT, setFlightT] = useState<number | null>(null);
     const pulseLoopKmRef = useRef(1);
     const [countries, setCountries] = useState<any>(null);
     const [radarUrl, setRadarUrl] = useState<string | null>(null);
@@ -412,11 +418,11 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
     // finer 10m ones replace them once the map is zoomed in, so a coastline stays crisp up close.
     const [fineCountries, setFineCountries] = useState<any>(null);
     useEffect(() => {
-        if (mode !== 'scratch' || countries) return;
+        if ((mode !== 'scratch' && !replay?.countries) || countries) return;
         let alive = true;
         fetch(COUNTRIES_GEOJSON_URL).then(r => r.json()).then(d => { if (alive) setCountries(d); }).catch(() => undefined);
         return () => { alive = false; };
-    }, [mode, countries]);
+    }, [mode, countries, Boolean(replay?.countries)]);
     const wantFine = mode === 'scratch' && zoom >= COUNTRIES_FINE_MIN_ZOOM;
     useEffect(() => {
         if (!wantFine || fineCountries) return;
@@ -446,6 +452,22 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         frame = requestAnimationFrame(tick);
         return () => cancelAnimationFrame(frame);
     }, [appearance.animateRoutes, reducedMotion]);
+
+    // A replay's plane: 0 to 1 over the step, restarting whenever a new step begins.
+    const flight = replay?.flight ?? null;
+    useEffect(() => {
+        if (!flight || reducedMotion) { setFlightT(null); return; }
+        let frame = 0;
+        const start = performance.now();
+        const tick = (t: number) => {
+            const p = Math.min(1, (t - start) / Math.max(200, flight.durationMs));
+            setFlightT(p);
+            if (p < 1) frame = requestAnimationFrame(tick);
+        };
+        setFlightT(0);
+        frame = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(frame);
+    }, [flight?.key, flight?.durationMs, reducedMotion]);
 
     // Route geometry: great circles for flights, traced roads, rails and sea lanes for the rest.
     const routePaths = useMemo(() => {
@@ -543,7 +565,23 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
     }, [mode, airportsOnly, visitedPlaces, sizes.pins]);
 
     const countriesGeo = useMemo(() => {
-        if (mode !== 'scratch' || !borders || airportsOnly) return { type: 'FeatureCollection' as const, features: [] as any[] };
+        const rc = replay?.countries;
+        if ((mode !== 'scratch' && !rc) || !borders || airportsOnly) return { type: 'FeatureCollection' as const, features: [] as any[] };
+        if (rc) {
+            // A replay fills each country as it is first reached, the newest one lit, whatever the mode.
+            const reached = new Set(rc.reached.map(c => c.toUpperCase()));
+            const newest = new Set(rc.newest.map(c => c.toUpperCase()));
+            const features = borders.features.map((f: any, i: number) => {
+                const code = countryCodeOf(f.properties);
+                const name = String(f.properties?.NAME || code);
+                let fill = hex(palette.surface);
+                let opacity = 0.01;
+                if (newest.has(code)) { fill = hex(palette.mustard); opacity = 0.9; }
+                else if (reached.has(code)) { const centre = featureCentroid(f.geometry); fill = hex(geoColor(centre.lat, centre.lng, palette)); opacity = 0.6; }
+                return { type: 'Feature', id: i, properties: { code, name, fill, opacity }, geometry: f.geometry };
+            });
+            return { type: 'FeatureCollection' as const, features };
+        }
         const visited = new Set(visitedCountryCodes.map(c => c.toUpperCase()));
         const toggles = scratchToggles(appearance);
         const features = borders.features.map((f: any, i: number) => {
@@ -565,7 +603,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         return { type: 'FeatureCollection' as const, features };
         // appearance is read through scratchToggles; only its three toggles matter
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [mode, borders, airportsOnly, visitedCountryCodes, countryStatusMap, palette, appearance.showLivedCountries, appearance.showVisitedCountries, appearance.showLayoverCountries, appearance.showWishlistCountries]);
+    }, [mode, borders, airportsOnly, visitedCountryCodes, countryStatusMap, palette, replay?.countries, appearance.showLivedCountries, appearance.showVisitedCountries, appearance.showLayoverCountries, appearance.showWishlistCountries]);
 
     // Eight stacked caps (civil, nautical, astronomical twilight, then night): each adds a little shade,
     // so the edge fades from dusk into deep night instead of a hard line.
@@ -742,8 +780,49 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
                 extensions: cull,
             }));
         }
+        if (flight && flightT !== null && flightT < 1 && showRoutes) {
+            const mine = pulseTimeline.routes.filter(r => flight.routeIds.includes(r.route.id) && r.timestamps.length > 1);
+            const flown = Math.min(1, flightT / 0.7);
+            const ping = flightT > 0.7 ? (flightT - 0.7) / 0.3 : -1;
+            const at = (r: { path: any[]; timestamps: number[] }, f: number) => {
+                const total = r.timestamps[r.timestamps.length - 1] || 1;
+                const target = f * total;
+                let i = 1;
+                while (i < r.timestamps.length - 1 && r.timestamps[i] < target) i += 1;
+                const span = Math.max(1e-6, r.timestamps[i] - r.timestamps[i - 1]);
+                const k = Math.max(0, Math.min(1, (target - r.timestamps[i - 1]) / span));
+                const a = r.path[i - 1], b = r.path[i];
+                return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, (a[2] || 0) + ((b[2] || 0) - (a[2] || 0)) * k] as [number, number, number];
+            };
+            if (mine.length) {
+                layers.push(new TripsLayer({
+                    id: 'rp-replay-trail',
+                    data: mine,
+                    getPath: (d: any) => d.path,
+                    getTimestamps: (d: any) => d.timestamps,
+                    getColor: rgba(palette.mustard),
+                    widthMinPixels: ROUTE_WIDTH[appearance.routeScale || 'normal'] + 2.5,
+                    trailLength: 1e9,
+                    billboard: true,
+                    currentTime: flown * Math.max(...mine.map(r => r.timestamps[r.timestamps.length - 1])),
+                    capRounded: true,
+                    jointRounded: true,
+                    fadeTrail: false,
+                    parameters: isGlobe ? ({ depthWriteEnabled: false, depthCompare: 'always' } as any) : undefined,
+                    extensions: cull,
+                }));
+                const dots = mine.map(r => ({ position: at(r, flown) }));
+                const common = { data: dots, getPosition: (d: any) => d.position, radiusUnits: 'pixels', parameters: { depthWriteEnabled: false, depthCompare: 'always' } as any, extensions: cull } as any;
+                layers.push(new ScatterplotLayer({ ...common, id: 'rp-replay-halo', getRadius: 15, getFillColor: rgba(palette.mustard, 0.3) }));
+                layers.push(new ScatterplotLayer({ ...common, id: 'rp-replay-dot', getRadius: 6.5, stroked: true, lineWidthUnits: 'pixels', getLineWidth: 2, getLineColor: rgba(palette.ink), getFillColor: rgba(palette.surface) }));
+                if (ping >= 0) {
+                    const ends = mine.map(r => ({ position: r.path[r.path.length - 1] }));
+                    layers.push(new ScatterplotLayer({ ...common, data: ends, id: 'rp-replay-ping', getRadius: 8 + ping * 34, filled: false, stroked: true, lineWidthUnits: 'pixels', getLineWidth: 2.5, getLineColor: rgba(palette.mustard, 1 - ping), updateTriggers: { getRadius: [ping], getLineColor: [ping] } }));
+                }
+            }
+        }
         overlayRef.current?.setProps({ layers, pickingRadius: 8 } as any);
-    }, [deckRoutes, routesGeo, highlightRouteIds, colorMode, appearance.animateRoutes, appearance.routeScale, reducedMotion, isGlobe, showRoutes, pulseTimeline, animTime, palette]);
+    }, [flight, flightT, deckRoutes, routesGeo, highlightRouteIds, colorMode, appearance.animateRoutes, appearance.routeScale, reducedMotion, isGlobe, showRoutes, pulseTimeline, animTime, palette]);
 
     /* ------------------------------------------------------------------ interaction */
 
@@ -843,8 +922,8 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
         zoomIn: () => mapRef.current?.zoomIn(),
         zoomOut: () => mapRef.current?.zoomOut(),
         fitAll,
-        flyTo: (lng, lat, z) => mapRef.current?.flyTo({ center: [lng, lat], zoom: z ?? 6, padding: paddingRef.current, duration: reducedMotion ? 0 : 1100 }),
-        fitBounds: b => mapRef.current?.fitBounds(b as any, { padding: paddingRef.current, maxZoom: 7, duration: reducedMotion ? 0 : 900 }),
+        flyTo: (lng, lat, z, duration) => mapRef.current?.flyTo({ center: [lng, lat], zoom: z ?? 6, padding: paddingRef.current, duration: reducedMotion ? 0 : duration ?? 1100 }),
+        fitBounds: (b, o) => mapRef.current?.fitBounds(b as any, { padding: paddingRef.current, maxZoom: o?.maxZoom ?? 7, duration: reducedMotion ? 0 : o?.duration ?? 900 }),
     }), [fitAll, reducedMotion]);
 
     // MapLibre sets `position: relative` on its container, so positioning lives on a wrapper.

@@ -2,7 +2,36 @@
 
 All notable changes to WanderGrid are listed here, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow the tags in this repository
-(v0.1 to v0.5, then 1.0.0, 1.1.0, 1.2.0 and 1.2.1).
+(v0.1 to v0.5, then 1.0.0, 1.1.0, 1.2.0, 1.2.1 and 1.2.2).
+
+## [1.2.2] - Unreleased
+
+Fixes and upgrades from using 1.2.1: Plan leave, Import a booking and Route replay.
+
+### Fixed
+
+- **Plan leave did nothing** for a workspace with no leave types, which is every workspace the new app has not set up
+  (there is no screen for leave types yet). It now always opens: it shows the days a trip needs, and **Add Annual leave**
+  creates a starter leave type right there (your yearly allowance, or 25 days). A trip with no travellers says to add one.
+- **Import a booking read almost nothing from real emails.** The reader now follows the layouts that are actually sent:
+  a date heading above the flight, airports and times on separate lines, ticket receipts with `03MAR` dates and
+  `0830` times, three-letter airline codes (EZY, BAW), labelled Departure and Arrival lines, Check-in and Checkout with the date
+  on the next line, and Arrival and Departure for a stay. A stay is no longer dropped for lacking a hotel name, and trains
+  (Eurostar, SNCF, Trenitalia and more) are read from "Brussels-Midi → London St Pancras" lines.
+
+### Added
+
+- **PDF tickets in Import a booking.** Choose or drop one or more PDFs (e-tickets, boarding passes, hotel vouchers); the text is
+  read in your browser and never leaves the device. A scanned PDF with no text says so.
+- **Choose where a booking goes before you import it**: match by dates, a new trip, or any trip. A trip's own menu also has
+  **Import a booking**, which adds to that trip.
+- **Flights found without their airports** (a flight number and date only) are looked up from the number, or you type the
+  airports; **Add a flight by hand** is there when nothing could be read.
+- **Route replay, richer.** A **0.5x** speed; a plane that flies each new route while it draws; a caption for each step with its
+  route, airline and distance and anything reached for the first time (a country with its flag, a place, an airline) plus
+  milestones such as 10,000 km or once round the world; countries that fill in as you first reach them; running totals of
+  countries, places, airlines, flights and the longest route; and a camera that frames each new route or flies in to where it
+  ends. A gear button on the replay bar switches each of these on or off, and the choice is remembered on the device.
 
 ## [1.2.1] - 2026-11-08
 

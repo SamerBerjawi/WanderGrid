@@ -181,3 +181,13 @@ export const leaveNote = (state: LeaveState): { tone: 'ok' | 'needed' | 'short';
             return null;
     }
 };
+
+/** The leave type offered when a workspace has none yet: Annual leave, a yearly allowance, no carry-over. */
+export const defaultAnnualType = (user?: Pick<User, 'allowance'>): EntitlementType => ({
+    id: `annual-${Math.random().toString(36).slice(2, 8)}`,
+    name: 'Annual leave',
+    category: 'Annual',
+    color: 'green',
+    accrual: { period: 'yearly', amount: user?.allowance && user.allowance > 0 ? user.allowance : 25 },
+    carryOver: { enabled: false, maxDays: 0, expiryType: 'none' },
+});

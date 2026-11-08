@@ -78,7 +78,9 @@ export const LeavePlanSheet: React.FC<{
     /** Saves the leave on the trip (undefined takes it off). */
     onApply: (trip: Trip, entitlementId: string | undefined) => Promise<void>;
     onOpenCalendar?: () => void;
-}> = ({ trip, planner, entitlements, onClose, onApply, onOpenCalendar }) => {
+    /** Adds a starter leave type when the workspace has none. */
+    onCreateType?: () => Promise<void>;
+}> = ({ trip, planner, entitlements, onClose, onApply, onOpenCalendar, onCreateType }) => {
     const member = trip ? planner.memberFor(trip) : undefined;
     const plan = useMemo(() => (trip ? planner.planFor(trip, member) : null), [trip, planner, member]);
     const [choice, setChoice] = useState<string | undefined>();
@@ -111,7 +113,7 @@ export const LeavePlanSheet: React.FC<{
 
     return (
         <RpSheet
-            open={Boolean(trip && plan)}
+            open={Boolean(trip)}
             onClose={onClose}
             title="Plan leave"
             subtitle={trip?.name}
@@ -141,7 +143,18 @@ export const LeavePlanSheet: React.FC<{
                     <p className="text-sm text-rp-muted">{plan.days.length === 0 ? 'The trip has no dates yet.' : skipSentence(plan.days, plan.skipped)}</p>
                     {years.length > 1 ? <p className="text-sm text-rp-muted">It spans {years.map(y => y.year).join(' and ')}: {years.map(y => `${dayWord(y.cost)} from ${y.year}`).join(', ')}.</p> : null}
 
-                    {!free ? (
+                    {!free && plan.options.length === 0 ? (
+                        <RpSection title="Take it from" icon={CalendarCheck}>
+                            <div className="flex flex-col gap-3 py-2">
+                                <p className="text-sm text-rp-muted">There are no leave types yet, so there is nothing to take this from. Add Annual leave to start, with {member?.allowance && member.allowance > 0 ? `${member.allowance} days a year` : '25 days a year'}.</p>
+                                {onCreateType ? (
+                                    <ParticleButton onClick={async () => { try { await onCreateType(); setError(''); } catch (e) { setError(errorMessage(e, "The leave type couldn't be added.")); throw e; } }} pendingLabel="Adding" successLabel="Added" errorLabel="Couldn't add" className="self-start">Add Annual leave</ParticleButton>
+                                ) : null}
+                            </div>
+                        </RpSection>
+                    ) : null}
+
+                    {!free && plan.options.length > 0 ? (
                         <RpSection title="Take it from" icon={CalendarCheck}>
                             <div role="radiogroup" aria-label="Leave type" className="flex flex-col gap-2 py-1">
                                 {plan.options.map(o => {
@@ -204,6 +217,8 @@ export const LeavePlanSheet: React.FC<{
                         ) : null}
                     </div>
                 </div>
+            ) : trip ? (
+                <p role="status" className="py-2 text-sm text-rp-muted">Leave is worked out for the members on a trip, and this trip has none yet. Add a traveller to the trip first, then plan its leave.</p>
             ) : null}
         </RpSheet>
     );

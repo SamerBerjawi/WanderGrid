@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { EntitlementType, Trip, User } from '../../types';
 import { holidayDays } from '../../utils/calendarModel';
-import { dayCells, leaveFields, leaveNote, leaveStatus, planLeave, tracksLeave, type PlanInput } from '../../utils/leavePlan';
+import { dayCells, defaultAnnualType, leaveFields, leaveNote, leaveStatus, planLeave, tracksLeave, type PlanInput } from '../../utils/leavePlan';
 
 const WEEK = [1, 2, 3, 4, 5];
 const TODAY = '2026-02-01';
@@ -157,5 +157,21 @@ describe('applying', () => {
     it('puts the leave on one type and clears any split', () => {
         expect(leaveFields('annual')).toEqual({ entitlementId: 'annual', allocations: undefined });
         expect(leaveFields(undefined)).toEqual({ entitlementId: undefined, allocations: undefined });
+    });
+});
+
+describe('a workspace with no leave types yet', () => {
+    it('still works out the cost, with no types to take it from', () => {
+        const plan = planLeave(input(trip('a', '2026-03-30', '2026-04-05'), { entitlements: [] }));
+        expect(plan.cost).toBe(4);
+        expect(plan.options).toEqual([]);
+        expect(plan.suggested).toBeUndefined();
+    });
+
+    it('offers Annual leave with the member\'s allowance, or 25 days', () => {
+        expect(defaultAnnualType({ allowance: 30 })).toMatchObject({ name: 'Annual leave', category: 'Annual', accrual: { period: 'yearly', amount: 30 }, carryOver: { enabled: false } });
+        expect(defaultAnnualType({ allowance: 0 }).accrual.amount).toBe(25);
+        expect(defaultAnnualType().accrual.amount).toBe(25);
+        expect(defaultAnnualType().id).not.toBe(defaultAnnualType().id);
     });
 });
