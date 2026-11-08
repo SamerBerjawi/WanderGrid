@@ -11,6 +11,11 @@ detailed calendar feed. The release line is also what the app shows in its build
 
 ### Added
 
+- **Year in review** (behind `VITE_FF_YEAR_IN_REVIEW`, off by default): a Dashboard tool that opens a story of a
+  year of travel, one slide at a time: distance (with the times round the Earth and the split by flights, rail,
+  road and sea), nights away by month, countries (and the new ones), the longest flight, favourite route, airline,
+  airport and aircraft, estimated CO₂, leave used, and a summary you can copy. Pick any year that has travel; a
+  quiet year skips the slides it has no figures for. Nothing advances by itself.
 - **Import a booking** (behind `VITE_FF_BOOKING_IMPORT`, off by default): Trips › Import a booking reads a
   confirmation email, pasted or saved as `.eml` / `.html`, and adds its flights, trains, buses, ferries, car hire,
   hotel stays and restaurant or event reservations to the trip whose dates they fall in, or to a new trip named
