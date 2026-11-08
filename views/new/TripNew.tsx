@@ -25,7 +25,6 @@ const TripHeroMap = lazy(() => import('../../components/new/trip/TripMapPanel'))
 import { RoutePlanner } from '../../components/new/trip/RoutePlanner';
 import { WeatherChip } from '../../components/new/WeatherChip';
 import { ExpensesPanel } from '../../components/new/trip/ExpensesPanel';
-import { isFeatureEnabled } from '../../config/featureFlags';
 import { BookingsPanel, CostsPanel, GearPanel, ItineraryPanel, NotesPanel, type EditStep } from '../../components/new/trip/TripPanels';
 import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, FileText, IdentificationCard, Kanban, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket, type Icon } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
