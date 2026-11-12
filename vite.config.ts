@@ -295,8 +295,22 @@ export default defineConfig(({ mode }) => {
         preserveSymlinks: false
       },
       optimizeDeps: {
-        include: ['react', 'react-dom', 'motion', 'motion/react', '@deck.gl/react', '@deck.gl/layers', '@deck.gl/core', '@deck.gl/geo-layers', '@deck.gl/mapbox'],
-        exclude: ['maplibre-gl']
+        include: ['searoute-js', 'react', 'react-dom', 'motion', 'motion/react', '@deck.gl/react', '@deck.gl/layers', '@deck.gl/core', '@deck.gl/geo-layers', '@deck.gl/mapbox'],
+        exclude: ['maplibre-gl'],
+        esbuildOptions: {
+          plugins: [{
+            // geojson-path-finder does require('tinyqueue'). esbuild takes tinyqueue's ESM entry and hands back a
+            // namespace object, so "Queue is not a constructor" broke every sea lane in dev. Use its CommonJS build.
+            name: 'tinyqueue-cjs',
+            setup(build: any) {
+              build.onResolve({ filter: /^tinyqueue$/ }, (args: any) => (
+                /geojson-path-finder/.test(args.importer)
+                  ? { path: createRequire(args.importer).resolve('tinyqueue') }
+                  : undefined
+              ));
+            }
+          }]
+        }
       },
       build: {
         target: 'es2022',
