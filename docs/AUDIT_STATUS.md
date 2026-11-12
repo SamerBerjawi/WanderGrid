@@ -42,3 +42,18 @@ piece at a time, each with its tests.
 - Ferry recovery: lookups have a deadline, failed lookups are dropped from the request cache so they recover, and an approximate sea route drawn during an outage is not kept. Done.
 - Not ported: turning the API demo off entirely. D-01 keeps the demo for an empty workspace only.
 
+## Map check (November 2026)
+
+Flights, road and rail routes were checked live on the Map and work. The check found one bug that no test had caught:
+sea legs always drew the plain curve, because `searoute-js` throws on the unit `'km'`. Fixed in #104 (`'kilometers'`,
+cache tag bumped so old curves are traced again, unit tests added). Ferry lines from Overpass (Dover to Calais) were
+seen live. Not seen: a shipping lane drawn in a real production build in the browser (checked through a
+production-style bundle in Node instead). The Vite dev server still fails on `searoute-js` ("Queue is not a
+constructor", a `tinyqueue` bundling problem); it is dev-only and not fixed.
+
+## What is left
+
+No audit finding is open except the deliberate leaves above (F-17 policy in memory, F-15 default database password,
+F-14 build-time workbox advisories, F-06 intent not shown in any screen). The score stays at 7.7: the sea fix removes a
+visible defect but does not move a category. The remaining gain is [SMOKE_TEST.md](SMOKE_TEST.md) on real PostgreSQL,
+Docker and live upstreams, which only the owner can run.
