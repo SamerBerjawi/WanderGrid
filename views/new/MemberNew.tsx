@@ -385,7 +385,7 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                                             <li key={trip.id}>
                                                 <button type="button" onClick={() => onOpenTrip(trip.id)} className="flex min-h-14 w-full items-center gap-3 rounded-rp-inset px-2 py-2 text-left outline-none transition-colors hover:bg-rp-inset focus-visible:ring-2 focus-visible:ring-rp-muted sm:px-3">
                                                     <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rp-inset text-rp-ink">
-                                                        <RpHugeicon name={trip.hugeicon} size={18} fallback={<Suitcase size={18} aria-hidden />} />
+                                                        <RpHugeicon name={trip.hugeicon} data={trip.hugeiconData} size={18} fallback={<Suitcase size={18} aria-hidden />} />
                                                     </span>
                                                     <span className="min-w-0 flex-1">
                                                         <span className="block truncate text-sm font-medium">{trip.name}</span>

@@ -248,6 +248,8 @@ export interface Trip {
   icon?: string;
   /** New pages: the name of a Hugeicons free icon (e.g. 'Airplane01Icon') chosen for this trip. Kept apart from `icon`, which older pages render as an emoji. */
   hugeicon?: string;
+  /** The drawing of the chosen icon, saved with the trip so showing it never has to load the 6 MB icon set (audit F-09). */
+  hugeiconData?: readonly (readonly [string, Record<string, string | number>])[];
   privacy?: 'Private' | 'Public'; // New: AirTrail privacy controls
   /** What the trip is meant to cost, in the workspace currency (New trip page). */
   targetBudget?: number;

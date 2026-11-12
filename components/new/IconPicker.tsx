@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { loadHugeicons, searchHugeicons, iconSearchKey, type HugeiconLibrary } from '../../utils/hugeiconsLibrary';
+import { loadHugeicons, searchHugeicons, iconSearchKey, type HugeiconLibrary, type HugeiconData } from '../../utils/hugeiconsLibrary';
 import { MagnifyingGlass, X } from '../ui/hugeicons';
 import { RP_FIELD } from './fields';
 import { cn } from '../../utils/cn';
@@ -15,7 +15,7 @@ const SUGGESTED = [
     'ShipIcon', 'Hotel01Icon', 'CameraIcon', 'Backpack01Icon', 'Compass01Icon', 'IslandIcon', 'RestaurantIcon', 'Passport01Icon',
 ];
 
-export const IconPicker: React.FC<{ value?: string; onChange: (name: string | undefined) => void }> = ({ value, onChange }) => {
+export const IconPicker: React.FC<{ value?: string; onChange: (name: string | undefined, data?: HugeiconData) => void }> = ({ value, onChange }) => {
     const [lib, setLib] = useState<HugeiconLibrary | null>(null);
     const [failed, setFailed] = useState(false);
     const [query, setQuery] = useState('');
@@ -64,7 +64,7 @@ export const IconPicker: React.FC<{ value?: string; onChange: (name: string | un
                             aria-selected={value === name}
                             aria-label={iconSearchKey(name)}
                             title={iconSearchKey(name)}
-                            onClick={() => onChange(value === name ? undefined : name)}
+                            onClick={() => (value === name ? onChange(undefined) : onChange(name, lib?.[name]))}
                             className={cn(
                                 'flex size-11 items-center justify-center rounded-rp-inset outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-rp-muted',
                                 value === name ? 'bg-rp-ink text-rp-on-ink' : 'bg-rp-surface text-rp-ink hover:bg-rp-line'

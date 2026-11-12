@@ -17,6 +17,8 @@ export interface TripDraft {
     notes?: string;
     /** A Hugeicons free icon name chosen for the trip. */
     icon?: string;
+    /** The drawing of `icon`, kept with the trip so it shows without loading the whole icon set. */
+    iconData?: Trip['hugeiconData'];
     /** Where the destination is, when it was picked from the place search. */
     coordinates?: GeoCoordinates;
     privacy?: 'Private' | 'Public';
@@ -192,6 +194,7 @@ export const useTripsData = () => {
             participants: draft.participants,
             notes: draft.notes?.trim() || undefined,
             hugeicon: draft.icon || undefined,
+            hugeiconData: draft.icon ? draft.iconData : undefined,
             privacy: draft.privacy,
             entitlementId: draft.allocations?.[0]?.entitlementId || draft.entitlementId || undefined,
             allocations: draft.allocations?.length ? draft.allocations : undefined,
@@ -230,6 +233,7 @@ export const useTripsData = () => {
             participants: draft.participants,
             notes: draft.notes?.trim() || undefined,
             hugeicon: draft.icon || undefined,
+            hugeiconData: draft.icon ? draft.iconData : undefined,
             privacy: draft.privacy ?? trip.privacy,
             entitlementId: draft.allocations?.[0]?.entitlementId || draft.entitlementId || undefined,
             allocations: draft.allocations?.length ? draft.allocations : undefined,

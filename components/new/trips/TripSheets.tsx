@@ -56,6 +56,7 @@ const draftOf = (trip: Trip): TripDraft => ({
     participants: trip.participants || [],
     notes: trip.notes || '',
     icon: trip.hugeicon,
+    iconData: trip.hugeiconData,
     privacy: trip.privacy || 'Private',
     entitlementId: trip.entitlementId,
     allocations: (trip.allocations || []).map(a => ({ ...a })),
@@ -242,7 +243,7 @@ const Basics: React.FC<{
             <RpSection title="Icon" icon={Palette}>
                 <div className="flex items-center gap-3 py-2">
                     <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-rp-ink text-rp-on-ink">
-                        <RpHugeicon name={draft.icon} size={22} fallback={<Suitcase size={22} aria-hidden />} />
+                        <RpHugeicon name={draft.icon} data={draft.iconData} size={22} fallback={<Suitcase size={22} aria-hidden />} />
                     </span>
                     <button
                         type="button"
@@ -253,7 +254,7 @@ const Basics: React.FC<{
                         {pickingIcon ? 'Done' : draft.icon ? 'Change icon' : 'Choose an icon'}
                     </button>
                 </div>
-                {pickingIcon ? <IconPicker value={draft.icon} onChange={name => set('icon', name)} /> : null}
+                {pickingIcon ? <IconPicker value={draft.icon} onChange={(name, data) => { set('icon', name); set('iconData', data); }} /> : null}
             </RpSection>
 
             {entitlements.length > 0 ? <LeaveSection draft={draft} set={set} entitlements={entitlements} /> : null}
