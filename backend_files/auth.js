@@ -133,7 +133,8 @@ module.exports = function registerAuthRoutes(app, {
                   [cleanEmail]
               );
               if (existing.length > 0) {
-                  throw new HttpError(409, 'An account with this email already exists');
+                  // Same status and wording as any other bad sign-up, so the form does not confirm which emails have accounts.
+                  throw new HttpError(400, 'We could not create an account with these details. If you already have one, sign in instead.');
               }
               // The very first account becomes the workspace administrator; everyone else is a Partner.
               const record = newUserRecord({ id: cleanEmail, name: cleanName, email: cleanEmail, role: isFirstUser ? 'Admin' : 'Partner', password: passwordHash });
@@ -360,7 +361,14 @@ module.exports = function registerAuthRoutes(app, {
               const prevUser = rows[0].data;
 
               Object.assign(updatedUser, withNextVersion('users', updatedUser, prevUser));
-              if (!isAdmin) updatedUser.role = prevUser.role;
+              if (!isAdmin) {
+                  updatedUser.role = prevUser.role;
+                  // The yearly allowance is the household's to set; members keep only their own days taken.
+                  for (const field of ['allowance', 'leaveBalance', 'lieuBalance']) {
+                      if (prevUser[field] === undefined) delete updatedUser[field];
+                      else updatedUser[field] = prevUser[field];
+                  }
+              }
               if (prevUser.role === 'Admin' && updatedUser.role !== 'Admin' && await countAdmins(client) <= 1) {
                   throw new HttpError(409, 'The workspace needs at least one administrator');
               }

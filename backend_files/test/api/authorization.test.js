@@ -75,3 +75,17 @@ test('PUT /api/users/:id ignores a body id that differs from the URL', async () 
     const users = (await srv.api('GET', '/api/users', { token: admin.token })).json;
     assert.equal(users.find((u) => u.id === 'admin@test.dev').name, 'Admin');
 });
+
+test('a member cannot raise their own leave allowance, but can record days taken (F-15)', async () => {
+    const self = partner.user;
+    const before = (await srv.api('GET', `/api/users`, { token: admin.token })).json.find(u => u.id === self.id);
+    const mine = await srv.api('PUT', `/api/users/${self.id}`, { token: partner.token, body: { ...self, allowance: 99, leaveBalance: 99, lieuBalance: 9, takenLeave: 4 } });
+    assert.equal(mine.status, 200);
+    assert.equal(mine.json.allowance, before.allowance);
+    assert.equal(mine.json.leaveBalance, before.leaveBalance);
+    assert.equal(mine.json.lieuBalance, before.lieuBalance);
+    assert.equal(mine.json.takenLeave, 4);
+    const byAdmin = await srv.api('PUT', `/api/users/${self.id}`, { token: admin.token, body: { ...mine.json, allowance: 30 } });
+    assert.equal(byAdmin.status, 200);
+    assert.equal(byAdmin.json.allowance, 30);
+});

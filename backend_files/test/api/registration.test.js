@@ -51,10 +51,11 @@ test('the first account becomes Admin and later sign-ups are Partner, whatever r
 test('registering with an existing id or email cannot overwrite that account', async () => {
     await register({ name: 'Admin', email: 'admin@test.dev', password: 'admin-pass-1' });
     const byId = await register({ id: 'admin@test.dev', name: 'Mallory', email: 'admin@test.dev', password: 'mallory-1', role: 'Admin' });
-    assert.equal(byId.status, 409);
-    assert.match(byId.json.error, /already exists/);
+    assert.equal(byId.status, 400);
+    assert.match(byId.json.error, /could not create an account/);
+    assert.doesNotMatch(byId.json.error, /already exists/, 'does not confirm that the email has an account');
     const byCase = await register({ name: 'Mallory', email: ' ADMIN@test.dev ', password: 'mallory-1' });
-    assert.equal(byCase.status, 409);
+    assert.equal(byCase.status, 400);
     assert.equal((await login('admin@test.dev', 'admin-pass-1')).status, 200, 'original admin can still sign in');
     assert.equal((await login('admin@test.dev', 'mallory-1')).status, 401);
 });

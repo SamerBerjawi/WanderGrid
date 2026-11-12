@@ -122,6 +122,11 @@ if (process.env.NODE_ENV === 'production') {
     }
 }
 
+// The compose file's default database password is fine while the database is not published, but say so once.
+if (process.env.NODE_ENV === 'production' && /:wandergrid_password@/.test(process.env.DATABASE_URL || '')) {
+    console.warn('WARNING: DATABASE_URL still uses the default database password. Set DB_PASSWORD in .env (see docs/OPERATIONS.md) unless the database is reachable only from this compose project.');
+}
+
 // Password hashes are stored as `pbkdf2$sha512$<iterations>$<saltHex>$<hashHex>`.
 // Older rows may hold the previous `saltHex:hashHex` PBKDF2 format or legacy plaintext; both are
 // still accepted at login and transparently upgraded to the current format.
