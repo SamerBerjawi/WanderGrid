@@ -58,7 +58,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 | `hooks/` | `useWanderSync` (SWR cache), `usePWA`, `useExistingTripSuggestions` |
 | `utils/` | `formatters.ts` (date/currency; mandatory), `brandfetch.ts`, `flightData.ts`, static aviation and sticker data |
 | `types.ts`, `types/` | Shared TS types. Path alias `@/*` points at the repo root |
-| `backend_files/` | Express server (`server.js` ~2.4k lines, plus `records.js`, `recordRoutes.js`, `auth.js`, `migrations/`, `tripKind.js`), upstream helpers (`upstream.js`, `geocodingChain.js`, `routeProxy.js`, `aviationStack.js`, `carrierMapping.js`, `integrationsTester.js`), the `test/` folder, and the Dockerfile |
+| `backend_files/` | Express server (`server.js` ~1.3k lines, plus `records.js`, `recordRoutes.js`, `auth.js`, `migrations/`, `tripKind.js`), upstream helpers (`upstream.js`, `geocodingChain.js`, `routeProxy.js`, `aviationStack.js`, `carrierMapping.js`, `integrationsTester.js`), the `test/` folder, and the Dockerfile |
 | `public/` | PWA icons, `manifest.json`, GeoJSON (`data/`), map styles, `airport-overlay.pmtiles` (gitignored and must be present locally) |
 | `docs/` | `logo-concepts/` (logo sources and generator scripts) |
 | `scripts/bump-version.cjs` | Writes `v1.1-YYMMDD.N` to `version.ts` and `package.json` (the release line is the `RELEASE_LINE` constant at the top of the script) |
@@ -112,7 +112,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 - **Retired "v2" views:** `Flights2`, `RoadTrips2` and `TripDetail2` were deleted; their legacy URLs (`/flights-2`, `/roadtrips-2`, `/trip-2/:id`) resolve to the main pages. `VacationPlanner` ("Planner-2") was removed as redundant; `/planner-2` and `/planner2` open the Planner.
 - **`services/mockDb.ts`** (~1.5k lines) is the real production data client, despite its name. It contains the API client, the localStorage fallback, backup/restore and trip↔flight sync. Edit it carefully. Restore assigns the password `password` to users that have none.
 - **`verifyPassword`** accepts plaintext stored passwords (legacy, no `:` salt separator). This is a legacy compatibility path, so do not extend it.
-- **`backend_files/server.js`** is still a ~2.4k-line monolith (records and auth are split out, see `docs/ARCHITECTURE.md`), and `initDb()` is the real schema. A change to stored data shape is a numbered migration in `backend_files/migrations/`, never an edit to a shipped one. Keep `schema.sql` in sync manually if you touch tables.
+- **`backend_files/server.js`** is still a ~1.3k-line monolith (records and auth are split out, see `docs/ARCHITECTURE.md`), and `initDb()` is the real schema. A change to stored data shape is a numbered migration in `backend_files/migrations/`, never an edit to a shipped one. Keep `schema.sql` in sync manually if you touch tables.
 - **Content-Security-Policy:** defined in `backend_files/server.js` (`CSP_DIRECTIVES`) and mirrored in `vite.config.ts` `preview.headers` for the e2e suite; keep them in sync. No inline scripts, `eval`, or third-party script hosts.
 - **Dev proxy duplication:** `vite.config.ts` duplicates the backend route, rail and test proxy logic. A change to one copy is not reflected in the other.
 - **PWA/service worker:** the app auto-reloads on `controllerchange` and on `vite:preloadError`. Stale caches can mask changes, so hard-reload or unregister the SW when testing builds.
