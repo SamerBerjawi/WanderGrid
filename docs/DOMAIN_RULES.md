@@ -45,8 +45,8 @@
 12. A leg lives either inside a trip or as a standalone `flights` row (`tripId` empty or `unassigned`). Moving
     between the two goes through `/api/batch` so it is atomic.
 13. Flights and visited rows are a shared household log: every signed-in member can read all of them; only the
-    owner or an Admin can change them. Server `OWNERSHIP.flights`. Pages mix "everyone's" and "mine" views
-    (see DECISIONS D-02).
+    owner or an Admin can change them. Server `OWNERSHIP.flights`. Every page that counts or lists them goes through
+    `utils/scope.ts`: "Mine" (default) or "Everyone", chosen with the switch on the Dashboard, Flights and Atlas (D-02).
 
 ### Leave
 14. Leave is recorded on trips (`entitlementId`, `durationMode`, `allocations`, `excludedDates`) and counted by

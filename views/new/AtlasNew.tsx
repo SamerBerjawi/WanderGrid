@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { VisitedItem } from '../../types';
+import { ScopeSwitch } from '../../components/new/ScopeSwitch';
 import { useAtlasData } from '../../hooks/useAtlasData';
 import { groupByRegion, regionOf, resolveCityText } from '../../utils/atlasModel';
 import { normalizeCountryCode } from '../../services/countryRegistry';
@@ -230,6 +231,7 @@ export const AtlasNew: React.FC<AtlasNewProps> = ({ onTripClick }) => {
                             className="-my-2"
                         />
                     </div>
+                    <ScopeSwitch scope={data.scope} onChange={data.setScope} className="-mt-3 flex items-center gap-1" />
 
                     {data.error ? (
                         <div className="rounded-rp-card bg-rp-surface rp-shadow-rest">

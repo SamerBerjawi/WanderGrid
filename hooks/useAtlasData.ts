@@ -13,6 +13,8 @@ import {
     type CitySource, type NameChoice, type NameChunk, type NamePlan,
 } from '../utils/atlasSources';
 import { runBatch } from '../utils/batchRunner';
+import { scopeRecords, scopeTrips } from '../utils/scope';
+import { useScope } from './useScope';
 
 import {
     CityDraft, CountryDraft, ScanResult, buildTrackedCities, cityRecordFor, countryRecordFor, duplicateIdsOf, isLayoverCountry,
@@ -24,10 +26,11 @@ import {
  * from, the merged country and city lists, and every write (add, edit, promote, delete, merge, scan).
  */
 export const useAtlasData = () => {
-    const [visited, setVisited] = useState<VisitedItem[]>([]);
-    const [trips, setTrips] = useState<Trip[]>([]);
-    const [flights, setFlights] = useState<any[]>([]);
-    const [roadTrips, setRoadTrips] = useState<any[]>([]);
+    const { scope, setScope, user: me } = useScope();
+    const [allVisited, setVisited] = useState<VisitedItem[]>([]);
+    const [allTrips, setTrips] = useState<Trip[]>([]);
+    const [allFlights, setFlights] = useState<any[]>([]);
+    const [allRoadTrips, setRoadTrips] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -57,6 +60,12 @@ export const useAtlasData = () => {
         window.addEventListener('wandergrid_db_updated', onUpdate);
         return () => window.removeEventListener('wandergrid_db_updated', onUpdate);
     }, [load]);
+
+    // D-02: what "mine" means is decided once, in utils/scope.ts.
+    const visited = useMemo(() => scopeRecords(allVisited, scope, me), [allVisited, scope, me?.id]);
+    const trips = useMemo(() => scopeTrips(allTrips, scope, me), [allTrips, scope, me?.id]);
+    const flights = useMemo(() => scopeRecords(allFlights, scope, me), [allFlights, scope, me?.id]);
+    const roadTrips = useMemo(() => scopeRecords(allRoadTrips, scope, me), [allRoadTrips, scope, me?.id]);
 
     const ukNations = useCallback(
         () => ukNationsFromCities(visited, name => refineUKCountry(name, 'United Kingdom', 'GB').countryCode),
@@ -255,7 +264,7 @@ export const useAtlasData = () => {
     const hasHistory = trips.length > 0 || flights.length > 0 || roadTrips.length > 0;
 
     return {
-        loading, error, reload: load,
+        loading, error, reload: load, scope, setScope,
         visited, countries, visitedCountries, layovers, wishlist, cities, storedIds,
         worldShare, cityCountryCount, cleanup, hasHistory,
         unknownCities, sourcesFor, nameCity, freshRecords, applyNamePlan, undoNamePlan,

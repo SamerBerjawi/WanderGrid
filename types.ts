@@ -374,6 +374,8 @@ export type CountryResidenceStatus = 'lived_past' | 'lived_current' | 'visited' 
 
 export interface VisitedItem {
   id: string;
+  /** Set by the server on create; a record without one is managed by an admin. */
+  ownerId?: string;
   type: 'country' | 'city';
   code: string;
   name: string;

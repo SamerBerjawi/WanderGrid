@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import NumberFlow from '@number-flow/react';
+import { ScopeSwitch } from '../../components/new/ScopeSwitch';
 import { useDashboardData } from '../../hooks/useDashboardData';
 import { WidgetGrid, type WidgetGridItem, type WidgetLayoutItem } from '../../components/kokonutui/bento-grid';
 import type { DockTool } from '../../components/kokonutui/tool-dock';
@@ -246,6 +247,7 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
                     <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.025em] text-rp-ink sm:text-[2.34rem]">Dashboard</h1>
                     <RpPageToolbar tools={tools} ariaLabel="Dashboard tools" className="-my-2" />
                 </div>
+                <ScopeSwitch scope={data.scope} onChange={data.setScope} className="-mt-3 flex items-center gap-1" />
 
                 {data.error ? (
                     <div className="rounded-rp-card bg-rp-surface rp-shadow-rest">
