@@ -19,6 +19,23 @@ test('setup-status is public and reports an empty workspace', async () => {
     assert.equal((await srv.api('GET', '/api/auth/setup-status')).json.needsSetup, false);
 });
 
+test('sign-up is closed by default once an admin exists, and the demo only runs on an empty workspace (D-01)', async () => {
+    const prev = process.env.ALLOW_SIGNUP;
+    process.env.ALLOW_SIGNUP = 'false';
+    try {
+        const admin = (await register({ name: 'Admin', email: 'admin@test.dev', password: 'admin-pass-1' })).json;
+        assert.equal((await srv.api('GET', '/api/auth/setup-status')).json.allowSelfRegistration, false);
+        assert.equal((await register({ name: 'Eve', email: 'eve@test.dev', password: 'eve-pass-123' })).status, 403);
+        assert.equal((await srv.api('POST', '/api/auth/demo')).status, 403, 'no anonymous demo session on a populated workspace');
+        // An admin can still open it explicitly, and a stored choice beats the host default.
+        await srv.api('PATCH', '/api/settings', { token: admin.token, body: { allowSelfRegistration: true } });
+        assert.equal((await register({ name: 'Eve', email: 'eve@test.dev', password: 'eve-pass-123' })).status, 201);
+        assert.equal((await srv.api('POST', '/api/auth/demo')).status, 403, 'demo stays closed even when sign-up is open');
+    } finally {
+        process.env.ALLOW_SIGNUP = prev;
+    }
+});
+
 test('the first account becomes Admin and later sign-ups are Partner, whatever role is sent', async () => {
     const a = await register({ name: 'First', email: 'First@Test.dev', password: 'password-1', role: 'Partner' });
     assert.equal(a.status, 201);
@@ -75,17 +92,4 @@ test('demo on a fresh install creates the first admin with sample data (QA-A-008
     assert.equal(trips.length, 1);
     assert.equal((await srv.api('GET', '/api/visited', { token: r.json.token })).json.length, 5);
     assert.equal((await srv.api('POST', '/api/auth/login', { body: { email: 'demo@wandergrid.app', password: 'password' } })).status, 401, 'no default password');
-});
-
-test('demo on a populated workspace is a Partner that sees only its own sample trip, and respects closed sign-up', async () => {
-    const admin = (await register({ name: 'Admin', email: 'admin@test.dev', password: 'admin-pass-1' })).json;
-    await srv.api('POST', '/api/trips', { token: admin.token, body: { id: 'family', name: 'Family trip', privacy: 'Private', participants: ['admin@test.dev'] } });
-    const demo = await srv.api('POST', '/api/auth/demo');
-    assert.equal(demo.status, 200);
-    assert.equal(demo.json.user.role, 'Partner');
-    const trips = (await srv.api('GET', '/api/trips', { token: demo.json.token })).json;
-    assert.deepEqual(trips.map((t) => t.participants), [['demo@wandergrid.app']]);
-    assert.equal((await srv.api('GET', '/api/visited', { token: demo.json.token })).json.length, 0, 'real atlas untouched');
-    await srv.api('PUT', '/api/settings', { token: admin.token, body: { allowSelfRegistration: false } });
-    assert.equal((await srv.api('POST', '/api/auth/demo')).status, 403);
 });

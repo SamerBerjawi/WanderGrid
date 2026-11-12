@@ -69,6 +69,8 @@ async function startTestServer({ port = 0 } = {}) {
     process.env.NODE_ENV = 'production';
     process.env.JWT_SECRET = process.env.JWT_SECRET || 'api_test_secret_not_for_production';
     process.env.DATABASE_URL = 'postgres://test@memory/test';
+    // Most suites add a second member by self-registering; the default-closed behaviour is tested in registration.test.js.
+    if (process.env.ALLOW_SIGNUP === undefined) process.env.ALLOW_SIGNUP = 'true';
     const db = installHooks();
     if (!process.env.TEST_VERBOSE) { console.log = () => {}; console.warn = () => {}; console.error = () => {}; }
     const mod = require(path.resolve(__dirname, '../../server.js'));

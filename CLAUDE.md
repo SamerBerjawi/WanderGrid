@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 WanderGrid is a self-hosted travel planner, flight log and leave manager. It has a React SPA at the repo root and an Express + PostgreSQL backend in `backend_files/`.
-**Read [AGENTS.md](AGENTS.md) and [Design.md](Design.md) before any change.** They are binding: AGENTS.md covers architecture, performance and UI rules, and Design.md is the design system. This file is the orientation layer and does not repeat them.
+**Read [docs/AI_RULES.md](docs/AI_RULES.md) first, then [AGENTS.md](AGENTS.md) §1–6 (performance and backend rules) and, for UI work, [UI_UX_DESIGN_REFERENCE.md](UI_UX_DESIGN_REFERENCE.md).** [Design.md](Design.md) and AGENTS.md §7–11 describe the removed glass interface and are NOT binding. How the system fits together is in `docs/` (ARCHITECTURE, DOMAIN_RULES, STATE_MACHINE, DESIGN_SYSTEM, DECISIONS). This file is the orientation layer and does not repeat them.
 
 ## Stack (versions from package.json ranges)
 
@@ -42,7 +42,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 - The backend defaults to `PORT=3000`, and that clashes with Vite. Set `PORT=3001` locally so the Vite proxy reaches it. I verified that it boots and that `/api/health` responds. Running it against a live Postgres was **not verified** because no Postgres or Docker was available.
 - `npm run dev` runs in local mode by default (`.env.development` sets `VITE_LOCAL_MODE=true`): the data layer uses localStorage only and shows a "Local mode" badge, so no backend or Postgres is needed. To develop against the API, put `VITE_LOCAL_MODE=false` in `.env.development.local` (git-ignored) and run the backend on `PORT=3001`.
 - **There is no seed script.** The schema is created at startup by `initDb()` in `server.js` (`CREATE TABLE IF NOT EXISTS`, retried 10×/3s). `backend_files/schema.sql` mirrors it but nothing executes it. The global airport and carrier tables are populated automatically from external datasets. To get sample data, register a user in the UI or restore a backup JSON in Settings.
-- Frontend unit tests (`npm test`, Vitest + jsdom, `tests/unit/`): the pure logic of the routes, the Flights page (journey grouping, status and progress, alerts, import column mapping, lookup helpers). End-to-end: `cd tests/e2e && npm install && npx playwright test` (production build + real server on pg-mem, desktop and mobile projects; after the removal of the original interface only `auth/routes.spec.ts` is left, so new-page specs are still to be written). CI runs tsc, the token check and backend tests on every push and PR before building the image; the full e2e suite runs only for `v*` tags and manual runs (Actions tab → Run workflow).
+- Frontend unit tests (`npm test`, Vitest + jsdom, `tests/unit/`): the pure logic of the routes, the Flights page (journey grouping, status and progress, alerts, import column mapping, lookup helpers). End-to-end: `cd tests/e2e && npm install && npx playwright test` (production build + real server on pg-mem, desktop and mobile projects; after the removal of the original interface only `auth/routes.spec.ts` is left, so new-page specs are still to be written). CI runs tsc, the token check, the frontend unit tests and backend tests on every push and PR before building the image; the full e2e suite runs only for `v*` tags and manual runs (Actions tab → Run workflow).
 - A git `pre-commit` hook runs `scripts/bump-version.cjs`, so every commit also bumps `version.ts`/`package.json`.
 
 ## Directory map
@@ -77,10 +77,10 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 
 ### Auth
 
-- JWT (7d expiry), signed with `JWT_SECRET`. In production the server refuses to start with the default dev secret. Passwords use PBKDF2-SHA512 with a salt (`hashPassword`).
-- `authenticateToken` is applied to all of `/api`. The public paths are `/api/health`, `/api/auth/login`, `/api/auth/register` and `/api/calendar/:userId/feed.ics`. Token and user are stored in localStorage (`wandergrid_session_token`, `wandergrid_session_user`).
+- JWT (24h by default, `SESSION_TTL`; revoked by logout, password or role change via `tokenVersion`), signed with `JWT_SECRET`. In production the server refuses to start with the default dev secret. Passwords use PBKDF2-SHA512 with a salt (`hashPassword`).
+- `authenticateToken` is applied to all of `/api`. The public paths are `/api/health`, `/api/auth/login`, `/api/auth/register`, `/api/auth/setup-status`, `/api/auth/demo` (empty workspace only), `/api/auth/reset-password`, `/api/calendar/:token/feed.ics` (secret per-user token) and `/api/public/trips/:token`. Token and user are stored in localStorage (`wandergrid_session_token`, `wandergrid_session_user`).
 - A 401 or 403 from the API dispatches `wandergrid-unauthorized` / `wandergrid:unauthorized` window events. `role` is carried in the token.
-- Rate limits: a general limiter on `/api` and a stricter one on `/api/auth`.
+- Rate limits: a general limiter on `/api`, a stricter one on login, register, demo and reset-password only, and a per-account backoff after 10 wrong passwords. Set `TRUST_PROXY=1` behind Cloudflare Tunnel or any reverse proxy, or every visitor shares one address. Public sign-up is closed once the first admin exists (`ALLOW_SIGNUP=true` or the Settings switch opens it).
 
 **External services.** All of them go through backend proxies under `/api/proxy/*` with timeouts. `vite.config.ts` re-implements the route, rail and test proxies as dev middleware.
 
@@ -91,7 +91,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 - There is no AI feature. The Gemini API (the trip AI guide, AI packing list and flight analysis, `/api/ai/generate`) and the CARTO basemap key were removed in 1.1; stored `googleGeminiApiKey` and `cartoApiKey` values in old settings and backups are ignored and dropped on the next save.
 - Most third-party API keys are stored in workspace settings and sent by the client as headers, for example `X-AeroDataBox-Key` and `X-OpenAIP-Key`. A key can also be set through env vars (`INTEGRATIONS_*`).
 
-**Env vars** (see `.env.example`): `DATABASE_URL`, `JWT_SECRET`, `PORT`, `NODE_ENV`, `STRUCTURED_LOGGING`, `DB_POOL_SIZE`, `DB_CONNECTION_TIMEOUT_MS`, `DB_STATEMENT_TIMEOUT_MS`, `API_CACHE_TTL_MS`, `FLIGHT_FETCH_TIMEOUT_MS`, `GLOBAL_DATA_REFRESH_MS`, `GEOCODE_CACHE_TTL_MS`, `EXTERNAL_FETCH_TIMEOUT_MS`, `INTEGRATIONS_*`, `FLIGHT_LOOKUP_FLIGHTSTATS` (`off` disables the keyless FlightStats source of the flight lookup). The frontend has no build-time settings.
+**Env vars** (see `.env.example`): `DATABASE_URL`, `JWT_SECRET`, `PORT`, `NODE_ENV`, `STRUCTURED_LOGGING`, `ALLOW_SIGNUP`, `TRUST_PROXY`, `SESSION_TTL`, `DB_POOL_SIZE`, `DB_CONNECTION_TIMEOUT_MS`, `DB_STATEMENT_TIMEOUT_MS`, `API_CACHE_TTL_MS`, `FLIGHT_FETCH_TIMEOUT_MS`, `GLOBAL_DATA_REFRESH_MS`, `GEOCODE_CACHE_TTL_MS`, `EXTERNAL_FETCH_TIMEOUT_MS`, `INTEGRATIONS_*`, `FLIGHT_LOOKUP_FLIGHTSTATS` (`off` disables the keyless FlightStats source of the flight lookup). The frontend has no build-time settings.
 
 ## Conventions
 
@@ -117,7 +117,6 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 - **Dev proxy duplication:** `vite.config.ts` duplicates the backend route, rail and test proxy logic. A change to one copy is not reflected in the other.
 - **PWA/service worker:** the app auto-reloads on `controllerchange` and on `vite:preloadError`. Stale caches can mask changes, so hard-reload or unregister the SW when testing builds.
 - **Version bumps:** `npm run build` bumps the version and creates a diff in `version.ts` and `package.json`.
-- **Case-sensitive filename:** the design spec is `Design.md`, but AGENTS.md links `design.md`. This only works on case-insensitive filesystems.
 - **README is partly stale:** it mentions `npm start`, React Globe GL and Nager-only geocoding.
 - **Missing local assets:** `public/airport-overlay.pmtiles` is gitignored, so fresh clones lack the airport overlay.
 - **Out of scope unless asked:** `dist/`, `node_modules/`, `scratch/`, `.agents/`, GHCR/CI workflow, `metadata.json` (AI Studio manifest), and vendored files in `public/vendor/`.

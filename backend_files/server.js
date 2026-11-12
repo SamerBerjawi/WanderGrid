@@ -292,6 +292,14 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Behind a reverse proxy or tunnel every request arrives from the proxy's address, so rate limits would be
+// shared by all users. TRUST_PROXY is a hop count (1 for Cloudflare Tunnel, Caddy or Traefik in front), 'true',
+// or a subnet list as Express accepts. Left unset, the socket address is used (no proxy).
+if (process.env.TRUST_PROXY) {
+    const raw = process.env.TRUST_PROXY.trim();
+    app.set('trust proxy', /^\d+$/.test(raw) ? Number(raw) : raw === 'true' ? true : raw === 'false' ? false : raw);
+}
+
 // Express 4 does not catch rejected promises from async handlers, and Node exits on an unhandled
 // rejection — one failed `await` (e.g. the DB being unreachable) used to crash the whole API.
 // Route every handler's rejection to the error middleware registered after the routes.
@@ -450,7 +458,9 @@ const authRateLimiter = rateLimit({
 });
 
 app.use('/api', apiRateLimiter);
-app.use('/api/auth', authRateLimiter);
+// The strict limiter only guards the endpoints that take credentials. Session checks (/auth/me) and the
+// public setup-status run on every page load and must not count towards it (F-02).
+app.use(['/api/auth/login', '/api/auth/register', '/api/auth/demo', '/api/auth/reset-password'], authRateLimiter);
 
 // Global API Route Protection
 app.use('/api', authenticateToken);
@@ -2590,10 +2600,31 @@ app.get('/api/health', async (req, res) => {
 });
 
 // Authentication
+// Per-account backoff: repeated wrong passwords for one email pause that account's sign-in, wherever the
+// requests come from, without affecting anyone else.
+const LOGIN_FAIL_LIMIT = 10;
+const LOGIN_FAIL_WINDOW_MS = 15 * 60 * 1000;
+const loginFailures = new BoundedMap(5000);
+const loginKey = (email) => String(email).trim().toLowerCase();
+const loginLocked = (email) => {
+    const entry = loginFailures.get(loginKey(email));
+    return Boolean(entry && entry.resetAt > Date.now() && entry.count >= LOGIN_FAIL_LIMIT);
+};
+const noteLoginFailure = (email) => {
+    const key = loginKey(email);
+    const entry = loginFailures.get(key);
+    loginFailures.set(key, entry && entry.resetAt > Date.now()
+        ? { count: entry.count + 1, resetAt: entry.resetAt }
+        : { count: 1, resetAt: Date.now() + LOGIN_FAIL_WINDOW_MS });
+};
+
 app.post('/api/auth/login', async (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password) {
+    const { email, password } = req.body || {};
+    if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
         return res.status(400).json({ error: 'Email and password are required' });
+    }
+    if (loginLocked(email)) {
+        return res.status(429).json({ error: 'Too many failed sign-in attempts for this account. Try again in a few minutes.' });
     }
     try {
         const { rows } = await pool.query(
@@ -2601,14 +2632,17 @@ app.post('/api/auth/login', async (req, res) => {
             [email.trim()]
         );
         if (rows.length === 0) {
+            noteLoginFailure(email);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         
         const user = rows[0].data;
         const isPasswordValid = await verifyPassword(password, user.password);
         if (!isPasswordValid) {
+            noteLoginFailure(email);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
+        loginFailures.delete(loginKey(email));
         if (!user.password.startsWith(HASH_PREFIX)) {
             // Upgrade legacy plaintext / old-format hashes now that we know the password.
             user.password = await hashPassword(password);
@@ -2636,6 +2670,12 @@ const newUserRecord = ({ id, name, email, role, password }) => {
     };
 };
 
+// Public sign-up is closed once the first admin exists, unless an admin turns it on in Settings or the host
+// sets ALLOW_SIGNUP=true as the default for workspaces that never chose (D-01).
+const signupOpen = (settings) => (typeof settings.allowSelfRegistration === 'boolean'
+    ? settings.allowSelfRegistration
+    : process.env.ALLOW_SIGNUP === 'true');
+
 const readWorkspaceSettings = async (client = pool) => {
     const { rows } = await client.query(`SELECT data FROM settings WHERE key = 'workspace'`);
     return rows.length > 0 ? rows[0].data : {};
@@ -2648,7 +2688,7 @@ app.get('/api/auth/setup-status', async (req, res) => {
         const settings = await readWorkspaceSettings();
         res.json({
             needsSetup: Number(rows[0].count) === 0,
-            allowSelfRegistration: settings.allowSelfRegistration !== false
+            allowSelfRegistration: signupOpen(settings)
         });
     } catch (err) {
         sendError(res, err, 500, 'Failed to read setup status');
@@ -2674,7 +2714,7 @@ app.post('/api/auth/register', async (req, res) => {
             const isFirstUser = Number(countRows[0].count) === 0;
             if (!isFirstUser) {
                 const settings = await readWorkspaceSettings(client);
-                if (settings.allowSelfRegistration === false) {
+                if (!signupOpen(settings)) {
                     throw new HttpError(403, 'Self-registration is disabled. Ask an administrator to add you.');
                 }
             }
@@ -2734,12 +2774,8 @@ app.post('/api/auth/demo', async (req, res) => {
         const user = await withTransaction(async (client) => {
             const { rows: countRows } = await client.query(`SELECT COUNT(*) AS count FROM users`);
             const isFresh = Number(countRows[0].count) === 0;
-            if (!isFresh) {
-                const settings = await readWorkspaceSettings(client);
-                if (settings.allowSelfRegistration === false) {
-                    throw new HttpError(403, 'Demo access is turned off for this workspace.');
-                }
-            }
+            // Demo access is only for an empty workspace; a populated one never hands out anonymous sessions.
+            if (!isFresh) throw new HttpError(403, 'Demo access is turned off for this workspace.');
             let { rows } = await client.query(`SELECT data FROM users WHERE id = $1`, [DEMO_EMAIL]);
             let demoUser = rows[0]?.data;
             if (!demoUser) {

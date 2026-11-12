@@ -64,7 +64,7 @@ const AuthInput: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { icon: 
 export const AuthNew: React.FC<AuthNewProps> = ({ onLogin, isDark, onThemeChange, preview = false, onClosePreview }) => {
     const reduced = useReducedMotion();
     const [mode, setMode] = useState<Mode>('signin');
-    const [allowSignUp, setAllowSignUp] = useState(true);
+    const [allowSignUp, setAllowSignUp] = useState(false);
     const [form, setForm] = useState<Fields>({ name: '', email: '', password: '', confirmPassword: '', resetCode: '' });
     const [showPassword, setShowPassword] = useState(false);
     const [status, setStatus] = useState<ParticleButtonStatus>('idle');
@@ -93,7 +93,8 @@ export const AuthNew: React.FC<AuthNewProps> = ({ onLogin, isDark, onThemeChange
     const isRegistering = mode === 'signup' || mode === 'setup_admin';
     const confirms = mode !== 'signin';
     const canSwitch = allowSignUp && (mode === 'signin' || mode === 'signup');
-    const showDemo = mode !== 'reset' && (mode === 'setup_admin' || allowSignUp);
+    // The demo run is only offered on an empty workspace; the server refuses it anywhere else.
+    const showDemo = mode === 'setup_admin';
 
     const set = (key: keyof Fields) => (e: React.ChangeEvent<HTMLInputElement>) => {
         setForm(f => ({ ...f, [key]: e.target.value }));

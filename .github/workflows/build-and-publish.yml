@@ -53,6 +53,9 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
+      - name: Frontend unit tests
+        run: npm test
+
       - name: Design-token check (z-index scale, no arbitrary hex, valid shades)
         run: npm run lint:tokens
 
