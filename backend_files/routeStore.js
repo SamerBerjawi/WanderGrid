@@ -21,7 +21,7 @@ const { resolveFerryLine } = require('./ferryLines');
 // (measured: Madrid-Barcelona, Amsterdam-Berlin, Rome-Venice, Sydney-Melbourne fail on all_tracks alone).
 const RAIL_PROFILES = ['all_tracks', 'non_tgv', 'tgv_all', 'all_tracks_1435'];
 
-const KEY_VERSION = 'rt1';
+const KEY_VERSION = 'rt2';
 const OK_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 const NONE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const TRANSIENT_BACKOFF_MS = 45 * 1000;
@@ -209,10 +209,13 @@ function createRouteService({ pool, fetchUpstream, now = Date.now, log = console
           const simple = simplify(parsed.coords.map(c => [c[0], c[1]]));
           return toResult(encodePolyline6(simple), Math.round(parsed.km * 10) / 10, Math.round(parsed.min), a.attribution, p.profile);
         }
-        continue; // answered without a usable route (NoRoute etc.): ask the next engine
+        // Only an explicit domain answer establishes absence, not a changed schema.
+        const noRoute = r.data?.code === 'NoRoute' || r.data?.error_code === 442;
+        if (!noRoute) transient = true;
+        continue;
       }
-      // 4xx other than 404 is the engine rejecting this input: keep trying the next engine, not transient.
-      if (!(r.status >= 400 && r.status < 500 && r.status !== 429)) transient = true;
+      // Authorization/quota/HTTP errors do not establish geographic absence.
+      if (r.data?.code !== 'NoRoute' && r.data?.error_code !== 442) transient = true;
     }
     return transient
       ? { status: 'error', reason: 'upstream_unavailable' }

@@ -102,7 +102,12 @@ describe('route store resolution', () => {
   test('a definitive failure on both rail and road is remembered as none and never asked again', async () => {
     const pool = fakePool();
     let calls = 0;
-    const fetchUpstream = async () => { calls++; return { ok: false, status: 400, data: { message: 'Cannot find point 0' } }; };
+    const fetchUpstream = async ({ url }) => {
+      calls++;
+      return url.includes('openrailrouting')
+        ? { ok: false, status: 400, data: { message: 'Cannot find point 0' } }
+        : { ok: true, status: 200, data: { code: 'NoRoute' } };
+    };
     const svc = createRouteService({ pool, fetchUpstream, log: { error() {} } });
     const body = { routes: [{ id: 'n', mode: 'rail', coords: [[35.5, 33.89], [35.83, 34.43]] }] };
     await svc.handleResolve({ body }, res());
@@ -154,4 +159,33 @@ describe('route store resolution', () => {
     await svc.handleResolve({ body: { routes: Array.from({ length: 101 }, (_, i) => ({ id: String(i) })) } }, r2);
     assert.equal(r2.statusCode, 400);
   });
+});
+
+for (const status of [400, 401, 403, 404, 429, 500]) {
+  test(`road HTTP ${status} is not persisted as geographic absence`, async () => {
+    const pool = fakePool();
+    const svc = createRouteService({ pool, fetchUpstream: async () => ({ ok: false, status, data: null }) });
+    const spec = parseSpec({ id: 'r', mode: 'road', coords: [[4, 50], [5, 51]] });
+    svc._internals.enqueue(spec);
+    assert.equal((await svc._internals.inFlight.get(spec.key)).status, 'error');
+    assert.equal(pool.rows.size, 0);
+  });
+}
+
+test('unrecognized provider payloads are not cached as no route', async () => {
+  const pool = fakePool();
+  const svc = createRouteService({ pool, fetchUpstream: async () => ({ ok: true, status: 200, data: { changedSchema: true } }) });
+  const spec = parseSpec({ id: 'r', mode: 'road', coords: [[4, 50], [5, 51]] });
+  svc._internals.enqueue(spec);
+  assert.equal((await svc._internals.inFlight.get(spec.key)).status, 'error');
+  assert.equal(pool.rows.size, 0);
+});
+
+test('explicit road NoRoute answers are still persisted', async () => {
+  const pool = fakePool();
+  const svc = createRouteService({ pool, fetchUpstream: async () => ({ ok: true, status: 200, data: { code: 'NoRoute' } }) });
+  const spec = parseSpec({ id: 'r', mode: 'road', coords: [[4, 50], [5, 51]] });
+  svc._internals.enqueue(spec);
+  assert.equal((await svc._internals.inFlight.get(spec.key)).status, 'none');
+  assert.equal(pool.rows.get(spec.key).payload.status, 'none');
 });

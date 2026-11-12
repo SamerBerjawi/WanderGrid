@@ -79,7 +79,7 @@ function enforceCacheCapacity() {
 /**
  * Reads a fetch Response stream up to maxBytes.
  */
-async function readBodyCapped(response, maxBytes) {
+async function readBodyCapped(response, maxBytes, signal) {
   if (!response.body) {
     const text = await response.text();
     if (maxBytes && Buffer.byteLength(text, 'utf8') > maxBytes) {
@@ -88,13 +88,17 @@ async function readBodyCapped(response, maxBytes) {
     return text;
   }
 
+  signal?.throwIfAborted();
   const reader = response.body.getReader();
+  const onAbort = () => { void reader.cancel(signal.reason).catch(() => {}); };
+  signal?.addEventListener('abort', onAbort, { once: true });
   const chunks = [];
   let totalBytes = 0;
 
   try {
     while (true) {
       const { done, value } = await reader.read();
+      signal?.throwIfAborted();
       if (done) break;
 
       totalBytes += value.length;
@@ -109,6 +113,9 @@ async function readBodyCapped(response, maxBytes) {
       try { await reader.cancel(err.message); } catch {}
     }
     throw err;
+  } finally {
+    signal?.removeEventListener('abort', onAbort);
+    reader.releaseLock();
   }
 
   const concatenated = Buffer.concat(chunks.map(chunk => Buffer.from(chunk)));
@@ -202,13 +209,13 @@ async function fetchUpstream({
         signal: controller.signal,
       });
 
-      clearTimeout(timeoutTimer);
+      // The deadline covers body streaming and parsing, not just response headers.
 
       // Handle 404 / Definitive Not Found -> Negative Cache
       if (res.status === 404) {
         let errBody = null;
         try {
-          const raw = await readBodyCapped(res, 64 * 1024);
+          const raw = await readBodyCapped(res, 64 * 1024, controller.signal);
           errBody = JSON.parse(raw);
         } catch {}
 
@@ -236,6 +243,7 @@ async function fetchUpstream({
 
       // Handle 5xx Upstream Server Errors -> Try serve stale
       if (res.status >= 500) {
+        if (res.body) await res.body.cancel().catch(() => {});
         if (cached && now < cached.staleUntil && !cached.isNegative) {
           return {
             ok: true,
@@ -257,7 +265,7 @@ async function fetchUpstream({
       }
 
       // Read capped body
-      const rawText = await readBodyCapped(res, maxBytes);
+      const rawText = await readBodyCapped(res, maxBytes, controller.signal);
       let parsedData = rawText;
       const contentType = res.headers?.get?.('content-type') || '';
       if (contentType.includes('application/json') || contentType.includes('+json')) {
@@ -333,6 +341,8 @@ async function fetchUpstream({
         answered: false,
         error: err.name === 'AbortError' ? 'Upstream request timed out' : err.message,
       };
+    } finally {
+      clearTimeout(timeoutTimer);
     }
   })();
 
