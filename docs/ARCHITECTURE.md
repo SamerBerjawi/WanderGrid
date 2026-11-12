@@ -61,18 +61,18 @@ per collection, so two hooks that use different keys for the same collection bot
 
 ## Backend layout
 
-`server.js` (~2.4k lines) still holds config, logging, security headers, rate limits, schema (`initDb`), the global
-datasets and the proxies. Moved out so far (decision D-07, no behaviour change):
+`server.js` (~1.3k lines) still holds config, logging, security headers, rate limits, schema (`initDb`) and the global
+datasets. Moved out so far (decision D-07, no behaviour change):
 `records.js` (validation, ownership `OWNERSHIP`, optimistic concurrency, transactions, generic CRUD handlers),
 `recordRoutes.js` (the collection routes and `/api/batch`), `auth.js` (sign-in, sign-up, demo, password reset,
-sessions, member roster), `settings.js` (workspace settings and stored secrets), `jobs.js` (background jobs, backup, restore, wipe), `migrations/` (numbered data migrations, D-06) and `tripKind.js` (D-04). Helpers that were
+sessions, member roster), `settings.js` (workspace settings and stored secrets), `jobs.js` (background jobs, backup, restore, wipe), `proxy.js` (every `/api/proxy/*` route, the flight, geocoding and route lookups, and the airport and carrier search), `migrations/` (numbered data migrations, D-06) and `tripKind.js` (D-04). Helpers that were
 already split out: `upstream.js` (fetch with timeout/cache/rate gate), `geocodingChain.js`, `routeProxy.js`,
 `routeStore.js` (persistent route resolver), `flightLookup.js`, `aviationStack.js`, `holidays.js`, `fxRates.js`,
 `ferryLines.js`, `sharedTrip.js`, `icsFeed.mjs`, `keyTester.js`, `integrationsTester.js`.
 
 Modules take what they need as arguments (`createRecordStore({ pool, sendError, ... })`, `registerAuthRoutes(app, {...})`)
 instead of importing `server.js`, so they can be tested alone. Routes keep their original registration order, which
-matters for the auth middleware and the `*` fallback. Still to move, in this order: `proxy/*`, `db/schema.js`.
+matters for the auth middleware and the `*` fallback. Still to move: `db/schema.js`.
 
 ## Persistence
 
