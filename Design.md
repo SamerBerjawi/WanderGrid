@@ -1,3 +1,5 @@
+> **Superseded.** This file describes the removed glass interface (`GlassPanel`, `PlannerView`). It is not binding. The current design authority is `UI_UX_DESIGN_REFERENCE.md`; see `docs/DESIGN_SYSTEM.md`.
+
 # WanderGrid Design System & Architectural UI Specification (`design.md`)
 
 This document establishes the official design system, component standards, visual tokens, and responsive layout guidelines for WanderGrid. **All existing, newly created, and redesigned pages, dialogs, drawers, and UI components across the application MUST strictly adhere to this specification.**

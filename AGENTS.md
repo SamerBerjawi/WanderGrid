@@ -67,6 +67,8 @@ Keep systems highly diagnosable and user sessions resilient.
 
 ## 7. Application UI Design System & Modal Guidelines
 
+> **Superseded (§7–11).** These sections describe the removed glass interface and are not binding. Use `UI_UX_DESIGN_REFERENCE.md` and `docs/DESIGN_SYSTEM.md`. §1–6 remain in force.
+
 All modal overlays, slide-out drawer components, form surfaces, and dialogs across the application must strictly adhere to the unified visual design language, surface hierarchy, and micro-interactions defined in this guideline.
 
 ### 7.1 Core Visual Tokens & Surfaces

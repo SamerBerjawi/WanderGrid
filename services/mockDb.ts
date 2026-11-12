@@ -425,7 +425,7 @@ class DataService {
             const status = await this.fetch<any>('/auth/setup-status');
             // In dev the fetch may have fallen back to localStorage, which doesn't know this endpoint.
             if (status && typeof status.needsSetup === 'boolean') {
-                return { needsSetup: status.needsSetup, allowSelfRegistration: status.allowSelfRegistration !== false };
+                return { needsSetup: status.needsSetup, allowSelfRegistration: status.allowSelfRegistration === true };
             }
         } catch (err) {
             if (isProd || this._useApi) throw err;

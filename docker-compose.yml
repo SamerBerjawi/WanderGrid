@@ -8,6 +8,8 @@ services:
     environment:
       - DATABASE_URL=postgres://${DB_USER:-wandergrid}:${DB_PASSWORD:-wandergrid_password}@db:5432/${DB_NAME:-wandergrid}
       - JWT_SECRET=${JWT_SECRET:?Please set JWT_SECRET in .env}
+      - ALLOW_SIGNUP=${ALLOW_SIGNUP:-false}
+      - TRUST_PROXY=${TRUST_PROXY:-}
     depends_on:
       db:
         condition: service_healthy

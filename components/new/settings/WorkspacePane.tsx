@@ -104,7 +104,7 @@ export const WorkspacePane: React.FC<{
     const change = (changes: Partial<WorkspaceSettings>) => void attempt(() => data.save(changes));
     const days = settings.workingDays ?? [1, 2, 3, 4, 5];
     const dateSample = DATE_FORMATS.find(([f]) => f === settings.dateFormat)?.[1] ?? settings.dateFormat;
-    const signupOpen = settings.allowSelfRegistration !== false;
+    const signupOpen = settings.allowSelfRegistration === true;
     const light = LIGHT_ALIAS[settings.defaultBasemapLight as string] ?? settings.defaultBasemapLight ?? 'liberty';
     const dark = DARK_ALIAS[settings.defaultBasemapDark as string] ?? settings.defaultBasemapDark ?? 'citylights';
     const currencyName = CURRENCIES.find(([c]) => c === settings.currency)?.[1];
@@ -157,7 +157,7 @@ export const WorkspacePane: React.FC<{
                             ? [{ id: 'signup', icon: UserAdd, label: 'Public sign-up', checked: signupOpen, onSelect: () => change({ allowSelfRegistration: !signupOpen }) }]
                             : [{ id: 'signup', icon: UserAdd, label: 'Public sign-up', detail: signupOpen ? 'Open' : 'Closed' }]),
                     ],
-                    footer: isAdmin ? 'When public sign-up is open, anyone can create a Partner account.' : 'Only admins change these.',
+                    footer: isAdmin ? 'When public sign-up is open, anyone who can reach this address can create an account and see the shared flight log. Leave it closed and add members here.' : 'Only admins change these.',
                 },
                 {
                     title: 'Appearance',
