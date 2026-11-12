@@ -8,7 +8,7 @@
 1. `CLAUDE.md` — orientation and commands.
 2. `docs/ARCHITECTURE.md`, `docs/DOMAIN_RULES.md`, `docs/STATE_MACHINE.md` — how it works and what must stay true.
 3. `UI_UX_DESIGN_REFERENCE.md` — for any UI change (via `docs/DESIGN_SYSTEM.md`).
-4. `AGENTS.md` §1–6 — performance and backend rules. **Skip §7–11 and `Design.md`**: they describe the removed
+4. `AGENTS.md` §1–6 — performance and backend rules. **Skip §7–11 and `docs/archive/Design.md`**: they describe the removed
    glass interface (DECISIONS D-05).
 
 ## Before you change code

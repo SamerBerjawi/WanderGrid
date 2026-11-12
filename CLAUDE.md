@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 WanderGrid is a self-hosted travel planner, flight log and leave manager. It has a React SPA at the repo root and an Express + PostgreSQL backend in `backend_files/`.
-**Read [docs/AI_RULES.md](docs/AI_RULES.md) first, then [AGENTS.md](AGENTS.md) §1–6 (performance and backend rules) and, for UI work, [UI_UX_DESIGN_REFERENCE.md](UI_UX_DESIGN_REFERENCE.md).** [Design.md](Design.md) and AGENTS.md §7–11 describe the removed glass interface and are NOT binding. How the system fits together is in `docs/` (ARCHITECTURE, DOMAIN_RULES, STATE_MACHINE, DESIGN_SYSTEM, DECISIONS). This file is the orientation layer and does not repeat them.
+**Read [docs/AI_RULES.md](docs/AI_RULES.md) first, then [AGENTS.md](AGENTS.md) §1–6 (performance and backend rules) and, for UI work, [UI_UX_DESIGN_REFERENCE.md](UI_UX_DESIGN_REFERENCE.md).** [docs/archive/Design.md](docs/archive/Design.md) and AGENTS.md §7–11 describe the removed glass interface and are NOT binding. How the system fits together is in `docs/` (ARCHITECTURE, DOMAIN_RULES, STATE_MACHINE, DESIGN_SYSTEM, DECISIONS). This file is the orientation layer and does not repeat them.
 
 ## Stack (versions from package.json ranges)
 
@@ -51,7 +51,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 | --- | --- |
 | `index.tsx`, `App.tsx` | Entry point. There is no router library: `utils/routes.ts` (`resolveRoute`, pure and unit-tested) maps a URL to a page (`dashboard`, `trips`, `trip`, `flights`, `roadtrips`, `map`, `atlas`, `calendar`, `member`, `settings`, `notfound`) and `App` keeps it in state; all pages render inside `components/new/ShellNew.tsx`. Paths: `/`, `/trips` (`/planner`), `/trip/:id`, `/flights`, `/roadtrips`, `/map`, `/atlas`, `/calendar`, `/user/:id`, `/settings`. Old `-new`, `-2` and `/classic/...` URLs redirect to the clean path. Pages are `React.lazy`-loaded |
 | `views/new/` | The pages: `DashboardNew`, `TripsNew`, `TripNew`, `FlightsNew`, `RoadTripsNew`, `MapNew`, `AtlasNew`, `CalendarNew`, `MemberNew`, `SettingsNew`, `AuthNew` (the `New` suffix is historical) |
-| `components/new/` | The parts of those pages and the shell (`ShellNew`, `RpDialog`, `ui.tsx` primitives, per-page folders). Design rules are in `UI_UX_DESIGN_REFERENCE.md`, not `Design.md` |
+| `components/new/` | The parts of those pages and the shell (`ShellNew`, `RpDialog`, `ui.tsx` primitives, per-page folders). Design rules are in `UI_UX_DESIGN_REFERENCE.md`, not `docs/archive/Design.md` |
 | `components/` | `AppErrorBoundary`, `ErrorBoundary`, `Toaster`, `ConfirmHost`, `PWAInstallBanner`, plus `bklit/` and `kokonutui/` (vendored chart and UI components the New pages use), `skeletons/` and `ui/hugeicons.tsx` |
 | `components/ui/` | Icon wrapper, date pickers, bento grid, virtual list item |
 | `services/` | Client-side domain logic. `dataService.ts` is the data service (`dataService`); `mockDb.ts` only re-exports it for old imports. The rest cover geocoding, routing (road/rail/maritime), flight tracking, import/export, map styles, and the solar terminator |
@@ -114,7 +114,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 - **`verifyPassword`** accepts plaintext stored passwords (legacy, no `:` salt separator). This is a legacy compatibility path, so do not extend it.
 - **`backend_files/server.js`** is still a ~1k-line wiring file (the routes live in the modules, see `docs/ARCHITECTURE.md`), and `initDb()` (in `dbSchema.js`) is the real schema. A change to stored data shape is a numbered migration in `backend_files/migrations/`, never an edit to a shipped one. `schema.sql` is generated: run `npm run schema` in `backend_files/` after touching tables (a test fails otherwise).
 - **Content-Security-Policy:** defined in `backend_files/server.js` (`CSP_DIRECTIVES`) and mirrored in `vite.config.ts` `preview.headers` for the e2e suite; keep them in sync. No inline scripts, `eval`, or third-party script hosts.
-- **Dev proxy duplication:** only the integrations-test endpoint (`/api/proxy/test/`) is copied in `vite.config.ts`; road and rail use `backend_files/routeProxy.js` directly.
+- **Dev proxy:** the Vite dev server runs the backend's own `routeProxy.js`, `flightLookup.js` and `integrationsTester.js`; there is no copy to keep in sync.
 - **PWA/service worker:** the app auto-reloads on `controllerchange` and on `vite:preloadError`. Stale caches can mask changes, so hard-reload or unregister the SW when testing builds.
 - **Version bumps:** `npm run build` bumps the version and creates a diff in `version.ts` and `package.json`.
 - **README is partly stale:** it mentions `npm start`, React Globe GL and Nager-only geocoding.
