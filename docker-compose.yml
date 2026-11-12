@@ -10,6 +10,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:?Please set JWT_SECRET in .env}
       - ALLOW_SIGNUP=${ALLOW_SIGNUP:-false}
       - TRUST_PROXY=${TRUST_PROXY:-}
+      - PUBLIC_URL=${PUBLIC_URL:-}
     depends_on:
       db:
         condition: service_healthy
@@ -48,5 +49,32 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # Optional nightly database dump, off unless you ask for it: docker compose --profile backup up -d
+  # Dumps land in the `wandergrid_backups` volume. Old dumps are pruned after 14 days. See docs/OPERATIONS.md.
+  db_backup:
+    profiles: ["backup"]
+    image: postgres:15-alpine
+    container_name: wandergrid_db_backup
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: ${DB_USER:-wandergrid}
+      PGPASSWORD: ${DB_PASSWORD:-wandergrid_password}
+      PGDATABASE: ${DB_NAME:-wandergrid}
+    volumes:
+      - wandergrid_backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          pg_dump --format=custom --file=/backups/wandergrid-$$(date +%Y%m%d-%H%M).dump && echo "dump written"
+          find /backups -name 'wandergrid-*.dump' -mtime +14 -exec rm -f {} +
+          sleep 86400
+        done
+
 volumes:
   postgres_data:
+  wandergrid_backups:

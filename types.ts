@@ -280,6 +280,8 @@ export interface Trip {
    * Read it through `tripKind()` (utils/tripKind.ts), which also understands records saved before it existed.
    */
   kind?: TripKind;
+  /** Set by the server when the trip is created. Only the creator or an admin may change who is on it or its privacy. */
+  createdBy?: string;
   /** Legacy flags, still written next to `kind` so older readers and the calendar feed keep working. */
   isBundleOnly?: boolean;
   hideInPlanner?: boolean;

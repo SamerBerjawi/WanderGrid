@@ -4,6 +4,7 @@ import { lookupFlight, type FlightCandidate } from '../services/flightLookup';
 import { connectionAlert, diffAlerts, type FlightAlert, type FlightSnapshot } from '../utils/flightAlerts';
 import { groupJourneys, isLiveWindow, type JourneyRecord } from '../utils/journeysModel';
 import { getFlightDepartureUtcDate } from '../utils/flightData';
+import { isFlightLeg } from '../utils/legMode';
 
 /**
  * Watches the flights that leave within 12 hours or are in the air: every few minutes, while the page is
@@ -52,14 +53,14 @@ export const useFlightAlerts = (records: JourneyRecord[]) => {
     const canNotify = typeof window !== 'undefined' && 'Notification' in window;
 
     const watched = useMemo(() => records
-        .filter(r => r.flight.mode === 'Flight' && r.flight.identifier && isLiveWindow(r.flight, 12))
+        .filter(r => isFlightLeg(r.flight) && r.flight.identifier && isLiveWindow(r.flight, 12))
         .sort((a, b) => getFlightDepartureUtcDate(a.flight).getTime() - getFlightDepartureUtcDate(b.flight).getTime())
         .slice(0, MAX_WATCHED), [records]);
     const watchKey = watched.map(r => r.flight.id).join(',');
 
     const check = useCallback(async () => {
         const { records: all, notify: notifyOn } = latest.current;
-        const list = all.filter(r => r.flight.mode === 'Flight' && r.flight.identifier && isLiveWindow(r.flight, 12)).slice(0, MAX_WATCHED);
+        const list = all.filter(r => isFlightLeg(r.flight) && r.flight.identifier && isLiveWindow(r.flight, 12)).slice(0, MAX_WATCHED);
         if (list.length === 0) return;
         const units = groupJourneys(all);
         const found: FlightAlert[] = [];

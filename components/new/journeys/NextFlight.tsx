@@ -7,6 +7,7 @@ import { formatDate } from '../../../utils/formatters';
 import { daysToDeparture, formatMinutes, isIndependent, isLiveWindow, journeyStatus, placeCode, type JourneyRecord } from '../../../utils/journeysModel';
 import { getFlightDepartureUtcDate } from '../../../utils/flightData';
 import { cn } from '../../../utils/cn';
+import { isFlightLeg } from '../../../utils/legMode';
 
 /**
  * The next flight (or the one in the air) as a slim card: its route, a countdown, the trip it is on and, in
@@ -34,7 +35,7 @@ export const NextFlight: React.FC<{
     const next = useMemo(() => {
         const now = Date.now();
         return records
-            .filter(r => r.flight.mode === 'Flight' && journeyStatus(r.flight, now).state !== 'done' && journeyStatus(r.flight, now).state !== 'cancelled')
+            .filter(r => isFlightLeg(r.flight) && journeyStatus(r.flight, now).state !== 'done' && journeyStatus(r.flight, now).state !== 'cancelled')
             .sort((a, b) => getFlightDepartureUtcDate(a.flight).getTime() - getFlightDepartureUtcDate(b.flight).getTime())[0] ?? null;
     }, [records]);
     const soon = Boolean(next && isLiveWindow(next.flight, 24));

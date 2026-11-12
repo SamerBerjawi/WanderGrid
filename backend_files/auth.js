@@ -27,6 +27,10 @@ module.exports = function registerAuthRoutes(app, {
           : { count: 1, resetAt: Date.now() + LOGIN_FAIL_WINDOW_MS });
   };
 
+  // A hash to check against when the email is unknown (see the login route), computed once.
+  let dummyHash = null;
+  const getDummyHash = async () => (dummyHash ||= await hashPassword(crypto.randomBytes(16).toString('hex')));
+
   app.post('/api/auth/login', async (req, res) => {
       const { email, password } = req.body || {};
       if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
@@ -41,6 +45,8 @@ module.exports = function registerAuthRoutes(app, {
               [email.trim()]
           );
           if (rows.length === 0) {
+              // Spend the same time as a real check so response timing does not reveal which emails have accounts.
+              await verifyPassword(password, await getDummyHash());
               noteLoginFailure(email);
               return res.status(401).json({ error: 'Invalid credentials' });
           }
