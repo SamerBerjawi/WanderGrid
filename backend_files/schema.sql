@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS trip_shares (
 
 -- Indexes
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users ((LOWER(data->>'email'))) WHERE (data->>'email' IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_users_calendar_token ON users ((data->>'calendarToken')) WHERE (data->>'calendarToken' IS NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_trips_status ON trips ((data->>'status'));
 CREATE INDEX IF NOT EXISTS idx_trips_start_date ON trips ((data->>'startDate'));
 CREATE INDEX IF NOT EXISTS idx_trips_end_date ON trips ((data->>'endDate'));

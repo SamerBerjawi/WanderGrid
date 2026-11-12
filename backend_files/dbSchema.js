@@ -91,6 +91,9 @@ module.exports = function createInitDb({ pool, onReady }) {
           // Strict Unique Functional User Email Index (Unique user email index)
           await client.query("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users ((LOWER(data->>'email'))) WHERE (data->>'email' IS NOT NULL)");
           
+          // The public calendar feed finds its user by the secret token in the URL (audit F-17).
+          await client.query("CREATE INDEX IF NOT EXISTS idx_users_calendar_token ON users ((data->>'calendarToken')) WHERE (data->>'calendarToken' IS NOT NULL)");
+
           // Trip Field Performance Indexes
           await client.query("CREATE INDEX IF NOT EXISTS idx_trips_status ON trips ((data->>'status'))");
           await client.query("CREATE INDEX IF NOT EXISTS idx_trips_start_date ON trips ((data->>'startDate'))");
