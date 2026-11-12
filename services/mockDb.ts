@@ -570,7 +570,28 @@ class DataService {
       }
   }
 
+  /** GETs in flight, by endpoint: pages that ask for the same collection at once share one request (audit F-08). */
+  private inflightReads = new Map<string, Promise<unknown>>();
+
   private async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
+      const method = (options?.method || 'GET').toUpperCase();
+      if (method !== 'GET' || options?.signal) {
+          // A write makes any read already in flight stale, so the next read must go to the server again.
+          if (method !== 'GET') this.inflightReads.clear();
+          return this.fetchOnce<T>(endpoint, options);
+      }
+      let pending = this.inflightReads.get(endpoint) as Promise<T> | undefined;
+      if (!pending) {
+          pending = this.fetchOnce<T>(endpoint, options).finally(() => {
+              if (this.inflightReads.get(endpoint) === pending) this.inflightReads.delete(endpoint);
+          });
+          this.inflightReads.set(endpoint, pending);
+      }
+      // Each caller gets its own copy, so one view changing its list cannot change another's.
+      return pending.then(result => (result !== null && typeof result === 'object' ? structuredClone(result) : result));
+  }
+
+  private async fetchOnce<T>(endpoint: string, options?: RequestInit): Promise<T> {
       const isProd = import.meta.env.PROD;
       
       if (isProd) {
