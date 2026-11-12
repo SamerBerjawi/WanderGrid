@@ -8,12 +8,7 @@
 
 ## Open
 
-### D-07 Splitting `server.js`
-- **Context:** ~3.7k lines mixing auth, validation, ownership, CRUD, settings, jobs, restore, proxies and schema.
-- **Options:** A) move code into modules by area with no behaviour change, one PR per area, protected by the
-  existing API tests; B) leave it.
-- **Recommendation:** A, auth and records first (they hold the security rules).
-- **Status:** Decided 2026-11-12: Option A, in progress. Done: `records.js`, `recordRoutes.js`, `auth.js`, `settings.js`, `jobs.js`, `proxy.js` (pure moves, verified by the existing API tests and a no-undef lint). Next: `db/schema.js`.
+_Nothing open._
 
 ## Decided
 
@@ -74,5 +69,12 @@
   its own collection; C) leave as is and document.
 - **Recommendation:** A now (cheap, makes readers explicit), revisit B only if leave grows.
 - **Status:** Decided 2026-11-12: Option A. `Trip.kind` (`trip | timeoff | bundle`), read through `tripKind()` / `isRealTrip()` (`utils/tripKind.ts`, server copy `backend_files/tripKind.js`) which still understands records saved before it existed. New records write `kind` next to the legacy `isBundleOnly` / `hideInPlanner` flags so older readers and the calendar feed keep working. Migration 0001 stamps stored trips. Retiring the legacy flags is a later step.
+
+### D-07 Splitting `server.js`
+- **Context:** ~3.7k lines mixing auth, validation, ownership, CRUD, settings, jobs, restore, proxies and schema.
+- **Options:** A) move code into modules by area with no behaviour change, one PR per area, protected by the
+  existing API tests; B) leave it.
+- **Recommendation:** A, auth and records first (they hold the security rules).
+- **Status:** Decided 2026-11-12: Option A, done in PRs #79, #80, #81 and the schema PR. `server.js` went from 3.8k to about 1k lines: `records.js`, `recordRoutes.js`, `auth.js`, `settings.js`, `jobs.js`, `proxy.js` and `dbSchema.js` are pure moves with explicit dependencies and the original route order, checked by the API tests and a no-undef lint.
 
 _See `UI_UX_DESIGN_REFERENCE.md` §7 and `audit/plan.md` §2 for earlier decisions._
