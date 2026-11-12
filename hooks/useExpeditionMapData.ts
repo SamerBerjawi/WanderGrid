@@ -6,6 +6,7 @@ import { runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
 import { Trip, CountryResidenceStatus, getResidenceStatuses } from '../types';
 import { getCoordinates, getCoordinatesSync, STATIC_GEO_DATA, calculateDistance, formatProperLocationName, refineUKCountry } from '../services/geocoding';
 import { asStatusList, isLayoverOnly } from '../components/new/map/mapScratch';
+import { isFlightLeg } from '../utils/legMode';
 
 /**
  * Data loading for the Expedition Map (trips + flights + road trips with resolved coordinates, visited
@@ -177,7 +178,7 @@ export const useExpeditionMapData = () => {
                     const date = flight.departureDate || '';
                     const todayStr = new Date().toISOString().split('T')[0];
                     const isPast = date < todayStr;
-                    const isFlightMode = !flight.mode || flight.mode === 'Flight';
+                    const isFlightMode = isFlightLeg(flight);
 
                     return {
                         id: isFlightMode ? `independent-flight-${flight.id}` : `independent-road-trip-${flight.id}`,
@@ -377,11 +378,11 @@ export const useExpeditionMapData = () => {
                         const originGeo = originCode ? STATIC_GEO_DATA[originCode] : null;
                         const destGeo = destCode ? STATIC_GEO_DATA[destCode] : null;
 
-                        const isFlight = !tr.mode || tr.mode === 'Flight';
+                        const isFlight = isFlightLeg(tr);
 
                         // The origin of a connecting flight is the previous leg's layover, not a stay.
                         const prev = idx > 0 ? transports[idx - 1] : null;
-                        const prevIsFlight = Boolean(prev) && (!prev!.mode || prev!.mode === 'Flight');
+                        const prevIsFlight = Boolean(prev) && isFlightLeg(prev);
                         const isConnection = isFlight && prevIsFlight && prev!.destination?.toUpperCase() === originCode;
                         if (originGeo?.iso && !isConnection) {
                             destinationCountries.add(originGeo.iso.toUpperCase());

@@ -1,6 +1,8 @@
 'use strict';
 // Record store: validation, ownership (SEC-001), optimistic concurrency (REL-005), transactions and the generic
 // CRUD handlers behind /api/<collection>. Moved out of server.js unchanged (decision D-07).
+const TRANSPORT_MODES = ['Flight', 'Train', 'Bus', 'Car Rental', 'Personal Car', 'Cruise', 'Ferry'];
+
 module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_PATTERN }) {
   // --- Generic CRUD Handlers & Transactions ---
 
@@ -64,6 +66,7 @@ module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_
           for (const field of ['origin', 'destination', 'provider', 'identifier', 'mode']) {
               if (!isStringOrMissing(r[field], 500)) return `${field} must be text`;
           }
+          if (r.mode !== undefined && r.mode !== null && r.mode !== '' && !TRANSPORT_MODES.includes(r.mode)) return `mode must be one of ${TRANSPORT_MODES.join(', ')}`;
           return null;
       },
       visited: (r) => (!isStringOrMissing(r.type, 50) || !isStringOrMissing(r.code, 100) ? 'type/code must be text' : null),
@@ -111,19 +114,40 @@ module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_
           canRead: (trip, user) => isAdminUser(user) || trip.privacy === 'Public' || isTripParticipant(trip, user),
           canWrite: (trip, user) => isAdminUser(user) || isTripParticipant(trip, user),
           // A new trip always includes its creator, so they can't lock themselves out of it.
-          prepareNew: (trip, user) => (isAdminUser(user) || isTripParticipant(trip, user))
-              ? trip
-              : { ...trip, participants: [...(Array.isArray(trip.participants) ? trip.participants : []), user.id] },
-          prepareUpdate: (incoming) => incoming,
+          // The creator is recorded (F-18). A new trip also includes its creator, so they can't lock themselves out.
+          prepareNew: (trip, user) => {
+              const withCreator = { ...trip, createdBy: user.id };
+              return (isAdminUser(user) || isTripParticipant(trip, user))
+                  ? withCreator
+                  : { ...withCreator, participants: [...(Array.isArray(trip.participants) ? trip.participants : []), user.id] };
+          },
+          // Any participant may edit a trip, but only its creator or an admin may change who is on it or its privacy.
+          // Trips saved before createdBy existed have no creator, so every participant stays a co-owner of those.
+          prepareUpdate: (incoming, existing, user) => {
+              const next = existing.createdBy ? { ...incoming, createdBy: existing.createdBy } : incoming;
+              if (existing.createdBy && user && !isAdminUser(user) && user.id !== existing.createdBy) {
+                  const ids = (t) => (Array.isArray(t.participants) ? t.participants : []).map(normKey).sort().join('|');
+                  if (ids(incoming) !== ids(existing) || (incoming.privacy || 'Private') !== (existing.privacy || 'Private')) {
+                      throw new HttpError(403, 'Only the person who created this trip can change who is on it or its privacy');
+                  }
+              }
+              return next;
+          },
       },
       flights: {
           canRead: () => true,
           canWrite: (rec, user) => isAdminUser(user) || (!!rec.ownerId && rec.ownerId === user.id),
-          prepareNew: (rec, user) => ({ ...rec, ownerId: user.id }),
-          prepareUpdate: (incoming, existing) => ({ ...incoming, ownerId: existing.ownerId }),
+          // A leg without a mode is a flight (F-05); the mode is always stored so every reader agrees.
+          prepareNew: (rec, user) => ({ ...rec, mode: rec.mode || 'Flight', ownerId: user.id }),
+          prepareUpdate: (incoming, existing) => ({ ...incoming, mode: incoming.mode || 'Flight', ownerId: existing.ownerId }),
       },
   };
-  OWNERSHIP.visited = OWNERSHIP.flights;
+  // Atlas entries follow the same ownership rule as flights, without the flight-only mode default.
+  OWNERSHIP.visited = {
+      ...OWNERSHIP.flights,
+      prepareNew: (rec, user) => ({ ...rec, ownerId: user.id }),
+      prepareUpdate: (incoming, existing) => ({ ...incoming, ownerId: existing.ownerId }),
+  };
 
   const forbidden = () => new HttpError(403, 'You do not have permission to change this record');
 
@@ -156,7 +180,7 @@ module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_
           const prev = existing.get(item.id);
           if (!prev) return withNextVersion(table, policy.prepareNew(item, user), null);
           if (!policy.canWrite(prev, user)) throw forbidden();
-          return withNextVersion(table, policy.prepareUpdate(item, prev), prev);
+          return withNextVersion(table, policy.prepareUpdate(item, prev, user), prev);
       });
       await bulkUpsert(client, table, prepared);
       return prepared;
@@ -329,7 +353,7 @@ module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_
     if (policy) {
       if (!existing) prepared = policy.prepareNew(record, user);
       else if (!policy.canWrite(existing, user)) throw forbidden();
-      else prepared = policy.prepareUpdate(record, existing);
+      else prepared = policy.prepareUpdate(record, existing, user);
     }
     prepared = withNextVersion(table, prepared, existing);
     await client.query(

@@ -29,6 +29,8 @@ RUN if [ ! -s client_build/airport-overlay.pmtiles ] && [ -n "$AIRPORT_PMTILES_U
       || { echo "WARNING: could not download airport-overlay.pmtiles from $AIRPORT_PMTILES_URL; airport overlay will be unavailable" >&2; rm -f client_build/airport-overlay.pmtiles; }; \
     fi
 
+# The server only reads its files and listens on 3000, so it does not need root (audit F-15).
+USER node
 EXPOSE 3000
 CMD ["node", "server.js"]
 

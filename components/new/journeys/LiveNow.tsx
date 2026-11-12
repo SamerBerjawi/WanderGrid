@@ -8,6 +8,7 @@ import { isIndependent, isLiveWindow, journeyStatus, type JourneyRecord } from '
 import { getFlightDepartureUtcDate } from '../../../utils/flightData';
 import { Airport, DoorOpen, Suitcase } from '../../ui/hugeicons';
 import { cn } from '../../../utils/cn';
+import { isFlightLeg } from '../../../utils/legMode';
 
 /**
  * "Now": the flight that is under way, or the next one leaving within three hours, as an ink card with
@@ -17,7 +18,7 @@ import { cn } from '../../../utils/cn';
 export const LiveNow: React.FC<{ items: JourneyRecord[]; onOpen: (r: JourneyRecord) => void; brandfetchApiKey?: string; carriers?: Carrier[] }> = ({ items, onOpen, brandfetchApiKey, carriers }) => {
     const rec = useMemo(() => {
         const now = Date.now();
-        const near = items.filter(r => r.flight.mode === 'Flight' && isLiveWindow(r.flight, 3, now) && journeyStatus(r.flight, now).state !== 'done');
+        const near = items.filter(r => isFlightLeg(r.flight) && isLiveWindow(r.flight, 3, now) && journeyStatus(r.flight, now).state !== 'done');
         return near.sort((a, b) => getFlightDepartureUtcDate(a.flight).getTime() - getFlightDepartureUtcDate(b.flight).getTime())[0] ?? null;
     }, [items]);
     const { data, candidate } = useLiveFlight(rec?.flight ?? null, Boolean(rec));

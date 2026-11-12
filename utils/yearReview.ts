@@ -3,6 +3,7 @@ import { getCoordinatesSync } from '../services/geocoding';
 import { addDays, realTrips, type Leg, type LegKind } from './dashboardModel';
 import { footprintKg, treeYears } from './footprint';
 import { carrierLabel, journeyKm, journeyMinutes, journeyStatus, placeCode } from './journeysModel';
+import { isFlightLeg } from './legMode';
 
 /**
  * The figures behind Year in review: what a calendar year of travel added up to, and which story slides
@@ -107,7 +108,7 @@ export const homeCountryOf = (legs: Leg[]): string | undefined => {
 export const countryCodeOfPlace = (place?: string): string | undefined => countryOf(place);
 
 const flightsIn = (flights: Transport[], year: number, today: string): Transport[] =>
-    flights.filter(f => f.mode === 'Flight' && (f.departureDate || '').startsWith(String(year)) && f.departureDate <= today && journeyStatus(f).state !== 'cancelled');
+    flights.filter(f => isFlightLeg(f) && (f.departureDate || '').startsWith(String(year)) && f.departureDate <= today && journeyStatus(f).state !== 'cancelled');
 
 const totalsFor = (trips: Trip[], legs: Leg[], year: number, today: string) => {
     const nights = realTrips(trips).reduce((n, t) => n + nightsInYear(t, year, today).reduce((a, b) => a + b, 0), 0);

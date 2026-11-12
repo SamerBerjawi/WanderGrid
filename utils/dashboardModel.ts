@@ -2,6 +2,7 @@ import type { EntitlementType, Trip, User } from '../types';
 import { calculateDistance, getCoordinatesSync } from '../services/geocoding';
 import { destinationsOf, isTravelling } from './tripsModel';
 import { isRealTrip } from './tripKind';
+import { isFlightLeg } from './legMode';
 
 /**
  * Pure logic for the New Dashboard (UI_UX_DESIGN_REFERENCE.md §5.2 rows 2 and 14): what was travelled
@@ -273,7 +274,7 @@ export const recentTrips = (trips: Trip[], today: string): Trip[] =>
 export const flightToday = (trips: Trip[], today: string) => {
     const active = realTrips(trips).find(t => t.startDate <= today && (t.endDate || t.startDate) >= today);
     const flight = (active?.transports || [])
-        .filter(t => t.mode === 'Flight' && t.departureDate === today)
+        .filter(t => isFlightLeg(t) && t.departureDate === today)
         .sort((a, b) => (a.departureTime || '00:00').localeCompare(b.departureTime || '00:00'))[0];
     if (!flight) return null;
     const code = flight.providerCode && flight.identifier ? `${flight.providerCode}${flight.identifier}` : flight.identifier;

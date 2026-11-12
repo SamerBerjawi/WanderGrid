@@ -25,3 +25,13 @@ test('session checks are not counted by the credential limiter', async () => {
     const reg = (await srv.api('POST', '/api/auth/register', { body: { name: 'A', email: 'a@test.dev', password: 'a-pass-12345' } })).json;
     for (let i = 0; i < 30; i++) assert.equal((await srv.api('GET', '/api/auth/me', { token: reg.token })).status, 200);
 });
+
+test('an unknown email costs about as long as a wrong password (F-15)', async () => {
+    await srv.reset();
+    await srv.api('POST', '/api/auth/register', { body: { name: 'Ada', email: 'ada@example.com', password: 'Passw0rd!long1' } });
+    const time = async (email) => { const t = process.hrtime.bigint(); await srv.api('POST', '/api/auth/login', { body: { email, password: 'wrong-password-1' } }); return Number(process.hrtime.bigint() - t) / 1e6; };
+    await time('nobody@example.com'); // warm the cached dummy hash
+    const unknown = await time('nobody2@example.com');
+    const known = await time('ada@example.com');
+    assert.ok(unknown > known * 0.4, `unknown ${unknown.toFixed(1)}ms vs known ${known.toFixed(1)}ms`);
+});

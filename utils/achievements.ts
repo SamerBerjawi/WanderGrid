@@ -3,6 +3,7 @@ import { getCoordinatesSync } from '../services/geocoding';
 import { addDays, realTrips, type Leg } from './dashboardModel';
 import { carrierLabel, journeyKm, journeyStatus, placeCode } from './journeysModel';
 import { TOP_100_AIRPORTS } from './topAviationData';
+import { isFlightLeg } from './legMode';
 
 /**
  * Achievements: stamps earned by how you travel, each with levels. They are counted from what is already in the
@@ -105,7 +106,7 @@ const stamp = (s: Omit<Stamp, 'level' | 'next' | 'progress'>): Stamp => {
 };
 
 const flown = (flights: Transport[], today: string) =>
-    flights.filter(f => f.mode === 'Flight' && (f.departureDate || '') <= today && journeyStatus(f).state !== 'cancelled');
+    flights.filter(f => isFlightLeg(f) && (f.departureDate || '') <= today && journeyStatus(f).state !== 'cancelled');
 
 export const buildStamps = ({ today, countries, continentOf, trips, legs, flights }: AchievementInput): Stamp[] => {
     const fl = flown(flights, today);

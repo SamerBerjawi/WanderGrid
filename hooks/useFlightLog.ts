@@ -10,6 +10,7 @@ import {
   getCityName, getCarrierName, getFlightStatusTags, getFlightDepartureUtcDate, getFlightArrivalUtcDate,
   getAirportsByQueryLocally, getCarriersByQueryLocally,
 } from '../utils/flightData';
+import { isFlightLeg } from '../utils/legMode';
 
 /**
  * Data, filters, sorting, grouping and mutations for the Flights page, shared by the Golden Hour variant.
@@ -251,8 +252,8 @@ export const useFlightLog = () => {
         setCurrentUser(sessionUser);
 
         const extracted: FlightRecord[] = [];
-        t.forEach(trip => (trip.transports || []).forEach(tr => { if (tr.mode === 'Flight') extracted.push({ flight: tr, trip }); }));
-        const onlyFlights = (independentFlights || []).filter(fl => fl.mode === 'Flight' && (!fl.tripId || fl.tripId === 'unassigned'));
+        t.forEach(trip => (trip.transports || []).forEach(tr => { if (isFlightLeg(tr)) extracted.push({ flight: tr, trip }); }));
+        const onlyFlights = (independentFlights || []).filter(fl => isFlightLeg(fl) && (!fl.tripId || fl.tripId === 'unassigned'));
         const unassignedTrip: Trip = { id: 'unassigned', name: 'Independent Flights', location: 'Various', startDate: '', endDate: '', status: 'Planning', participants: [], transports: onlyFlights };
         onlyFlights.forEach(fl => extracted.push({ flight: fl, trip: unassignedTrip }));
         extracted.sort((a, b) => getFlightDepartureUtcDate(b.flight).getTime() - getFlightDepartureUtcDate(a.flight).getTime());
@@ -608,7 +609,7 @@ export const useFlightLog = () => {
     if (!editingBundleId) return;
     const target = trips.find(t => t.id === editingBundleId);
     if (!target) return;
-    const toMove = (target.transports || []).filter(t => !t.mode || t.mode === 'Flight').map(f => ({ ...f, tripId: 'unassigned', itineraryId: '' }));
+    const toMove = (target.transports || []).filter(isFlightLeg).map(f => ({ ...f, tripId: 'unassigned', itineraryId: '' }));
     if (toMove.length > 0) await dataService.addFlights(toMove);
     await dataService.deleteTrip(editingBundleId);
     setIsEditingBundle(false);

@@ -70,3 +70,23 @@ test('a PUT body id that differs from the URL cannot write another record (REL-0
     const b = (await srv.api('GET', '/api/trips', as(admin))).json.find((t) => t.id === 'b');
     assert.equal(b.name, 'B');
 });
+
+test('only the creator or an admin changes who is on a trip or its privacy (F-18); other edits stay open', async () => {
+    const created = await srv.api('POST', '/api/trips', { ...as(ann), body: { id: 'shared', name: 'Rome', privacy: 'Private', participants: ['ann@test.dev', 'bob@test.dev'] } });
+    assert.equal(created.status, 201);
+    assert.equal(created.json.createdBy, ann.user.id);
+    const get = async () => (await srv.api('GET', '/api/trips', as(ann))).json.find(t => t.id === 'shared');
+    let t = await get();
+    // Bob is a participant, not the creator: he may rename the trip...
+    const rename = await srv.api('PUT', '/api/trips/shared', { ...as(bob), body: { ...t, name: 'Rome 2026' } });
+    assert.equal(rename.status, 200);
+    t = await get();
+    assert.equal(t.createdBy, ann.user.id);
+    // ...but not remove Ann, nor make the trip public.
+    assert.equal((await srv.api('PUT', '/api/trips/shared', { ...as(bob), body: { ...t, participants: ['bob@test.dev'] } })).status, 403);
+    assert.equal((await srv.api('PUT', '/api/trips/shared', { ...as(bob), body: { ...t, privacy: 'Public' } })).status, 403);
+    // The creator and an admin can.
+    assert.equal((await srv.api('PUT', '/api/trips/shared', { ...as(ann), body: { ...t, privacy: 'Public' } })).status, 200);
+    t = await get();
+    assert.equal((await srv.api('PUT', '/api/trips/shared', { ...as(admin), body: { ...t, participants: ['ann@test.dev'] } })).status, 200);
+});

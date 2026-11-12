@@ -77,3 +77,18 @@ test('0001 stamps stored trips with their kind and leaves stamped ones alone', a
     assert.deepEqual(kinds, { t1: 'trip', 'leave-1': 'timeoff', b1: 'bundle', t2: 'timeoff' });
     assert.equal((await pool.query('SELECT data FROM trips WHERE id = $1', ['t1'])).rows[0].data.name, 'Rome');
 });
+
+test('0002 gives mode-less flights and trip legs the mode Flight and leaves others alone', async () => {
+    const pool = makePool();
+    await pool.query('CREATE TABLE flights (id TEXT PRIMARY KEY, data JSONB)');
+    await pool.query('CREATE TABLE trips (id TEXT PRIMARY KEY, data JSONB)');
+    const put = (t, id, data) => pool.query(`INSERT INTO ${t} (id, data) VALUES ($1, $2)`, [id, JSON.stringify(data)]);
+    await put('flights', 'f1', { id: 'f1' });
+    await put('flights', 'f2', { id: 'f2', mode: 'Train' });
+    await put('trips', 't1', { id: 't1', transports: [{ id: 'a' }, { id: 'b', mode: 'Ferry' }] });
+    await runMigrations(pool, loadMigrations().filter(x => x.id === '0002_leg_mode'), quiet);
+    const f = Object.fromEntries((await pool.query('SELECT id, data FROM flights')).rows.map(r => [r.id, r.data.mode]));
+    assert.deepEqual(f, { f1: 'Flight', f2: 'Train' });
+    const legs = (await pool.query('SELECT data FROM trips')).rows[0].data.transports.map(t => t.mode);
+    assert.deepEqual(legs, ['Flight', 'Ferry']);
+});

@@ -1,5 +1,6 @@
 import type { BackupSelectionOptions } from '../types';
 import { isTripAir, isTripRoad } from '../services/mockDb';
+import { isFlightLeg } from './legMode';
 
 /** What a backup holds, in the groups the Settings page lets you pick. Pure helpers, shared by backup and restore. */
 
@@ -30,7 +31,7 @@ export const countBackup = (state: any): BackupCounts => {
     const flights = list(state?.flights);
     const settings = state?.workspaceSettings;
     return {
-        flights: trips.filter(isTripAir).length + flights.filter((f: any) => !f.mode || f.mode === 'Flight').length,
+        flights: trips.filter(isTripAir).length + flights.filter(isFlightLeg).length,
         roadTrips: trips.filter(isTripRoad).length + flights.filter((f: any) => f.mode && f.mode !== 'Flight').length,
         visited: list(state?.visited).length,
         users: list(state?.users).length,

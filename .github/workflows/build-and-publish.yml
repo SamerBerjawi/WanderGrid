@@ -56,6 +56,11 @@ jobs:
       - name: Frontend unit tests
         run: npm test
 
+      - name: Frontend dependency audit (critical only)
+        # The remaining high advisories come from deck.gl's 3D-tiles and glTF loaders, which the app never calls
+        # (audit F-14). A critical one fails the build.
+        run: npm audit --omit=dev --audit-level=critical
+
       - name: Design-token check (z-index scale, no arbitrary hex, valid shades)
         run: npm run lint:tokens
 

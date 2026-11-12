@@ -112,6 +112,7 @@ There is no AI feature.
 
 ## More
 
+- [docs/OPERATIONS.md](docs/OPERATIONS.md): backups, restore, upgrade and rollback, database password, tunnels.
 - [CHANGELOG.md](CHANGELOG.md): what changed in each release.
 - [CLAUDE.md](CLAUDE.md): a map of the code, commands and conventions.
 
