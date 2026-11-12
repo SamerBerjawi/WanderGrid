@@ -114,7 +114,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 - **`verifyPassword`** accepts plaintext stored passwords (legacy, no `:` salt separator). This is a legacy compatibility path, so do not extend it.
 - **`backend_files/server.js`** is still a ~1k-line wiring file (the routes live in the modules, see `docs/ARCHITECTURE.md`), and `initDb()` (in `dbSchema.js`) is the real schema. A change to stored data shape is a numbered migration in `backend_files/migrations/`, never an edit to a shipped one. `schema.sql` is generated: run `npm run schema` in `backend_files/` after touching tables (a test fails otherwise).
 - **Content-Security-Policy:** defined in `backend_files/server.js` (`CSP_DIRECTIVES`) and mirrored in `vite.config.ts` `preview.headers` for the e2e suite; keep them in sync. No inline scripts, `eval`, or third-party script hosts.
-- **Dev proxy duplication:** only the integrations-test endpoint (`/api/proxy/test/`) is copied in `vite.config.ts`; road and rail use `backend_files/routeProxy.js` directly.
+- **Dev proxy:** the Vite dev server runs the backend's own `routeProxy.js`, `flightLookup.js` and `integrationsTester.js`; there is no copy to keep in sync.
 - **PWA/service worker:** the app auto-reloads on `controllerchange` and on `vite:preloadError`. Stale caches can mask changes, so hard-reload or unregister the SW when testing builds.
 - **Version bumps:** `npm run build` bumps the version and creates a diff in `version.ts` and `package.json`.
 - **README is partly stale:** it mentions `npm start`, React Globe GL and Nager-only geocoding.
