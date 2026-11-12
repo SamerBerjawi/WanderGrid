@@ -147,8 +147,9 @@ export function buildRouteKey(
         }
     }
     const wpStr = wpParts.length > 0 ? `_${wpParts.join(';')}` : '';
-    // Sea legs: a different key from the arcs cached before mapped ferry lines existed, so they are traced again.
-    const seaTag = /ferry|cruise|sea|boat|ship/.test(cleanMode) ? '#f' : '';
+    // Sea legs: a different key from the routes cached before mapped ferry lines existed and before shipping lanes
+    // worked (they were all the fallback curve), so they are traced again.
+    const seaTag = /ferry|cruise|sea|boat|ship/.test(cleanMode) ? '#f2' : '';
     return `${cleanMode}_${startLat.toFixed(3)},${startLng.toFixed(3)}${wpStr}|${endLat.toFixed(3)},${endLng.toFixed(3)}${seaTag}`;
 }
 

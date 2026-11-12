@@ -21,7 +21,8 @@ function runSearouteSilently(origin: [number, number], destination: [number, num
     const originalLog = console.log;
     try {
         console.log = () => {};
-        return searoute(origin, destination, 'km');
+        // 'km' is not a unit searoute-js knows: it throws, and every sea leg then fell back to the curve below.
+        return searoute(origin, destination, 'kilometers');
     } catch {
         return null;
     } finally {
