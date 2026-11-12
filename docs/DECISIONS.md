@@ -20,15 +20,6 @@
   installs keep whatever their setting says; installs that never set it get "closed" on upgrade, with a release note.
 - **Status:** Implemented on `fix/phase1-exposure` using the recommendation (2026-11-12); confirm or change.
 
-### D-03 Client IP behind a reverse proxy or tunnel
-- **Context:** `trust proxy` is not set, so behind Cloudflare Tunnel every request has the tunnel's IP. The auth
-  limiter (20 requests / 15 min) also counts `/api/auth/me` and `/api/auth/setup-status`. In testing, 19 page loads
-  locked every member out of sign-in for 15 minutes.
-- **Options:** A) `TRUST_PROXY` env (hop count or subnet list) and limit only credential endpoints;
-  B) also key login attempts by account; C) both.
-- **Recommendation:** C. Default `TRUST_PROXY` off, documented for Cloudflare Tunnel / Traefik / Caddy.
-- **Status:** Implemented on `fix/phase1-exposure` using the recommendation (2026-11-12); confirm or change.
-
 ### D-04 The Trip entity is overloaded
 - **Context:** a Trip is also a leave request, a flight bundle and a "Time off" entry; legs live in
   `trip.transports[]` or in the `flights` table (which holds every mode).
@@ -74,5 +65,14 @@
 - **Recommendation:** A for the family use case, after D-01 closes the door to strangers. Put the scoping rule in
   one helper used by every page.
 - **Status:** Decided 2026-11-12: Option A. Implemented in `utils/scope.ts` (one rule, unit-tested), `hooks/useScope.ts` and the `ScopeSwitch` on Dashboard, Flights and Atlas (UI decision 330). The server rules are unchanged: they already match. Not yet scoped: Calendar, Trips and Member pages, which already filter by participant.
+
+### D-03 Client IP behind a reverse proxy or tunnel
+- **Context:** `trust proxy` is not set, so behind Cloudflare Tunnel every request has the tunnel's IP. The auth
+  limiter (20 requests / 15 min) also counts `/api/auth/me` and `/api/auth/setup-status`. In testing, 19 page loads
+  locked every member out of sign-in for 15 minutes.
+- **Options:** A) `TRUST_PROXY` env (hop count or subnet list) and limit only credential endpoints;
+  B) also key login attempts by account; C) both.
+- **Recommendation:** C. Default `TRUST_PROXY` off, documented for Cloudflare Tunnel / Traefik / Caddy.
+- **Status:** Decided 2026-11-12: Option C. Implemented in PR #76 (`TRUST_PROXY`, credential-only limiter, per-account backoff, tests in `login-backoff.test.js`) and documented in the README (Self-host with Docker) and `.env.example`.
 
 _See `UI_UX_DESIGN_REFERENCE.md` §7 and `audit/plan.md` §2 for earlier decisions._
