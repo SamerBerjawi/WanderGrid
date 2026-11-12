@@ -1,5 +1,5 @@
 import type { CustomEvent, EntitlementType, PublicHoliday, SavedConfig, Trip, User, WorkspaceSettings } from '../types';
-import { isTravelling } from './tripsModel';
+import { isPastTrip, isTravelling } from './tripsModel';
 import { tripKind } from './tripKind';
 
 /**
@@ -347,7 +347,7 @@ export interface CalendarItem {
 
 export const stateOf = (trip: Trip, today: string): ItemState => {
     if (isTravelling(trip, today)) return 'now';
-    if (trip.status === 'Past' || (trip.endDate || trip.startDate) < today) return 'past';
+    if (isPastTrip(trip, today)) return 'past';
     return trip.status === 'Upcoming' ? 'confirmed' : 'planned';
 };
 

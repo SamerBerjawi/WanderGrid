@@ -4,6 +4,7 @@ import { affectsCollections } from './useWanderSync';
 import { dataService } from '../services/mockDb';
 import { runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
 import { Trip, CountryResidenceStatus, getResidenceStatuses } from '../types';
+import { isPastTrip } from '../utils/tripsModel';
 import { getCoordinates, getCoordinatesSync, STATIC_GEO_DATA, calculateDistance, formatProperLocationName, refineUKCountry } from '../services/geocoding';
 import { asStatusList, isLayoverOnly } from '../components/new/map/mapScratch';
 import { isFlightLeg } from '../utils/legMode';
@@ -591,21 +592,17 @@ export const useExpeditionMapData = () => {
 
         return trips.filter(trip => {
             if (statusFilter !== 'all') {
-                const hasPastDates = Boolean(
-                    (trip.endDate && trip.endDate < today) ||
-                    (trip.startDate && trip.startDate < today && (!trip.endDate || trip.endDate < today))
-                );
-                const isPastTrip = trip.status === 'Past' || hasPastDates;
+                const isPast = isPastTrip(trip, today);
 
                 if (statusFilter === 'Past') {
                     // Past should show previous trips
-                    if (!isPastTrip) return false;
+                    if (!isPast) return false;
                 } else if (statusFilter === 'Upcoming') {
                     // Upcoming should show future trips that are active/upcoming
-                    if (isPastTrip || trip.status !== 'Upcoming') return false;
+                    if (isPast || trip.status !== 'Upcoming') return false;
                 } else if (statusFilter === 'Planning') {
                     // Planning should show future trips in planning stage
-                    if (isPastTrip || trip.status !== 'Planning') return false;
+                    if (isPast || trip.status !== 'Planning') return false;
                 }
             }
 

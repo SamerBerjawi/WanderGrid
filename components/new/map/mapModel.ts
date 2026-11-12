@@ -1,4 +1,5 @@
 import type { PredefinedMapMode, Trip } from '../../../types';
+import { isPastTrip } from '../../../utils/tripsModel';
 import { formatProperLocationName, calculateDistance, getCoordinatesSync } from '../../../services/geocoding';
 import { resolveLegEnd } from '../../../utils/mapPoints';
 
@@ -79,8 +80,7 @@ const STATUS_RANK: Record<LegStatus, number> = { past: 0, planning: 1, upcoming:
 
 const statusOf = (trip: Trip, today: string): LegStatus | null => {
     if (trip.status === 'Cancelled') return null;
-    const ended = Boolean(trip.endDate && trip.endDate < today) || trip.status === 'Past';
-    if (ended) return 'past';
+    if (isPastTrip(trip, today)) return 'past';
     return trip.status === 'Planning' ? 'planning' : 'upcoming';
 };
 

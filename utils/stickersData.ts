@@ -1,4 +1,5 @@
 import { Trip } from '../types';
+import { tripIntent } from './tripsModel';
 
 export interface Sticker {
   id: string;
@@ -429,7 +430,7 @@ export function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lo
  * Unlocks a sticker if they did an activity, transport, or accommodation within 50km (or matched exact name).
  */
 export function detectAutoMatchStickers(trips: Trip[]): StickerClaim[] {
-  const pastTrips = trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled');
+  const pastTrips = trips.filter(t => tripIntent(t) === 'confirmed');
   const claims: StickerClaim[] = [];
 
   for (const sticker of ICONIC_STICKERS) {
