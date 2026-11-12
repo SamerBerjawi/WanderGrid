@@ -256,21 +256,26 @@ module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_
       }
 
       const parsedLimit = parseInt(limit, 10);
-      if (!isNaN(parsedLimit) && parsedLimit > 0) {
-        params.push(parsedLimit);
-        query += ` LIMIT $${params.length}`;
-      }
-
       const parsedOffset = parseInt(offset, 10);
-      if (!isNaN(parsedOffset) && parsedOffset >= 0) {
-        params.push(parsedOffset);
-        query += ` OFFSET $${params.length}`;
+      const hasLimit = !isNaN(parsedLimit) && parsedLimit > 0;
+      const hasOffset = !isNaN(parsedOffset) && parsedOffset >= 0;
+      const policy = OWNERSHIP[table];
+
+      // With a read policy, who may see a record is decided in code, so the page is cut after
+      // filtering. Cutting in SQL first returned short or shifted pages for non-admins.
+      if (!policy) {
+        if (hasLimit) { params.push(parsedLimit); query += ` LIMIT $${params.length}`; }
+        if (hasOffset) { params.push(parsedOffset); query += ` OFFSET $${params.length}`; }
       }
 
       const { rows } = await pool.query(query, params);
-      const policy = OWNERSHIP[table];
-      const records = rows.map(r => r.data);
-      res.json(policy ? records.filter(r => policy.canRead(r, req.user)) : records);
+      let records = rows.map(r => r.data);
+      if (policy) {
+        records = records.filter(r => policy.canRead(r, req.user));
+        const start = hasOffset ? parsedOffset : 0;
+        if (hasOffset || hasLimit) records = records.slice(start, hasLimit ? start + parsedLimit : undefined);
+      }
+      res.json(records);
     } catch (err) {
       sendError(res, err, 500, `Failed to retrieve ${table}`);
     }
