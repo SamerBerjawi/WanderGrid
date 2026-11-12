@@ -59,6 +59,7 @@ module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_
           }
           if (Array.isArray(r.participants) && !r.participants.every(p => typeof p === 'string')) return 'participants must be user ids';
           if (r.privacy !== undefined && r.privacy !== null && !['Private', 'Public', 'Shared'].includes(r.privacy)) return 'privacy must be Private, Public or Shared';
+          if (r.intent !== undefined && r.intent !== null && !['planned', 'confirmed', 'cancelled'].includes(r.intent)) return 'intent must be planned, confirmed or cancelled';
           return null;
       },
       flights: (r) => {

@@ -244,6 +244,8 @@ export interface Trip {
   startDate: string;
   endDate: string;
   status: 'Planning' | 'Upcoming' | 'Past' | 'Cancelled';
+  /** What was decided before the trip happened. `status` loses this once a trip is Past, so it is kept here. */
+  intent?: 'planned' | 'confirmed' | 'cancelled';
   participants: string[];
   icon?: string;
   /** New pages: the name of a Hugeicons free icon (e.g. 'Airplane01Icon') chosen for this trip. Kept apart from `icon`, which older pages render as an emoji. */
