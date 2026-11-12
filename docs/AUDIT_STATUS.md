@@ -13,7 +13,7 @@ Where each finding of the principal-architect audit stands. "Done" means merged 
 | F-06 | Trip `status` mixes intent and date phase | **Open.** Needs its own change: store `intent` plus `archived`, derive `phase` in one function (STATE_MACHINE §3) |
 | F-07 | The Trip entity is overloaded | Done in part: `kind` (D-04). Ids-only `participants` and the `privacy: 'Shared'` enum mismatch are open |
 | F-08 | Same data fetched several times per page | **Open.** Per-collection cache in `dataService`, settings from a context |
-| F-09 | 6 MB icon chunk | **Open.** Save the icon path on the trip or generate a name-to-module map |
+| F-09 | 6 MB icon chunk | Done: the chosen icon's drawing is saved on the trip (`hugeiconData`), so trips show it without loading the icon set. Trips saved earlier still load it until their icon is picked again; the picker itself still loads it on demand |
 | F-10 | CI skipped frontend tests | Done: unit tests run in CI. Golden-path e2e specs for the new pages are still to write |
 | F-11 | No migrations | Done: `backend_files/migrations/` (D-06). `schema.sql` is still a manual mirror |
 | F-12 | Three files carry too much | Done for `server.js` (D-07). `mockDb.ts` rename and the Vite dev-proxy duplication are open |

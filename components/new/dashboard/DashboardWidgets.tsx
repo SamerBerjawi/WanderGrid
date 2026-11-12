@@ -148,7 +148,7 @@ const TripArt: React.FC<{ trip: Trip; today: string }> = ({ trip, today }) => {
     const t = timingOf(trip, today);
     return (
         <span className={cn('flex h-full w-full flex-col items-center justify-center gap-3', skinOf(trip, today).box)}>
-            <RpHugeicon name={trip.hugeicon} size={44} fallback={<Suitcase size={44} aria-hidden />} />
+            <RpHugeicon name={trip.hugeicon} data={trip.hugeiconData} size={44} fallback={<Suitcase size={44} aria-hidden />} />
             {t.value !== null ? (
                 <span className="text-center leading-tight">
                     <span className="rp-tabular block text-3xl font-semibold">{t.value}</span>
@@ -167,7 +167,7 @@ const TripTile: React.FC<{ trip: Trip; today: string; onClick: () => void }> = (
         <li className="min-w-0">
             <button type="button" onClick={onClick} className={cn('flex h-full min-h-52 w-full flex-col justify-between gap-3 rounded-rp-tile p-4 text-left outline-none rp-shadow-raised transition-transform duration-150 focus-visible:ring-2 focus-visible:ring-rp-muted focus-visible:ring-offset-2 focus-visible:ring-offset-rp-surface active:scale-[0.98]', skin.box)}>
                 <span className="flex items-center justify-between gap-2">
-                    <RpHugeicon name={trip.hugeicon} size={20} fallback={<Suitcase size={20} aria-hidden />} />
+                    <RpHugeicon name={trip.hugeicon} data={trip.hugeiconData} size={20} fallback={<Suitcase size={20} aria-hidden />} />
                     <span className="text-xs font-semibold opacity-80">{skin.label}</span>
                 </span>
                 <span className="min-w-0">
@@ -259,7 +259,7 @@ const TripRow: React.FC<{ trip: Trip; today: string; onClick: () => void }> = ({
         <li>
             <button type="button" onClick={onClick} className="flex min-h-14 w-full items-center gap-3 rounded-rp-inset bg-rp-inset/60 px-3 py-2 text-left outline-none transition-colors hover:bg-rp-inset focus-visible:ring-2 focus-visible:ring-rp-muted">
                 <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full', past ? 'bg-rp-inset text-rp-ink' : skin.box)}>
-                    <RpHugeicon name={trip.hugeicon} size={18} fallback={<Suitcase size={18} aria-hidden />} />
+                    <RpHugeicon name={trip.hugeicon} data={trip.hugeiconData} size={18} fallback={<Suitcase size={18} aria-hidden />} />
                 </span>
                 <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-rp-ink">{trip.name}</span>

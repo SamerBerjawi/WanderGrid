@@ -160,7 +160,7 @@ export const TripCardBody: React.FC<CardProps> = ({ trip, users, today, actions,
         >
             <div className="flex items-start gap-3">
                 <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full', skin.circle)}>
-                    <RpHugeicon name={trip.hugeicon} size={18} fallback={<Circle size={18} aria-hidden />} />
+                    <RpHugeicon name={trip.hugeicon} data={trip.hugeiconData} size={18} fallback={<Circle size={18} aria-hidden />} />
                 </span>
                 <button
                     type="button"

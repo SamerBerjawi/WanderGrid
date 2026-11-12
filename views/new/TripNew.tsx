@@ -257,7 +257,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                         <div className="flex items-center justify-between gap-3">
                             <p className={cn('rp-tabular flex min-w-0 items-center gap-2 text-sm', skin.muted)}>
                                 <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full', skin.panel)}>
-                                    <RpHugeicon name={trip.hugeicon} size={18} fallback={<Suitcase size={18} aria-hidden />} />
+                                    <RpHugeicon name={trip.hugeicon} data={trip.hugeiconData} size={18} fallback={<Suitcase size={18} aria-hidden />} />
                                 </span>
                                 <span className="truncate">{trip.startDate ? formatDateRange(trip.startDate, trip.endDate || trip.startDate) : 'No dates yet'}</span>
                             </p>
