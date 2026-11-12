@@ -37,6 +37,8 @@ piece at a time, each with its tests.
 - Calendar feed: the token is checked on every request, so a rotated token or a removed account stops working at
   once, even with a warm cache. Done.
 - Public share links: deleting, wiping, recreating or restoring a trip revokes any link to that trip id. Done.
-- Upstream deadlines, route cache key, ferry recovery: see the following changes.
+- Upstream deadlines: the timeout now also covers reading the response body, stalled bodies are cancelled and the reader released. Done.
+- Routes: only an explicit "no route" answer is remembered as absence; HTTP errors and unrecognised payloads are retried later. The cache key moves from `rt1` to `rt2`, so earlier wrongly remembered "no route" answers are asked again once. Done.
+- Ferry recovery: see the next change.
 - Not ported: turning the API demo off entirely. D-01 keeps the demo for an empty workspace only.
 

@@ -202,3 +202,18 @@ describe('P-00 Shared Upstream Helper', () => {
     assert.ok(diff2 >= 40, `Interval 2 (${diff2}ms) should be around 50ms`);
   });
 });
+
+test('the upstream deadline cancels stalled bodies after headers, and permits recovery', async () => {
+  let cancelled = false;
+  const options = { key: 'body-recovery', url: 'https://fixture.test/body', timeoutMs: 30 };
+  const r = await fetchUpstream({ ...options, fetchImpl: async () => new Response(new ReadableStream({
+    start(c) { c.enqueue(new TextEncoder().encode('{')); },
+    cancel() { cancelled = true; },
+  }), { headers: { 'content-type': 'application/json' } }) });
+  assert.equal(r.ok, false);
+  assert.equal(r.error, 'Upstream request timed out');
+  assert.equal(cancelled, true);
+  const next = await fetchUpstream({ ...options, fetchImpl: async () => new Response('{"recovered":true}', { headers: { 'content-type': 'application/json' } }) });
+  assert.equal(next.ok, true);
+  assert.deepEqual(next.data, { recovered: true });
+});
