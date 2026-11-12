@@ -10,10 +10,10 @@
 | `UI_UX_DESIGN_REFERENCE.md` | Tokens, type, surfaces, shell, overlays, motion, component mapping (KokonutUI first), per-page decisions (§7 decision log) | **Yes — authority** |
 | `components/new/new.css` + `tailwind.config.js` | The `rp-*` tokens and Tailwind scale actually shipped | Yes (source of truth for values) |
 | `scripts/check-tokens.mjs` | z-index scale, no arbitrary hex, valid shades (CI) | Yes |
-| `Design.md` | Glass/`GlassPanel`/`PlannerView` system of the removed interface | **No** — describes deleted code |
+| `docs/archive/Design.md` | Glass/`GlassPanel`/`PlannerView` system of the removed interface | **No** — describes deleted code |
 | `AGENTS.md` §7–§11 | Modal, glass and layout rules of the removed interface | **No** — superseded |
 
-Until `Design.md` and `AGENTS.md` §7–11 are archived or rewritten (DECISIONS D-05), follow this table.
+Until `docs/archive/Design.md` and `AGENTS.md` §7–11 are archived or rewritten (DECISIONS D-05), follow this table.
 
 ## Primitives to reach for first
 
