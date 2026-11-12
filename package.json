@@ -1,7 +1,7 @@
 {
   "name": "wandergrid-v0.2",
   "private": true,
-  "version": "1.2-261112.30",
+  "version": "1.2-261112.34",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -67,6 +67,9 @@
     "@luma.gl/webgl": "~9.4.2",
     "@luma.gl/gltf": "~9.4.2",
     "fflate": "^0.8.3",
-    "image-size": "^2.0.3"
+    "image-size": "^2.0.3",
+    "workbox-build": {
+      "glob": "^14.0.6"
+    }
   }
 }

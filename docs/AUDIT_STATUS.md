@@ -12,7 +12,7 @@ Where each finding of the principal-architect audit stands. "Done" means merged 
 | --- | --- | --- |
 | F-01 | Strangers could sign up and read the household's data | Done: sign-up closed by default, demo only on an empty workspace (D-01) |
 | F-02 | Rate limits locked everyone out behind a tunnel | Done: `TRUST_PROXY`, credential-only limiter, per-account backoff (D-03) |
-| F-03 | "Binding" docs contradicted the code | Done: banners on `Design.md` and `AGENTS.md`, `CLAUDE.md` rewritten (D-05). Moving them to `docs/archive/` is optional |
+| F-03 | "Binding" docs contradicted the code | Done: banners on `Design.md` and `AGENTS.md`, `CLAUDE.md` rewritten (D-05). `Design.md` now lives in `docs/archive/`; `AGENTS.md` stays at the root because its §1–6 are still binding |
 | F-04 | No single rule for whose data a page shows | Done for Dashboard, Flights, Atlas: `utils/scope.ts`, Mine / Everyone (D-02). Calendar, Trips and Member already filter by participant |
 | F-05 | "Is this leg a flight?" defined two ways | Done: `isFlightLeg()` everywhere, mode enforced and defaulted on write, migration 0002 |
 | F-06 | Trip `status` mixes intent and date phase | Done: one tested `tripIntent` / `tripPhase` / `isPastTrip` in `utils/tripsModel.ts` (STATE_MACHINE §3), and a stored `intent` (planned, confirmed, cancelled) that every status change goes through (`withIntent`), so a trip that moves to Past keeps what it was. `status` itself is unchanged and still decides the board column, so no writer or migration had to change; trips saved before this have no `intent` and read as before (a Past trip counts as confirmed) |

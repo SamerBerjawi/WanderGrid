@@ -86,7 +86,7 @@ PORT=3001 DATABASE_URL=postgres://wandergrid:wandergrid_password@localhost:5432/
 
 No PostgreSQL? `node test/helpers/devServer.js` runs the real server on port 3001 against an in-memory database; data is lost on exit.
 
-Checks: `npx tsc --noEmit`, `npm run lint:tokens`, `npm test` (frontend, Vitest) and `cd backend_files && npm test`. Read [AGENTS.md](AGENTS.md), [Design.md](Design.md) and [UI_UX_DESIGN_REFERENCE.md](UI_UX_DESIGN_REFERENCE.md) before changing the UI.
+Checks: `npx tsc --noEmit`, `npm run lint:tokens`, `npm test` (frontend, Vitest) and `cd backend_files && npm test`. Read [AGENTS.md](AGENTS.md), [docs/archive/Design.md](docs/archive/Design.md) and [UI_UX_DESIGN_REFERENCE.md](UI_UX_DESIGN_REFERENCE.md) before changing the UI.
 
 ## Integrations
 
