@@ -14,6 +14,7 @@ import { RpChip, RpSection, RpSheet } from '../ui';
 import { LeaveSection } from '../trips/TripSheets';
 import { TripMenu } from '../trips/TripMenu';
 import { cn } from '../../../utils/cn';
+import { isRealTrip } from '../../../utils/tripKind';
 
 /**
  * Create, change or remove leave. Leave lives on a trip: pick one, or make time off (a hidden trip) for
@@ -133,7 +134,7 @@ export const LeaveSheet: React.FC<{
     // The trips a person can put leave on: the member's own, soonest first, then the past.
     const choices = useMemo(() => {
         if (!draft) return [];
-        const mine = trips.filter(t => t.status !== 'Cancelled' && !t.isBundleOnly && !t.hideInPlanner && t.startDate && (t.participants || []).includes(draft.memberId));
+        const mine = trips.filter(t => t.status !== 'Cancelled' && isRealTrip(t) && t.startDate && (t.participants || []).includes(draft.memberId));
         const future = mine.filter(t => (t.endDate || t.startDate) >= today).sort((a, b) => a.startDate.localeCompare(b.startDate));
         const past = mine.filter(t => (t.endDate || t.startDate) < today).sort((a, b) => b.startDate.localeCompare(a.startDate));
         return [...future, ...past].slice(0, 40);

@@ -1,5 +1,6 @@
 import type { CustomEvent, EntitlementType, PublicHoliday, SavedConfig, Trip, User, WorkspaceSettings } from '../types';
 import { isTravelling } from './tripsModel';
+import { tripKind } from './tripKind';
 
 /**
  * Pure logic for the New calendar (UI_UX_DESIGN_REFERENCE.md §5.2 row 8): month and year grids, what
@@ -387,7 +388,7 @@ export const buildItems = (
     const layers = filters.layers ?? ALL_LAYERS;
     const items: CalendarItem[] = [];
     if (layers.trip) trips.forEach(t => {
-        if (t.status === 'Cancelled' || t.isBundleOnly || (t.hideInPlanner && !isStandaloneLeave(t)) || !t.startDate) return;
+        if (t.status === 'Cancelled' || tripKind(t) === 'bundle' || !t.startDate) return;
         if (filters.memberIds.length > 0 && !(t.participants || []).some(p => filters.memberIds.includes(p))) return;
         if (filters.leaveOnly && !hasLeave(t)) return;
         if (q && !`${t.name} ${t.location || ''}`.toLowerCase().includes(q)) return;

@@ -1,6 +1,7 @@
 import type { EntitlementType, Trip, User } from '../types';
 import { calculateDistance, getCoordinatesSync } from '../services/geocoding';
 import { destinationsOf, isTravelling } from './tripsModel';
+import { isRealTrip } from './tripKind';
 
 /**
  * Pure logic for the New Dashboard (UI_UX_DESIGN_REFERENCE.md §5.2 rows 2 and 14): what was travelled
@@ -44,7 +45,7 @@ const daysBetween = (a: string, b: string) => Math.round((toUTC(b) - toUTC(a)) /
 
 /** The trips that count as trips: not cancelled, not a hidden flight bundle. */
 export const realTrips = (trips: Trip[]): Trip[] =>
-    trips.filter(t => t.status !== 'Cancelled' && !t.hideInPlanner && !t.isBundleOnly && !!t.startDate);
+    trips.filter(t => t.status !== 'Cancelled' && isRealTrip(t) && !!t.startDate);
 
 const legKm = (t: Trip['transports'] extends (infer T)[] | undefined ? T : never): number => {
     if (t.distance) return t.distance;

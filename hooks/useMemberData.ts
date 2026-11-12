@@ -4,6 +4,7 @@ import { dataService } from '../services/mockDb';
 import { affectsCollections } from './useWanderSync';
 import { countryCodeOf } from '../utils/countryCodes';
 import { bucketOf, destinationsOf, tripDays, todayISO, isTravelling, type TripBucket } from '../utils/tripsModel';
+import { isRealTrip } from '../utils/tripKind';
 
 /** The signed-in user as the app stored it at sign-in (id and role); never throws. */
 export const readSessionUser = (): { id?: string; role?: string } | null => {
@@ -70,7 +71,7 @@ export const useMemberData = (memberId: string) => {
 
     const today = todayISO();
     const memberTrips = useMemo<MemberTrip[]>(() => {
-        const mine = trips.filter(t => (t.participants || []).includes(memberId) && !t.hideInPlanner && !t.isBundleOnly);
+        const mine = trips.filter(t => (t.participants || []).includes(memberId) && isRealTrip(t));
         const rows = mine.map(trip => ({ trip, bucket: bucketOf(trip, todayISO()), travelling: isTravelling(trip, todayISO()) }));
         // Under way and coming first (soonest first), then the past (newest first); cancelled last.
         const rank = (r: MemberTrip) => (r.trip.status === 'Cancelled' ? 2 : r.bucket === 'past' ? 1 : 0);

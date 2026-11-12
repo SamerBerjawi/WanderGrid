@@ -1,5 +1,6 @@
 import { geoContains } from 'd3';
 import type { Trip } from '../types';
+import { isRealTrip } from './tripKind';
 
 /**
  * Pure rules for which points a static map may draw (Dashboard World widget, and the interactive map's
@@ -102,7 +103,7 @@ export const tripAnchors = (trip: Trip): LngLat[] => {
  * not drawn; if that leaves nothing, the pin is where the trip's farthest leg arrives.
  */
 export const tripPins = (trip: Trip, maxAnchorKm = MAX_ANCHOR_KM): TripPin[] => {
-    if (trip.status === 'Cancelled' || trip.hideInPlanner) return [];
+    if (trip.status === 'Cancelled' || !isRealTrip(trip)) return [];
     const anchors = tripAnchors(trip);
     const cands: { at: LngLat; label: string }[] = [];
     (trip.locations || []).forEach(l => { const at = toLngLat(l.coordinates); if (at) cands.push({ at, label: l.name || trip.name }); });

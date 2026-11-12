@@ -1,6 +1,7 @@
 
 import { parseFeedOptions, type FeedOptions } from '../utils/icsContext';
 import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, WorkspaceSettings, CustomEvent as TripCustomEvent, PackingItem, Carrier, BackupSelectionOptions, RestoreOptions } from '../types';
+import { tripKind } from '../utils/tripKind';
 // Geocoding (~100 KB with its place-search tables) is only needed when trips are saved; load it on first
 // use so it isn't part of the app's startup bundle (PERF-001).
 const getCoordinates = async (query: string) => (await import('./geocoding')).getCoordinates(query);
@@ -256,7 +257,7 @@ export const isTripRoad = (t: any): boolean => {
 
 export const isTripAir = (t: any): boolean => {
   if (!t) return false;
-  if (t.isBundleOnly || t.icon === '✈️') return true;
+  if (tripKind(t) === 'bundle' || t.icon === '✈️') return true;
   const transports = t.transports || [];
   if (transports.length === 0) return true;
   return transports.some((tr: any) => !tr.mode || tr.mode === 'Flight');

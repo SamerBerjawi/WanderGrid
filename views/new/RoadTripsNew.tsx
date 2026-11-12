@@ -29,6 +29,7 @@ import {
     ArrowDown, ArrowsClockwise, Path as Route, ChartBar, Copy, LinkSquare, Stack, Buildings, CalendarBlank, CheckSquare, Train, Clock, DownloadSimple, Funnel, Globe, MagnifyingGlass, PencilSimple, Plus, Suitcase, Trash, UploadSimple, X, XCircle,
 } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
+import { isRealTrip } from '../../utils/tripKind';
 
 /**
  * RoadTripsNew (UI_UX_DESIGN_REFERENCE.md §5.4): the redesigned Road trips page at /roadtrips-new: trains,
@@ -165,7 +166,7 @@ export const RoadTripsNew: React.FC<RoadTripsNewProps> = ({ onTripClick }) => {
 
     const tripChoices = useMemo<Trip[]>(() =>
         log.trips
-            .filter(t => !t.hideInPlanner && !t.isBundleOnly && !t.archived && t.status !== 'Cancelled')
+            .filter(t => isRealTrip(t) && !t.archived && t.status !== 'Cancelled')
             .sort((a, b) => (b.startDate || '').localeCompare(a.startDate || '')),
     [log.trips]);
 

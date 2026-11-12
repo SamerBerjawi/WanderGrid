@@ -466,7 +466,7 @@ export function buildFeed(trips, options = {}, ctx = {}) {
         if (!trip || typeof trip !== 'object' || !trip.id) continue;
         if (trip.status === 'Cancelled') continue;
         if (trip.status === 'Planning' && !o.planning && !isStandaloneLeave(trip)) continue;
-        if (trip.isBundleOnly) continue;
+        if (trip.kind === 'bundle' || trip.isBundleOnly) continue;
         try { events.push(...tripEvents(trip, o, context)); } catch { /* one bad record must not break the feed */ }
     }
     if (o.holidays) events.push(...holidayEvents(context.holidayCalendars, context));

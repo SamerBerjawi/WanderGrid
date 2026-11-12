@@ -31,6 +31,7 @@ import {
     Airplane, ArrowDown, ArrowsClockwise, ChartBar, Copy, LinkSquare, Stack, type Icon, CalendarBlank, CheckSquare, Clock, DownloadSimple, Funnel, Globe, MagnifyingGlass, PencilSimple, Plus, Suitcase, Trash, UploadSimple, X, XCircle,
 } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
+import { isRealTrip } from '../../utils/tripKind';
 
 /**
  * FlightsNew (UI_UX_DESIGN_REFERENCE.md §5.0): the redesigned flight log at /flights-new. The features
@@ -152,7 +153,7 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
 
     const tripChoices = useMemo<Trip[]>(() =>
         log.trips
-            .filter(t => !t.hideInPlanner && !t.isBundleOnly && !t.archived && t.status !== 'Cancelled')
+            .filter(t => isRealTrip(t) && !t.archived && t.status !== 'Cancelled')
             .sort((a, b) => (b.startDate || '').localeCompare(a.startDate || '')),
     [log.trips]);
 

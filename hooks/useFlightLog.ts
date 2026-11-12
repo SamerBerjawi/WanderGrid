@@ -530,6 +530,7 @@ export const useFlightLog = () => {
     const newTrip: Trip & { isBundleOnly?: boolean; hideInPlanner?: boolean } = {
       id: newTripId, name: bundleName.trim(), location: bundleLocation.trim() || 'Various', startDate: start, endDate: end,
       status: 'Planning', participants: [], transports: bundledTransports,
+      kind: createTripInPlanner ? 'trip' : 'bundle',
       isBundleOnly: !createTripInPlanner, hideInPlanner: !createTripInPlanner,
     };
     setIsBundlingInFlight(true);

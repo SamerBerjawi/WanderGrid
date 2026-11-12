@@ -20,6 +20,8 @@ const { searchGeocodingChain, searchOpenMeteo, searchPhoton, searchNominatim, re
 const { testProvider } = require('./integrationsTester');
 const { SERVICE_KEYS, testKey } = require('./keyTester');
 const holidays = require('./holidays');
+const { runMigrations } = require('./migrations');
+const { tripKind } = require('./tripKind');
 const fxRates = require('./fxRates');
 
 const pbkdf2Async = util.promisify(crypto.pbkdf2);
@@ -573,6 +575,10 @@ const initDb = async (retries = 10, delayMs = 3000) => {
         await client.query("CREATE INDEX IF NOT EXISTS idx_cached_routes_route_key ON cached_routes (route_key)");
         
         console.log('Database schema initialized successfully!');
+
+        // Shape changes to stored JSON (D-06). Runs after the tables exist and before the server reports ready.
+        const appliedMigrations = await runMigrations(pool);
+        if (appliedMigrations.length) console.log(`Applied ${appliedMigrations.length} migration(s): ${appliedMigrations.join(', ')}`);
 
         // Startup db confirmation
         console.log('Database initialization check completed: Users table ready for enrollment.');
@@ -3494,7 +3500,7 @@ app.post('/api/restore', requireAdmin, async (req, res) => {
         return transports.some(tr => tr.mode && tr.mode !== 'Flight');
     };
     const isTripAir = (t) => {
-        if (t.isBundleOnly || t.icon === '✈️') return true;
+        if (tripKind(t) === 'bundle' || t.icon === '✈️') return true;
         const transports = t.transports || [];
         if (transports.length === 0) return true; // General trip default
         return transports.some(tr => !tr.mode || tr.mode === 'Flight');

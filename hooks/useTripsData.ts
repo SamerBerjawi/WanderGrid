@@ -4,6 +4,7 @@ import { dataService } from '../services/mockDb';
 import { syncPitStopsToVisited } from '../services/pitStopSync';
 import { affectsCollections } from './useWanderSync';
 import { BUCKET_STATUS, bucketOf, destinationsOf, todayISO, tripDays, type TripBucket } from '../utils/tripsModel';
+import { isRealTrip } from '../utils/tripKind';
 
 /** What the New trip sheet collects. */
 export interface TripDraft {
@@ -137,8 +138,8 @@ export const useTripsData = () => {
     const today = todayISO();
 
     // Bundle-only records never appear. Cancelled trips are kept out of the board and shown on their own.
-    const board = useMemo(() => trips.filter(t => t.status !== 'Cancelled' && !t.hideInPlanner), [trips]);
-    const cancelled = useMemo(() => trips.filter(t => t.status === 'Cancelled' && !t.hideInPlanner), [trips]);
+    const board = useMemo(() => trips.filter(t => t.status !== 'Cancelled' && isRealTrip(t)), [trips]);
+    const cancelled = useMemo(() => trips.filter(t => t.status === 'Cancelled' && isRealTrip(t)), [trips]);
     const active = useMemo(() => board.filter(t => !t.archived), [board]);
     const archived = useMemo(() => board.filter(t => t.archived), [board]);
 
