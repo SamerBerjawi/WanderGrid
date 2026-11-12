@@ -57,7 +57,7 @@ const draftOf = (trip: Trip): TripDraft => ({
     notes: trip.notes || '',
     icon: trip.hugeicon,
     iconData: trip.hugeiconData,
-    privacy: trip.privacy || 'Private',
+    privacy: trip.privacy === 'Public' ? 'Public' : 'Private',
     entitlementId: trip.entitlementId,
     allocations: (trip.allocations || []).map(a => ({ ...a })),
     coordinates: trip.coordinates,

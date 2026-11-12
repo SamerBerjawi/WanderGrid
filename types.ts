@@ -250,7 +250,7 @@ export interface Trip {
   hugeicon?: string;
   /** The drawing of the chosen icon, saved with the trip so showing it never has to load the 6 MB icon set (audit F-09). */
   hugeiconData?: readonly (readonly [string, Record<string, string | number>])[];
-  privacy?: 'Private' | 'Public'; // New: AirTrail privacy controls
+  privacy?: 'Private' | 'Public' | 'Shared'; // 'Shared' is accepted by the server for old data; nothing sets it and it reads as Private
   /** What the trip is meant to cost, in the workspace currency (New trip page). */
   targetBudget?: number;
   
