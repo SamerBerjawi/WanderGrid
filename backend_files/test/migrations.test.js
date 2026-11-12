@@ -92,3 +92,20 @@ test('0002 gives mode-less flights and trip legs the mode Flight and leaves othe
     const legs = (await pool.query('SELECT data FROM trips')).rows[0].data.transports.map(t => t.mode);
     assert.deepEqual(legs, ['Flight', 'Ferry']);
 });
+
+test('0003 replaces participant emails with user ids and leaves everything else alone', async () => {
+    const pool = makePool();
+    await pool.query('CREATE TABLE users (id TEXT PRIMARY KEY, data JSONB NOT NULL)');
+    await pool.query('CREATE TABLE trips (id TEXT PRIMARY KEY, data JSONB NOT NULL)');
+    const put = (t, id, data) => pool.query(`INSERT INTO ${t} (id, data) VALUES ($1, $2)`, [id, JSON.stringify(data)]);
+    await put('users', 'u-ann', { email: 'Ann@Test.dev' });
+    await put('users', 'bob@test.dev', { email: 'bob@test.dev' });
+    await put('trips', 't1', { participants: ['ann@test.dev', 'bob@test.dev', 'ghost@test.dev'] });
+    await put('trips', 't2', { participants: ['u-ann', 'ANN@test.dev'] });
+    await put('trips', 't3', { name: 'no participants' });
+    await runMigrations(pool, [require('../migrations/0003_participant_ids')].map(m => ({ id: '0003_participant_ids', ...m })), quiet);
+    const get = async id => (await pool.query('SELECT data FROM trips WHERE id = $1', [id])).rows[0].data;
+    assert.deepEqual((await get('t1')).participants, ['u-ann', 'bob@test.dev', 'ghost@test.dev']);
+    assert.deepEqual((await get('t2')).participants, ['u-ann']);
+    assert.equal((await get('t3')).participants, undefined);
+});
