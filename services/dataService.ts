@@ -286,6 +286,7 @@ class DataService {
   }
 
   async login(email: string, pass: string): Promise<User | null> {
+    this.settingsCache = null;
     const isProd = import.meta.env.PROD;
     if (this._useApi || isProd) {
         try {
@@ -411,6 +412,7 @@ class DataService {
 
   /** Revoke this session on the server. Uses a bare fetch so a 401 can't re-trigger the sign-out flow. */
   async logout(): Promise<void> {
+    this.settingsCache = null;
     const token = localStorage.getItem('wandergrid_session_token');
     if (!token) return;
     try {
@@ -573,11 +575,19 @@ class DataService {
   /** GETs in flight, by endpoint: pages that ask for the same collection at once share one request (audit F-08). */
   private inflightReads = new Map<string, Promise<unknown>>();
 
+  /**
+   * Workspace settings are read by most pages, so the last answer is kept for a short while instead of being
+   * fetched on every page change (audit F-08). Any write, sign-in or sign-out drops it; a change made by another
+   * admin shows up within SETTINGS_TTL_MS.
+   */
+  private settingsCache: { value: WorkspaceSettings; at: number } | null = null;
+  static readonly SETTINGS_TTL_MS = 30_000;
+
   private async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
       const method = (options?.method || 'GET').toUpperCase();
       if (method !== 'GET' || options?.signal) {
           // A write makes any read already in flight stale, so the next read must go to the server again.
-          if (method !== 'GET') this.inflightReads.clear();
+          if (method !== 'GET') { this.inflightReads.clear(); this.settingsCache = null; }
           return this.fetchOnce<T>(endpoint, options);
       }
       let pending = this.inflightReads.get(endpoint) as Promise<T> | undefined;
@@ -1648,8 +1658,12 @@ class DataService {
   }
   async deleteVisited(id: string): Promise<void> { await this.fetch(`/visited/${id}`, { method: 'DELETE' }); }
   async getWorkspaceSettings(): Promise<WorkspaceSettings> {
+    const cached = this.settingsCache;
+    if (cached && Date.now() - cached.at < DataService.SETTINGS_TTL_MS) return structuredClone(cached.value);
     const settings = await this.fetch<WorkspaceSettings>('/settings');
-    return { ...DEFAULT_WORKSPACE_SETTINGS, ...settings };
+    const value = { ...DEFAULT_WORKSPACE_SETTINGS, ...settings };
+    this.settingsCache = { value, at: Date.now() };
+    return structuredClone(value);
   }
   /**
    * Save workspace settings. Only the fields passed are changed (PATCH), so the sidebar theme toggle and
@@ -1663,6 +1677,7 @@ class DataService {
       saved = { ...(await this.getWorkspaceSettings()), ...changes } as WorkspaceSettings;
       await this.localFetch('/settings', { method: 'PUT', body: JSON.stringify(saved) });
     }
+    this.settingsCache = { value: { ...DEFAULT_WORKSPACE_SETTINGS, ...saved }, at: Date.now() };
     safeStorage.setItem('wandergrid_workspace_settings', JSON.stringify(saved));
     safeStorage.setItem('wandergrid_settings', JSON.stringify(saved));
     try {
