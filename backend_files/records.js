@@ -175,6 +175,7 @@ module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_
       for (const id of ids) {
           const { rows } = await client.query(`SELECT data FROM ${table} WHERE id = $1`, [id]);
           if (rows.length > 0) existing.set(id, rows[0].data);
+          else if (table === 'trips') await client.query('DELETE FROM trip_shares WHERE trip_id = $1', [id]); // never reuse a link left by an older trip with this id
       }
       const prepared = items.filter(i => i && i.id).map(item => {
           const prev = existing.get(item.id);
@@ -195,6 +196,7 @@ module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_
           const { rows } = await client.query(`SELECT data FROM ${table} WHERE id = $1`, [id]);
           if (rows.length > 0 && !policy.canWrite(rows[0].data, user)) throw forbidden();
       }
+      if (table === 'trips') await client.query('DELETE FROM trip_shares WHERE trip_id = $1', [id]);
       await client.query(`DELETE FROM ${table} WHERE id = $1`, [id]);
   }
 
@@ -312,6 +314,7 @@ module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_
         // Creating never overwrites an existing record; updates go through PUT /:id.
         const { rows } = await client.query(`SELECT 1 FROM ${table} WHERE id = $1`, [resource.id]);
         if (rows.length > 0) throw new HttpError(409, `A record with id ${resource.id} already exists`);
+        if (table === 'trips') await client.query('DELETE FROM trip_shares WHERE trip_id = $1', [resource.id]);
         created = withNextVersion(table, OWNERSHIP[table] ? OWNERSHIP[table].prepareNew(resource, req.user) : resource, null);
         await client.query(`INSERT INTO ${table} (id, data) VALUES ($1, $2)`, [created.id, JSON.stringify(created)]);
       });
@@ -350,6 +353,7 @@ module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_
     let prepared = record;
     const { rows } = await client.query(`SELECT data FROM ${table} WHERE id = $1`, [record.id]);
     const existing = rows[0]?.data || null;
+    if (!existing && table === 'trips') await client.query('DELETE FROM trip_shares WHERE trip_id = $1', [record.id]);
     if (policy) {
       if (!existing) prepared = policy.prepareNew(record, user);
       else if (!policy.canWrite(existing, user)) throw forbidden();

@@ -298,6 +298,8 @@ module.exports = function registerJobRoutes(app, {
                   return false;
               });
 
+              // An import changes the documents, never revives an old public link.
+              for (const trip of incomingTrips) await client.query('DELETE FROM trip_shares WHERE trip_id = $1', [trip.id]);
               if (mode === 'replace') {
                   // Keep categories not selected
                   const tripsToKeep = new Map();
@@ -310,6 +312,9 @@ module.exports = function registerJobRoutes(app, {
                   // Add incoming
                   incomingTrips.forEach(t => tripsToKeep.set(t.id, t));
 
+                  for (const row of existingTripRows) {
+                      if (!tripsToKeep.has(row.id)) await client.query('DELETE FROM trip_shares WHERE trip_id = $1', [row.id]);
+                  }
                   await client.query('TRUNCATE TABLE trips');
                   await bulkUpsert(client, 'trips', Array.from(tripsToKeep.values()));
               } else {
@@ -412,7 +417,7 @@ module.exports = function registerJobRoutes(app, {
   app.post('/api/wipe', requireAdmin, async (req, res) => {
       try {
           await withTransaction(async (client) => {
-              const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited', 'settings'];
+              const tables = ['trip_shares', 'users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited', 'settings'];
               for (const table of tables) {
                   await client.query(`TRUNCATE TABLE ${table} CASCADE`);
               }
