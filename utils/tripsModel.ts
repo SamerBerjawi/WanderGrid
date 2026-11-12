@@ -31,9 +31,31 @@ const toTime = (iso?: string) => {
 export const hasPastDates = (trip: Trip, today: string): boolean =>
     Boolean((trip.endDate && trip.endDate < today) || (trip.startDate && trip.startDate < today && !trip.endDate));
 
+/** What the people on the trip decided, apart from where today falls in its dates. */
+export type TripIntent = 'planned' | 'confirmed' | 'cancelled';
+
+/** Where today falls in the trip's dates. */
+export type TripPhase = 'undated' | 'upcoming' | 'ongoing' | 'past';
+
+/** `Past` is a time phase, so a trip that happened was confirmed. */
+export const tripIntent = (trip: Trip): TripIntent =>
+    trip.status === 'Cancelled' ? 'cancelled' : trip.status === 'Planning' ? 'planned' : 'confirmed';
+
+/**
+ * Whether the trip is over: its dates have passed, or someone marked it Past. This is the one definition; every
+ * page asks it instead of reading `status === 'Past'` or comparing dates itself (audit F-06).
+ */
+export const isPastTrip = (trip: Trip, today: string): boolean => trip.status === 'Past' || hasPastDates(trip, today);
+
+export const tripPhase = (trip: Trip, today: string): TripPhase => {
+    if (isPastTrip(trip, today)) return 'past';
+    if (!trip.startDate) return 'undated';
+    return trip.startDate <= today ? 'ongoing' : 'upcoming';
+};
+
 /** The column a trip sits in: past by status or dates, confirmed when Upcoming, otherwise planned. */
 export const bucketOf = (trip: Trip, today: string): TripBucket => {
-    if (trip.status === 'Past' || hasPastDates(trip, today)) return 'past';
+    if (isPastTrip(trip, today)) return 'past';
     return trip.status === 'Upcoming' ? 'confirmed' : 'planned';
 };
 
@@ -55,7 +77,7 @@ export const tripDays = (trip: Trip): number => {
 };
 
 export const isTravelling = (trip: Trip, today: string): boolean =>
-    Boolean(trip.startDate && trip.startDate <= today && (trip.endDate || trip.startDate) >= today) && trip.status !== 'Past';
+    tripPhase(trip, today) === 'ongoing';
 
 export interface TripTiming {
     /** The hero number on a card, or null when the trip is undated. */

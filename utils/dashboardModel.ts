@@ -1,6 +1,6 @@
 import type { EntitlementType, Trip, User } from '../types';
 import { calculateDistance, getCoordinatesSync } from '../services/geocoding';
-import { destinationsOf, isTravelling } from './tripsModel';
+import { destinationsOf, isPastTrip, isTravelling } from './tripsModel';
 import { isRealTrip } from './tripKind';
 import { isFlightLeg } from './legMode';
 
@@ -254,7 +254,7 @@ export interface UpNext {
 /** Upcoming trips (not cancelled, not ended), soonest first. */
 export const upcomingTrips = (trips: Trip[], today: string): Trip[] =>
     realTrips(trips)
-        .filter(t => (t.endDate || t.startDate) >= today && t.status !== 'Past')
+        .filter(t => Boolean(t.startDate || t.endDate) && !isPastTrip(t, today))
         .sort((a, b) => a.startDate.localeCompare(b.startDate));
 
 export const upNext = (trips: Trip[], today: string): UpNext | null => {

@@ -10,7 +10,7 @@ Where each finding of the principal-architect audit stands. "Done" means merged 
 | F-03 | "Binding" docs contradicted the code | Done: banners on `Design.md` and `AGENTS.md`, `CLAUDE.md` rewritten (D-05). Moving them to `docs/archive/` is optional |
 | F-04 | No single rule for whose data a page shows | Done for Dashboard, Flights, Atlas: `utils/scope.ts`, Mine / Everyone (D-02). Calendar, Trips and Member already filter by participant |
 | F-05 | "Is this leg a flight?" defined two ways | Done: `isFlightLeg()` everywhere, mode enforced and defaulted on write, migration 0002 |
-| F-06 | Trip `status` mixes intent and date phase | **Open.** Needs its own change: store `intent` plus `archived`, derive `phase` in one function (STATE_MACHINE §3) |
+| F-06 | Trip `status` mixes intent and date phase | Done in part: one tested `tripIntent` / `tripPhase` / `isPastTrip` in `utils/tripsModel.ts`, used by the map, calendar, dashboard and stickers (STATE_MACHINE §3). Storing `intent` separately was left out on purpose: same behaviour, every writer touched |
 | F-07 | The Trip entity is overloaded | Done in part: `kind` (D-04). Ids-only `participants` and the `privacy: 'Shared'` enum mismatch are open |
 | F-08 | Same data fetched several times per page | Done: overlapping reads of one endpoint share one request in `dataService` (each caller gets its own copy; a write drops reads in flight). Reads that do not overlap still go to the server, and settings are not yet served from a context |
 | F-09 | 6 MB icon chunk | Done: the chosen icon's drawing is saved on the trip (`hugeiconData`), so trips show it without loading the icon set. Trips saved earlier still load it until their icon is picked again; the picker itself still loads it on demand |

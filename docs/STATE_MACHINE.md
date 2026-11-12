@@ -43,7 +43,9 @@ Gaps:
   leaves it `Past`; each reader then patches this differently (`hasPastDates` in `tripsModel`, `(endDate||startDate) < today`
   in `calendarModel`, `status !== 'Past'` filters in `dashboardModel`).
 - An "ongoing" phase exists only as a derived check in `tripsModel.ts`.
-- Recommended shape: store `intent: 'planning' | 'booked' | 'cancelled'` and `archived`; derive
+- Done (audit F-06): `utils/tripsModel.ts` now holds the one definition: `tripIntent()` (planned / confirmed / cancelled), `tripPhase()` (undated / upcoming / ongoing / past) and `isPastTrip()`; the map, calendar, dashboard and sticker readers use them. A trip marked Past stays past even if its dates are later. The stored shape is unchanged, so no migration.
+- Not done: storing `intent` and `archived` apart from `status`. It would touch every writer for no change in behaviour; do it only if a new status is needed.
+- Original recommendation: store `intent: 'planning' | 'booked' | 'cancelled'` and `archived`; derive
   `phase: 'upcoming' | 'ongoing' | 'past'` from dates in one function in `utils/tripsModel.ts`. Keep reading the
   old `status` for backward compatibility.
 
