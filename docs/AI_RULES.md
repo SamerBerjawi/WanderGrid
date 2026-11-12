@@ -18,7 +18,7 @@
 - Business rules go in pure functions in `utils/` with a unit test in `tests/unit/`. Pages and hooks call them.
 - Server access rules live in `OWNERSHIP` and `requireRole` in `server.js`. Never rely on the UI to hide data.
 - Any new collection field that clients send must be added to `RECORD_RULES` if a reader would break on bad input.
-- Any new table or index: update `initDb()` **and** `backend_files/schema.sql`.
+- Any new table or index: update `initDb()` and run `npm run schema` in `backend_files/` to regenerate `schema.sql`.
 - Any CSP change: update `CSP_DIRECTIVES` in `server.js` **and** `preview.headers` in `vite.config.ts`.
 - Any route/rail proxy change: update `backend_files/` **and** the dev middleware in `vite.config.ts`.
 

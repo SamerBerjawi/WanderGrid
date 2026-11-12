@@ -80,7 +80,7 @@ matters for the auth middleware and the `*` fallback. The split is complete; the
   not generated from one source.
 - Schema changes happen in `initDb()` with `CREATE … IF NOT EXISTS`. There is no migration table and no data
   migration step; JSON shape changes are absorbed by readers.
-- `backend_files/schema.sql` mirrors `initDb()` by hand and is not executed.
+- `backend_files/schema.sql` is generated from `initDb()` (`npm run schema`), checked by a test, and not executed.
 - Every record carries `version` and `updatedAt`, set by the server.
 
 ## Authentication and authorisation

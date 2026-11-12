@@ -5,7 +5,8 @@
   "type": "commonjs",
   "main": "server.js",
   "scripts": {
-    "test": "node --test --test-timeout=60000 test/*.test.js test/api/*.test.js"
+    "test": "node --test --test-timeout=60000 test/*.test.js test/api/*.test.js",
+    "schema": "node schemaSql.js"
   },
   "dependencies": {
     "compression": "^1.8.2",
