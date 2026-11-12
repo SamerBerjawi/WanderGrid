@@ -166,12 +166,13 @@ export const MemberSheet: React.FC<{
                     <RpSection title="Per year">
                     <div className="grid grid-cols-2 gap-3">
                         <RpField label="Days a year">
-                            {id => <input id={id} inputMode="numeric" type="number" min={0} value={draft.allowance ?? draft.leaveBalance ?? 0} onChange={e => setDraft(d => ({ ...d, allowance: toNumber(e.target.value), leaveBalance: toNumber(e.target.value) }))} className={cn(RP_FIELD, 'rp-tabular')} autoFocus />}
+                            {id => <input id={id} inputMode="numeric" type="number" min={0} value={draft.allowance ?? draft.leaveBalance ?? 0} readOnly={!isAdmin} onChange={e => setDraft(d => ({ ...d, allowance: toNumber(e.target.value), leaveBalance: toNumber(e.target.value) }))} className={cn(RP_FIELD, 'rp-tabular', !isAdmin && 'opacity-60')} autoFocus={isAdmin} />}
                         </RpField>
                         <RpField label="Days taken">
                             {id => <input id={id} inputMode="numeric" type="number" min={0} value={draft.takenLeave ?? 0} onChange={e => set('takenLeave', toNumber(e.target.value))} className={cn(RP_FIELD, 'rp-tabular')} />}
                         </RpField>
                     </div>
+                    {!isAdmin ? <p className="text-xs text-rp-muted">The yearly allowance is set by an administrator.</p> : null}
                     </RpSection>
                 ) : null}
 
