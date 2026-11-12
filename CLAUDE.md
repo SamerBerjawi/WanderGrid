@@ -10,7 +10,7 @@ WanderGrid is a self-hosted travel planner, flight log and leave manager. It has
 - React 19.2 / react-dom 19.2, TypeScript ~5.8, Vite 6.2 with `@vitejs/plugin-react` 5, `vite-plugin-pwa` 1.3 (Workbox generateSW)
 - Tailwind CSS 3.4 + PostCSS/autoprefixer (single compiled config; no CDN); `clsx`, `tailwind-merge`; global CSS in `styles.css`. Classes built at runtime must be safelisted in `tailwind.config.js`
 - UI: `@hugeicons/react` + `@hugeicons/core-free-icons` (stroke-rounded; app imports go through `components/ui/hugeicons.tsx`, an adapter keeping the `size`/`weight`/`className` API), `motion` 12 (`motion/react`), `@number-flow/react`, `@dnd-kit/*`
-- Maps/geo: `maplibre-gl` 6.4, `deck.gl` 9.3, `pmtiles` 4.5, `d3` 7, `searoute-js`, `@mapbox/mapbox-gl-rtl-text`
+- Maps/geo: `maplibre-gl` 6.4, `deck.gl` 9.4 (with luma.gl ~9.4.2; keep the `@luma.gl/*` pins and overrides in `package.json` on one line, or the map crashes with a shadertools assertion), `pmtiles` 4.5, `d3` 7, `searoute-js`, `@mapbox/mapbox-gl-rtl-text`
 - Charts: `@visx/*`. Data I/O: `xlsx`
 - `.npmrc` sets `legacy-peer-deps=true`. Peer conflicts are expected.
 
