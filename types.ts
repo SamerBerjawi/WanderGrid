@@ -275,10 +275,17 @@ export interface Trip {
   // Map Data
   coordinates?: GeoCoordinates;
 
-  // Bundle specifics
+  /**
+   * What this record is (D-04): a planned `trip`, calendar `timeoff`, or a flight `bundle` with no planner trip.
+   * Read it through `tripKind()` (utils/tripKind.ts), which also understands records saved before it existed.
+   */
+  kind?: TripKind;
+  /** Legacy flags, still written next to `kind` so older readers and the calendar feed keep working. */
   isBundleOnly?: boolean;
   hideInPlanner?: boolean;
 }
+
+export type TripKind = 'trip' | 'timeoff' | 'bundle';
 
 export interface PublicHoliday {
   id: string;

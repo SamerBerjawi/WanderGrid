@@ -116,6 +116,7 @@ export const useCalendarData = () => {
             status: input.status,
             participants: [input.memberId],
             privacy: 'Private',
+            kind: 'timeoff',
             hideInPlanner: true,
             ...input.fields,
         };

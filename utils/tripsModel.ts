@@ -1,4 +1,5 @@
 import type { Trip } from '../types';
+import { tripKind } from './tripKind';
 
 /**
  * Pure trip logic for the New Trips page (UI_UX_DESIGN_REFERENCE.md §5.2 row 3): which column a
@@ -84,7 +85,7 @@ export const timingOf = (trip: Trip, today: string): TripTiming => {
 
 /** What a coming trip is still missing, so the card can ask for it. Only trips within 90 days ask. */
 export const tripNeeds = (trip: Trip, today: string): ('flights' | 'stay')[] => {
-    if (bucketOf(trip, today) !== 'confirmed' || trip.isBundleOnly || isTravelling(trip, today)) return [];
+    if (bucketOf(trip, today) !== 'confirmed' || tripKind(trip) === 'bundle' || isTravelling(trip, today)) return [];
     const t = timingOf(trip, today);
     if (t.value === null || t.value > 90) return [];
     const out: ('flights' | 'stay')[] = [];
