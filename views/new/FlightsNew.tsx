@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Transport, Trip } from '../../types';
 import { dataService } from '../../services/mockDb';
+import { ScopeSwitch } from '../../components/new/ScopeSwitch';
 import { useFlightLog } from '../../hooks/useFlightLog';
 import { errorMessage, toast } from '../../services/toast';
 import { mapLink } from '../../utils/mapLinks';
@@ -264,6 +265,7 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
                         className="-my-2"
                     />
                 </div>
+                <ScopeSwitch scope={log.scope} onChange={log.setScope} className="-mt-3 flex items-center gap-1" />
 
                 {log.loadError ? (
                     <EmptyCard>

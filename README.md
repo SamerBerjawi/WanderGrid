@@ -73,6 +73,8 @@ Open <http://localhost:3000>. `npm run dev` runs in **local mode** (a "Local mod
 
 The app listens on port **4921** by default (`APP_PORT` changes it). On first start it creates the PostgreSQL schema, and the first account you register becomes the administrator. Other settings are listed in `.env.example`.
 
+**Behind a reverse proxy or a tunnel (Cloudflare Tunnel, Traefik, Caddy, nginx).** Set `TRUST_PROXY=1` (the number of proxies in front of the app). Without it the app sees the proxy's address for every visitor, so the sign-in rate limit is shared by everyone. With it, each visitor is counted on their own address, and an account is also paused for 15 minutes after 10 wrong passwords. Only set it when a proxy really sits in front: the app then trusts the `X-Forwarded-For` header. Public sign-up is closed once the first administrator exists; `ALLOW_SIGNUP=true` (or the switch in Settings) opens it.
+
 ### Develop against the API
 
 Put `VITE_LOCAL_MODE=false` in `.env.development.local` and run the backend on a different port from Vite:

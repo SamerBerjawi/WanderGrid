@@ -10,6 +10,8 @@ import {
     dayAxis, distanceSeries, flightToday, legsOf, nightsSeries, recentTrips, spendSeries, travelTotals, tripEvents, upNext, upcomingTrips, yearlyRows,
 } from '../utils/dashboardModel';
 import { todayISO } from '../utils/tripsModel';
+import { scopeRecords, scopeTrips } from '../utils/scope';
+import { useScope } from './useScope';
 
 /** Longest Metric Card period, in days; the chart needs the same again to compare with. */
 const LONGEST_PERIOD = 365;
@@ -20,10 +22,11 @@ const LONGEST_PERIOD = 365;
  * collections change.
  */
 export const useDashboardData = () => {
-    const [trips, setTrips] = useState<Trip[]>([]);
-    const [flights, setFlights] = useState<any[]>([]);
-    const [roadTrips, setRoadTrips] = useState<any[]>([]);
-    const [visited, setVisited] = useState<VisitedItem[]>([]);
+    const { scope, setScope, user: me } = useScope();
+    const [allTrips, setTrips] = useState<Trip[]>([]);
+    const [allFlights, setFlights] = useState<any[]>([]);
+    const [allRoadTrips, setRoadTrips] = useState<any[]>([]);
+    const [allVisited, setVisited] = useState<VisitedItem[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [types, setTypes] = useState<EntitlementType[]>([]);
     const [loading, setLoading] = useState(true);
@@ -58,6 +61,12 @@ export const useDashboardData = () => {
     }, [load]);
 
     const today = todayISO();
+
+    // D-02: what "mine" means is decided once, in utils/scope.ts.
+    const trips = useMemo(() => scopeTrips(allTrips, scope, me), [allTrips, scope, me?.id]);
+    const flights = useMemo(() => scopeRecords(allFlights, scope, me), [allFlights, scope, me?.id]);
+    const roadTrips = useMemo(() => scopeRecords(allRoadTrips, scope, me), [allRoadTrips, scope, me?.id]);
+    const visited = useMemo(() => scopeRecords(allVisited, scope, me), [allVisited, scope, me?.id]);
 
     const legs = useMemo(() => legsOf(trips, flights, today), [trips, flights, today]);
     const totals = useMemo(() => travelTotals(trips, legs, today), [trips, legs, today]);
@@ -97,7 +106,7 @@ export const useDashboardData = () => {
     }, [load]);
 
     return {
-        loading, error, reload: load, today,
+        loading, error, reload: load, today, scope, setScope,
         trips, users, types,
         legs, totals,
         countries: visitedCountries, wishlist, cities,
@@ -105,7 +114,7 @@ export const useDashboardData = () => {
         series, events, years,
         next, upcoming, recent, flightNow, stickers,
         markVisited,
-        isEmpty: trips.length === 0 && flights.length === 0 && visited.length === 0,
+        isEmpty: allTrips.length === 0 && allFlights.length === 0 && allVisited.length === 0,
     };
 };
 

@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { isMyRecord, isMyTrip } from '../utils/scope';
+import { useScope } from './useScope';
 import { toast } from '../services/toast';
 import { dataService } from '../services/mockDb';
 import { Trip, Transport, User, WorkspaceSettings, FlightStatusResponse } from '../types';
@@ -168,7 +170,14 @@ export const useFlightLog = () => {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [flights, setFlights] = useState<FlightRecord[]>([]);
+  const { scope, setScope, user: scopeUser } = useScope();
+  const [allFlights, setFlights] = useState<FlightRecord[]>([]);
+  // D-02: a leg on a trip is mine when I am on the trip; an independent flight when I own it (utils/scope.ts).
+  const flights = useMemo(
+    () => scope === 'everyone' || !scopeUser ? allFlights
+      : allFlights.filter(r => r.trip.id === 'unassigned' ? isMyRecord(r.flight as { ownerId?: string }, scopeUser) : isMyTrip(r.trip, scopeUser)),
+    [allFlights, scope, scopeUser?.id]
+  );
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [workspaceSettings, setWorkspaceSettings] = useState<WorkspaceSettings | null>(null);
@@ -896,6 +905,7 @@ export const useFlightLog = () => {
   }, [filteredFlights]);
 
   return {
+    scope, setScope,
     trips, users, currentUser, flights, loaded, loadError, workspaceSettings, refreshData,
     // filters
     searchQuery, setSearchQuery, timeFilter, setTimeFilter, classFilter, setClassFilter, yearFilter, setYearFilter,
