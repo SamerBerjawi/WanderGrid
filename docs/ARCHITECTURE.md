@@ -61,14 +61,19 @@ per collection, so two hooks that use different keys for the same collection bot
 
 ## Backend layout
 
-`server.js` (~3.7k lines) holds config, logging, auth, validation, ownership, generic CRUD, settings, jobs,
-backup/restore, proxies and schema (`initDb`). Helpers that were already split out: `upstream.js` (fetch with
-timeout/cache/rate gate), `geocodingChain.js`, `routeProxy.js`, `routeStore.js` (persistent route resolver),
-`flightLookup.js`, `aviationStack.js`, `holidays.js`, `fxRates.js`, `ferryLines.js`, `sharedTrip.js`,
-`icsFeed.mjs`, `keyTester.js`, `integrationsTester.js`.
+`server.js` (~2.9k lines) still holds config, logging, security headers, rate limits, schema (`initDb`), the global
+datasets, settings, jobs, backup/restore and the proxies. Moved out so far (decision D-07, no behaviour change):
+`records.js` (validation, ownership `OWNERSHIP`, optimistic concurrency, transactions, generic CRUD handlers),
+`recordRoutes.js` (the collection routes and `/api/batch`), `auth.js` (sign-in, sign-up, demo, password reset,
+sessions, member roster), `migrations/` (numbered data migrations, D-06) and `tripKind.js` (D-04). Helpers that were
+already split out: `upstream.js` (fetch with timeout/cache/rate gate), `geocodingChain.js`, `routeProxy.js`,
+`routeStore.js` (persistent route resolver), `flightLookup.js`, `aviationStack.js`, `holidays.js`, `fxRates.js`,
+`ferryLines.js`, `sharedTrip.js`, `icsFeed.mjs`, `keyTester.js`, `integrationsTester.js`.
 
-Suggested split (see roadmap in the audit report): `auth/`, `records/` (validation + ownership + CRUD),
-`settings/`, `jobs/` (backup, restore, refresh), `proxy/`, `db/schema.js`, with `server.js` only wiring them.
+Modules take what they need as arguments (`createRecordStore({ pool, sendError, ... })`, `registerAuthRoutes(app, {...})`)
+instead of importing `server.js`, so they can be tested alone. Routes keep their original registration order, which
+matters for the auth middleware and the `*` fallback. Still to move, in this order: `settings`, `jobs` (backup,
+restore, wipe), `proxy/*`, `db/schema.js`.
 
 ## Persistence
 
@@ -102,4 +107,4 @@ Suggested split (see roadmap in the audit report): `auth/`, `records/` (validati
 - CI (`.github/workflows/build-and-publish.yml`): `tsc`, token lint, backend `npm audit --audit-level=high`
   and backend tests on every push and PR; e2e only on `v*` tags and manual runs; image pushed to GHCR.
 - Frontend unit tests (`npm test`, Vitest) are **not** run in CI today.
-- The image runs `node server.js` as root on `node:20-alpine`; schema is created on boot.
+- The image runs `node server.js` as root on `node:20-alpine`; schema is created on boot, then numbered migrations (`backend_files/migrations/`) run.

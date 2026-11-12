@@ -13,7 +13,7 @@
 - **Options:** A) move code into modules by area with no behaviour change, one PR per area, protected by the
   existing API tests; B) leave it.
 - **Recommendation:** A, auth and records first (they hold the security rules).
-- **Status:** Open.
+- **Status:** Decided 2026-11-12: Option A, in progress. Done: `records.js`, `recordRoutes.js`, `auth.js` (pure moves, verified by the existing API tests and a no-undef lint). Next, one PR each: `settings`, `jobs` (backup, restore, wipe), `proxy/*`, `db/schema.js`.
 
 ## Decided
 
