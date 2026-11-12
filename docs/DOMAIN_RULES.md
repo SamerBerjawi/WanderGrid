@@ -8,7 +8,7 @@
 | Entity | Stored in | Owner field | Meaning |
 | --- | --- | --- | --- |
 | User | `users` | itself | A member of the one workspace. `role` is `Admin` or `Partner`. Leave balances live on the record |
-| Trip | `trips` | `participants[]` (user ids, sometimes emails) | A journey with dates. **Also** used for: leave/time off (`entitlementId`, `allocations`), flight bundles (`isBundleOnly`), and "Time off" entries |
+| Trip | `trips` | `participants[]` (user ids; migration 0003 converted stored emails) | A journey with dates. **Also** used for: leave/time off (`entitlementId`, `allocations`), flight bundles (`isBundleOnly`), and "Time off" entries |
 | Transport (leg) | embedded in `trip.transports[]` **or** a row in `flights` with `tripId` | `ownerId` on `flights` rows | One flight, train, ferry, bus, car leg. The `flights` table holds every mode, not only flights |
 | Visited item | `visited` | `ownerId` | Atlas entry: a country or city with a residence status |
 | Entitlement type | `entitlements` | admin-managed | A leave category with accrual and carry-over policy |
