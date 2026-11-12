@@ -11,12 +11,12 @@ Where each finding of the principal-architect audit stands. "Done" means merged 
 | F-04 | No single rule for whose data a page shows | Done for Dashboard, Flights, Atlas: `utils/scope.ts`, Mine / Everyone (D-02). Calendar, Trips and Member already filter by participant |
 | F-05 | "Is this leg a flight?" defined two ways | Done: `isFlightLeg()` everywhere, mode enforced and defaulted on write, migration 0002 |
 | F-06 | Trip `status` mixes intent and date phase | Done in part: one tested `tripIntent` / `tripPhase` / `isPastTrip` in `utils/tripsModel.ts`, used by the map, calendar, dashboard and stickers (STATE_MACHINE §3). Storing `intent` separately was left out on purpose: same behaviour, every writer touched |
-| F-07 | The Trip entity is overloaded | Done in part: `kind` (D-04). Ids-only `participants` and the `privacy: 'Shared'` enum mismatch are open |
+| F-07 | The Trip entity is overloaded | Done in part: `kind` (D-04). The `privacy` type now matches the server (`Shared` is read as Private). Ids-only `participants` is left: it is a stored-shape change with no user-visible gain |
 | F-08 | Same data fetched several times per page | Done: overlapping reads of one endpoint share one request in `dataService` (each caller gets its own copy; a write drops reads in flight). Reads that do not overlap still go to the server, and settings are not yet served from a context |
 | F-09 | 6 MB icon chunk | Done: the chosen icon's drawing is saved on the trip (`hugeiconData`), so trips show it without loading the icon set. Trips saved earlier still load it until their icon is picked again; the picker itself still loads it on demand |
 | F-10 | CI skipped frontend tests | Done: unit tests run in CI. Golden-path e2e specs for the new pages are still to write |
 | F-11 | No migrations | Done: `backend_files/migrations/` (D-06). `schema.sql` is still a manual mirror |
-| F-12 | Three files carry too much | Done for `server.js` (D-07). `mockDb.ts` rename and the Vite dev-proxy duplication are open |
+| F-12 | Three files carry too much | Done for `server.js` (D-07). the data client is now `services/dataService.ts` (`mockDb.ts` re-exports it). The Vite dev-proxy duplication is open |
 | F-13 | Backup and recovery undocumented | Done: `OPERATIONS.md`, optional nightly dump (`--profile backup`), `.env.example` fixed, `PUBLIC_URL` passed to the container |
 | F-14 | deck.gl advisories | Reduced from 15 to 11 by depending on the scoped packages; the rest are in deck.gl's 3D-tiles and glTF loaders, which the app never calls. CI fails on critical only |
 | F-15 | Smaller hardening | Done: unknown-email timing, container runs as `node`. Not changed on purpose: the default DB password stays (the database is not published, and requiring it would break existing installs; see `OPERATIONS.md`), members may still edit their own leave figures (the member sheet offers it), register's 409 still reveals an existing email (sign-up is closed by default) |
