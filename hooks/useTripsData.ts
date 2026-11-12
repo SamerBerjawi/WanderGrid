@@ -3,7 +3,7 @@ import type { Accommodation, Activity, EntitlementType, GeoCoordinates, Transpor
 import { dataService } from '../services/mockDb';
 import { syncPitStopsToVisited } from '../services/pitStopSync';
 import { affectsCollections } from './useWanderSync';
-import { BUCKET_STATUS, bucketOf, destinationsOf, todayISO, tripDays, type TripBucket } from '../utils/tripsModel';
+import { BUCKET_STATUS, bucketOf, withIntent, destinationsOf, todayISO, tripDays, type TripBucket } from '../utils/tripsModel';
 import { isRealTrip } from '../utils/tripKind';
 
 /** What the New trip sheet collects. */
@@ -206,7 +206,7 @@ export const useTripsData = () => {
             accommodations: (draft.stays || []).map(a => toStay(a, destination, start, end)),
             activities: (draft.activities || []).map(a => toActivity(a, start)),
         };
-        const saved = await dataService.addTrip(payload);
+        const saved = await dataService.addTrip(withIntent(payload));
         await releaseAdopted(draft, saved);
         setTrips(prev => [...prev, saved]);
         syncStops(saved);
@@ -223,7 +223,7 @@ export const useTripsData = () => {
         const locations = destinationChanged
             ? [...(destination ? [{ id: uid(), name: destination, startDate: start, endDate: end, coordinates: draft.coordinates }] : []), ...stops.slice(1)]
             : stops;
-        const next: Trip = {
+        const drafted: Trip = {
             ...trip,
             name: draft.name.trim(),
             location: destination,
@@ -243,6 +243,7 @@ export const useTripsData = () => {
             accommodations: draft.stays ? draft.stays.map(a => toStay(a, destination, start, end)) : trip.accommodations,
             activities: draft.activities ? draft.activities.map(a => toActivity(a, start)) : trip.activities,
         };
+        const next = withIntent(drafted, trip);
         replace(next);
         const saved = await guarded(() => dataService.updateTrip(next));
         replace(saved);
@@ -262,6 +263,7 @@ export const useTripsData = () => {
             originalName: undefined,
             version: undefined,
             status: 'Planning',
+            intent: 'planned',
             archived: false,
             locations: (trip.locations || []).map(l => ({ ...l, id: uid() })),
             transports: (trip.transports || []).map(t => {
@@ -294,7 +296,7 @@ export const useTripsData = () => {
     const setStatus = useCallback(async (id: string, status: Trip['status']): Promise<Trip['status'] | undefined> => {
         const current = tripsRef.current.find(t => t.id === id);
         if (!current || current.status === status) return current?.status;
-        const next = { ...current, status };
+        const next = withIntent({ ...current, status }, current);
         replace(next);
         replace(await guarded(() => dataService.updateTrip(next)));
         return current.status;

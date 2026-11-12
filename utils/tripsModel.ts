@@ -37,9 +37,30 @@ export type TripIntent = 'planned' | 'confirmed' | 'cancelled';
 /** Where today falls in the trip's dates. */
 export type TripPhase = 'undated' | 'upcoming' | 'ongoing' | 'past';
 
-/** `Past` is a time phase, so a trip that happened was confirmed. */
-export const tripIntent = (trip: Trip): TripIntent =>
-    trip.status === 'Cancelled' ? 'cancelled' : trip.status === 'Planning' ? 'planned' : 'confirmed';
+const isLiveIntent = (v: unknown): v is 'planned' | 'confirmed' => v === 'planned' || v === 'confirmed';
+
+/**
+ * `Past` is a time phase, so on its own it says nothing about what was decided. A Past trip keeps its stored
+ * `intent` (a trip that was only ever planned stays planned); without one it counts as confirmed, as before.
+ */
+export const tripIntent = (trip: Trip): TripIntent => {
+    if (trip.status === 'Cancelled') return 'cancelled';
+    if (trip.status === 'Planning') return 'planned';
+    if (trip.status === 'Upcoming') return 'confirmed';
+    return isLiveIntent(trip.intent) ? trip.intent : 'confirmed';
+};
+
+/**
+ * The trip with `intent` set to match its status. Moving a trip to Past keeps what it was before, which `status`
+ * alone would lose. Every place that changes a trip's status passes the result through this.
+ */
+export const withIntent = (trip: Trip, previous?: Trip): Trip => {
+    let intent: TripIntent;
+    if (trip.status !== 'Past') intent = tripIntent(trip);
+    else if (previous && previous.status !== 'Past') intent = tripIntent(previous);
+    else intent = isLiveIntent(trip.intent) ? trip.intent : previous ? tripIntent(previous) : 'confirmed';
+    return trip.intent === intent ? trip : { ...trip, intent };
+};
 
 /**
  * Whether the trip is over: its dates have passed, or someone marked it Past. This is the one definition; every

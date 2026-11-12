@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tripIntent, tripPhase, isPastTrip, bucketOf, isTravelling } from '../../utils/tripsModel';
+import { tripIntent, withIntent, tripPhase, isPastTrip, bucketOf, isTravelling } from '../../utils/tripsModel';
 import type { Trip } from '../../types';
 
 const today = '2026-06-15';
@@ -37,3 +37,41 @@ describe('trip intent and phase (audit F-06)', () => {
     expect(bucketOf(trip({ status: 'Upcoming', startDate: '2026-01-01', endDate: '2026-01-05' }), today)).toBe('past');
   });
 });
+
+describe('stored trip intent (audit F-06)', () => {
+  it('keeps what a trip was once it is Past, and defaults to confirmed without one', () => {
+    expect(tripIntent(trip({ status: 'Past', intent: 'planned' }))).toBe('planned');
+    expect(tripIntent(trip({ status: 'Past', intent: 'confirmed' }))).toBe('confirmed');
+    expect(tripIntent(trip({ status: 'Past' }))).toBe('confirmed');
+  });
+
+  it('lets the status decide while the trip is not Past', () => {
+    expect(tripIntent(trip({ status: 'Planning', intent: 'confirmed' }))).toBe('planned');
+    expect(tripIntent(trip({ status: 'Upcoming', intent: 'planned' }))).toBe('confirmed');
+    expect(tripIntent(trip({ status: 'Cancelled', intent: 'confirmed' }))).toBe('cancelled');
+  });
+
+  it('withIntent records the intent when the status changes', () => {
+    const planned = trip({ status: 'Planning' });
+    expect(withIntent({ ...planned, status: 'Upcoming' }, planned).intent).toBe('confirmed');
+    expect(withIntent({ ...planned, status: 'Cancelled' }, planned).intent).toBe('cancelled');
+  });
+
+  it('withIntent keeps a planned trip planned when it moves to Past, and a confirmed one confirmed', () => {
+    const planned = trip({ status: 'Planning' });
+    const past = withIntent({ ...planned, status: 'Past' }, planned);
+    expect(past.status).toBe('Past');
+    expect(past.intent).toBe('planned');
+    const confirmed = trip({ status: 'Upcoming' });
+    expect(withIntent({ ...confirmed, status: 'Past' }, confirmed).intent).toBe('confirmed');
+  });
+
+  it('withIntent leaves an already Past trip as it was, and does not change a trip needlessly', () => {
+    const was = trip({ status: 'Past', intent: 'planned' });
+    expect(withIntent(was, was)).toBe(was);
+    const same = trip({ status: 'Planning', intent: 'planned' });
+    expect(withIntent(same, same)).toBe(same);
+    expect(withIntent(trip({ status: 'Past' })).intent).toBe('confirmed');
+  });
+});
+

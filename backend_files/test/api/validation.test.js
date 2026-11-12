@@ -51,3 +51,9 @@ test('bulk and batch writes are validated too', async () => {
     assert.equal((await srv.api('GET', '/api/trips', { token: admin.token })).json.length, 0, 'nothing stored from a rejected batch');
     assert.equal((await srv.api('POST', '/api/batch', { token: admin.token, body: { upsertFlights: [{ id: 'f', departureDate: 'later' }] } })).status, 400);
 });
+
+test('a trip intent must be planned, confirmed or cancelled (F-06)', async () => {
+    const base = { id: 'intent-1', name: 'T', status: 'Past', participants: ['admin@test.dev'] };
+    assert.equal((await post('trips', { ...base, intent: 'maybe' })).status, 400);
+    assert.equal((await post('trips', { ...base, intent: 'planned' })).status, 201);
+});
