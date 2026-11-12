@@ -144,3 +144,22 @@ test('"What to sync" choices are saved per person, sanitised, and survive a prof
     assert.equal((await srv.api('GET', '/api/calendar/prefs', { token: admin.token })).json.options.activities, true);
     assert.equal((await srv.api('GET', '/api/calendar/prefs')).status, 401);
 });
+
+test('a warmed calendar token is invalid immediately after rotation', async () => {
+    await addTrip({ id: 'warm', name: 'Private trip' });
+    const token = (await srv.api('GET', '/api/calendar/token', { token: admin.token })).json.token;
+    const path = `/api/calendar/${token}/feed.ics`;
+    const warm = await srv.api('GET', path);
+    assert.equal(warm.status, 200);
+    await srv.api('POST', '/api/calendar/token/rotate', { token: admin.token });
+    assert.equal((await srv.api('GET', path)).status, 404);
+    assert.equal((await srv.api('GET', path, { headers: { 'If-None-Match': warm.headers.get('etag') } })).status, 404);
+});
+
+test('a warmed feed cannot survive removal of its account', async () => {
+    const token = (await srv.api('GET', '/api/calendar/token', { token: admin.token })).json.token;
+    const path = `/api/calendar/${token}/feed.ics`;
+    assert.equal((await srv.api('GET', path)).status, 200);
+    await srv.pool.query('DELETE FROM users WHERE id = $1', [admin.user.id]);
+    assert.equal((await srv.api('GET', path)).status, 404);
+});

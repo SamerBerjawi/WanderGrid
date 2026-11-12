@@ -28,3 +28,15 @@ Where each finding of the principal-architect audit stands. "Done" means merged 
 | F-16 | Expired session was silent | Done: "Your session ended" and the route is kept; demo hidden on a populated workspace |
 | F-17 | Read paths that won't scale | Done for what is cheap: the calendar-feed token lookup now has an index. Left on purpose: policy filtering of trips and existence checks run in memory, which is fine for a household and would only matter past thousands of trips |
 | F-18 | Who may edit shared trips | Done: `createdBy`; only the creator or an Admin changes who is on a trip or its privacy. Trips saved before this have no creator, so their participants stay co-owners |
+
+## Ported from `codex/fix-production-privacy-routing`
+
+That branch (a second audit's first patch) could not merge after the server split, so its fixes are brought over one
+piece at a time, each with its tests.
+
+- Calendar feed: the token is checked on every request, so a rotated token or a removed account stops working at
+  once, even with a warm cache. Done.
+- Public share links: deleting, wiping, recreating or restoring a trip revokes any link to that trip id. Done.
+- Upstream deadlines, route cache key, ferry recovery: see the following changes.
+- Not ported: turning the API demo off entirely. D-01 keeps the demo for an empty workspace only.
+

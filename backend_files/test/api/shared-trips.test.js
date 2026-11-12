@@ -79,3 +79,44 @@ test('unknown, malformed and deleted-trip tokens all answer 404, and the respons
     await srv.api('DELETE', '/api/trips/trip-1', { token: partner.token });
     assert.equal((await srv.api('GET', `/api/public/trips/${token}`)).status, 404);
 });
+
+test('deleted and recreated trip identities never reactivate old links', async () => {
+    const token = (await srv.api('POST', '/api/trips/trip-1/share', { token: partner.token })).json.token;
+    assert.equal((await srv.api('DELETE', '/api/trips/trip-1', { token: partner.token })).status, 200);
+    assert.equal((await srv.api('GET', `/api/public/trips/${token}`)).status, 404);
+    assert.equal((await srv.api('POST', '/api/trips', { token: partner.token, body: trip })).status, 201);
+    assert.equal((await srv.api('GET', `/api/public/trips/${token}`)).status, 404);
+});
+
+test('batch deletion and merge restore revoke affected links', async () => {
+    let token = (await srv.api('POST', '/api/trips/trip-1/share', { token: partner.token })).json.token;
+    assert.equal((await srv.api('POST', '/api/batch', { token: partner.token, body: { deleteTrips: ['trip-1'] } })).status, 200);
+    await srv.api('POST', '/api/trips', { token: partner.token, body: trip });
+    assert.equal((await srv.api('GET', `/api/public/trips/${token}`)).status, 404);
+    token = (await srv.api('POST', '/api/trips/trip-1/share', { token: partner.token })).json.token;
+    assert.equal((await srv.restore(admin.token, { trips: [trip], restoreOptions: { mode: 'merge' } })).json.status, 'Completed');
+    assert.equal((await srv.api('GET', `/api/public/trips/${token}`)).status, 404);
+});
+
+test('new trip creation removes orphan tokens left by older releases', async () => {
+    const token = 'x'.repeat(32);
+    await srv.pool.query('INSERT INTO trip_shares (token, trip_id) VALUES ($1, $2)', [token, 'orphan']);
+    assert.equal((await srv.api('PUT', '/api/trips/orphan', { token: partner.token, body: { name: 'New private identity' } })).status, 200);
+    assert.equal((await srv.api('GET', `/api/public/trips/${token}`)).status, 404);
+});
+
+test('wipe removes capabilities as well as their trips', async () => {
+    const token = (await srv.api('POST', '/api/trips/trip-1/share', { token: partner.token })).json.token;
+    assert.equal((await srv.api('POST', '/api/wipe', { token: admin.token })).status, 200);
+    assert.equal((await srv.pool.query('SELECT token FROM trip_shares')).rows.length, 0);
+    assert.equal((await srv.api('GET', `/api/public/trips/${token}`)).status, 404);
+});
+
+test('a restore that excludes trips does not revoke an untouched trip link', async () => {
+    const token = (await srv.api('POST', '/api/trips/trip-1/share', { token: partner.token })).json.token;
+    const r = await srv.restore(admin.token, { trips: [trip], restoreOptions: {
+        mode: 'merge', selectedCategories: { flights: false, roadTrips: false, users: false, settings: false, calendar: false, visited: false },
+    } });
+    assert.equal(r.json.status, 'Completed');
+    assert.equal((await srv.api('GET', `/api/public/trips/${token}`)).status, 200);
+});

@@ -832,12 +832,13 @@ app.get('/api/calendar/:token/feed.ics', async (req, res) => {
         const proto = String(req.get('x-forwarded-proto') || req.protocol).split(',')[0].trim();
         const baseUrl = (process.env.PUBLIC_URL || `${proto}://${req.get('host') || 'localhost'}`).replace(/\/+$/, '');
         const key = `${token}|${feedOptionsToQuery(options)}|${baseUrl}`;
+        // The token is checked on every request, cached or not, so a rotated token or a removed account stops
+        // working at once instead of when the cache entry expires.
+        const { rows: userRows } = await pool.query(`SELECT data FROM users WHERE data->>'calendarToken' = $1 LIMIT 1`, [token]);
+        if (userRows.length === 0) return res.status(404).send('Not found');
+        const user = userRows[0].data;
         let entry = feedCache.get(key);
         if (!entry || entry.expires < Date.now()) {
-            const { rows: userRows } = await pool.query(`SELECT data FROM users WHERE data->>'calendarToken' = $1 LIMIT 1`, [token]);
-            if (userRows.length === 0) return res.status(404).send('Not found');
-            const user = userRows[0].data;
-
             const { rows } = await pool.query(`SELECT data FROM trips`);
             const trips = rows.map(r => r.data).filter(t => t && Array.isArray(t.participants) && t.participants.includes(user.id));
 
