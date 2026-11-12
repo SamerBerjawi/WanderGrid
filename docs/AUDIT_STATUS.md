@@ -48,8 +48,8 @@ Flights, road and rail routes were checked live on the Map and work. The check f
 sea legs always drew the plain curve, because `searoute-js` throws on the unit `'km'`. Fixed in #104 (`'kilometers'`,
 cache tag bumped so old curves are traced again, unit tests added). Ferry lines from Overpass (Dover to Calais) were
 seen live. Not seen: a shipping lane drawn in a real production build in the browser (checked through a
-production-style bundle in Node instead). The Vite dev server still fails on `searoute-js` ("Queue is not a
-constructor", a `tinyqueue` bundling problem); it is dev-only and not fixed.
+production-style bundle in Node instead). The Vite dev server also failed on `searoute-js` ("Queue is not a constructor", a `tinyqueue` bundling problem); fixed in the
+Vite config, and the lane through Messina is now seen in the dev browser too (22 points).
 
 ## What is left
 
