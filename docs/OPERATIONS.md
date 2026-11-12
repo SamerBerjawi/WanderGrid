@@ -3,6 +3,8 @@
 How to back up, restore, upgrade and roll back a WanderGrid install, written for the Docker Compose setup in this
 repository. Commands run in the folder that holds `docker-compose.yml` and `.env`.
 
+Before the first deploy of a new version, walk through [SMOKE_TEST.md](SMOKE_TEST.md).
+
 ## What holds your data
 
 - **PostgreSQL**, in the named volume `postgres_data`. This is the only thing that must survive. (`POSTGRES_DATA_DIR`
