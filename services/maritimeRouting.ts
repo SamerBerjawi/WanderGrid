@@ -106,8 +106,10 @@ export async function fetchSeaRoute(
     legPoints.push([endLng, endLat]);
 
     // A mapped ferry line is the real thing; without one, the shipping lane or an arc below.
+    let cacheable = true;
     if (useFerryLines) {
         const line = await fetchFerryLine(legPoints, useFerryLines === 'quick' ? 3 : 24);
+        if (line.status === 'error') cacheable = false;
         if (line.status === 'ok') { seaRouteCache.set(cacheKey, line.points); return line.points; }
         if (line.status === 'pending' && useFerryLines === 'quick') throw new Error('The ferry line is still being looked up');
     }
@@ -162,7 +164,7 @@ export async function fetchSeaRoute(
     }
 
     if (fullRoute.length > 2) {
-        seaRouteCache.set(cacheKey, fullRoute);
+        if (cacheable) seaRouteCache.set(cacheKey, fullRoute);
         return fullRoute;
     }
 
