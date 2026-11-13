@@ -9,11 +9,16 @@
  */
 const path = require('path');
 const Module = require('module');
-const { newDb } = require('pg-mem');
+const { newDb } = require('pg-mem');  // only used when TEST_DATABASE_URL is not set
+
+// TEST_DATABASE_URL runs the same tests against a real PostgreSQL (CI does, with a postgres:15 service). Each test
+// process gets its own schema, so files running in parallel never see each other's rows.
+const REAL_URL = process.env.TEST_DATABASE_URL || '';
+const DATA_TABLES = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited', 'settings', 'trip_shares', 'cached_routes', 'geocoding_cache'];
 
 function installHooks() {
-    const db = newDb({ autoCreateForeignKeyIndices: true });
-    const { Pool: MemPool } = db.adapters.createPg();
+    const db = REAL_URL ? null : newDb({ autoCreateForeignKeyIndices: true });
+    const { Pool: MemPool } = db ? db.adapters.createPg() : { Pool: null };
     // pg-mem cannot parse some CHECK constraints used by initDb(); they don't affect behaviour.
     const stripChecks = (t) => (typeof t === 'string' ? t.replace(/CHECK \((?:[^()]|\([^()]*\))*\)/g, '') : t);
     const patchQuery = (target) => {
@@ -36,13 +41,13 @@ function installHooks() {
             return q(text, params, cb);
         };
     };
-    class Pool extends MemPool {
+    class Pool extends (MemPool || Object) {
         constructor(...args) { super(...args); patchQuery(this); }
         async connect(...args) { const c = await super.connect(...args); patchQuery(c); patchTransactions(c); return c; }
     }
     const realLoad = Module._load;
     Module._load = function (request, parent, isMain) {
-        if (request === 'pg') return { Pool };
+        if (request === 'pg' && !REAL_URL) return { Pool };
         if (request === 'express-rate-limit') {
             const real = realLoad.call(this, request, parent, isMain);
             const fn = real.rateLimit || real.default || real;
@@ -68,14 +73,27 @@ function installHooks() {
 async function startTestServer({ port = 0 } = {}) {
     process.env.NODE_ENV = 'production';
     process.env.JWT_SECRET = process.env.JWT_SECRET || 'api_test_secret_not_for_production';
-    process.env.DATABASE_URL = 'postgres://test@memory/test';
+    let schema = null;
+    if (REAL_URL) {
+        schema = `t_${process.pid}_${Date.now()}`;
+        const { Client } = require('pg');
+        const boot = new Client({ connectionString: REAL_URL });
+        await boot.connect();
+        await boot.query(`CREATE SCHEMA ${schema}`);
+        await boot.end();
+        const url = new URL(REAL_URL);
+        url.searchParams.set('options', `-c search_path=${schema}`);
+        process.env.DATABASE_URL = url.toString();
+    } else {
+        process.env.DATABASE_URL = 'postgres://test@memory/test';
+    }
     // Most suites add a second member by self-registering; the default-closed behaviour is tested in registration.test.js.
     if (process.env.ALLOW_SIGNUP === undefined) process.env.ALLOW_SIGNUP = 'true';
     const db = installHooks();
     if (!process.env.TEST_VERBOSE) { console.log = () => {}; console.warn = () => {}; console.error = () => {}; }
     const mod = require(path.resolve(__dirname, '../../server.js'));
     await mod.ready;
-    const snapshot = db.backup();
+    const snapshot = db ? db.backup() : null;
     const server = mod.start(port);
     await new Promise((r) => server.listening ? r() : server.once('listening', r));
     const base = `http://127.0.0.1:${server.address().port}`;
@@ -114,10 +132,14 @@ async function startTestServer({ port = 0 } = {}) {
         db,
         base,
         api,
-        reset: async () => { snapshot.restore(); },
+        reset: async () => {
+            if (snapshot) { snapshot.restore(); return; }
+            await mod.pool.query(`TRUNCATE ${DATA_TABLES.join(', ')}`);
+        },
         close: async () => {
             mod.stopBackgroundTasks();
             await new Promise((r) => { server.close(() => r()); server.closeAllConnections?.(); });
+            if (schema) await mod.pool.query(`DROP SCHEMA ${schema} CASCADE`).catch(() => {});
             await mod.pool.end().catch(() => {});
         },
     };
