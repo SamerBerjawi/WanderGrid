@@ -14,6 +14,12 @@ export interface SeaRouteResult {
 // In-memory RAM cache for calculated sea routes
 const seaRouteCache = new Map<string, [number, number, number][]>();
 
+function greatCircleKm(a: [number, number], b: [number, number]): number {
+    const r = (d: number) => (d * Math.PI) / 180;
+    const h = Math.sin(r(b[1] - a[1]) / 2) ** 2 + Math.cos(r(a[1])) * Math.cos(r(b[1])) * Math.sin(r(b[0] - a[0]) / 2) ** 2;
+    return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+
 /**
  * Executes searoute calculation silently without polluting console logs.
  */
@@ -22,7 +28,18 @@ function runSearouteSilently(origin: [number, number], destination: [number, num
     try {
         console.log = () => {};
         // 'km' is not a unit searoute-js knows: it throws, and every sea leg then fell back to the curve below.
-        return searoute(origin, destination, 'kilometers');
+        const feature = searoute(origin, destination, 'kilometers');
+        // searoute-js joins each port to the nearest vertex of its network, however far away. Where the network is
+        // sparse (the Gulf of Finland has no vertex within 98 km of Tallinn) that vertex lies on another coast, and the
+        // path runs out to it and back. A lane that ends a fifth of the trip (and over 25 km) away from a port does
+        // not serve that port: use the arc instead.
+        const coords: [number, number][] | undefined = feature?.geometry?.coordinates;
+        if (coords?.length) {
+            const direct = greatCircleKm(origin, destination);
+            const tolerance = Math.max(25, direct * 0.2);
+            if (greatCircleKm(origin, coords[0]) > tolerance || greatCircleKm(destination, coords[coords.length - 1]) > tolerance) return null;
+        }
+        return feature;
     } catch {
         return null;
     } finally {
