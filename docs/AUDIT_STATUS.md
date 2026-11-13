@@ -1,7 +1,7 @@
 # Audit status (November 2026)
 
-**Health score: 7.7 / 10, up from 6.4.** Security 4 → 7.5, Data integrity 7 → 8, Reliability 7.5 → 8, Performance 6 → 7,
-UX 7.5 → 8, Testing 6.5 → 7.5, Operations 5.5 → 7, DX 7 → 8, AX 5 → 8. These are judgements, not measurements. The backend tests now also run on a real PostgreSQL 15 in CI (all 252 pass); nothing
+**Health score: 7.8 / 10, up from 6.4.** Security 4 → 7.5, Data integrity 7 → 8, Reliability 7.5 → 8, Performance 6 → 7.5,
+UX 7.5 → 8, Testing 6.5 → 8.5, Operations 5.5 → 7, DX 7 → 8, AX 5 → 8. These are judgements, not measurements. The backend tests now also run on a real PostgreSQL 15 in CI (all 252 pass); nothing
 has run in Docker or against live upstreams; [SMOKE_TEST.md](SMOKE_TEST.md) is the list that closes that gap (about 8.5
 once it passes). The full e2e suite now runs on every pull request, release tag and manual run.
 
