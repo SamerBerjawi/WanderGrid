@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tripIntent, withIntent, tripPhase, isPastTrip, bucketOf, isTravelling } from '../../utils/tripsModel';
+import { tripIntent, withIntent, tripPhase, isPastTrip, bucketOf, isTravelling, intentNote } from '../../utils/tripsModel';
 import type { Trip } from '../../types';
 
 const today = '2026-06-15';
@@ -75,3 +75,20 @@ describe('stored trip intent (audit F-06)', () => {
   });
 });
 
+describe('intentNote', () => {
+  const past = { startDate: '2026-06-01', endDate: '2026-06-10' };
+  it('says Cancelled for a cancelled trip', () => {
+    expect(intentNote(trip({ status: 'Cancelled' }), today)).toBe('Cancelled');
+  });
+  it('says Never confirmed for a past trip that was only planned', () => {
+    expect(intentNote(trip({ status: 'Past', intent: 'planned', ...past }), today)).toBe('Never confirmed');
+    // A planned trip whose dates went by is past too.
+    expect(intentNote(trip({ status: 'Planning', ...past }), today)).toBe('Never confirmed');
+  });
+  it('says nothing when the column already tells it', () => {
+    expect(intentNote(trip({ status: 'Past', intent: 'confirmed', ...past }), today)).toBeNull();
+    expect(intentNote(trip({ status: 'Past', ...past }), today)).toBeNull();
+    expect(intentNote(trip({ status: 'Planning', startDate: '2026-07-01', endDate: '2026-07-10' }), today)).toBeNull();
+    expect(intentNote(trip({ status: 'Upcoming', startDate: '2026-07-01', endDate: '2026-07-10' }), today)).toBeNull();
+  });
+});

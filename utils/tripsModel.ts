@@ -51,6 +51,16 @@ export const tripIntent = (trip: Trip): TripIntent => {
 };
 
 /**
+ * The note a trip carries about what was decided, for the places that show a trip: "Cancelled", or "Never confirmed"
+ * on a Past trip that was only ever planned. Null otherwise, since the column already says planned or confirmed.
+ */
+export const intentNote = (trip: Trip, today: string): 'Cancelled' | 'Never confirmed' | null => {
+    const intent = tripIntent(trip);
+    if (intent === 'cancelled') return 'Cancelled';
+    return intent === 'planned' && isPastTrip(trip, today) ? 'Never confirmed' : null;
+};
+
+/**
  * The trip with `intent` set to match its status. Moving a trip to Past keeps what it was before, which `status`
  * alone would lose. Every place that changes a trip's status passes the result through this.
  */
