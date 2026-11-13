@@ -5,7 +5,7 @@ import { useDraggable } from '@dnd-kit/core';
 import type { Trip, User } from '../../../types';
 import { formatDateRange } from '../../../utils/formatters';
 import { useLeavePlannerContext } from '../../../hooks/useLeavePlanner';
-import { bucketOf, destinationLabel, isTravelling, timingOf, tripDays, tripNeeds, type TripBucket } from '../../../utils/tripsModel';
+import { bucketOf, destinationLabel, intentNote, isTravelling, timingOf, tripDays, tripNeeds, type TripBucket } from '../../../utils/tripsModel';
 import {
     Airplane, Archive, ArrowCounterClockwise, ArrowUpRight, Bed, CalendarBlank, CalendarCheck, CheckCircle, Clock, Copy, DownloadSimple, PencilSimple, Suitcase, Trash, XCircle, type Icon,
 } from '../../ui/hugeicons';
@@ -132,6 +132,7 @@ export const TripCardBody: React.FC<CardProps> = ({ trip, users, today, actions,
     const timing = timingOf(trip, today);
     const days = tripDays(trip);
     const needs = tripNeeds(trip, today);
+    const note = intentNote(trip, today);
     const flights = (trip.transports || []).length;
     const stays = (trip.accommodations || []).length;
     const members = useMemo(() => (trip.participants || []).map(id => users.find(u => u.id === id)).filter((u): u is User => Boolean(u)), [trip.participants, users]);
@@ -200,6 +201,7 @@ export const TripCardBody: React.FC<CardProps> = ({ trip, users, today, actions,
 
             <div className="flex flex-wrap items-center gap-1.5">
                 {now ? <span className="inline-flex min-h-6 items-center rounded-full bg-rp-mustard px-2 text-2xs font-semibold text-rp-on-mustard">Travelling now</span> : null}
+                {note ? <span className={chip}>{note}</span> : null}
                 {days > 0 ? <span className={chip}><CalendarBlank size={12} aria-hidden /> {days} {days === 1 ? 'day' : 'days'}</span> : null}
                 {flights > 0 ? <span className={chip}><Airplane size={12} aria-hidden /> {flights}</span> : null}
                 {stays > 0 ? <span className={chip}><Bed size={12} aria-hidden /> {stays}</span> : null}

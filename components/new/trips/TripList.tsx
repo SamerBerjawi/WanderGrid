@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import NumberFlow from '@number-flow/react';
 import type { Trip, User } from '../../../types';
 import { formatCurrency, formatDateRange } from '../../../utils/formatters';
-import { bucketOf, destinationLabel, isTravelling, timingOf, tripCost, tripDays, tripNeeds, type TripBucket } from '../../../utils/tripsModel';
+import { bucketOf, destinationLabel, intentNote, isTravelling, timingOf, tripCost, tripDays, tripNeeds, type TripBucket } from '../../../utils/tripsModel';
 import { Airplane, ArrowUpRight, Bed } from '../../ui/hugeicons';
 import { RpIconButton } from '../ui';
 import { CappedTrips } from './CappedTrips';
@@ -36,6 +36,7 @@ const Row: React.FC<{ trip: Trip; users: User[]; today: string; actions: TripAct
     const flights = (trip.transports || []).length;
     const stays = (trip.accommodations || []).length;
     const needs = tripNeeds(trip, today);
+    const note = intentNote(trip, today);
     const members = useMemo(() => (trip.participants || []).map(id => users.find(u => u.id === id)).filter((u): u is User => Boolean(u)), [trip.participants, users]);
     const dates = trip.startDate ? formatDateRange(trip.startDate, trip.endDate || trip.startDate) : '';
     const muted = now ? 'text-rp-on-ink/70' : 'text-rp-muted';
@@ -60,7 +61,7 @@ const Row: React.FC<{ trip: Trip; users: User[]; today: string; actions: TripAct
             <span className={cn('rp-tabular hidden truncate text-xs lg:block', muted)}>{dates}</span>
             <span className={cn('rp-tabular hidden text-right text-xs lg:block', muted)}>{dayText}</span>
             <span className="rp-tabular hidden text-right text-xs font-medium lg:block">
-                {isCancelled ? 'Cancelled' : timing.state === 'past' ? '' : timing.value !== null ? `${timing.value} ${timing.unit}` : timing.unit}
+                {isCancelled ? 'Cancelled' : note ? note : timing.state === 'past' ? '' : timing.value !== null ? `${timing.value} ${timing.unit}` : timing.unit}
             </span>
 
             <span className="hidden items-center gap-2 pl-2 lg:flex">
