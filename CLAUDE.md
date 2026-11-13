@@ -33,6 +33,7 @@ npm run preview                  # serve dist/
 
 cd backend_files && npm install
 npm test                         # unit tests + API integration tests (test/api/, real server.js on in-memory pg-mem)
+TEST_DATABASE_URL=postgres://user:pw@localhost:5432/db npm test   # the same tests on a real PostgreSQL (one schema per test process); CI does this with postgres:15
 PORT=3001 DATABASE_URL=postgres://wandergrid:wandergrid_password@localhost:5432/wandergrid node server.js
 docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT_SECRET in .env (copy .env.example)
 ```
@@ -82,7 +83,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 - A 401 or 403 from the API dispatches `wandergrid-unauthorized` / `wandergrid:unauthorized` window events. `role` is carried in the token.
 - Rate limits: a general limiter on `/api`, a stricter one on login, register, demo and reset-password only, and a per-account backoff after 10 wrong passwords. Set `TRUST_PROXY=1` behind Cloudflare Tunnel or any reverse proxy, or every visitor shares one address. Public sign-up is closed once the first admin exists (`ALLOW_SIGNUP=true` or the Settings switch opens it).
 
-**External services.** All of them go through backend proxies under `/api/proxy/*` with timeouts. `vite.config.ts` runs the backend's `routeProxy.js` handlers as dev middleware for road and rail, and keeps a small copy of the integrations-test proxy.
+**External services.** All of them go through backend proxies under `/api/proxy/*` with timeouts. `vite.config.ts` runs the backend's `routeProxy.js` handlers as dev middleware for road and rail,.
 
 - Geocoding: Open-Meteo, then Photon, then Nominatim (`geocodingChain.js`). Results are cached in the `geocoding_cache` table, the timeout is 3s, and the fallback on failure is `[]`.
 - Routing: FOSSGIS OSRM, then project-osrm, then Valhalla for road. OpenRailRouting for rail (tries the `all_tracks`, `non_tgv`, `tgv_all`, `all_tracks_1435` profiles in turn). `searoute-js` for maritime. Road and rail legs are resolved by `backend_files/routeStore.js` behind `POST /api/proxy/routes/resolve` (batched, requires the session token) and persisted in `cached_routes`, including definitive "no route" answers; the client (`services/multiModalRouting.ts`) polls only for pending legs.
