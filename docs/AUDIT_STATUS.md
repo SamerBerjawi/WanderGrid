@@ -1,8 +1,8 @@
 # Audit status (November 2026)
 
 **Health score: 7.7 / 10, up from 6.4.** Security 4 → 7.5, Data integrity 7 → 8, Reliability 7.5 → 8, Performance 6 → 7,
-UX 7.5 → 8, Testing 6.5 → 7.5, Operations 5.5 → 7, DX 7 → 8, AX 5 → 8. These are judgements, not measurements. Nothing
-has run on a real PostgreSQL or in Docker; [SMOKE_TEST.md](SMOKE_TEST.md) is the list that closes that gap (about 8.5
+UX 7.5 → 8, Testing 6.5 → 7.5, Operations 5.5 → 7, DX 7 → 8, AX 5 → 8. These are judgements, not measurements. The backend tests now also run on a real PostgreSQL 15 in CI (all 252 pass); nothing
+has run in Docker or against live upstreams; [SMOKE_TEST.md](SMOKE_TEST.md) is the list that closes that gap (about 8.5
 once it passes). The full e2e suite now runs on every pull request, release tag and manual run.
 
 Where each finding of the principal-architect audit stands. "Done" means merged or in an open PR with tests; see
@@ -26,7 +26,7 @@ Where each finding of the principal-architect audit stands. "Done" means merged 
 | F-14 | Dependency advisories | Done for the shipped app: `npm audit --omit=dev` reports 0. deck.gl and luma.gl are on 9.4 (one version line, pinned in `package.json`), vitest is on 5, and `fflate` and `image-size` are overridden to patched versions (the 3D-tiles/glTF loaders that use them are never called). 6 low/moderate advisories remain in the PWA build tooling (workbox), which only runs at build time. CI fails on critical only |
 | F-15 | Smaller hardening | Done: unknown-email timing, container runs as `node`; a member can no longer change their own yearly allowance or balances (an admin sets them; days taken stay editable); sign-up answers an existing email with the same 400 as any bad sign-up; production start-up warns when the default database password is still in `DATABASE_URL`. Not changed on purpose: the default password itself stays (the database is not published, and requiring a new one would break existing installs; see `OPERATIONS.md`) |
 | F-16 | Expired session was silent | Done: "Your session ended" and the route is kept; demo hidden on a populated workspace |
-| F-17 | Read paths that won't scale | Done: the calendar-feed token lookup has an index, and `limit`/`offset` on trips, flights and visited now apply after the read policy (before, a member got short or shifted pages). Left on purpose: the policy itself still runs in memory over the table, fine for a household and only a concern past thousands of trips |
+| F-17 | Read paths that won't scale | Done: the calendar-feed token lookup has an index; `limit`/`offset` on trips, flights and visited apply after the read policy; and a member's trip list is now narrowed in the database (public trips and a case-folded match on their id or email in the participants) before the exact policy runs, so a member's request no longer reads every trip into memory. The SQL is a superset on purpose, so the exact check still decides and pagination stays correct. Left on purpose: the match is a text scan, not an index (fine for a household, worth an index only past many thousands of trips) |
 | F-18 | Who may edit shared trips | Done: `createdBy`; only the creator or an Admin changes who is on a trip or its privacy. Trips saved before this have no creator, so their participants stay co-owners |
 
 ## Ported from `codex/fix-production-privacy-routing`

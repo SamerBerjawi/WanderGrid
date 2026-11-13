@@ -43,3 +43,19 @@ test('tables without a read policy are still paged in the database', async () =>
     assert.equal(r.status, 200);
     assert.ok(r.json.length <= 1);
 });
+
+// F-17: the database narrows the read to likely rows; the exact policy still decides what a member gets.
+test('a member sees their trips however the participant is written, and no look-alikes', async () => {
+    const put = (id, participants, privacy = 'Private') => srv.api('POST', '/api/trips', { token: admin.token, body: { id, name: id, status: 'Upcoming', privacy, startDate: '2027-05-01', endDate: '2027-05-02', participants } });
+    for (const r of [
+        await put('x-upper', ['MIA@Test.Dev']),
+        await put('x-space', ['  mia@test.dev ']),
+        await put('x-id', [member.user?.id || member.id]),
+        await put('x-public', ['admin@test.dev'], 'Public'),
+        await put('x-other', ['amelia@test.dev.example']),   // contains the address, is not the address
+        await put('x-none', []),
+    ]) assert.equal(r.status, 201);
+    const mine = ids(await srv.api('GET', '/api/trips?sort=asc', { token: member.token }));
+    for (const id of ['x-upper', 'x-space', 'x-id', 'x-public']) assert.ok(mine.includes(id), `${id} should be visible`);
+    for (const id of ['x-other', 'x-none', 'a1', 'a2']) assert.ok(!mine.includes(id), `${id} must stay hidden`);
+});

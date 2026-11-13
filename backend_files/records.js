@@ -236,6 +236,18 @@ module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_
         }
       }
 
+      // Narrow what is read to what the caller could see (audit F-17): a member's request no longer pulls every trip
+      // into memory. The SQL is deliberately a superset of canRead (a case-folded text match on the participants);
+      // the exact check below still decides, so this can only drop rows that canRead would drop as well.
+      if (table === 'trips' && req.user && !isAdminUser(req.user)) {
+        const keys = [...new Set([req.user.id, req.user.email].filter(Boolean).map(normKey))];
+        // LIKE wildcards inside an id or email are rare; then the prefilter is skipped and the exact check does all the work.
+        if (keys.length > 0 && keys.every(k => !/[%_\\]/.test(k))) {
+          const likes = keys.map(k => { params.push(`%${k}%`); return `lower(data->>'participants') LIKE $${params.length}`; });
+          conditions.push(`((data->>'privacy') = 'Public' OR ${likes.join(' OR ')})`);
+        }
+      }
+
       let query = `SELECT data FROM ${table}`;
       if (conditions.length > 0) {
         query += ` WHERE ${conditions.join(' AND ')}`;
