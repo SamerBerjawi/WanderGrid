@@ -29,11 +29,16 @@ function runSearouteSilently(origin: [number, number], destination: [number, num
         console.log = () => {};
         // 'km' is not a unit searoute-js knows: it throws, and every sea leg then fell back to the curve below.
         const feature = searoute(origin, destination, 'kilometers');
-        // The Marnet graph has no link across some short gaps (Helsinki to Tallinn goes out past Åland and back).
-        // A short crossing that comes back several times longer than the straight line is that gap: use the arc.
-        const direct = greatCircleKm(origin, destination);
-        const length = Number(feature?.properties?.length);
-        if (direct < 300 && Number.isFinite(length) && length > Math.max(direct * 2, direct + 60)) return null;
+        // searoute-js joins each port to the nearest vertex of its network, however far away. Where the network is
+        // sparse (the Gulf of Finland has no vertex within 98 km of Tallinn) that vertex lies on another coast, and the
+        // path runs out to it and back. A lane that ends a fifth of the trip (and over 25 km) away from a port does
+        // not serve that port: use the arc instead.
+        const coords: [number, number][] | undefined = feature?.geometry?.coordinates;
+        if (coords?.length) {
+            const direct = greatCircleKm(origin, destination);
+            const tolerance = Math.max(25, direct * 0.2);
+            if (greatCircleKm(origin, coords[0]) > tolerance || greatCircleKm(destination, coords[coords.length - 1]) > tolerance) return null;
+        }
         return feature;
     } catch {
         return null;

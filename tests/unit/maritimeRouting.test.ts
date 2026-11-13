@@ -20,7 +20,7 @@ describe('sea routes without a ferry line', () => {
 
   it('does not send Helsinki to Tallinn out past Åland and back', async () => {
     const route = (await fetchSeaRoute(60.1699, 24.9684, 59.437, 24.7536))!;
-    // The Marnet graph has no link across the gulf; the route must stay in it (east of 23.5 E).
+    // The network has no vertex near Tallinn; the route must stay in it (east of 23.5 E).
     expect(route.every(([lng]) => lng > 23.5)).toBe(true);
   });
 });
