@@ -106,7 +106,7 @@ jobs:
           TEST_DATABASE_URL: postgres://wandergrid:ci_only_password@localhost:5432/wandergrid_test
         run: |
           npm ci --no-audit --no-fund
-          TEST_VERBOSE=1 node --test --test-timeout=20000 test/api/batch.test.js || true
+          TEST_VERBOSE=1 node --test --test-timeout=20000 test/api/zdebug.test.js 2>&1 | grep -E "DBG|ok 2|not ok" || true
           npm test
 
   # Full browser suite (52 tests, about a minute locally; a few minutes here with the build and installs). It runs on
