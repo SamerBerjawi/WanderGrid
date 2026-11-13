@@ -135,7 +135,22 @@ async function startTestServer({ port = 0 } = {}) {
         api,
         reset: async () => {
             if (snapshot) { snapshot.restore(); return; }
-            await mod.pool.query(`TRUNCATE ${DATA_TABLES.join(', ')}`);
+            const c = await mod.pool.connect();
+            try {
+                await c.query('BEGIN');
+                await c.query("SET LOCAL lock_timeout = '8s'");
+                await c.query(`TRUNCATE ${DATA_TABLES.join(', ')}`);
+                await c.query('COMMIT');
+            } catch (err) {
+                await c.query('ROLLBACK').catch(() => {});
+                const { Client } = require('pg');
+                const admin = new Client({ connectionString: REAL_URL });
+                await admin.connect();
+                const act = await admin.query('SELECT pid, state, wait_event_type, left(query, 100) AS query FROM pg_stat_activity WHERE application_name = $1 AND pid <> pg_backend_pid()', [schema]);
+                await admin.end();
+                process.stderr.write(`test: reset failed (${err.message}); connections: ${JSON.stringify(act.rows)}\n`);
+                throw err;
+            } finally { c.release(); }
         },
         close: async () => {
             mod.stopBackgroundTasks();
