@@ -71,6 +71,43 @@ jobs:
           npm audit --audit-level=high --omit=dev
           npm test
 
+  # The same backend tests, against a real PostgreSQL 15 instead of the in-memory one (each test process gets its own
+  # schema; see backend_files/test/helpers/testServer.js). Catches what pg-mem cannot: real JSONB functions, the CHECK
+  # constraints, transactions and rollbacks.
+  backend-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: wandergrid
+          POSTGRES_PASSWORD: ci_only_password
+          POSTGRES_DB: wandergrid_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wandergrid -d wandergrid_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      - name: Backend tests on PostgreSQL
+        working-directory: backend_files
+        env:
+          TEST_DATABASE_URL: postgres://wandergrid:ci_only_password@localhost:5432/wandergrid_test
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+
   # Full browser suite (52 tests, about a minute locally; a few minutes here with the build and installs). It runs on
   # pull requests, version tags and manual runs (Actions tab -> "Build and Push Docker Image" -> Run workflow), not on
   # every push to main, which the pull request already covered (audit F-10).
