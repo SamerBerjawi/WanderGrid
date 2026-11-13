@@ -83,6 +83,7 @@ async function startTestServer({ port = 0 } = {}) {
         await boot.end();
         const url = new URL(REAL_URL);
         url.searchParams.set('options', `-c search_path=${schema}`);
+        url.searchParams.set('application_name', schema);
         process.env.DATABASE_URL = url.toString();
     } else {
         process.env.DATABASE_URL = 'postgres://test@memory/test';
@@ -139,7 +140,19 @@ async function startTestServer({ port = 0 } = {}) {
         close: async () => {
             mod.stopBackgroundTasks();
             await new Promise((r) => { server.close(() => r()); server.closeAllConnections?.(); });
-            if (schema) await mod.pool.query(`DROP SCHEMA ${schema} CASCADE`).catch(() => {});
+            if (schema) {
+                // A connection a test left busy (or in a transaction) must not hang the cleanup: report it, end it, drop the schema.
+                const { Client } = require('pg');
+                const admin = new Client({ connectionString: REAL_URL });
+                await admin.connect();
+                const { rows } = await admin.query('SELECT pid, state, left(query, 80) AS query FROM pg_stat_activity WHERE application_name = $1 AND pid <> pg_backend_pid() AND state <> $2', [schema, 'idle']);
+                if (rows.length) process.stderr.write(`test: ${rows.length} connection(s) not idle at close: ${JSON.stringify(rows)}\n`);
+                await admin.query('SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE application_name = $1 AND pid <> pg_backend_pid()', [schema]);
+                await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+                await admin.end();
+                await Promise.race([mod.pool.end().catch(() => {}), new Promise((r) => setTimeout(r, 3000))]);
+                return;
+            }
             await mod.pool.end().catch(() => {});
         },
     };
