@@ -26,6 +26,7 @@ test('a failure part-way rolls back every change (no lost flights)', async () =>
     for (const id of ['f1', 'f2']) await srv.api('POST', '/api/flights', { token: admin.token, body: { id, origin: 'A', destination: 'B' } });
         const realConnect = srv.pool.connect.bind(srv.pool);
     srv.pool.connect = async (...args) => {
+        if (typeof args[0] === 'function') return realConnect(...args); // pg's own pool.query() connects with a callback
         const client = await realConnect(...args);
         const q = client.query.bind(client);
         // Fail on the second flight deletion: the trip upsert and first deletion already ran.

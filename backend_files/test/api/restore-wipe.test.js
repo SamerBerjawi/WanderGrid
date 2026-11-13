@@ -14,7 +14,8 @@ beforeEach(async () => {
 const withDatabaseDown = async (fn) => {
     const realConnect = srv.pool.connect.bind(srv.pool);
     const realQuery = srv.pool.query.bind(srv.pool);
-    srv.pool.connect = () => Promise.reject(new Error('connect ECONNREFUSED 127.0.0.1:5432'));
+    // pg's own pool.query() calls connect(callback) internally; only the promise form (the server's transactions) is cut.
+    srv.pool.connect = (...args) => (typeof args[0] === 'function' ? realConnect(...args) : Promise.reject(new Error('connect ECONNREFUSED 127.0.0.1:5432')));
     // Session checks stay up so the request reaches the handler under test.
     srv.pool.query = (text, params) => (/FROM users WHERE id/.test(text) ? realQuery(text, params) : Promise.reject(new Error('connect ECONNREFUSED')));
     try { return await fn(); } finally { srv.pool.connect = realConnect; srv.pool.query = realQuery; }
