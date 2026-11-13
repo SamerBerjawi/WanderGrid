@@ -30,7 +30,8 @@ test('a failure part-way rolls back every change (no lost flights)', async () =>
         const client = await realConnect(...args);
         const q = client.query.bind(client);
         // Fail on the second flight deletion: the trip upsert and first deletion already ran.
-        client.query = (text, params) => (typeof text === 'string' && text.includes('DELETE FROM flights') && params?.[0] === 'f2' ? Promise.reject(new Error('disk full')) : q(text, params));
+        // Forward every argument: a real pg pool keeps this client and later calls query(text, values, callback) on it.
+        client.query = (text, ...rest) => (typeof text === 'string' && text.includes('DELETE FROM flights') && rest[0]?.[0] === 'f2' ? Promise.reject(new Error('disk full')) : q(text, ...rest));
         return client;
     };
     try {
