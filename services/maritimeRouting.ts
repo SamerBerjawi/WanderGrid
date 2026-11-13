@@ -14,6 +14,12 @@ export interface SeaRouteResult {
 // In-memory RAM cache for calculated sea routes
 const seaRouteCache = new Map<string, [number, number, number][]>();
 
+function greatCircleKm(a: [number, number], b: [number, number]): number {
+    const r = (d: number) => (d * Math.PI) / 180;
+    const h = Math.sin(r(b[1] - a[1]) / 2) ** 2 + Math.cos(r(a[1])) * Math.cos(r(b[1])) * Math.sin(r(b[0] - a[0]) / 2) ** 2;
+    return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+
 /**
  * Executes searoute calculation silently without polluting console logs.
  */
@@ -22,7 +28,13 @@ function runSearouteSilently(origin: [number, number], destination: [number, num
     try {
         console.log = () => {};
         // 'km' is not a unit searoute-js knows: it throws, and every sea leg then fell back to the curve below.
-        return searoute(origin, destination, 'kilometers');
+        const feature = searoute(origin, destination, 'kilometers');
+        // The Marnet graph has no link across some short gaps (Helsinki to Tallinn goes out past Åland and back).
+        // A short crossing that comes back several times longer than the straight line is that gap: use the arc.
+        const direct = greatCircleKm(origin, destination);
+        const length = Number(feature?.properties?.length);
+        if (direct < 300 && Number.isFinite(length) && length > Math.max(direct * 2, direct + 60)) return null;
+        return feature;
     } catch {
         return null;
     } finally {
