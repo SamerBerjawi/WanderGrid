@@ -13,7 +13,9 @@ export interface User {
   allowance: number; // Keep for backward compatibility / aggregate view
   lieuBalance?: number; // Added for Lieu Rule
   policies?: UserPolicy[]; // New: Granular policy configuration
-  holidayConfigIds?: string[]; // Updated: Links to multiple SavedConfig.id
+  holidayConfigIds?: string[]; // Legacy: saved calendars followed one year at a time (SavedConfig.id); read when `holidayCalendars` is unset
+  /** The holiday calendars followed, every year: a country ("BE") or a region ("DE-BY"). */
+  holidayCalendars?: string[];
   holidayWeekendRule?: 'monday' | 'lieu' | 'none'; // Per-user rule for how to handle weekend holidays
   /** Track requests and approvals for this member's leave (Requested / Approved / Rejected) instead of Planned / Confirmed. */
   leaveApproval?: boolean;
@@ -363,12 +365,19 @@ export interface PublicHoliday {
   isIncluded: boolean; // Toggle to include in calculation
   isWeekend?: boolean; // Helper from API
   configId?: string; // Link to SavedConfig
+  /** Only a region's holiday (the calendar's `region`), not the whole country's. */
+  regional?: boolean;
+  /** Added by hand, not by the holiday service (kept when the calendar is refreshed). */
+  custom?: boolean;
 }
 
 export interface SavedConfig {
-    id: string; // countryCode-Year
+    id: string; // countryCode-Year, or countryCode-REGION-Year for a region (e.g. DE-BY-2026)
     countryCode: string;
     countryName: string;
+    /** An ISO 3166-2 region (e.g. "DE-BY") whose own holidays the calendar adds to the country's. */
+    region?: string;
+    regionName?: string;
     year: number;
     holidays: PublicHoliday[];
     updatedAt: string;

@@ -856,9 +856,13 @@ app.get('/api/calendar/:token/feed.ics', async (req, res) => {
                 leave = lv.map(r => r.data);
             }
             let holidayCalendars = [];
-            if (options.holidays && Array.isArray(user.holidayConfigIds) && user.holidayConfigIds.length > 0) {
+            // The calendars the person follows, every year: a country or a region (`holidayCalendars`), else the saved
+            // calendars they followed one year at a time before.
+            const keyOfId = (id) => String(id || '').replace(/-\d{4}$/, '').toUpperCase();
+            const followed = Array.isArray(user.holidayCalendars) ? user.holidayCalendars.map(k => String(k).toUpperCase()) : (Array.isArray(user.holidayConfigIds) ? user.holidayConfigIds.map(keyOfId) : []);
+            if (options.holidays && followed.length > 0) {
                 const { rows: cfg } = await pool.query(`SELECT data FROM configs`);
-                holidayCalendars = cfg.map(r => r.data).filter(c => user.holidayConfigIds.includes(c.id));
+                holidayCalendars = cfg.map(r => r.data).filter(c => c && followed.includes(String(c.region || c.countryCode || '').toUpperCase()));
             }
 
             // DTSTAMP/LAST-MODIFIED come from the records (updatedAt), never from the clock, so an unchanged feed is byte-identical.

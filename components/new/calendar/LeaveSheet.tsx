@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { EntitlementType, LeaveEntry, LeaveState, Trip, User } from '../../../types';
 import {
-    balancesFor, countedDays, entryCost, leaveOverlaps, skippedDays, tripDates, weekdayOf, WEEKDAY_SHORT, type LeaveContext,
+    balancesFor, countedDays, entryCost, isRestDay, leaveOverlaps, skippedDays, tripDates, weekdayOf, WEEKDAY_SHORT, type LeaveContext,
 } from '../../../utils/calendarModel';
 import { defaultState, hasLeaveType, newLeaveId, stateLabel, statesFor } from '../../../utils/leaveEntry';
 import { formatDateRange } from '../../../utils/formatters';
@@ -206,7 +206,7 @@ export const LeaveSheet: React.FC<{
         ? [{ id: 'all_full', label: 'Full day' }, { id: 'single_am', label: 'Morning' }, { id: 'single_pm', label: 'Afternoon' }]
         : [{ id: 'all_full', label: 'Full days' }, { id: 'all_am', label: 'Mornings only' }, { id: 'all_pm', label: 'Afternoons only' }, { id: 'custom', label: 'Half first or last day' }];
 
-    const workDays = entry && ctx ? tripDates(entry).filter(iso => ctx.workingDays.includes(weekdayOf(iso)) && !ctx.offDays.has(iso)) : [];
+    const workDays = entry && ctx ? tripDates(entry).filter(iso => !isRestDay(iso, ctx) && !ctx.offDays.has(iso)) : [];
     const toggleWorked = (iso: string) => set('excluded', draft.excluded.includes(iso) ? draft.excluded.filter(d => d !== iso) : [...draft.excluded, iso]);
     const states = statesFor(member);
     const stateChoices = states.includes(draft.state) ? states : [...states, draft.state];

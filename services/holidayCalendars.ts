@@ -41,14 +41,32 @@ export const fetchHolidayCountries = async (): Promise<CountryOption[]> => {
         .sort((a: CountryOption, b: CountryOption) => a.name.localeCompare(b.name));
 };
 
-export const fetchHolidays = async (countryCode: string, year: number): Promise<HolidayAnswer> => {
+export const fetchHolidays = async (countryCode: string, year: number, region?: string): Promise<HolidayAnswer> => {
     if (dataService.isDatabaseMode()) {
-        const { status, body } = await getJson(`/api/proxy/holidays/${year}/${encodeURIComponent(countryCode)}`, authHeaders());
+        const q = region ? `?region=${encodeURIComponent(region)}` : '';
+        const { status, body } = await getJson(`/api/proxy/holidays/${year}/${encodeURIComponent(countryCode)}${q}`, authHeaders());
         if (status === 200 && Array.isArray(body?.holidays)) return body as HolidayAnswer;
         throw new Error(body?.error || 'No holidays came back for that country and year.');
     }
     const { status, body } = await getJson(`${NAGER}/PublicHolidays/${year}/${encodeURIComponent(countryCode)}`);
-    const answer = status === 200 ? answerFromNager(body, year, countryCode) : null;
+    const answer = status === 200 ? answerFromNager(body, year, countryCode, region) : null;
     if (!answer) throw new Error(status === 404 ? `No public holidays found for ${countryCode.toUpperCase()} in ${year}.` : 'No holidays came back for that country and year.');
     return answer;
+};
+
+export interface RegionOption { code: string; name: string }
+
+/** A country's regions, for regional holidays. Local mode reads the region codes Nager.Date uses in this year's holidays. */
+export const fetchRegions = async (countryCode: string): Promise<RegionOption[]> => {
+    if (dataService.isDatabaseMode()) {
+        const { status, body } = await getJson(`/api/proxy/holidays/regions/${encodeURIComponent(countryCode)}`, authHeaders());
+        if (status === 200 && Array.isArray(body?.regions)) return body.regions;
+        throw new Error(body?.error || 'The regions are not available right now.');
+    }
+    const year = new Date().getFullYear();
+    const { status, body } = await getJson(`${NAGER}/PublicHolidays/${year}/${encodeURIComponent(countryCode)}`);
+    if (status !== 200 || !Array.isArray(body)) return [];
+    const codes = new Set<string>();
+    body.forEach((r: any) => (Array.isArray(r?.counties) ? r.counties : []).forEach((c: unknown) => codes.add(String(c).toUpperCase())));
+    return [...codes].sort().map(code => ({ code, name: code }));
 };

@@ -3,6 +3,7 @@ import type { SavedConfig, User } from '../../../types';
 import type { SettingsData } from '../../../hooks/useSettingsData';
 import { dataService } from '../../../services/mockDb';
 import { formatDate } from '../../../utils/formatters';
+import { calendarKey, followedKeys } from '../../../utils/holidayCalendar';
 import { errorMessage, toast } from '../../../services/toast';
 import ParticleButton from '../../kokonutui/particle-button';
 import { RpChip, RpEmpty, RpSection, RpSheet, RpToggle } from '../ui';
@@ -47,6 +48,7 @@ const AddMemberSheet: React.FC<{ open: boolean; users: User[]; onClose: () => vo
                 policies: [],
                 legacyLeaveConverted: true,
                 holidayConfigIds: [],
+                holidayCalendars: [],
                 holidayWeekendRule: 'none',
                 activeYears: [new Date().getFullYear()],
             });
@@ -90,32 +92,37 @@ const AddMemberSheet: React.FC<{ open: boolean; users: User[]; onClose: () => vo
     );
 };
 
-/** Which saved holiday calendars count for a member. */
+/** Which holiday calendars count for a member: a country or a region, every year. */
 const HolidaysSheet: React.FC<{ member: User | null; configs: SavedConfig[]; onClose: () => void; onSave: (user: User) => Promise<void> }> = ({ member, configs, onClose, onSave }) => {
-    const [ids, setIds] = useState<string[]>([]);
-    useEffect(() => { if (member) setIds(member.holidayConfigIds ?? []); }, [member]);
+    const [keys, setKeys] = useState<string[]>([]);
+    useEffect(() => { if (member) setKeys(followedKeys(member)); }, [member]);
     if (!member) return <RpSheet open={false} onClose={onClose} title="">{null}</RpSheet>;
 
-    const toggle = async (id: string, on: boolean) => {
-        const next = on ? [...ids, id] : ids.filter(x => x !== id);
-        setIds(next);
+    // One row per calendar, whatever the years saved.
+    const calendars = [...new Map(configs.map(c => [calendarKey(c), c])).values()]
+        .sort((a, b) => a.countryName.localeCompare(b.countryName) || (a.regionName || '').localeCompare(b.regionName || ''));
+    const toggle = async (key: string, on: boolean) => {
+        const next = on ? [...new Set([...keys, key])] : keys.filter(x => x !== key);
+        setKeys(next);
         try {
-            await onSave({ ...member, holidayConfigIds: next });
+            await onSave({ ...member, holidayCalendars: next });
         } catch (e) {
-            setIds(ids);
+            setKeys(keys);
             toast.error(errorMessage(e, "That didn't save. Try again."));
         }
     };
 
     return (
         <RpSheet open onClose={onClose} title="Holiday calendars" subtitle={member.name}>
-            {configs.length === 0 ? (
+            {calendars.length === 0 ? (
                 <RpEmpty title="No holiday calendars">Add a country's holidays on the Calendar page first.</RpEmpty>
             ) : (
-                <RpSection title="Countries" icon={CalendarBlank}>
-                    {[...configs].sort((a, b) => a.countryName.localeCompare(b.countryName) || b.year - a.year).map(c => (
-                        <RpToggle key={c.id} label={`${c.countryName} ${c.year}`} hint={`${c.holidays?.length ?? 0} holidays`} checked={ids.includes(c.id)} onChange={on => void toggle(c.id, on)} />
-                    ))}
+                <RpSection title="Followed every year" icon={CalendarBlank}>
+                    {calendars.map(c => {
+                        const key = calendarKey(c);
+                        const years = configs.filter(x => calendarKey(x) === key).map(x => x.year).sort();
+                        return <RpToggle key={key} label={c.regionName ? `${c.countryName}, ${c.regionName}` : c.countryName} hint={`${key} · saved for ${years.join(', ')}`} checked={keys.includes(key)} onChange={on => void toggle(key, on)} />;
+                    })}
                 </RpSection>
             )}
         </RpSheet>

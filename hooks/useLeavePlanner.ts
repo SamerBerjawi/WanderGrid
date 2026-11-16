@@ -42,7 +42,7 @@ export const useLeavePlanner = (trips: Trip[], users: User[], entitlements: Enti
             const members = membersOf(trip);
             return members.find(u => u.id === me) ?? members[0];
         };
-        const input = (trip: Trip, user: User) => ({ trip, user, leave, entitlements, today, workingDays: rules.workingDaysOf(user), holidays: holidaysOf(user) });
+        const input = (trip: Trip, user: User) => ({ trip, user, leave, entitlements, today, workingDays: rules.workingDaysOf(user), holidays: holidaysOf(user), events: rules.events });
         const statuses = new Map<string, TripLeaveStatus>();
         const statusFor = (trip: Trip): TripLeaveStatus => {
             const key = `${trip.id}|${trip.startDate}|${trip.endDate}|${trip.status}|${trip.archived ? 1 : 0}`;

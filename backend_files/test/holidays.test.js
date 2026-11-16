@@ -1,7 +1,7 @@
 const { test, describe, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { clearUpstreamCache } = require('../upstream.js');
-const { listHolidays, listCountries, fromNager, fromOpenHolidays } = require('../holidays.js');
+const { listHolidays, listCountries, listRegions, fromNager, fromOpenHolidays } = require('../holidays.js');
 
 const json = (status, body) => ({ ok: status >= 200 && status < 300, status, headers: new Headers({ 'content-type': 'application/json' }), text: async () => JSON.stringify(body) });
 const route = table => async url => {
@@ -34,6 +34,37 @@ describe('holiday calendars', () => {
     assert.deepEqual(out.holidays.map(h => h.date), ['2026-04-03', '2026-04-04', '2026-04-05']);
     assert.equal(out.holidays[0].name, 'Easter');
     assert.equal(out.regionalSkipped, 1);
+  });
+
+  test('adds the chosen region\'s holidays, marked regional', () => {
+    const rows = [
+      { date: '2026-01-01', name: "New Year's Day", global: true, types: ['Public'] },
+      { date: '2026-01-06', name: 'Epiphany', global: false, counties: ['DE-BW', 'DE-BY'], types: ['Public'] },
+      { date: '2026-03-08', name: "Women's Day", global: false, counties: ['DE-BE'], types: ['Public'] },
+    ];
+    const out = fromNager(rows, 2026, 'DE', 'de-by');
+    assert.deepEqual(out.holidays.map(h => [h.date, Boolean(h.regional)]), [['2026-01-01', false], ['2026-01-06', true]]);
+    assert.equal(out.regionalSkipped, 1);
+    const open = fromOpenHolidays([
+      { startDate: '2026-06-04', endDate: '2026-06-04', type: 'Public', nationwide: false, subdivisions: [{ code: 'DE-BY' }], name: [{ language: 'EN', text: 'Corpus Christi' }] },
+      { startDate: '2026-10-31', endDate: '2026-10-31', type: 'Public', nationwide: false, subdivisions: [{ code: 'DE-SN' }], name: [{ language: 'EN', text: 'Reformation Day' }] },
+    ], 2026, 'DE-BY');
+    assert.deepEqual(open.holidays.map(h => h.name), ['Corpus Christi']);
+  });
+
+  test('checks the region code and lists regions', async () => {
+    assert.equal((await listHolidays(2026, 'DE', { region: 'FR-75', fetchImpl: route({}) })).status, 400);
+    const fetchImpl = route({
+      'Subdivisions': { body: [{ isoCode: 'DE-BY', name: [{ language: 'EN', text: 'Bavaria' }] }, { isoCode: 'DE-BE', name: [{ language: 'EN', text: 'Berlin' }] }] },
+    });
+    const r = await listRegions('de', { fetchImpl });
+    assert.deepEqual(r.regions, [{ code: 'DE-BY', name: 'Bavaria' }, { code: 'DE-BE', name: 'Berlin' }].sort((a, b) => a.name.localeCompare(b.name)));
+    clearUpstreamCache();
+    const fromCodes = await listRegions('DE', { year: 2026, fetchImpl: route({
+      'Subdivisions': { status: 404, body: [] },
+      'nager.at': { body: [{ date: '2026-01-06', name: 'Epiphany', global: false, counties: ['DE-BY', 'DE-BW'], types: ['Public'] }] },
+    }) });
+    assert.deepEqual(fromCodes.regions, [{ code: 'DE-BW', name: 'DE-BW' }, { code: 'DE-BY', name: 'DE-BY' }]);
   });
 
   test('answers from Nager.Date, sorted and de-duplicated', async () => {

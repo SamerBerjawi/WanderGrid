@@ -1,5 +1,6 @@
 import type { CustomEvent, EntitlementType, LeaveEntry, LeaveSpan, PublicHoliday, SavedConfig, Trip, User, UserPolicy, WorkspaceSettings } from '../types';
 import { countsAsLeave } from './leaveEntry';
+import { calendarKey, followedKeys } from './holidayCalendar';
 import { isPastTrip, isTravelling } from './tripsModel';
 import { tripKind } from './tripKind';
 
@@ -143,12 +144,12 @@ export const holidayDays = (configs: SavedConfig[], rule: User['holidayWeekendRu
 };
 
 /**
- * The calendars shown for the members in view: the ones the members have linked; when none of them has
- * linked any, every saved calendar (so a fresh workspace still shows its holidays).
+ * The calendars shown for the members in view: the ones they follow (a country or a region, every year); when none of
+ * them follows any, every saved calendar (so a fresh workspace still shows its holidays).
  */
 export const configsFor = (configs: SavedConfig[], members: User[]): SavedConfig[] => {
-    const linked = new Set(members.flatMap(m => m.holidayConfigIds || []));
-    return linked.size > 0 ? configs.filter(c => linked.has(c.id)) : configs;
+    const keys = new Set(members.flatMap(m => followedKeys(m)));
+    return keys.size > 0 ? configs.filter(c => keys.has(calendarKey(c))) : configs;
 };
 
 /* ------------------------------- counting leave ------------------------------ */
@@ -159,13 +160,24 @@ export interface LeaveContext {
     offDays: Set<string>;
     /** Weekend holidays that earn a day in lieu (the member's "Day in lieu" rule), one per date. */
     lieuDates?: string[];
+    /** Days off the working week says are working days anyway (a working Saturday, from the workspace's events). */
+    workDays?: Set<string>;
 }
 
-export const leaveContext = (workingDays: number[], holidays: HolidayDay[]): LeaveContext => ({
+/**
+ * The counting rules for a member: their working week, their public holidays that are a day off, and the workspace's
+ * events: a company day that is not a working day is a day off for everyone; a working day on a weekend is worked.
+ */
+export const leaveContext = (workingDays: number[], holidays: HolidayDay[], events: Pick<CustomEvent, 'date' | 'isWorkingDay'>[] = []): LeaveContext => ({
     workingDays,
-    offDays: new Set(holidays.filter(h => h.counted).map(h => h.observed)),
+    offDays: new Set([...holidays.filter(h => h.counted).map(h => h.observed), ...events.filter(e => e.date && !e.isWorkingDay).map(e => e.date)]),
     lieuDates: [...new Set(holidays.filter(h => h.counted && h.inLieu).map(h => h.observed))].sort(),
+    workDays: new Set(events.filter(e => e.date && e.isWorkingDay && isWeekend(e.date, workingDays)).map(e => e.date)),
 });
+
+/** A day the member does not work by their week (a weekend), unless the workspace made it a working day. */
+export const isRestDay = (iso: string, ctx: Pick<LeaveContext, 'workingDays' | 'workDays'>): boolean =>
+    isWeekend(iso, ctx.workingDays) && !ctx.workDays?.has(iso);
 
 /** A leave entry (or, before leave Phase 1, a trip) with a leave type or a split of days across types. */
 export const hasLeave = (x: Pick<LeaveEntry, 'entitlementId' | 'allocations'>): boolean => Boolean(x.entitlementId || (x.allocations && x.allocations.length > 0));
@@ -180,7 +192,7 @@ export const dayWeight = (span: LeaveSpan, iso: string, ctx: LeaveContext): numb
     const end = span.endDate || span.startDate;
     if (iso < start || iso > end) return 0;
     if ((span.excludedDates || []).includes(iso)) return 0;
-    if (isWeekend(iso, ctx.workingDays) || ctx.offDays.has(iso)) return 0;
+    if (isRestDay(iso, ctx) || ctx.offDays.has(iso)) return 0;
     switch (span.durationMode) {
         case 'all_am':
         case 'all_pm':
@@ -219,7 +231,7 @@ export const skippedDays = (span: LeaveSpan, ctx: LeaveContext): { weekend: numb
     const excluded = new Set(span.excludedDates || []);
     tripDates(span).forEach(iso => {
         if (excluded.has(iso)) out.worked += 1;
-        else if (isWeekend(iso, ctx.workingDays)) out.weekend += 1;
+        else if (isRestDay(iso, ctx)) out.weekend += 1;
         else if (ctx.offDays.has(iso)) out.holiday += 1;
     });
     return out;

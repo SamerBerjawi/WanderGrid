@@ -4,6 +4,7 @@ import { dataService } from '../services/mockDb';
 import { affectsCollections } from './useWanderSync';
 import { readSessionUser } from './useMemberData';
 import { todayISO } from '../utils/tripsModel';
+import { followedKeys } from '../utils/holidayCalendar';
 
 /**
  * Data and writes for the New calendar: trips, leave entries, members, leave types, saved holiday calendars, events
@@ -126,21 +127,28 @@ export const useCalendarData = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [load]);
 
-    /** Links or unlinks a saved holiday calendar for a member. */
-    const setMemberCalendar = useCallback(async (member: User, configId: string, linked: boolean): Promise<void> => {
-        const ids = member.holidayConfigIds || [];
-        const next = linked ? Array.from(new Set([...ids, configId])) : ids.filter(id => id !== configId);
-        const updated = { ...member, holidayConfigIds: next };
+    /** Follows or stops following a holiday calendar (a country or a region, every year) for a member. */
+    const setMemberCalendar = useCallback(async (member: User, key: string, follow: boolean): Promise<void> => {
+        const keys = followedKeys(member);
+        const next = follow ? Array.from(new Set([...keys, key.toUpperCase()])) : keys.filter(k => k !== key.toUpperCase());
+        const updated = { ...member, holidayCalendars: next };
         setUsers(prev => prev.map(u => (u.id === member.id ? updated : u)));
         await guarded(() => dataService.updateUser(updated));
         await load();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [load]);
 
+    /** Saves a holiday calendar as it is (a day added or removed by hand). */
+    const saveCalendar = useCallback(async (config: SavedConfig): Promise<void> => {
+        setConfigs(prev => prev.map(c => (c.id === config.id ? config : c)));
+        await guarded(() => dataService.saveConfig(config));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [load]);
+
     return {
         users, trips, leave, entitlements, configs, events, settings, loading, error, today,
         me, isAdmin, session,
-        reload: load, saveLeave, deleteLeave, setHolidayIncluded, setMemberCalendar, addCalendar, removeCalendar, addEvent, deleteEvent,
+        reload: load, saveLeave, deleteLeave, setHolidayIncluded, setMemberCalendar, saveCalendar, addCalendar, removeCalendar, addEvent, deleteEvent,
     };
 };
 
