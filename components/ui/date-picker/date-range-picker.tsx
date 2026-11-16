@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react';
-import { endOfMonth, endOfWeek, getLocalTimeZone, startOfMonth, startOfWeek, today } from '@internationalized/date';
+import { getLocalTimeZone, today } from '@internationalized/date';
 import type { DateRangePickerProps as AriaDateRangePickerProps, DateValue } from 'react-aria-components';
-import { Button as AriaButton, DateRangePicker as AriaDateRangePicker, Group as AriaGroup, useLocale } from 'react-aria-components';
+import { Button as AriaButton, DateRangePicker as AriaDateRangePicker, Group as AriaGroup } from 'react-aria-components';
 import { CalendarBlank } from '../hugeicons';
 import { cn } from '../../../utils/cn';
 import { formatDateRange } from '../../../utils/formatters';
-import { toIso, type FirstDayOfWeek } from '../../../utils/datePicker';
+import { toIso } from '../../../utils/datePicker';
 import { PickerButton } from './button';
 import { InputDateBase } from './input-date';
 import { PickerPopover, TRIGGER } from './popover';
@@ -21,11 +21,8 @@ export interface DateRangePickerProps extends Omit<AriaDateRangePickerProps<Date
     onChange?: (value: RangeValue | null) => void;
     onApply?: () => void;
     onCancel?: () => void;
-    /**
-     * Ranges listed beside the calendar on desktop; the ones marked `mobile` also show above it on phones.
-     * `'past'` is Untitled UI's look-back list (Today, Last week, This month…), for filters over past dates.
-     */
-    presets?: (RangePreset & { mobile?: boolean })[] | 'past';
+    /** Ranges listed beside the calendar on desktop; the ones marked `mobile` also show above it on phones. */
+    presets?: (RangePreset & { mobile?: boolean })[];
     placeholder?: string;
     clearable?: boolean;
     triggerId?: string;
@@ -34,27 +31,8 @@ export interface DateRangePickerProps extends Omit<AriaDateRangePickerProps<Date
 
 const highlightedDates = [today(getLocalTimeZone())];
 
-/** Untitled UI's preset list (looking back from today), for filters over past dates. */
-export const pastRangePresets = (locale: string, firstDayOfWeek: FirstDayOfWeek): (RangePreset & { mobile?: boolean })[] => {
-    const now = today(getLocalTimeZone());
-    const weekStart = startOfWeek(now, locale, firstDayOfWeek);
-    const weekEnd = endOfWeek(now, locale, firstDayOfWeek);
-    return [
-        { label: 'Today', value: { start: now, end: now } },
-        { label: 'Yesterday', value: { start: now.subtract({ days: 1 }), end: now.subtract({ days: 1 }) } },
-        { label: 'This week', value: { start: weekStart, end: weekEnd } },
-        { label: 'Last week', value: { start: weekStart.subtract({ weeks: 1 }), end: weekEnd.subtract({ weeks: 1 }) }, mobile: true },
-        { label: 'This month', value: { start: startOfMonth(now), end: endOfMonth(now) } },
-        { label: 'Last month', value: { start: startOfMonth(now).subtract({ months: 1 }), end: endOfMonth(now.subtract({ months: 1 })) }, mobile: true },
-        { label: 'This year', value: { start: startOfMonth(now.set({ month: 1 })), end: endOfMonth(now.set({ month: 12 })) } },
-        { label: 'Last year', value: { start: startOfMonth(now.set({ month: 1 }).subtract({ years: 1 })), end: endOfMonth(now.set({ month: 12 }).subtract({ years: 1 })) }, mobile: true },
-    ];
-};
-
-const Picker = ({ value, defaultValue, onChange, onApply, onCancel, presets: presetsProp, placeholder = 'Select dates', clearable, triggerId, triggerClassName, ...props }: DateRangePickerProps) => {
-    const { dateFormat, firstDayOfWeek } = usePickerPrefs();
-    const { locale } = useLocale();
-    const presets = presetsProp === 'past' ? pastRangePresets(locale, firstDayOfWeek) : presetsProp;
+const Picker = ({ value, defaultValue, onChange, onApply, onCancel, presets, placeholder = 'Select dates', clearable, triggerId, triggerClassName, ...props }: DateRangePickerProps) => {
+    const { dateFormat } = usePickerPrefs();
     const triggerRef = useRef<HTMLButtonElement>(null);
     const [uncontrolled, setUncontrolled] = useState<RangeValue | null>(defaultValue ?? null);
     const committed = value !== undefined ? value : uncontrolled;

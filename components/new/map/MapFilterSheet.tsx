@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { AirplaneLanding, AirplaneTakeoff, Calendar, CalendarBlank, CheckCircle, MagnifyingGlass } from '../../ui/hugeicons';
 import { RpChip, RpSection, RpSheet } from '../ui';
-import { RpDateRangePicker } from '../DateFields';
+import { RpDatePicker } from '../DateFields';
 
 type Status = 'all' | 'Past' | 'Upcoming' | 'Planning';
 interface Option { label: string; value: string }
@@ -111,16 +111,15 @@ export const MapFilterSheet: React.FC<MapFilterSheetProps> = props => {
                     <PlacePicker label="To" options={props.destinations} selected={props.arrFilter} onChange={props.setArrFilter} />
                 </RpSection>
                 <RpSection icon={CalendarBlank} title="Dates">
-                    <div className="py-2">
-                        <RpDateRangePicker
-                            label="Dates"
-                            value={{ start: props.dateFrom, end: props.dateTo }}
-                            onChange={r => { props.setDateFrom(r.start); props.setDateTo(r.end); }}
-                            placeholder="Any dates"
-                            pastPresets
-                            clearable
-                            className="rounded-full px-4"
-                        />
+                    <div className="grid grid-cols-2 gap-2 py-2">
+                        <div className="flex flex-col gap-1">
+                            <span className="px-1 text-xs text-rp-muted">From</span>
+                            <RpDatePicker label="From" value={props.dateFrom} max={props.dateTo || undefined} onChange={props.setDateFrom} placeholder="Any" clearable className="rounded-full px-4" />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <span className="px-1 text-xs text-rp-muted">To</span>
+                            <RpDatePicker label="To" value={props.dateTo} min={props.dateFrom || undefined} onChange={props.setDateTo} placeholder="Any" clearable className="rounded-full px-4" />
+                        </div>
                     </div>
                 </RpSection>
             </div>

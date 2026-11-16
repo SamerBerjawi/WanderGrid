@@ -52,9 +52,7 @@ export type IsoRange = { start: string; end: string };
 export const RpDateRangePicker: React.FC<Common & {
     value: { start?: string | null; end?: string | null };
     onChange: (range: IsoRange) => void;
-    /** Untitled UI's look-back presets (Today, Last week, This month…), for filters over past dates. */
-    pastPresets?: boolean;
-}> = ({ id, label, value, onChange, min, max, isDateUnavailable, clearable, placeholder, isDisabled, className, pastPresets }) => {
+}> = ({ id, label, value, onChange, min, max, isDateUnavailable, clearable, placeholder, isDisabled, className }) => {
     const start = toDateValue(value.start);
     const end = toDateValue(value.end) ?? start;
     return (
@@ -64,7 +62,6 @@ export const RpDateRangePicker: React.FC<Common & {
             triggerClassName={className}
             value={start && end ? { start, end } : null}
             onChange={v => onChange(v ? { start: toIso(v.start), end: toIso(v.end) } : { start: '', end: '' })}
-            presets={pastPresets ? 'past' : undefined}
             clearable={clearable}
             placeholder={placeholder}
             isDisabled={isDisabled}
