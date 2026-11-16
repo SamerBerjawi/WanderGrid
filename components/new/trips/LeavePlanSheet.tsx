@@ -6,7 +6,8 @@ import { WEEKDAY_SHORT, weekdayOf } from '../../../utils/calendarModel';
 import { formatDate, formatDateRange } from '../../../utils/formatters';
 import { errorMessage } from '../../../services/toast';
 import ParticleButton from '../../kokonutui/particle-button';
-import { ArrowUpRight, CalendarCheck, Check, Users } from '../../ui/hugeicons';
+import { ArrowUpRight, CalendarCheck, Check, Users, Warning } from '../../ui/hugeicons';
+import { issueNote } from '../../../utils/tripLeave';
 import { RpSection, RpSheet } from '../ui';
 import { cn } from '../../../utils/cn';
 
@@ -88,6 +89,7 @@ export const LeavePlanSheet: React.FC<{
 }> = ({ trip, planner, entitlements, onClose, onApply, onOpenCalendar, onCreateType }) => {
     const member = trip ? planner.memberFor(trip) : undefined;
     const plan = useMemo(() => (trip ? planner.planFor(trip, member) : null), [trip, planner, member]);
+    const issues = useMemo(() => (trip ? planner.issuesFor(trip, member).filter(i => i.kind !== 'uncovered' || (plan?.linked.length ?? 0) > 0) : []), [trip, planner, member, plan]);
     const [choice, setChoice] = useState<string | undefined>();
     const [error, setError] = useState('');
 
@@ -143,6 +145,21 @@ export const LeavePlanSheet: React.FC<{
                         </p>
                         <p className="rp-tabular text-sm text-rp-muted">{formatDateRange(trip.startDate, trip.endDate || trip.startDate)} · {dayWord(plan.days.length)}</p>
                     </div>
+
+                    {issues.length > 0 ? (
+                        <ul className="flex flex-col gap-1" aria-label="Leave and trip">
+                            {issues.map((i, n) => {
+                                const note = issueNote(i);
+                                return (
+                                    <li key={n} className={cn('flex items-start gap-2 rounded-rp-inset px-3 py-2 text-sm', note.tone === 'rust' ? 'bg-rp-rust/15 text-rp-ink' : note.tone === 'ochre' ? 'bg-rp-mustard/25 text-rp-ink' : 'bg-rp-inset text-rp-muted')}>
+                                        <Warning size={16} className={cn('mt-0.5 shrink-0', note.tone === 'rust' ? 'text-rp-rust' : note.tone === 'ochre' ? 'text-rp-ochre' : 'text-rp-muted')} aria-hidden />
+                                        <span>{note.text}{i.kind === 'uncovered' ? `: ${i.days.slice(0, 6).map(d => formatDate(d, 'short')).join(', ')}${i.days.length > 6 ? '…' : ''}` : ''}.</span>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    ) : null}
+                    {plan.datesDiffer ? <p className="text-sm text-rp-muted">The leave has its own dates: {plan.linked.map(e => formatDateRange(e.startDate, e.endDate || e.startDate)).join(', ')}. Change them on the Calendar.</p> : null}
 
                     {plan.days.length > 0 && plan.days.length <= 42 ? <DayStrip days={plan.days} /> : null}
                     <p className="text-sm text-rp-muted">{plan.days.length === 0 ? 'The trip has no dates yet.' : skipSentence(plan.days, plan.skipped)}</p>

@@ -13,6 +13,7 @@ import NumberFlow from '@number-flow/react';
 import { openPage } from '../../utils/appNavigation';
 import { LeavePlanSheet } from '../../components/new/trips/LeavePlanSheet';
 import { addStarterLeaveType, takeLeave, useLeavePlanner } from '../../hooks/useLeavePlanner';
+import { issueNote } from '../../utils/tripLeave';
 import { NextFlight } from '../../components/new/journeys/NextFlight';
 import { RpHugeicon } from '../../components/new/RpHugeicon';
 import { useUndoToast } from '../../components/new/UndoToast';
@@ -32,7 +33,7 @@ import { RoutePlanner } from '../../components/new/trip/RoutePlanner';
 import { WeatherChip } from '../../components/new/WeatherChip';
 import { ExpensesPanel } from '../../components/new/trip/ExpensesPanel';
 import { BookingsPanel, CostsPanel, GearPanel, ItineraryPanel, NotesPanel, type EditStep } from '../../components/new/trip/TripPanels';
-import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, CalendarCheck, DownloadSimple, Envelope, FileText, IdentificationCard, Kanban, LinkSquare, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket, type Icon } from '../../components/ui/hugeicons';
+import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, CalendarCheck, DownloadSimple, Envelope, FileText, IdentificationCard, Kanban, LinkSquare, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket, Warning, type Icon } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -319,6 +320,23 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                                 </button>
                             );
                         })() : null}
+                        {(() => {
+                            // The most pressing way the trip and its leave disagree (the chip above already covers leave not booked yet).
+                            const linked = planner.leave.some(e => e.tripId === trip.id);
+                            const top = planner.issuesFor(trip).find(i => i.kind !== 'outside' && (i.kind !== 'uncovered' || linked));
+                            if (!top) return null;
+                            const note = issueNote(top);
+                            return (
+                                <button
+                                    type="button"
+                                    onClick={() => setLeaveOpen(true)}
+                                    aria-label={`${note.text}. Plan leave for ${trip.name}`}
+                                    className={cn('mt-3 ml-2 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-current', note.tone === 'rust' ? 'bg-rp-rust text-rp-paper' : 'bg-rp-mustard text-rp-on-mustard')}
+                                >
+                                    <Warning size={16} aria-hidden /> {note.text}
+                                </button>
+                            );
+                        })()}
                         {bucket !== 'past' && docsSummary ? (
                             <button
                                 type="button"

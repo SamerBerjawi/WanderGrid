@@ -285,7 +285,7 @@ export default function App() {
                 {page === 'flights' ? <FlightsNew onTripClick={openTripNew} /> : null}
                 {page === 'roadtrips' ? <RoadTripsNew onTripClick={openTripNew} /> : null}
                 {page === 'settings' ? <SettingsNew theme={theme} isDark={isDarkMode} onThemeChange={t => handleThemeChange(t)} onOpenMember={openMemberNew} onNavigate={navigateTo} /> : null}
-                {page === 'calendar' ? <CalendarNew onTripClick={openTripNew} onMemberClick={openMemberNew} /> : null}
+                {page === 'calendar' ? <CalendarNew onTripClick={openTripNew} onMemberClick={openMemberNew} onNavigate={navigateTo} /> : null}
                 {page === 'member' && route.id ? (
                   <MemberNew
                     key={route.id}

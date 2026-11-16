@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Trip } from '../../types';
 import { useTripsData, type TripDraft } from '../../hooks/useTripsData';
 import { canMoveTo, sortTrips, tripMatches, tripYears, type TripBucket, type TripSort } from '../../utils/tripsModel';
@@ -108,6 +108,8 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     const [detailsId, setDetailsId] = useState<string | null>(null);
     const [detailsOrigin, setDetailsOrigin] = useState<TripOrigin | null>(null);
     const [sheet, setSheet] = useState<TripSheetTarget | null>(null);
+    /** A leave entry the next new trip takes over (from "Plan a trip for these days" on the Calendar). */
+    const linkLeave = useRef<string | null>(null);
     const [deleting, setDeleting] = useState<Trip | null>(null);
     const offline = useOfflinePacks();
     const online = useOnline();
@@ -136,7 +138,9 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
             if (url.searchParams.get('new') === '1') {
                 // A suggested break and place (Where next ideas) arrive as ?start=&end=&to=.
                 const start = url.searchParams.get('start') || '', end = url.searchParams.get('end') || '', to = url.searchParams.get('to') || '';
-                ['new', 'start', 'end', 'to'].forEach(k => url.searchParams.delete(k));
+                // Leave planned on the Calendar with no trip yet: the new trip takes it over (?leave=<entry id>).
+                linkLeave.current = url.searchParams.get('leave') || null;
+                ['new', 'start', 'end', 'to', 'leave'].forEach(k => url.searchParams.delete(k));
                 window.history.replaceState({}, '', url.pathname + url.search);
                 const iso = /^\d{4}-\d{2}-\d{2}$/;
                 const prefill = {
@@ -420,7 +424,17 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
                 brandfetchApiKey={data.brandfetchApiKey}
                 linkedLeaveOf={data.linkedLeaveOf}
                 onClose={() => setSheet(null)}
-                onSave={async (draft: TripDraft, trip?: Trip) => { if (trip) await data.update(trip, draft); else await data.create(draft); }}
+                onSave={async (draft: TripDraft, trip?: Trip) => {
+                    if (trip) { await data.update(trip, draft); return; }
+                    const saved = await data.create(draft);
+                    const entryId = linkLeave.current;
+                    linkLeave.current = null;
+                    const entry = entryId ? planner.leave.find(e => e.id === entryId) : undefined;
+                    if (entry && !entry.tripId) {
+                        try { await dataService.updateLeave({ ...entry, tripId: saved.id }); await planner.reloadLeave(); }
+                        catch (e) { toast.error(errorMessage(e, "The trip was saved, but its leave wasn't linked. Link it from the Calendar.")); }
+                    }
+                }}
                 onDelete={setDeleting}
                 onOpenTrip={openTrip}
             />

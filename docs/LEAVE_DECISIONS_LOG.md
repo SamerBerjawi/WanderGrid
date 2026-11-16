@@ -74,3 +74,13 @@ the build, without asking. Each entry says what was decided, why, and where it l
 | 1c.5 | Admins add days to a saved calendar by hand (a company holiday, a local feast); they survive a refresh, can be removed, and like any holiday can be switched off | "Manual creation, editing and exclusion". **(own call)** |
 | 1c.6 | Workspace events now count: one marked "not a working day" is a **company day off for everyone** (leave over it costs nothing); a working day on a weekend makes that day cost leave | Before, the switch only changed the look. Company days apply to every member. **(own call)** |
 | 1c.7 | Substitute holidays are taken as the services publish them (Nager.Date lists substitute days for the countries that have them); the member's weekend rule handles the rest | No country rules hard-coded (plan section 9). **(own call)** |
+
+## Phase 1d: trips and leave together (PR: feat/leave-trips)
+
+| # | Decision | Why / alternative |
+|---|---|---|
+| 1d.1 | Disagreements between a trip and its leave are **notes**, not errors: working days with no leave, leave on other dates (trip moved), refused leave, leave still requested for a confirmed trip, leave still counting for a cancelled trip; leave running past the trip is shown only as information | Travel and leave dates differ on purpose (a weekend trip needs no leave; a day off before a flight is common). **(own call)** |
+| 1d.2 | A day the member marked as "worked anyway" counts as covered | They said they work it. **(own call)** |
+| 1d.3 | The trip page shows the most pressing issue as a pill next to the leave chip; Plan leave lists them all; the Calendar shows "Leave to look at" (the subject's trips in the next year, up to five) | One glance per place, without a separate page. **(own call)** |
+| 1d.4 | "Plan a trip for these days" on leave with no trip opens the new-trip sheet with its dates and name, and the new trip **takes over that leave** (links it) | Suggest creating a trip from time off without duplicating the leave. **(own call)** |
+| 1d.5 | "Suggest reserving leave when creating a trip" is the existing chip ("Needs N days of leave") and Plan leave on every trip card and page, plus the trip form's Leave section; no extra prompt | Avoids a nag in the trip flow. **(own call)** |

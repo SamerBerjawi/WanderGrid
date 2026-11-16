@@ -4,7 +4,7 @@ import { dayWeight, isRestDay, type CalendarItem, type LeaveContext } from '../.
 import { stateLabel } from '../../../utils/leaveEntry';
 import { formatDate, formatDateRange } from '../../../utils/formatters';
 import SmoothDrawer from '../../kokonutui/smooth-drawer';
-import { ArrowUpRight, Flag, PencilSimple, Plus, Star, SunHorizon, Trash } from '../../ui/hugeicons';
+import { ArrowUpRight, Flag, PencilSimple, Plus, Star, Suitcase, SunHorizon, Trash } from '../../ui/hugeicons';
 import { Avatar } from '../member/Avatar';
 import { RpEmpty, RpSheet } from '../ui';
 import { itemIcon, STATE_LABEL, tripChip } from './calendarStyles';
@@ -35,12 +35,14 @@ const DayBody: React.FC<{
     canEditLeave: (memberId: string) => boolean;
     onEditLeave: (entry: LeaveEntry) => void;
     onLeaveForTrip: (trip: Trip) => void;
+    /** Starts a trip over leave that has none. */
+    onPlanTrip?: (entry: LeaveEntry) => void;
     onOpenTrip: (id: string) => void;
     onAddLeave: () => void;
     onManageHolidays: () => void;
     canManageEvents: boolean;
     onRemoveEvent: (event: CustomEvent) => void;
-}> = ({ iso, items, users, entitlements, contextFor, canEditLeave, onEditLeave, onLeaveForTrip, onOpenTrip, onAddLeave, onManageHolidays, canManageEvents, onRemoveEvent }) => {
+}> = ({ iso, items, users, entitlements, contextFor, canEditLeave, onEditLeave, onLeaveForTrip, onPlanTrip, onOpenTrip, onAddLeave, onManageHolidays, canManageEvents, onRemoveEvent }) => {
     if (items.length === 0) {
         return (
             <RpEmpty title="Nothing on this day" action={<button type="button" onClick={onAddLeave} className={cn(PILL, 'bg-rp-ink text-rp-on-ink hover:bg-rp-ink/90')}><Plus size={16} aria-hidden /> Add leave</button>} />
@@ -116,6 +118,10 @@ const DayBody: React.FC<{
                                     <button type="button" onClick={() => onOpenTrip(e.tripId as string)} className={cn(PILL, 'bg-rp-surface text-rp-ink hover:bg-rp-line')}>
                                         Open trip <ArrowUpRight size={16} aria-hidden />
                                     </button>
+                                ) : onPlanTrip && canEditLeave(e.memberId) && e.state !== 'rejected' && e.state !== 'cancelled' ? (
+                                    <button type="button" onClick={() => onPlanTrip(e)} className={cn(PILL, 'bg-rp-surface text-rp-ink hover:bg-rp-line')}>
+                                        <Suitcase size={16} aria-hidden /> Plan a trip for these days
+                                    </button>
                                 ) : null}
                             </div>
                         </li>
@@ -167,12 +173,13 @@ export const DayPanel: React.FC<{
     canEditLeave: (memberId: string) => boolean;
     onEditLeave: (entry: LeaveEntry) => void;
     onLeaveForTrip: (trip: Trip) => void;
+    onPlanTrip?: (entry: LeaveEntry) => void;
     onOpenTrip: (id: string) => void;
     onAddLeave: (iso: string) => void;
     onManageHolidays: () => void;
     canManageEvents: boolean;
     onRemoveEvent: (event: CustomEvent) => void;
-}> = ({ iso, mobile, onClose, items, users, entitlements, contextFor, canEditLeave, onEditLeave, onLeaveForTrip, onOpenTrip, onAddLeave, onManageHolidays, canManageEvents, onRemoveEvent }) => {
+}> = ({ iso, mobile, onClose, items, users, entitlements, contextFor, canEditLeave, onEditLeave, onLeaveForTrip, onPlanTrip, onOpenTrip, onAddLeave, onManageHolidays, canManageEvents, onRemoveEvent }) => {
     const day = iso ?? '';
     const title = iso ? formatDate(iso, 'weekday-long') : '';
     const count = items.length === 0 ? 'Nothing planned' : `${items.length} ${items.length === 1 ? 'thing' : 'things'}`;
@@ -186,6 +193,7 @@ export const DayPanel: React.FC<{
             canEditLeave={canEditLeave}
             onEditLeave={onEditLeave}
             onLeaveForTrip={onLeaveForTrip}
+            onPlanTrip={onPlanTrip}
             onOpenTrip={onOpenTrip}
             onAddLeave={() => onAddLeave(day)}
             onManageHolidays={onManageHolidays}
