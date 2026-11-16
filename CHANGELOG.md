@@ -12,7 +12,7 @@ Fixes and upgrades from using 1.2.1: Plan leave, Import a booking and Route repl
 
 - **A trip showed two or three times on the Calendar** once leave was added for it: the trip, then the leave named after
   it. Leave linked to a trip now shares the trip's bar (marked with a small sun) when it falls within the trip's dates;
-  the day's detail still lists it. The Calendar also shows each trip's chosen icon instead of a plain suitcase.
+  the day's detail shows them as one card, with the leave inside the trip. The Calendar also shows each trip's chosen icon instead of a plain suitcase.
 - **Plan leave did nothing** for a workspace with no leave types, which is every workspace the new app has not set up
   (there is no screen for leave types yet). It now always opens: it shows the days a trip needs, and **Add Annual leave**
   creates a starter leave type right there (your yearly allowance, or 25 days). A trip with no travellers says to add one.
