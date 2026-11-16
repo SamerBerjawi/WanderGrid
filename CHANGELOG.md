@@ -49,6 +49,11 @@ Fixes and upgrades from using 1.2.1: Plan leave, Import a booking and Route repl
   favourite months: it picks the breaks that give the most days off ("Take 4 days off to enjoy 9 days in a row"),
   shows the total ("66 days off for 20 leave days"), lists the long weekends that need no leave, and can add the whole
   plan to the calendar as ideas.
+- **Leave over time, and reminders.** The Member page's Leave tab shows leave by month, what the year's leave bought
+  ("21 days off for only 11 leave days") and a year-by-year table (offered, taken, planned, carried in, lost, left). The
+  Calendar has a Reminders card (leave coming up, carried-over days expiring, leave left late in the year, requests still
+  waiting), the Dashboard's leave widget shows the most pressing one, and Year in review says what the leave bought.
+  Each reminder can be switched off in Settings › Leave.
 - **Trips and leave check each other.** A trip shows when its leave was refused, is still waiting, sits on other dates,
   or leaves working days uncovered; the Calendar lists the trips whose leave needs a look; leave with no trip offers
   **Plan a trip for these days**, and the new trip takes that leave over.

@@ -21,8 +21,8 @@ export interface ReviewInput {
     flights: Transport[];
     /** The home country code (from the workspace's starting airport). Coming back to it is not a visit. Without one, the country you most often set off from is used. */
     home?: string;
-    /** Leave days used on trips this year, and what is left, when the member has a leave policy. */
-    leave?: { days: number; allowance: number; left: number } | null;
+    /** Leave days used on trips this year, and what is left, when the member has a leave policy; `bought` is the line on what the leave bought (utils/leaveInsights). */
+    leave?: { days: number; allowance: number; left: number; bought?: string | null } | null;
 }
 
 export interface Tally { label: string; count: number }
@@ -54,7 +54,7 @@ export interface YearReview {
     topAirport: Tally | null;
     co2Kg: number;
     trees: number;
-    leave: { days: number; allowance: number; left: number } | null;
+    leave: { days: number; allowance: number; left: number; bought?: string | null } | null;
     /** The year before, for "up 24% on 2025"; null when it had no travel. */
     before: { km: number; trips: number; nights: number } | null;
 }

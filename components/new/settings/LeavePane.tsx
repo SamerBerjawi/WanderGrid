@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import type { EntitlementType, LeaveAdjustment, LeaveEntry, User, UserPolicy } from '../../../types';
+import type { EntitlementType, LeaveAdjustment, LeaveEntry, LeaveReminderKind, User, UserPolicy } from '../../../types';
+import { REMINDER_LABELS } from '../../../utils/leaveInsights';
 import type { SettingsData } from '../../../hooks/useSettingsData';
 import { useLeaveRules } from '../../../hooks/useLeaveRules';
 import { affectsCollections } from '../../../hooks/useWanderSync';
@@ -585,6 +586,24 @@ export const LeavePane: React.FC<{ data: SettingsData }> = ({ data }) => {
                                 onChange={on => { void attempt(() => data.saveUser({ ...member, leaveApproval: on || undefined })); }}
                             />
                         </div>
+                        {member.id === data.sessionUserId ? (
+                            <div className="flex flex-col gap-0.5 border-t border-rp-line pt-3">
+                                <span className="text-xs text-rp-muted">Reminders on the Calendar and Dashboard</span>
+                                {(Object.keys(REMINDER_LABELS) as LeaveReminderKind[]).map(kind => (
+                                    <RpToggle
+                                        key={kind}
+                                        label={REMINDER_LABELS[kind].label}
+                                        hint={REMINDER_LABELS[kind].hint}
+                                        checked={member.leaveReminders?.[kind] !== false}
+                                        onChange={on => {
+                                            const next = { ...(member.leaveReminders || {}), [kind]: on };
+                                            if (on) delete next[kind];
+                                            void attempt(() => data.saveUser({ ...member, leaveReminders: Object.keys(next).length ? next : undefined }));
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        ) : null}
                         {!data.isAdmin ? <p className="text-xs text-rp-muted">Set these to match your contract. An administrator can change them too.</p> : null}
                     </div>
                 </div>

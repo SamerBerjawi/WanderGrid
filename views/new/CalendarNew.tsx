@@ -33,6 +33,8 @@ import { newLeaveId } from '../../utils/leaveEntry';
 import { dataService } from '../../services/mockDb';
 import { tripsNeedingAttention } from '../../utils/tripLeave';
 import { LeaveAttention } from '../../components/new/calendar/LeaveAttention';
+import { LeaveReminders } from '../../components/new/calendar/LeaveReminders';
+import { leaveReminders } from '../../utils/leaveInsights';
 import { CalendarBlank, CalendarCheck, CaretLeft, CaretRight, Clock, Flag, Gear, List, MagnifyingGlass, Plus, Sparkle, SquaresFour, Star, SunHorizon, Suitcase, Users } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
@@ -218,6 +220,13 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
     const attention = useMemo(
         () => (subject && entitlements.length > 0 ? tripsNeedingAttention(trips, subject, leave, contextFor(subject.id), today) : []),
         [subject, entitlements.length, trips, leave, contextFor, today],
+    );
+    // The signed-in member's own reminders, when the calendar shows them (the trips card above covers trip issues).
+    const reminders = useMemo(
+        () => (subject && me && subject.id === me.id && entitlements.length > 0
+            ? leaveReminders(subject, leave, entitlements, contextFor(subject.id), today, { name: e => leaveTitle(e, typeName) })
+            : []),
+        [subject, me, leave, entitlements, contextFor, today, typeName],
     );
     const upcomingHolidays = useMemo(() => holidays.filter(h => h.counted && h.observed >= today).slice(0, 3), [holidays, today]);
     // The optimizer works from the subject's own days off: their followed calendars, their working week, their booked leave.
@@ -569,6 +578,14 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                             onMember={onMemberClick}
                         />
                         <LeaveAttention items={attention} onOpenTrip={id => onTripClick?.(id)} />
+                        <LeaveReminders
+                            reminders={reminders}
+                            onOpenEntry={id => { const entry = leave.find(e => e.id === id); if (entry) setLeaveTarget({ kind: 'edit', entry }); }}
+                            onSettings={onNavigate ? () => {
+                                try { localStorage.setItem('wandergrid_settings_new_tab', 'leave'); } catch { /* storage unavailable */ }
+                                onNavigate('/settings');
+                            } : undefined}
+                        />
                         <section aria-label="Public holidays" className={cn(card, 'flex flex-col gap-2 p-4 sm:p-5')}>
                             <div className="flex items-center justify-between gap-2">
                                 <h2 className="text-base font-medium text-rp-ink">Public holidays</h2>

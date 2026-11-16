@@ -17,8 +17,9 @@ import {
     Airplane, ChartBar, Check, ListRestart, PencilSimple, ClockCounterClockwise, Sparkle, Compass, Globe, IdentificationCard, Moon, Path, Plus, SunHorizon, Suitcase, type Icon,
 } from '../../components/ui/hugeicons';
 import { mapLink } from '../../utils/mapLinks';
+import { leaveReminders, timeOffBought, timeOffSentence } from '../../utils/leaveInsights';
 import { ORBIT_KM, leaveByType, leaveTrips, type LeaveTrip, type LeaveUse } from '../../utils/dashboardModel';
-import { balancesFor, summarise } from '../../utils/calendarModel';
+import { balancesFor, leaveTitle, summarise } from '../../utils/calendarModel';
 import { useLeaveRules } from '../../hooks/useLeaveRules';
 import { useLeaveEntries } from '../../hooks/useLeaveEntries';
 import { cn } from '../../utils/cn';
@@ -170,14 +171,17 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
     const member = data.users.find(u => u.id === memberId) ?? data.users.find(u => u.id === userId) ?? data.users[0];
     const year = Number(data.today.slice(0, 4));
     const leave = useMemo(() => {
-        if (!member) return { use: [] as LeaveUse[], trips: [] as LeaveTrip[], allowance: 0 };
+        if (!member) return { use: [] as LeaveUse[], trips: [] as LeaveTrip[], allowance: 0, note: null as string | null };
         const ctx = rules.contextFor(member);
         const use = leaveByType(leaveEntries, data.types, member, year, ctx, data.today);
         // Days logged on the member without a trip behind them still count as taken.
         // The same figure the Calendar and the Member page show: the leave types' totals, else the yearly allowance.
         const allowance = summarise(balancesFor({ user: member, leave: leaveEntries, entitlements: data.types, today: data.today, ctx }, year), member, year).total;
-        return { use, trips: leaveTrips(leaveEntries, data.trips, member, year, ctx, data.today), allowance };
-    }, [member, data.trips, data.types, year, data.today, rules, leaveEntries]);
+        // The line under the ring: your own most pressing reminder, else what the year's leave bought.
+        const reminder = member.id === userId ? leaveReminders(member, leaveEntries, data.types, ctx, data.today, { name: e => leaveTitle(e, id => data.types.find(t => t.id === id)?.name) })[0]?.text : undefined;
+        const bought = timeOffSentence(timeOffBought(member, leaveEntries, ctx, data.today, year), true);
+        return { use, trips: leaveTrips(leaveEntries, data.trips, member, year, ctx, data.today), allowance, note: reminder ?? bought };
+    }, [member, data.trips, data.types, year, data.today, rules, leaveEntries, userId]);
 
     const nextTrip = data.next?.trip;
     const items = useMemo<WidgetGridItem[]>(() => [
@@ -204,7 +208,7 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
             id: 'leave', title: `Leave ${year}`, icon: <WidgetIcon icon={SunHorizon} />, defaultSpan: 2, rows: 4, narrowRows: 4, interactive: true,
             onOpen: member ? () => (onMemberClick ? onMemberClick(member.id) : openPage('/calendar')) : undefined, openLabel: member ? `Open ${member.name}` : undefined,
             render: () => (
-                <LeaveWidget users={data.users} memberId={member?.id ?? ''} onMember={setMemberId} use={leave.use} trips={leave.trips} allowance={leave.allowance} year={year} onTripClick={openTrip} />
+                <LeaveWidget users={data.users} memberId={member?.id ?? ''} onMember={setMemberId} use={leave.use} trips={leave.trips} allowance={leave.allowance} year={year} onTripClick={openTrip} note={leave.note} />
             ),
         },
         {

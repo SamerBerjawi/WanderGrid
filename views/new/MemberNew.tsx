@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import NumberFlow from '@number-flow/react';
 import type { User } from '../../types';
 import { useMemberData, type MemberTrip } from '../../hooks/useMemberData';
+import { leaveByMonth, timeOffBought, timeOffSentence, yearHistory } from '../../utils/leaveInsights';
+import { LeaveHistory } from '../../components/new/member/LeaveHistory';
 import { leaveFigures, leaveYears } from '../../utils/leaveModel';
 import { useLeaveRules } from '../../hooks/useLeaveRules';
 import { useLeaveEntries } from '../../hooks/useLeaveEntries';
@@ -96,6 +98,15 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
     const rules = useLeaveRules();
     const { leave: leaveEntries } = useLeaveEntries();
     const years = useMemo(() => (member ? leaveYears(member, leaveEntries, thisYear) : [thisYear]), [member, leaveEntries, thisYear]);
+    const history = useMemo(() => {
+        if (!member) return null;
+        const ctx = rules.contextFor(member);
+        return {
+            rows: yearHistory(member, leaveEntries, data.entitlements, ctx, data.today, [...years].sort((a, b) => b - a)),
+            months: leaveByMonth(member, leaveEntries, ctx, data.today, year),
+            sentence: timeOffSentence(timeOffBought(member, leaveEntries, ctx, data.today, year), year >= thisYear),
+        };
+    }, [member, leaveEntries, data.entitlements, data.today, years, year, thisYear, rules]);
     const leave = useMemo(() => (member ? leaveFigures(member, leaveEntries, data.entitlements, year, data.today, rules.contextFor(member)) : null), [member, leaveEntries, data.entitlements, year, data.today, rules]);
 
     const changeTab = (next: TabId) => {
@@ -367,6 +378,7 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                                     </div>
                                 )}
                             </div>
+                            {!noLeave && history ? <LeaveHistory year={year} months={history.months} sentence={history.sentence} rows={history.rows} thisYear={thisYear} onYear={setYear} /> : null}
                         </div>
                     ) : null}
 

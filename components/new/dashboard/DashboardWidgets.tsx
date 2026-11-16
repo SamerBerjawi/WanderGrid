@@ -407,7 +407,9 @@ export const LeaveWidget: React.FC<{
     allowance: number;
     year: number;
     onTripClick: (id: string) => void;
-}> = ({ users, memberId, onMember, use, trips, allowance, year, onTripClick }) => {
+    /** One line under the ring: the member's most pressing reminder, or what their leave bought this year. */
+    note?: string | null;
+}> = ({ users, memberId, onMember, use, trips, allowance, year, onTripClick, note }) => {
     const booked = use.reduce((n, u) => n + u.days, 0);
     const left = Math.max(0, allowance - booked);
     const categories = useMemo<SpendingCategory[]>(() => [
@@ -446,6 +448,7 @@ export const LeaveWidget: React.FC<{
                         format={days}
                         caption={allowance > 0 ? (c) => (c.name === 'Left' ? `of ${allowance} days in ${year}` : `${days(booked)} booked of ${allowance}`) : undefined}
                     />
+                    {note ? <p className="mt-3 px-2 text-xs text-rp-muted">{note}</p> : null}
                     {trips.length ? (
                         <ul className="mt-3 flex flex-col gap-1">
                             {trips.slice(0, 3).map(({ entry, trip, days: n }) => {
