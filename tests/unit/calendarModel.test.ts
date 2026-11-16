@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { EntitlementType, Trip, User } from '../../types';
 import {
     balancesFor, carryOverInto, countedDays, dayWeight, holidayDays, layoutWeek, leaveContext, memberLeaveDays, monthMatrix, observedDate, summarise,
-    buildItems, type BalanceInput, type CalendarItem,
+    buildItems, gridItems, type BalanceInput, type CalendarItem,
 } from '../../utils/calendarModel';
 import { leaveFromTrip, tripWithoutLeave } from '../../utils/leaveEntry';
 
@@ -126,6 +126,18 @@ describe('week layout', () => {
         expect(ids({ query: 'osl' })).toEqual(['trip:y']);
         // A trip with leave linked to it says so.
         expect(buildItems(sources, { memberIds: [], leaveOnly: false, query: '' }, '2026-10-01').find(i => i.id === 'x')?.leave).toBe(true);
+    });
+
+    it('draws leave taken for a trip once, as the trip, unless it runs outside the trip', () => {
+        const raw = trip({ id: 'x', name: 'Barcelona', entitlementId: 'annual' });
+        const [inside] = leaveFromTrip(raw);
+        const longer = { ...inside, id: 'longer', startDate: '2026-10-02' };
+        const other = { ...inside, id: 'other', tripId: undefined };
+        const items = buildItems({ trips: [tripWithoutLeave(raw)], leave: [inside, longer, other], holidays: [], events: [] }, { memberIds: [], leaveOnly: false, query: '' }, '2026-10-01');
+        expect(gridItems(items).map(i => i.id).sort()).toEqual(['longer', 'other', 'x']);
+        expect(items.find(i => i.id === inside.id)?.folded).toBe(true);
+        // With trips hidden (leave only), the leave shows on its own.
+        expect(gridItems(buildItems({ trips: [tripWithoutLeave(raw)], leave: [inside], holidays: [], events: [] }, { memberIds: [], leaveOnly: true, query: '' }, '2026-10-01')).map(i => i.id)).toEqual([inside.id]);
     });
 
     it('shows an idea muted and a request as pending, and leaves out refusals', () => {

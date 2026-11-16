@@ -5,7 +5,7 @@ import { useCalendarData } from '../../hooks/useCalendarData';
 import { buildConfig, calendarKey, followedKeys, missingYears, withCustomHoliday, withoutHoliday } from '../../utils/holidayCalendar';
 import { fetchHolidays } from '../../services/holidayCalendars';
 import {
-    ALL_LAYERS, balancesFor, addDaysISO, weekOf, buildItems, calendarYears, configsFor, daysBetween, holidayDays, itemsOn, leaveTitle, memberWorkingDays, tripDates, leaveContext, monthOf, MONTH_NAMES,
+    ALL_LAYERS, balancesFor, addDaysISO, weekOf, buildItems, calendarYears, gridItems, configsFor, daysBetween, holidayDays, itemsOn, leaveTitle, memberWorkingDays, tripDates, leaveContext, monthOf, MONTH_NAMES,
     nextLeave, summarise, workingDaysOf, type CalendarItem, type CalendarLayer, type LeaveColor, type LeaveContext, type WeekStart,
 } from '../../utils/calendarModel';
 import { formatDate, formatDateRange } from '../../utils/formatters';
@@ -217,6 +217,8 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
         () => buildItems({ trips, leave, holidays, events, typeName }, { memberIds, leaveOnly, query, layers }, today, leaveColors),
         [trips, leave, holidays, events, typeName, memberIds, leaveOnly, query, layers, today, leaveColors],
     );
+    // The grids and lists draw leave taken for a trip as the trip's bar; the day's detail lists both.
+    const drawn = useMemo(() => gridItems(items), [items]);
 
     const balances = useMemo(
         () => (subject ? balancesFor({ user: subject, leave, entitlements, today, ctx: contextFor(subject.id) }, balanceYear) : []),
@@ -457,8 +459,8 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
 
     const monthStart = `${cursor.year}-${String(cursor.month0 + 1).padStart(2, '0')}-01`;
     const monthEnd = `${cursor.year}-${String(cursor.month0 + 1).padStart(2, '0')}-${String(new Date(Date.UTC(cursor.year, cursor.month0 + 1, 0)).getUTCDate()).padStart(2, '0')}`;
-    const monthItems = items.filter(i => i.end >= monthStart && i.start <= monthEnd);
-    const scheduleItems = items.filter(i => i.end >= today);
+    const monthItems = drawn.filter(i => i.end >= monthStart && i.start <= monthEnd);
+    const scheduleItems = drawn.filter(i => i.end >= today);
     const shownWeek = weekOf(focusISO, weekStart);
     const heading = tab === 'year' ? String(cursor.year) : tab === 'week' ? formatDateRange(shownWeek[0], shownWeek[6]) : `${MONTH_NAMES[cursor.month0]} ${cursor.year}`;
     const tabItems = TABS.map(t => ({ id: t.id, title: t.title, icon: t.icon, hideTitle: mobile && t.id !== tab, iconClassName: tab === t.id ? undefined : t.iconClassName }));
@@ -570,7 +572,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                                             year={cursor.year}
                                             month0={cursor.month0}
                                             weekStart={weekStart}
-                                            items={items}
+                                            items={drawn}
                                             workingDays={viewWeek}
                                             today={today}
                                             selected={day}
@@ -597,7 +599,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                                     <>
                                         <WeekGrid
                                             weekStart={weekStart}
-                                            items={items}
+                                            items={drawn}
                                             workingDays={viewWeek}
                                             today={today}
                                             selected={day}
@@ -617,7 +619,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                                     <YearGrid
                                         year={cursor.year}
                                         weekStart={weekStart}
-                                        items={items}
+                                        items={drawn}
                                         workingDays={viewWeek}
                                         today={today}
                                         onOpenDay={openDay}

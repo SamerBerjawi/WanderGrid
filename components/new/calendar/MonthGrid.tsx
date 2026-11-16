@@ -5,7 +5,9 @@ import {
     orderedRange, type CalendarItem, type WeekStart,
 } from '../../../utils/calendarModel';
 import { useDayDrag } from '../../../hooks/useDayDrag';
-import { chipClass, dotClass, itemIcon, itemWords } from './calendarStyles';
+import { chipClass, dotClass, itemWords } from './calendarStyles';
+import { ItemIcon } from './ItemIcon';
+import { SunHorizon } from '../../ui/hugeicons';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -189,7 +191,6 @@ export const MonthGrid: React.FC<{
                                         <span className="flex flex-col gap-0.5" aria-hidden>
                                             {cell.slots.map((slot, lane) => {
                                                 if (!slot) return <span key={lane} className="h-6" />;
-                                                const Icon = itemIcon(slot.item);
                                                 const showLabel = slot.first || c === 0;
                                                 const grab = slot.item.kind === 'leave' && onMoveLeave && movable?.(slot.item.key) ? slot.item.key : undefined;
                                                 return (
@@ -205,8 +206,9 @@ export const MonthGrid: React.FC<{
                                                             slot.last ? 'mr-1 rounded-r-full pr-1.5' : '-mr-px',
                                                         )}
                                                     >
-                                                        {showLabel ? <Icon size={12} className="shrink-0" aria-hidden /> : null}
+                                                        {showLabel ? <ItemIcon item={slot.item} size={12} className="shrink-0" /> : null}
                                                         {showLabel ? <span className="truncate">{slot.item.title}</span> : null}
+                                                        {showLabel && slot.item.kind === 'trip' && slot.item.leave ? <SunHorizon size={12} className="shrink-0 opacity-70" aria-hidden /> : null}
                                                     </span>
                                                 );
                                             })}
