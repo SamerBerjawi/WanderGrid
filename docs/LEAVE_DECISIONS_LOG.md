@@ -95,3 +95,15 @@ the build, without asking. Each entry says what was decided, why, and where it l
 | 2a.4 | The budget starts at what is left this year and can be changed; the look-ahead defaults to 12 months | Plan section 4 ("available leave balances, preferred periods, constraints"). **(own call)** |
 | 2a.5 | **Add all to the calendar as ideas** adds each break as a draft leave entry on the first Annual-style type, with a note; ideas cost nothing until planned or confirmed, and Undo removes them | Lets the plan be seen next to everything else without committing a balance. **(own call)** |
 | 2a.6 | Blocked periods (`avoid`) are supported by the planner but not yet offered in the sheet | Kept the sheet short; booked leave and trips already shape the plan. **(own call)** |
+
+## Phase 2b: insights and reminders (PR #121, feat/leave-insights)
+
+| # | Decision | Why / alternative |
+|---|---|---|
+| 2b.1 | "Days off bought" widens each leave day to the weekends, holidays and company days next to it; days marked as worked are left out | Matches how people count a long weekend. **(own call)** |
+| 2b.2 | Reminders are in-app only (A6), each kind switchable per member (`User.leaveReminders`): leave within 14 days, requests waiting 30 days before, carry-over expiring within 60 days, from October what is left and what would be lost, trips needing a look | Useful without nagging. **(own call)** |
+
+| 2b.3 | Reminders show only to the member themselves: on the Calendar when the signed-in member is the one in view, on the Dashboard leave widget when it shows you; their switches are in your own row of Settings › Leave | Reminders are personal; an admin looking at someone else's calendar sees the trips card, not their reminders. **(own call)** |
+| 2b.4 | The Calendar's Reminders card leaves out the "trips need a look" reminder | The Calendar already has the "Leave to look at" card listing those trips. **(own call)** |
+| 2b.5 | The Dashboard widget has room for one line: your most pressing reminder, otherwise what the year's leave bought | Keeps the widget the same size. **(own call)** |
+| 2b.6 | The Member page shows leave by month as simple bars and a year-by-year table; future years with nothing offered or booked are hidden; the current year reads "this year", later ones "forecast" | A chart library would be heavy for twelve bars. **(own call)** |

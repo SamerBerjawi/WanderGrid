@@ -7,6 +7,7 @@ import { dataService } from '../../../services/mockDb';
 import { toast } from '../../../services/toast';
 import { useOverlayA11y } from '../../../hooks/useOverlayA11y';
 import { leaveFigures } from '../../../utils/leaveModel';
+import { timeOffBought, timeOffSentence } from '../../../utils/leaveInsights';
 import { useLeaveRules } from '../../../hooks/useLeaveRules';
 import { useLeaveEntries } from '../../../hooks/useLeaveEntries';
 import { formatKg } from '../../../utils/footprint';
@@ -208,6 +209,7 @@ const SlideBody: React.FC<{ kind: SlideKind; r: Review; summary: string; onCopy:
                     <Kicker>Time off</Kicker>
                     <Count value={r.leave!.days} className={cn('text-8xl', a.text)} />
                     <Lede>{r.leave!.days === 1 ? 'day' : 'days'} of leave went on trips{r.leave!.allowance > 0 ? ` out of ${r.leave!.allowance}` : ''}.</Lede>
+                    {r.leave!.bought ? <Small>{r.leave!.bought}</Small> : null}
                     {r.leave!.left > 0 ? <Small>{plural(r.leave!.left, 'day')} still to use this year.</Small> : null}
                 </>
             );
@@ -260,8 +262,10 @@ export const YearReview: React.FC<Props> = ({ open, onClose, trips, legs, today,
         const me = users.find(u => u.id === sessionUserId());
         let leave: Review['leave'] = null;
         if (me) {
-            const f = leaveFigures(me, leaveEntries, types, year, today, rules.contextFor(me));
-            leave = { days: f.onTrips + f.planned, allowance: f.allowance, left: year === Number(today.slice(0, 4)) ? f.left : 0 };
+            const ctx = rules.contextFor(me);
+            const f = leaveFigures(me, leaveEntries, types, year, today, ctx);
+            const bought = timeOffSentence(timeOffBought(me, leaveEntries, ctx, today, year), year > Number(today.slice(0, 4)));
+            leave = { days: f.onTrips + f.planned, allowance: f.allowance, left: year === Number(today.slice(0, 4)) ? f.left : 0, bought };
         }
         return buildReview({ year, today, trips, legs, flights, home, leave });
     }, [year, users, trips, types, legs, flights, home, today, rules, leaveEntries]);
