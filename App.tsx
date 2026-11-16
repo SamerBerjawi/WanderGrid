@@ -293,6 +293,10 @@ export default function App() {
                     onBack={() => (window.history.length > 1 ? window.history.back() : navigateTo(PATHS.trips))}
                     onOpenTrip={openTripNew}
                     onLogout={() => handleLogout()}
+                    onOpenLeaveSettings={() => {
+                      try { localStorage.setItem('wandergrid_settings_new_tab', 'leave'); } catch { /* storage unavailable: Settings opens on its first section */ }
+                      navigateTo(PATHS.settings);
+                    }}
                   />
                 ) : null}
                 {page === 'trip' && route.id ? (

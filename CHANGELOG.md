@@ -45,6 +45,12 @@ Fixes and upgrades from using 1.2.1: Plan leave, Import a booking and Route repl
   Settings › Leave to use the request flow.
 - **The Calendar shows trips and leave apart**, with a Leave layer, an **Add leave for this trip** action on a trip, and
   in the leave sheet the trip it is for, a note, and what each balance would have left before you save.
+- **The balance ledger** in Settings › Leave: a leave year that starts in any month (a June start makes "2026" run
+  June 2026 – May 2027), an opening balance, adjustments with a note (+ a bonus day, − days taken elsewhere),
+  "accrued so far" for monthly allowances, and each member's own working week for part-time schedules.
+- **The old yearly allowance is retired.** Each member's "days a year" and "days taken" become an Annual leave allowance
+  and an adjustment (once, when the server starts or a backup is restored). New members start with each leave type's
+  default allowance.
 - **Settings › Leave**: leave types (name, kind, colour, default allowance, carry-over and its expiry) for admins, and each
   member's allowance per type and year, with what is left, carried over or about to expire beside it, **Copy to next
   year**, and the weekend-holiday rule. Members set their own allowances; admins set anyone's.

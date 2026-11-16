@@ -17,15 +17,14 @@ const SHOWN = 6;
 const ROLES: User['role'][] = ['Admin', 'Partner', 'Child'];
 const ROLE_TONE = { Admin: 'ink', Partner: 'green', Child: 'mustard' } as const;
 
-/** A new member: the sign-in details, a role and a yearly allowance. The server decides the rest. */
+/** A new member: the sign-in details and a role. The server decides the rest (each leave type's default allowance). */
 const AddMemberSheet: React.FC<{ open: boolean; users: User[]; onClose: () => void; onAdd: (user: User) => Promise<void> }> = ({ open, users, onClose, onAdd }) => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [role, setRole] = useState<User['role']>('Partner');
-    const [allowance, setAllowance] = useState(25);
     const [error, setError] = useState('');
-    useEffect(() => { if (open) { setName(''); setEmail(''); setPassword(''); setRole('Partner'); setAllowance(25); setError(''); } }, [open]);
+    useEffect(() => { if (open) { setName(''); setEmail(''); setPassword(''); setRole('Partner'); setError(''); } }, [open]);
 
     const save = async () => {
         const fail = (message: string): never => { setError(message); throw new Error(message); };
@@ -42,10 +41,11 @@ const AddMemberSheet: React.FC<{ open: boolean; users: User[]; onClose: () => vo
                 password: password.trim(),
                 profilePicture: '',
                 role,
-                leaveBalance: allowance,
+                leaveBalance: 0,
                 takenLeave: 0,
-                allowance,
+                allowance: 0,
                 policies: [],
+                legacyLeaveConverted: true,
                 holidayConfigIds: [],
                 holidayWeekendRule: 'none',
                 activeYears: [new Date().getFullYear()],
@@ -82,9 +82,7 @@ const AddMemberSheet: React.FC<{ open: boolean; users: User[]; onClose: () => vo
                             {ROLES.map(r => <RpChip key={r} selected={role === r} onClick={() => setRole(r)}>{r}</RpChip>)}
                         </div>
                     </div>
-                    <RpField label="Leave days a year">
-                        {id => <input id={id} type="number" inputMode="numeric" min={0} value={allowance} onChange={e => setAllowance(Math.max(0, Math.round(Number(e.target.value) || 0)))} className={cn(RP_FIELD, 'rp-tabular')} />}
-                    </RpField>
+                    <p className="pb-1.5 text-xs text-rp-muted">They start with each leave type's default allowance. Change it in Settings › Leave.</p>
                 </RpSection>
             </div>
             {error ? <p role="alert" className="mt-3 text-sm text-rp-rust">{error}</p> : null}

@@ -29,6 +29,32 @@ export const weekdayOf = (iso: string): number => new Date(utc(iso)).getUTCDay()
 export const daysBetween = (from: string, to: string): number => Math.round((utc(to) - utc(from)) / DAY_MS);
 export const yearOfISO = (iso?: string): number => Number((iso || '').slice(0, 4));
 
+/**
+ * The leave year a date belongs to, for a leave year starting in `startMonth` (1–12): with a June start, 10 March 2027
+ * is in leave year 2026 (June 2026 – May 2027). January starts make leave years calendar years.
+ */
+export const leaveYearOf = (iso: string, startMonth = 1): number => {
+    const y = yearOfISO(iso);
+    const m = Number((iso || '').slice(5, 7));
+    return startMonth > 1 && m < startMonth ? y - 1 : y;
+};
+
+/** The first and last day of a leave year. */
+export const leaveYearRange = (year: number, startMonth = 1): { from: string; to: string } => {
+    const s = startMonth >= 1 && startMonth <= 12 ? startMonth : 1;
+    const from = isoOf(year, s - 1, 1);
+    const end = new Date(Date.UTC(year + 1, s - 1, 0));
+    return { from, to: isoOf(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()) };
+};
+
+/** "2026", or "2026–27" when the leave year does not start in January. */
+export const leaveYearLabel = (year: number, startMonth = 1): string =>
+    startMonth > 1 ? `${year}–${String((year + 1) % 100).padStart(2, '0')}` : String(year);
+
+/** The working week of a member: their own, else the workspace's. */
+export const memberWorkingDays = (user: Pick<User, 'workingDays'> | undefined, workspaceDays: number[]): number[] =>
+    user?.workingDays && user.workingDays.length > 0 ? user.workingDays : workspaceDays;
+
 export const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] as const;
 export const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 export const WEEKDAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
@@ -235,18 +261,20 @@ export const memberLeaveEntries = (user: Pick<User, 'id'>, entries: LeaveEntry[]
  * afternoon make one day). A split across types keeps its own day counts and claims its dates. Entries with no
  * leave type claim their days too (they are time off) but put nothing on a balance.
  */
-export const memberLeaveDays = (user: Pick<User, 'id'>, entries: LeaveEntry[], ctx: LeaveContext, today: string): LeaveDay[] => {
+export const memberLeaveDays = (user: Pick<User, 'id'>, entries: LeaveEntry[], ctx: LeaveContext, today: string, startOf?: (entitlementId: string) => number): LeaveDay[] => {
     const claimed = new Map<string, number>();
     const out: LeaveDay[] = [];
     memberLeaveEntries(user, entries).forEach(e => {
         const pending = e.state === 'requested';
         const split = (e.allocations || []).filter(x => x.entitlementId && Number(x.days) > 0);
         if (split.length > 0) {
-            const startYear = yearOfISO(e.startDate);
             const over = (e.endDate || e.startDate) < today;
             split.forEach(x => {
-                const y = x.targetYear ?? startYear;
-                out.push({ iso: y === startYear ? e.startDate : `${y}-01-01`, entitlementId: x.entitlementId, days: Number(x.days), entryId: e.id, used: over, pending });
+                // A split's days sit on the day it starts, or on the first day of the leave year they are put in.
+                const s = startOf?.(x.entitlementId) ?? 1;
+                const own = leaveYearOf(e.startDate, s);
+                const y = x.targetYear ?? own;
+                out.push({ iso: y === own ? e.startDate : `${y}-${pad(s)}-01`, entitlementId: x.entitlementId, days: Number(x.days), entryId: e.id, used: over, pending });
             });
             tripDates(e).forEach(iso => {
                 const w = dayWeight(e, iso, ctx);
@@ -302,9 +330,16 @@ export const leaveOverlaps = (user: Pick<User, 'id'>, entries: LeaveEntry[], ctx
 
 export interface TypeBalance {
     entitlement: EntitlementType;
+    /** The leave year (it starts in `yearStart`). */
     year: number;
+    /** The month (1–12) the type's leave year starts. */
+    yearStart: number;
     /** Days the policy grants for the year (monthly accrual runs twelve times); null without a policy. */
     allowance: number | null;
+    /** Days there when the year starts, from before WanderGrid counted (the policy's opening balance). */
+    opening: number;
+    /** Manual adjustments for the year, added up (+ given, − taken back). */
+    adjusted: number;
     /** Days carried over from the year before. */
     carryOver: number;
     /** Carried-over days lost because they were not used by their expiry date (counted once that date is past). */
@@ -313,8 +348,13 @@ export interface TypeBalance {
     expiring: { days: number; on: string } | null;
     /** Days in lieu earned this year by weekend holidays (the member's "Day in lieu" rule). */
     lieu: number;
-    /** Allowance plus carry-over plus days in lieu; null when unlimited or without a policy. */
+    /** Allowance, opening balance, adjustments, carry-over and days in lieu; null when unlimited or without a policy. */
     total: number | null;
+    /**
+     * Of the total, what has been earned by today: monthly accrual counts the months of the leave year begun so far;
+     * everything else is there from the start. Null when there is no total.
+     */
+    accrued: number | null;
     /** Days taken (approved or planned, before today). */
     used: number;
     /** Days booked from today on (approved or planned). */
@@ -329,12 +369,29 @@ export interface TypeBalance {
 const policyOf = (user: User, entitlementId: string, year: number) =>
     (user.policies || []).find(p => p.entitlementId === entitlementId && p.year === year && p.isActive);
 
-const policyDays = (user: User, entitlementId: string, year: number): { days: number | null; unlimited: boolean } => {
+const policyDays = (user: User, entitlementId: string, year: number): { days: number | null; unlimited: boolean; opening: number; monthly: number | null } => {
     const p = policyOf(user, entitlementId, year);
-    if (!p) return { days: null, unlimited: false };
-    if (p.isUnlimited) return { days: null, unlimited: true };
+    if (!p) return { days: null, unlimited: false, opening: 0, monthly: null };
+    const opening = Number(p.openingBalance) || 0;
+    if (p.isUnlimited) return { days: null, unlimited: true, opening, monthly: null };
     const amount = Number(p.accrual?.amount) || 0;
-    return { days: p.accrual?.period === 'monthly' ? amount * 12 : amount, unlimited: false };
+    const monthly = p.accrual?.period === 'monthly';
+    return { days: monthly ? amount * 12 : amount, unlimited: false, opening, monthly: monthly ? amount : null };
+};
+
+/** The month a type's leave year starts. */
+export const yearStartOf = (entitlement: Pick<EntitlementType, 'yearStartMonth'> | undefined): number => {
+    const m = Math.round(Number(entitlement?.yearStartMonth));
+    return m >= 1 && m <= 12 ? m : 1;
+};
+
+/** The months of a leave year begun by `today` (0 before it starts, 12 once it is over). */
+export const monthsBegun = (year: number, startMonth: number, today: string): number => {
+    const { from, to } = leaveYearRange(year, startMonth);
+    if (today < from) return 0;
+    if (today > to) return 12;
+    const months = (yearOfISO(today) - year) * 12 + Number(today.slice(5, 7)) - startMonth;
+    return Math.min(12, Math.max(0, months + 1));
 };
 
 export interface BalanceInput {
@@ -346,23 +403,26 @@ export interface BalanceInput {
     ctx: LeaveContext;
 }
 
+const startFor = (input: BalanceInput, entitlementId: string): number => yearStartOf(input.entitlements.find(e => e.id === entitlementId));
+
 /** The member's leave days, worked out once per input (balances read them for every type and year). */
 const dayCache = new WeakMap<BalanceInput, LeaveDay[]>();
 const daysOf = (input: BalanceInput): LeaveDay[] => {
     let days = dayCache.get(input);
     if (!days) {
-        days = memberLeaveDays(input.user, input.leave, input.ctx, input.today);
+        days = memberLeaveDays(input.user, input.leave, input.ctx, input.today, id => startFor(input, id));
         dayCache.set(input, days);
     }
     return days;
 };
 
 const usedAndPlanned = (input: BalanceInput, entitlementId: string, year: number) => {
+    const start = startFor(input, entitlementId);
     let used = 0;
     let planned = 0;
     let pending = 0;
     daysOf(input).forEach(d => {
-        if (d.entitlementId !== entitlementId || yearOfISO(d.iso) !== year) return;
+        if (d.entitlementId !== entitlementId || leaveYearOf(d.iso, start) !== year) return;
         if (d.pending) pending += d.days;
         else if (d.used) used += d.days;
         else planned += d.days;
@@ -370,20 +430,27 @@ const usedAndPlanned = (input: BalanceInput, entitlementId: string, year: number
     return { used, planned, pending };
 };
 
-/** Days of a type booked in a year up to and including a date (taken or planned). */
-const bookedThrough = (input: BalanceInput, entitlementId: string, year: number, through: string) =>
-    daysOf(input).reduce((n, d) => (d.entitlementId === entitlementId && yearOfISO(d.iso) === year && d.iso <= through ? n + d.days : n), 0);
+/** Days of a type booked in a leave year up to and including a date (taken or planned). */
+const bookedThrough = (input: BalanceInput, entitlementId: string, year: number, through: string) => {
+    const start = startFor(input, entitlementId);
+    return daysOf(input).reduce((n, d) => (d.entitlementId === entitlementId && leaveYearOf(d.iso, start) === year && d.iso <= through ? n + d.days : n), 0);
+};
+
+/** Manual adjustments for a type and leave year. */
+const adjustmentsFor = (user: User, entitlementId: string, year: number): number =>
+    (user.leaveAdjustments || []).reduce((n, a) => (a.entitlementId === entitlementId && a.year === year ? n + (Number(a.days) || 0) : n), 0);
 
 /**
  * The last day carried-over days can be used, from the policy they were carried from: `months` after the start of
- * the year (3 = to 31 March), or a fixed `MM-DD` in the year. Null when they never expire.
+ * the leave year (3 = to the end of its third month), or a fixed `MM-DD`, its first occurrence in the leave year.
+ * Null when they never expire.
  */
-export const carryOverExpiry = (carryOver: UserPolicy['carryOver'] | undefined, year: number): string | null => {
+export const carryOverExpiry = (carryOver: UserPolicy['carryOver'] | undefined, year: number, startMonth = 1): string | null => {
     if (!carryOver) return null;
     if (carryOver.expiryType === 'months') {
         const n = Math.round(Number(carryOver.expiryValue));
         if (!Number.isFinite(n) || n <= 0) return null;
-        const d = new Date(Date.UTC(year, n, 0));
+        const d = new Date(Date.UTC(year, startMonth - 1 + n, 0));
         return isoOf(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
     }
     if (carryOver.expiryType === 'fixed_date') {
@@ -391,8 +458,9 @@ export const carryOverExpiry = (carryOver: UserPolicy['carryOver'] | undefined, 
         if (!m) return null;
         const month = Number(m[1]), day = Number(m[2]);
         if (month < 1 || month > 12 || day < 1) return null;
-        const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
-        return isoOf(year, month - 1, Math.min(day, last));
+        const y = month < startMonth ? year + 1 : year;
+        const last = new Date(Date.UTC(y, month, 0)).getUTCDate();
+        return isoOf(y, month - 1, Math.min(day, last));
     }
     return null;
 };
@@ -413,13 +481,14 @@ interface CarryIn {
  */
 const carryIn = (input: BalanceInput, entitlementId: string, year: number, depth: number): CarryIn => {
     if (depth > 4) return { days: 0, lost: 0, expiresOn: null };
+    const start = startFor(input, entitlementId);
     const sources: { days: number; expiry: string | null }[] = [];
     (input.user.policies || []).forEach(p => {
         if (p.year !== year - 1 || !p.isActive || !p.carryOver?.enabled || p.isUnlimited) return;
         if ((p.carryOver.targetEntitlementId || p.entitlementId) !== entitlementId) return;
         const left = leftAtYearEnd(input, p.entitlementId, year - 1, depth + 1);
         const days = Math.min(Math.max(0, left), Math.max(0, Number(p.carryOver.maxDays) || 0));
-        if (days > 0) sources.push({ days, expiry: carryOverExpiry(p.carryOver, year) });
+        if (days > 0) sources.push({ days, expiry: carryOverExpiry(p.carryOver, year, start) });
     });
     // The soonest-expiring days are used first.
     sources.sort((a, b) => (a.expiry ?? '9999').localeCompare(b.expiry ?? '9999'));
@@ -437,11 +506,11 @@ const carryIn = (input: BalanceInput, entitlementId: string, year: number, depth
     return { days: sources.reduce((n, x) => n + x.days, 0), lost, expiresOn };
 };
 
-/** Days in lieu a year earns for the type that takes them. */
+/** Days in lieu a leave year earns for the type that takes them. */
 const lieuFor = (input: BalanceInput, entitlementId: string, year: number): number => {
-    const dates = (input.ctx.lieuDates || []).filter(d => yearOfISO(d) === year);
-    if (dates.length === 0) return 0;
-    return lieuTypeOf(input.entitlements)?.id === entitlementId ? dates.length : 0;
+    if (lieuTypeOf(input.entitlements)?.id !== entitlementId) return 0;
+    const start = startFor(input, entitlementId);
+    return (input.ctx.lieuDates || []).filter(d => leaveYearOf(d, start) === year).length;
 };
 
 /** The type days in lieu go to: a "Lieu" type if there is one, else the first annual type, else the first type. */
@@ -450,10 +519,11 @@ export const lieuTypeOf = (entitlements: EntitlementType[]): EntitlementType | u
 
 /** What a type has left once the year is over, given what is booked now (expired carry-over taken off). */
 const leftAtYearEnd = (input: BalanceInput, entitlementId: string, year: number, depth: number): number => {
-    const grant = policyDays(input.user, entitlementId, year).days ?? 0;
+    const grant = policyDays(input.user, entitlementId, year);
     const carried = carryIn(input, entitlementId, year, depth);
     const { used, planned, pending } = usedAndPlanned(input, entitlementId, year);
-    return grant + carried.days - carried.lost + lieuFor(input, entitlementId, year) - used - planned - pending;
+    return (grant.days ?? 0) + grant.opening + adjustmentsFor(input.user, entitlementId, year) + carried.days - carried.lost
+        + lieuFor(input, entitlementId, year) - used - planned - pending;
 };
 
 /** Days carried into a leave type for a year (before any expiry). */
@@ -464,20 +534,27 @@ export const carryOverInto = (input: BalanceInput, entitlementId: string, year: 
 export const balancesFor = (input: BalanceInput, year: number): TypeBalance[] =>
     input.entitlements
         .map(entitlement => {
+            const yearStart = yearStartOf(entitlement);
             const grant = policyDays(input.user, entitlement.id, year);
             const { used, planned, pending } = usedAndPlanned(input, entitlement.id, year);
             const unlimited = grant.unlimited || Boolean(entitlement.isUnlimited && grant.days === null && used + planned + pending > 0);
             const carried = carryIn(input, entitlement.id, year, 0);
             const lieu = lieuFor(input, entitlement.id, year);
+            const adjusted = adjustmentsFor(input.user, entitlement.id, year);
             const past = carried.expiresOn !== null && carried.expiresOn < input.today;
             const expired = past ? carried.lost : 0;
             const expiring = !past && carried.lost > 0 && carried.expiresOn ? { days: carried.lost, on: carried.expiresOn } : null;
-            const hasGrant = grant.days !== null || carried.days > 0 || lieu > 0;
-            const total = unlimited || !hasGrant ? null : (grant.days ?? 0) + carried.days + lieu;
+            const hasGrant = grant.days !== null || grant.opening !== 0 || adjusted !== 0 || carried.days > 0 || lieu > 0;
+            const total = unlimited || !hasGrant ? null : (grant.days ?? 0) + grant.opening + adjusted + carried.days + lieu;
+            const notYet = grant.monthly !== null ? grant.monthly * (12 - monthsBegun(year, yearStart, input.today)) : 0;
+            const accrued = total === null ? null : total - notYet;
             const remaining = total === null ? null : total - expired - used - planned - pending;
-            return { entitlement, year, allowance: grant.days, carryOver: carried.days, expired, expiring, lieu, total, used, planned, pending, remaining, unlimited } satisfies TypeBalance;
+            return {
+                entitlement, year, yearStart, allowance: grant.days, opening: grant.opening, adjusted, carryOver: carried.days, expired, expiring, lieu,
+                total, accrued, used, planned, pending, remaining, unlimited,
+            } satisfies TypeBalance;
         })
-        .filter(b => b.allowance !== null || b.unlimited || b.carryOver > 0 || b.lieu > 0 || b.used + b.planned + b.pending > 0);
+        .filter(b => b.allowance !== null || b.unlimited || b.opening !== 0 || b.adjusted !== 0 || b.carryOver > 0 || b.lieu > 0 || b.used + b.planned + b.pending > 0);
 
 export interface LeaveSummary {
     year: number;
@@ -485,30 +562,21 @@ export interface LeaveSummary {
     planned: number;
     /** Days requested and not answered yet. */
     pending: number;
-    /** Days left in the year: from the leave types' policies, else the member's yearly allowance. */
+    /** Days left in the year across the leave types with an allowance. */
     left: number;
-    /** What the year offers in all (policies' totals less expired carry-over, else the yearly allowance). */
+    /** What the year offers in all (the types' totals less expired carry-over). */
     total: number;
-    /** True when the figures come from the member's yearly allowance rather than per-type policies. */
-    fallback: boolean;
 }
 
-/** The three headline numbers for a member and year. */
-export const summarise = (balances: TypeBalance[], user: User, year: number): LeaveSummary => {
+/** The headline numbers for a member and year (leave types with an allowance; unlimited ones add to used only). */
+export const summarise = (balances: TypeBalance[], _user: User, year: number): LeaveSummary => {
     const used = balances.reduce((n, b) => n + b.used, 0);
     const planned = balances.reduce((n, b) => n + b.planned, 0);
     const pending = balances.reduce((n, b) => n + b.pending, 0);
     const limited = balances.filter(b => b.total !== null && !b.unlimited);
-    if (limited.length > 0) {
-        const total = limited.reduce((n, b) => n + (b.total as number) - b.expired, 0);
-        const taken = limited.reduce((n, b) => n + b.used + b.planned + b.pending, 0);
-        return { year, used, planned, pending, left: Math.max(0, total - taken), total, fallback: false };
-    }
-    const allowance = Number(user.allowance ?? user.leaveBalance) || 0;
-    const recorded = Number(user.takenLeave) || 0;
-    // A member's recorded "taken" days stand in for trips that do not carry the leave.
-    const taken = Math.max(recorded, used);
-    return { year, used: taken, planned, pending, left: Math.max(0, allowance - taken - planned - pending), total: allowance, fallback: true };
+    const total = limited.reduce((n, b) => n + (b.total as number) - b.expired, 0);
+    const taken = limited.reduce((n, b) => n + b.used + b.planned + b.pending, 0);
+    return { year, used, planned, pending, left: Math.max(0, total - taken), total };
 };
 
 /** Years worth showing: this year and next, the members' tracked years and the years of their leave. */

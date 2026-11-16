@@ -36,13 +36,13 @@ export const useLeavePlanner = (trips: Trip[], users: User[], entitlements: Enti
     return useMemo<LeavePlanner>(() => {
         const today = todayISO();
         const me = sessionUserId();
-        const { workingDays, holidaysOf } = rules;
+        const { holidaysOf } = rules;
         const membersOf = (trip: Trip) => (trip.participants || []).map(id => users.find(u => u.id === id)).filter((u): u is User => Boolean(u));
         const memberFor = (trip: Trip) => {
             const members = membersOf(trip);
             return members.find(u => u.id === me) ?? members[0];
         };
-        const input = (trip: Trip, user: User) => ({ trip, user, leave, entitlements, today, workingDays, holidays: holidaysOf(user) });
+        const input = (trip: Trip, user: User) => ({ trip, user, leave, entitlements, today, workingDays: rules.workingDaysOf(user), holidays: holidaysOf(user) });
         const statuses = new Map<string, TripLeaveStatus>();
         const statusFor = (trip: Trip): TripLeaveStatus => {
             const key = `${trip.id}|${trip.startDate}|${trip.endDate}|${trip.status}|${trip.archived ? 1 : 0}`;

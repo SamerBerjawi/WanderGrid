@@ -124,7 +124,8 @@ describe('the trip chip', () => {
         const none = user({ policies: [], allowance: 0, leaveBalance: 0 });
         expect(tracksLeave(none, [])).toBe(false);
         expect(leaveStatus(input(trip('t', '2026-03-02', '2026-03-06'), { user: none })).kind).toBe('none');
-        expect(tracksLeave(user({ policies: [], allowance: 25 }), [])).toBe(true);
+        expect(tracksLeave(user({ policies: [], allowance: 25 }), [])).toBe(false); // the old yearly field no longer counts
+        expect(tracksLeave(user({ policies: [policy('annual', 2026, 25)] }), [])).toBe(true);
     });
 
     it('says a weekend-only trip needs no leave', () => {

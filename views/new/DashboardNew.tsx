@@ -172,9 +172,8 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
     const leave = useMemo(() => {
         if (!member) return { use: [] as LeaveUse[], trips: [] as LeaveTrip[], allowance: 0 };
         const ctx = rules.contextFor(member);
-        let use = leaveByType(leaveEntries, data.types, member, year, ctx, data.today);
+        const use = leaveByType(leaveEntries, data.types, member, year, ctx, data.today);
         // Days logged on the member without a trip behind them still count as taken.
-        if (!use.length && (member.takenLeave || 0) > 0) use = [{ entitlementId: 'taken', name: 'Taken', accent: 'rust', days: member.takenLeave }];
         // The same figure the Calendar and the Member page show: the leave types' totals, else the yearly allowance.
         const allowance = summarise(balancesFor({ user: member, leave: leaveEntries, entitlements: data.types, today: data.today, ctx }, year), member, year).total;
         return { use, trips: leaveTrips(leaveEntries, data.trips, member, year, ctx, data.today), allowance };

@@ -95,12 +95,10 @@ describe('balances', () => {
         expect(b.total).toBe(30);
     });
 
-    it('falls back to the yearly allowance without policies', () => {
-        const u = user({ takenLeave: 2 });
+    it('offers nothing without an allowance, whatever the old yearly fields say', () => {
+        const u = user({ takenLeave: 2, allowance: 25 });
         const balances = balancesFor(input(u, [trip({ entitlementId: 'annual' })]), 2026);
-        const s = summarise(balances, u, 2026);
-        expect(s.fallback).toBe(true);
-        expect(s.left).toBe(25 - 3 - 2);
+        expect(summarise(balances, u, 2026)).toMatchObject({ used: 3, planned: 2, total: 0, left: 0 });
     });
 });
 

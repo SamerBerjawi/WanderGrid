@@ -17,6 +17,12 @@ export interface User {
   holidayWeekendRule?: 'monday' | 'lieu' | 'none'; // Per-user rule for how to handle weekend holidays
   /** Track requests and approvals for this member's leave (Requested / Approved / Rejected) instead of Planned / Confirmed. */
   leaveApproval?: boolean;
+  /** The member's own working week (0=Sun … 6=Sat); the workspace's when unset. Part-timers set theirs. */
+  workingDays?: number[];
+  /** Manual changes to a balance (days given or taken back), per leave type and leave year. */
+  leaveAdjustments?: LeaveAdjustment[];
+  /** Set once the old yearly fields (`allowance`, `takenLeave`) were turned into allowances (migration 0005). */
+  legacyLeaveConverted?: boolean;
   activeYears?: number[]; // New: Explicitly tracked years for UI persistence
   profilePicture?: string;
   nationality?: string;
@@ -29,10 +35,24 @@ export interface User {
   loyalty?: LoyaltyProgram[];
 }
 
+/** A manual change to a member's balance: + days given (a bonus day), − days taken back (days recorded elsewhere). */
+export interface LeaveAdjustment {
+  id: string;
+  entitlementId: string;
+  /** The leave year it applies to. */
+  year: number;
+  days: number;
+  /** When it was made (YYYY-MM-DD). */
+  date?: string;
+  note?: string;
+}
+
 export interface UserPolicy {
   entitlementId: string;
   year: number; // Year-specific configuration
   isActive: boolean;
+  /** Days already there when the year starts, before anything WanderGrid counts (a first year, or a balance from elsewhere). */
+  openingBalance?: number;
   isUnlimited?: boolean; // New: Per-user override for unlimited allowance
   // Configuration moved from Global to User/Year specific
   accrual: {
@@ -375,6 +395,8 @@ export type CarryOverExpiryType = 'none' | 'months' | 'fixed_date';
 export interface EntitlementType {
   id: string;
   name: string;
+  /** The month (1–12) its leave year starts; January when unset. A June start makes "2026" run June 2026 – May 2027. */
+  yearStartMonth?: number;
   category: 'Annual' | 'Sick' | 'Unpaid' | 'Lieu' | 'Seniority' | 'Custom';
   color: 'blue' | 'green' | 'amber' | 'gray' | 'purple' | 'red' | 'indigo' | 'pink' | 'teal' | 'cyan';
   isUnlimited?: boolean; // New: If true, balance check is skipped

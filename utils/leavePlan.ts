@@ -163,9 +163,9 @@ export type TripLeaveStatus =
     /** Leave is booked; `short` is how many days it runs over the type's balance. */
     | { kind: 'booked'; cost: number; typeName: string; short: number; pending: boolean };
 
-/** Whether the member tracks leave at all: a policy, a yearly allowance, or leave already booked. */
+/** Whether the member tracks leave at all: an allowance for some type, or leave already booked. */
 export const tracksLeave = (user: User, leave: LeaveEntry[]): boolean =>
-    (user.policies || []).some(p => p.isActive) || Number(user.allowance ?? user.leaveBalance) > 0 || leave.some(e => e.memberId === user.id && hasLeaveType(e));
+    (user.policies || []).some(p => p.isActive) || leave.some(e => e.memberId === user.id && hasLeaveType(e));
 
 /** The state behind a trip's chip for one member. */
 export const leaveStatus = (input: PlanInput): TripLeaveStatus => {

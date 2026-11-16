@@ -2,6 +2,7 @@
 // Sign-in, sign-up, demo, password reset, sessions and the member roster (/api/auth/*, /api/users*).
 // Moved out of server.js unchanged (decision D-07). Registration order is the order of the original file.
 const crypto = require('crypto');
+const { policiesFromTypes } = require('./legacyLeave');
 
 module.exports = function registerAuthRoutes(app, {
   pool, sendError, requireAdmin, signSession, toPublicUser, hashPassword, verifyPassword, validatePasswordPolicy,
@@ -74,16 +75,17 @@ module.exports = function registerAuthRoutes(app, {
       }
   });
 
-  // Server-side defaults for new accounts; clients cannot choose id, role or other privileged fields.
-  const newUserRecord = ({ id, name, email, role, password }) => {
+  // Server-side defaults for new accounts; clients cannot choose id, role or other privileged fields. A new member
+  // starts with each leave type's default allowance for this year (leave plan A8: the old yearly fields are retired).
+  const newUserRecord = ({ id, name, email, role, password }, types = []) => {
       const year = new Date().getFullYear();
-      const allowance = role === 'Admin' ? 30 : 25;
       return {
           id, name, email, role, password, version: 1,
-          leaveBalance: allowance, takenLeave: 0, allowance, lieuBalance: 0,
-          activeYears: [year, year + 1, year + 2], policies: [], holidayConfigIds: []
+          leaveBalance: 0, takenLeave: 0, allowance: 0, lieuBalance: 0, legacyLeaveConverted: true,
+          activeYears: [year, year + 1, year + 2], policies: policiesFromTypes(types, year), holidayConfigIds: []
       };
   };
+  const leaveTypes = async (client) => (await client.query('SELECT data FROM entitlements')).rows.map(r => r.data);
 
   // Public sign-up is closed once the first admin exists, unless an admin turns it on in Settings or the host
   // sets ALLOW_SIGNUP=true as the default for workspaces that never chose (D-01).
@@ -137,7 +139,7 @@ module.exports = function registerAuthRoutes(app, {
                   throw new HttpError(400, 'We could not create an account with these details. If you already have one, sign in instead.');
               }
               // The very first account becomes the workspace administrator; everyone else is a Partner.
-              const record = newUserRecord({ id: cleanEmail, name: cleanName, email: cleanEmail, role: isFirstUser ? 'Admin' : 'Partner', password: passwordHash });
+              const record = newUserRecord({ id: cleanEmail, name: cleanName, email: cleanEmail, role: isFirstUser ? 'Admin' : 'Partner', password: passwordHash }, await leaveTypes(client));
               await client.query(`INSERT INTO users (id, data) VALUES ($1, $2)`, [record.id, JSON.stringify(record)]);
               return record;
           });
@@ -330,6 +332,9 @@ module.exports = function registerAuthRoutes(app, {
                   [user.id, typeof user.email === 'string' ? user.email.trim() : null]
               );
               if (existing.length > 0) throw new HttpError(409, 'An account with this email already exists');
+              // A member added without allowances gets each leave type's default; the old yearly fields are not read.
+              if (!Array.isArray(user.policies) || user.policies.length === 0) user.policies = policiesFromTypes(await leaveTypes(client), new Date().getFullYear());
+              user.legacyLeaveConverted = true;
               await client.query(`INSERT INTO users (id, data) VALUES ($1, $2)`, [user.id, JSON.stringify(user)]);
           });
           res.status(201).json(toPublicUser(user));
