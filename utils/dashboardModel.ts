@@ -1,4 +1,4 @@
-import type { EntitlementType, Trip, User } from '../types';
+import type { EntitlementType, LeaveEntry, Trip, User } from '../types';
 import { calculateDistance, getCoordinatesSync } from '../services/geocoding';
 import { destinationsOf, isPastTrip, isTravelling } from './tripsModel';
 import { isRealTrip } from './tripKind';
@@ -324,9 +324,9 @@ export interface LeaveUse {
  * Days of leave a member has booked in a year, by leave type, counted by the calendar's rules (`memberLeaveDays`:
  * weekends, holidays, half days and days worked cost nothing; overlapping entries count a day once).
  */
-export const leaveByType = (trips: Trip[], types: EntitlementType[], user: Pick<User, 'id'>, year: number, ctx: LeaveContext, today: string): LeaveUse[] => {
+export const leaveByType = (leave: LeaveEntry[], types: EntitlementType[], user: Pick<User, 'id'>, year: number, ctx: LeaveContext, today: string): LeaveUse[] => {
     const days = new Map<string, number>();
-    memberLeaveDays(user, trips, ctx, today).forEach(d => {
+    memberLeaveDays(user, leave, ctx, today).forEach(d => {
         if (yearOfISO(d.iso) === year) days.set(d.entitlementId, (days.get(d.entitlementId) || 0) + d.days);
     });
     return [...days.entries()].filter(([, n]) => n > 0).map(([id, n]) => {
@@ -336,18 +336,22 @@ export const leaveByType = (trips: Trip[], types: EntitlementType[], user: Pick<
 };
 
 export interface LeaveTrip {
-    trip: Trip;
+    /** The leave entry. */
+    entry: LeaveEntry;
+    /** Its trip, when it is linked to one. */
+    trip?: Trip;
     days: number;
 }
 
-/** The trips that use a member's leave in a year, soonest first, with the days each one takes (same rules as above). */
-export const leaveTrips = (trips: Trip[], user: Pick<User, 'id'>, year: number, ctx: LeaveContext, today: string): LeaveTrip[] => {
+/** The member's leave in a year, soonest first, with the days each entry takes (same rules as above). */
+export const leaveTrips = (leave: LeaveEntry[], trips: Trip[], user: Pick<User, 'id'>, year: number, ctx: LeaveContext, today: string): LeaveTrip[] => {
     const days = new Map<string, number>();
-    memberLeaveDays(user, trips, ctx, today).forEach(d => {
-        if (yearOfISO(d.iso) === year) days.set(d.tripId, (days.get(d.tripId) || 0) + d.days);
+    memberLeaveDays(user, leave, ctx, today).forEach(d => {
+        if (yearOfISO(d.iso) === year) days.set(d.entryId, (days.get(d.entryId) || 0) + d.days);
     });
-    return trips
-        .filter(t => (days.get(t.id) || 0) > 0)
-        .map(t => ({ trip: t, days: days.get(t.id) as number }))
-        .sort((a, b) => a.trip.startDate.localeCompare(b.trip.startDate));
+    const byId = new Map(trips.map(t => [t.id, t]));
+    return leave
+        .filter(e => (days.get(e.id) || 0) > 0)
+        .map(e => ({ entry: e, trip: e.tripId ? byId.get(e.tripId) : undefined, days: days.get(e.id) as number }))
+        .sort((a, b) => a.entry.startDate.localeCompare(b.entry.startDate));
 };

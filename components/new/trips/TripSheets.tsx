@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import type { Accommodation, Activity, EntitlementType, Transport, Trip, TripAllocation, TransportMode, User } from '../../../types';
+import type { Accommodation, Activity, EntitlementType, LeaveEntry, Transport, Trip, TripAllocation, TransportMode, User } from '../../../types';
 import type { TripDraft } from '../../../hooks/useTripsData';
 import { BUCKET_STATUS, tripDays, type TripBucket } from '../../../utils/tripsModel';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
@@ -47,7 +47,7 @@ const emptyDraft = (status: Trip['status']): TripDraft => ({
     name: '', destination: '', startDate: '', endDate: '', status, participants: [], notes: '', icon: undefined,
     privacy: 'Private', entitlementId: undefined, allocations: [], coordinates: undefined, transports: [], stays: [], activities: [],
 });
-const draftOf = (trip: Trip): TripDraft => ({
+const draftOf = (trip: Trip, leave?: LeaveEntry): TripDraft => ({
     name: trip.name,
     destination: trip.location || '',
     startDate: trip.startDate || '',
@@ -58,8 +58,8 @@ const draftOf = (trip: Trip): TripDraft => ({
     icon: trip.hugeicon,
     iconData: trip.hugeiconData,
     privacy: trip.privacy === 'Public' ? 'Public' : 'Private',
-    entitlementId: trip.entitlementId,
-    allocations: (trip.allocations || []).map(a => ({ ...a })),
+    entitlementId: leave?.entitlementId,
+    allocations: (leave?.allocations || []).map(a => ({ ...a })),
     coordinates: trip.coordinates,
     transports: (trip.transports || []).map(t => ({ ...t })),
     stays: (trip.accommodations || []).map(a => ({ ...a })),
@@ -89,7 +89,7 @@ type SetLeave = <K extends 'entitlementId' | 'allocations'>(key: K, value: TripD
  * The leave a trip counts against: one type, or its days split across types (and years). `length` is the
  * number of days to assign when it is not the trip's calendar length (the calendar counts working days).
  */
-export const LeaveSection: React.FC<{ draft: LeaveDraft; set: SetLeave; entitlements: EntitlementType[]; length?: number }> = ({ draft, set, entitlements, length: countedLength }) => {
+export const LeaveSection: React.FC<{ draft: LeaveDraft; set: SetLeave; entitlements: EntitlementType[]; length?: number; noneLabel?: string; hint?: { on: string; off: string } }> = ({ draft, set, entitlements, length: countedLength, noneLabel = 'No leave', hint }) => {
     const allocations = draft.allocations || [];
     const split = allocations.length > 0;
     const length = countedLength ?? tripDays({ startDate: draft.startDate, endDate: draft.endDate || draft.startDate } as Trip);
@@ -115,7 +115,7 @@ export const LeaveSection: React.FC<{ draft: LeaveDraft; set: SetLeave; entitlem
         <RpSection title="Leave" icon={CalendarCheck}>
             {!split ? (
                 <div role="group" aria-label="Leave type" className="flex flex-wrap gap-2 py-2">
-                    <RpChip selected={!draft.entitlementId} onClick={() => set('entitlementId', undefined)}>No leave</RpChip>
+                    <RpChip selected={!draft.entitlementId} onClick={() => set('entitlementId', undefined)}>{noneLabel}</RpChip>
                     {entitlements.map(e => (
                         <RpChip key={e.id} selected={draft.entitlementId === e.id} onClick={() => set('entitlementId', e.id)}>{e.name}</RpChip>
                     ))}
@@ -175,7 +175,7 @@ export const LeaveSection: React.FC<{ draft: LeaveDraft; set: SetLeave; entitlem
                     </div>
                 </div>
             ) : (
-                <p className="px-1 pb-2 text-xs text-rp-muted">{draft.entitlementId ? 'The days of this trip count against that leave.' : 'A general event: no leave is used.'}</p>
+                <p className="px-1 pb-2 text-xs text-rp-muted">{draft.entitlementId ? (hint?.on ?? 'Your leave for this trip comes from that type. Change its dates on the Calendar.') : (hint?.off ?? 'No leave is booked for this trip.')}</p>
             )}
         </RpSection>
     );
@@ -584,11 +584,13 @@ export const TripSheet: React.FC<{
     entitlements: EntitlementType[];
     currentUserId?: string;
     brandfetchApiKey?: string;
+    /** The traveller's leave entry linked to a trip, shown in the Leave section. */
+    linkedLeaveOf?: (trip: Trip) => LeaveEntry | undefined;
     onClose: () => void;
     onSave: (draft: TripDraft, trip?: Trip) => Promise<void>;
     onDelete: (trip: Trip) => void;
     onOpenTrip: (trip: Trip) => void;
-}> = ({ target, users, entitlements, currentUserId, brandfetchApiKey, onClose, onSave, onDelete, onOpenTrip }) => {
+}> = ({ target, users, entitlements, currentUserId, brandfetchApiKey, linkedLeaveOf, onClose, onSave, onDelete, onOpenTrip }) => {
     const [draft, setDraft] = useState<TripDraft>(() => emptyDraft('Planning'));
     const [touched, setTouched] = useState(false);
     const [step, setStep] = useState(0);
@@ -600,7 +602,7 @@ export const TripSheet: React.FC<{
         setStep(target.kind === 'edit' ? target.step ?? 0 : 0);
         setReached(target.kind === 'edit' ? EDIT_STEPS.length - 1 : 0);
         setDraft(target.kind === 'edit'
-            ? draftOf(target.trip)
+            ? draftOf(target.trip, linkedLeaveOf?.(target.trip))
             : { ...emptyDraft(BUCKET_STATUS[target.bucket]), ...target.prefill, participants: currentUserId ? [currentUserId] : [] });
     }, [target, currentUserId]);
 

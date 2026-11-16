@@ -37,6 +37,14 @@ Fixes and upgrades from using 1.2.1: Plan leave, Import a booking and Route repl
 
 ### Added
 
+- **Leave is its own record.** Time off no longer hides inside trips: each member's leave is an entry with its own dates,
+  day length, days worked, leave type, state and note, optionally linked to a trip (its dates can differ from the
+  travel dates). Your existing leave moves over by itself when the server starts (and when an older backup is restored).
+- **Where leave stands**: an idea, planned, requested, approved (confirmed), rejected or cancelled. Ideas show on the
+  calendar but never count; requests count as pending. Turn on **Track requests and approvals** for a member in
+  Settings › Leave to use the request flow.
+- **The Calendar shows trips and leave apart**, with a Leave layer, an **Add leave for this trip** action on a trip, and
+  in the leave sheet the trip it is for, a note, and what each balance would have left before you save.
 - **Settings › Leave**: leave types (name, kind, colour, default allowance, carry-over and its expiry) for admins, and each
   member's allowance per type and year, with what is left, carried over or about to expire beside it, **Copy to next
   year**, and the weekend-holiday rule. Members set their own allowances; admins set anyone's.

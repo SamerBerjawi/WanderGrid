@@ -1,50 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CustomEvent as CalendarEvent, EntitlementType, SavedConfig, Trip, User, WorkspaceSettings } from '../types';
+import type { CustomEvent as CalendarEvent, EntitlementType, LeaveEntry, SavedConfig, Trip, User, WorkspaceSettings } from '../types';
 import { dataService } from '../services/mockDb';
 import { affectsCollections } from './useWanderSync';
 import { readSessionUser } from './useMemberData';
 import { todayISO } from '../utils/tripsModel';
-import { LEAVE_ID_PREFIX } from '../utils/calendarModel';
-
-/** The fields of a trip that make it leave: a type (or a split), how much of each day, and the days worked anyway. */
-export type LeaveFields = Pick<Trip, 'entitlementId' | 'allocations' | 'durationMode' | 'startPortion' | 'endPortion' | 'excludedDates'>;
-
-export const NO_LEAVE: LeaveFields = {
-    entitlementId: undefined,
-    allocations: undefined,
-    durationMode: undefined,
-    startPortion: undefined,
-    endPortion: undefined,
-    excludedDates: undefined,
-};
-
-export const leaveFieldsOf = (trip: Trip): LeaveFields => ({
-    entitlementId: trip.entitlementId,
-    allocations: trip.allocations,
-    durationMode: trip.durationMode,
-    startPortion: trip.startPortion,
-    endPortion: trip.endPortion,
-    excludedDates: trip.excludedDates,
-});
-
-export interface NewLeave {
-    memberId: string;
-    name: string;
-    startDate: string;
-    endDate: string;
-    status: Trip['status'];
-    fields: LeaveFields;
-}
 
 /**
- * Data and writes for the New calendar: trips, members, leave types, saved holiday calendars, events and
- * the workspace settings, refreshed whenever one of those collections changes. Leave is stored on trips
- * (a leave type, `allocations`, the day length and the days worked anyway); time off made on the calendar
- * is a hidden trip whose id starts with `leave-`, so it counts in every balance without cluttering Trips.
+ * Data and writes for the New calendar: trips, leave entries, members, leave types, saved holiday calendars, events
+ * and the workspace settings, refreshed whenever one of those collections changes. Leave is its own record (leave
+ * Phase 1): one entry per member, optionally linked to a trip.
  */
 export const useCalendarData = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [trips, setTrips] = useState<Trip[]>([]);
+    const [leave, setLeave] = useState<LeaveEntry[]>([]);
     const [entitlements, setEntitlements] = useState<EntitlementType[]>([]);
     const [configs, setConfigs] = useState<SavedConfig[]>([]);
     const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -54,9 +23,10 @@ export const useCalendarData = () => {
 
     const load = useCallback(async () => {
         try {
-            const [u, t] = await Promise.all([dataService.getUsers(), dataService.getTrips()]);
+            const [u, t, lv] = await Promise.all([dataService.getUsers(), dataService.getTrips(), dataService.getLeave()]);
             setUsers(u || []);
             setTrips(t || []);
+            setLeave(lv || []);
             setError(null);
         } catch (e) {
             console.error('Calendar: failed to load', e);
@@ -79,7 +49,7 @@ export const useCalendarData = () => {
 
     useEffect(() => { void load(); }, [load]);
     useEffect(() => {
-        const onUpdate = (e: Event) => { if (affectsCollections(e, ['trips', 'users', 'entitlements', 'configs', 'events', 'settings'])) void load(); };
+        const onUpdate = (e: Event) => { if (affectsCollections(e, ['trips', 'leave', 'users', 'entitlements', 'configs', 'events', 'settings'])) void load(); };
         window.addEventListener('wandergrid_db_updated', onUpdate);
         return () => window.removeEventListener('wandergrid_db_updated', onUpdate);
     }, [load]);
@@ -89,51 +59,24 @@ export const useCalendarData = () => {
     const isAdmin = (me?.role ?? session?.role) === 'Admin';
     const today = todayISO();
 
-    const replaceTrip = (next: Trip) => setTrips(prev => (prev.some(t => t.id === next.id) ? prev.map(t => (t.id === next.id ? next : t)) : [...prev, next]));
     const guarded = async <T,>(run: () => Promise<T>): Promise<T> => {
         try { return await run(); } catch (e) { void load(); throw e; }
     };
 
-    /** Sets (or, with NO_LEAVE, removes) the leave on a trip and keeps everything else on it. */
-    const saveLeave = useCallback(async (trip: Trip, fields: LeaveFields, extra: Partial<Trip> = {}): Promise<Trip> => {
-        const current = trips.find(t => t.id === trip.id) ?? trip;
-        const next: Trip = { ...current, ...extra, ...fields };
-        replaceTrip(next);
-        const saved = await guarded(() => dataService.updateTrip(next));
-        replaceTrip(saved);
+    /** Adds a leave entry, or saves a changed one (the list shows the change at once). */
+    const saveLeave = useCallback(async (entry: LeaveEntry): Promise<LeaveEntry> => {
+        const exists = leave.some(e => e.id === entry.id);
+        setLeave(prev => (exists ? prev.map(e => (e.id === entry.id ? entry : e)) : [...prev, entry]));
+        const saved = await guarded(() => (exists ? dataService.updateLeave(entry) : dataService.addLeave(entry)));
+        setLeave(prev => prev.map(e => (e.id === saved.id ? saved : e)));
         return saved;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [trips, load]);
+    }, [leave, load]);
 
-    /** Time off made on the calendar: a hidden trip for one member. */
-    const createLeave = useCallback(async (input: NewLeave): Promise<Trip> => {
-        const payload: Trip = {
-            id: `${LEAVE_ID_PREFIX}${crypto.randomUUID()}`,
-            name: input.name.trim() || 'Time off',
-            location: '',
-            startDate: input.startDate,
-            endDate: input.endDate || input.startDate,
-            status: input.status,
-            participants: [input.memberId],
-            privacy: 'Private',
-            kind: 'timeoff',
-            hideInPlanner: true,
-            ...input.fields,
-        };
-        let saved = await guarded(() => dataService.addTrip(payload));
-        // Saving adds the signed-in user to every new trip; time off made for someone else stays theirs.
-        if (!saved.participants.every(p => p === input.memberId) || !saved.participants.includes(input.memberId)) {
-            saved = await guarded(() => dataService.updateTrip({ ...saved, participants: [input.memberId] }));
-        }
-        replaceTrip(saved);
-        return saved;
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [load]);
-
-    /** Deletes time off made on the calendar (permanent: the caller confirms with a hold). */
-    const deleteLeave = useCallback(async (trip: Trip): Promise<void> => {
-        setTrips(prev => prev.filter(t => t.id !== trip.id));
-        await guarded(() => dataService.deleteTrip(trip.id));
+    /** Deletes a leave entry (the caller confirms with a hold and offers Undo). */
+    const deleteLeave = useCallback(async (entry: LeaveEntry): Promise<void> => {
+        setLeave(prev => prev.filter(e => e.id !== entry.id));
+        await guarded(() => dataService.deleteLeave(entry.id));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [load]);
 
@@ -195,9 +138,9 @@ export const useCalendarData = () => {
     }, [load]);
 
     return {
-        users, trips, entitlements, configs, events, settings, loading, error, today,
+        users, trips, leave, entitlements, configs, events, settings, loading, error, today,
         me, isAdmin, session,
-        reload: load, saveLeave, createLeave, deleteLeave, setHolidayIncluded, setMemberCalendar, addCalendar, removeCalendar, addEvent, deleteEvent,
+        reload: load, saveLeave, deleteLeave, setHolidayIncluded, setMemberCalendar, addCalendar, removeCalendar, addEvent, deleteEvent,
     };
 };
 

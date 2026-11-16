@@ -438,7 +438,7 @@ export const LeaveWidget: React.FC<{
                 </div>
             ) : null}
             {categories.length === 0 ? (
-                <RpEmpty title="No leave booked">Give a trip a leave type to see it here.</RpEmpty>
+                <RpEmpty title="No leave booked">Add leave on the Calendar or give a trip a leave type to see it here.</RpEmpty>
             ) : (
                 <div className="relative min-h-0 flex-1 overflow-hidden">
                     <SpendingRing
@@ -448,15 +448,24 @@ export const LeaveWidget: React.FC<{
                     />
                     {trips.length ? (
                         <ul className="mt-3 flex flex-col gap-1">
-                            {trips.slice(0, 3).map(({ trip, days: n }) => (
-                                <li key={trip.id}>
-                                    <button type="button" onClick={() => onTripClick(trip.id)} className="flex min-h-11 w-full items-center gap-2 rounded-xl px-2 text-left text-xs outline-none hover:bg-rp-inset/60 focus-visible:ring-2 focus-visible:ring-rp-muted">
-                                        <span className="min-w-0 flex-1 truncate font-medium text-rp-ink">{trip.name}</span>
-                                        <span className="shrink-0 text-rp-muted">{formatDate(trip.startDate, 'short')}</span>
+                            {trips.slice(0, 3).map(({ entry, trip, days: n }) => {
+                                const row = (
+                                    <>
+                                        <span className="min-w-0 flex-1 truncate font-medium text-rp-ink">{trip?.name || entry.name || 'Time off'}</span>
+                                        <span className="shrink-0 text-rp-muted">{formatDate(entry.startDate, 'short')}</span>
                                         <span className="rp-tabular w-9 shrink-0 text-right text-rp-ink">{days(n)}</span>
-                                    </button>
-                                </li>
-                            ))}
+                                    </>
+                                );
+                                return (
+                                    <li key={entry.id}>
+                                        {trip ? (
+                                            <button type="button" onClick={() => onTripClick(trip.id)} className="flex min-h-11 w-full items-center gap-2 rounded-xl px-2 text-left text-xs outline-none hover:bg-rp-inset/60 focus-visible:ring-2 focus-visible:ring-rp-muted">{row}</button>
+                                        ) : (
+                                            <div className="flex min-h-11 w-full items-center gap-2 px-2 text-xs">{row}</div>
+                                        )}
+                                    </li>
+                                );
+                            })}
                         </ul>
                     ) : null}
                 </div>

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Accommodation, Activity, EntitlementType, GeoCoordinates, Transport, Trip, TripAllocation, User } from '../types';
+import type { Accommodation, Activity, EntitlementType, GeoCoordinates, LeaveEntry, Transport, Trip, TripAllocation, User } from '../types';
+import { linkedEntryFor } from '../utils/leavePlan';
+import { errorMessage, toast } from '../services/toast';
 import { dataService } from '../services/mockDb';
 import { syncPitStopsToVisited } from '../services/pitStopSync';
 import { affectsCollections } from './useWanderSync';
@@ -22,9 +24,12 @@ export interface TripDraft {
     /** Where the destination is, when it was picked from the place search. */
     coordinates?: GeoCoordinates;
     privacy?: 'Private' | 'Public';
-    /** Leave type this trip counts against; empty means a general event with no leave impact. */
+    /**
+     * Leave for the trip (leave Phase 1): the type the traveller's linked leave entry takes its days from; empty means
+     * no leave. Saved as a leave entry linked to the trip, never on the trip itself.
+     */
     entitlementId?: string;
-    /** The days split across leave types (and years). The first one is the trip's main leave type. */
+    /** The days split across leave types (and years), for the linked leave entry. */
     allocations?: TripAllocation[];
     /** Legs, stays and activities. Items that already exist carry their ids and every other field. */
     transports?: Partial<Transport>[];
@@ -35,6 +40,47 @@ export interface TripDraft {
 }
 
 const uid = () => crypto.randomUUID();
+
+const sessionUserId = (): string | undefined => {
+    try { return JSON.parse(localStorage.getItem('wandergrid_session_user') || 'null')?.id; } catch { return undefined; }
+};
+
+/** Whose leave the trip form edits: the signed-in member when they travel, else the first traveller. */
+export const leaveMemberOf = (participants: string[]): string | undefined => {
+    const me = sessionUserId();
+    return me && participants.includes(me) ? me : participants[0];
+};
+
+/**
+ * Keeps a trip's leave in step with a save of the trip form (leave Phase 1):
+ *  - the form's leave type goes on the traveller's linked leave entry (made over the trip's dates when there is none);
+ *  - "No leave" removes that entry;
+ *  - entries whose dates matched the trip's old dates move with the trip; entries with dates of their own stay put.
+ */
+export const leaveChangesFor = (trip: Trip, before: Trip | undefined, draft: Pick<TripDraft, 'entitlementId' | 'allocations' | 'participants'>, leave: LeaveEntry[], users: User[]): { upsert: LeaveEntry[]; remove: string[] } => {
+    const upsert: LeaveEntry[] = [];
+    const remove: string[] = [];
+    const linked = leave.filter(e => e.tripId === trip.id);
+    const end = trip.endDate || trip.startDate;
+    const moved = before && (before.startDate !== trip.startDate || (before.endDate || before.startDate) !== end);
+    const whoId = leaveMemberOf(draft.participants);
+    const typeId = draft.allocations?.[0]?.entitlementId || draft.entitlementId || undefined;
+    const split = draft.allocations?.length ? draft.allocations : undefined;
+    linked.forEach(e => {
+        let next = e;
+        if (moved && before && e.startDate === before.startDate && (e.endDate || e.startDate) === (before.endDate || before.startDate)) {
+            next = { ...next, startDate: trip.startDate, endDate: end };
+        }
+        if (e.memberId === whoId) {
+            if (!typeId) { remove.push(e.id); return; }
+            next = { ...next, entitlementId: typeId, allocations: split };
+        }
+        if (next !== e) upsert.push(next);
+    });
+    const user = users.find(u => u.id === whoId);
+    if (typeId && user && !linked.some(e => e.memberId === whoId)) upsert.push({ ...linkedEntryFor(trip, user, typeId), allocations: split });
+    return { upsert, remove };
+};
 
 /** A full leg from a form's partial one, keeping everything an existing leg already had. */
 /** Road-trip stops count as visited places; this runs after a save and never blocks or fails it. */
@@ -107,17 +153,22 @@ export const useTripsData = () => {
     // Undo runs from an old render, so writes read the latest trips through a ref, never a closure.
     const tripsRef = useRef<Trip[]>([]);
     tripsRef.current = trips;
+    const usersRef = useRef<User[]>([]);
+    usersRef.current = users;
+    const [leave, setLeave] = useState<LeaveEntry[]>([]);
 
     const load = useCallback(async () => {
         try {
-            const [t, u, settings, ents] = await Promise.all([
+            const [t, u, settings, ents, lv] = await Promise.all([
                 dataService.getTrips(),
                 dataService.getUsers(),
-                // Logos and leave types are optional: a failure never blocks the board.
+                // Logos, leave types and leave are optional: a failure never blocks the board.
                 dataService.getWorkspaceSettings().catch(() => null),
                 dataService.getEntitlementTypes().catch(() => [] as EntitlementType[]),
+                dataService.getLeave().catch(() => [] as LeaveEntry[]),
             ]);
             setTrips(t || []);
+            setLeave(lv || []);
             setUsers(u || []);
             setEntitlements(ents || []);
             setBrandfetchApiKey(settings?.brandfetchApiKey || undefined);
@@ -132,7 +183,7 @@ export const useTripsData = () => {
 
     useEffect(() => { void load(); }, [load]);
     useEffect(() => {
-        const onUpdate = (e: Event) => { if (affectsCollections(e, ['trips', 'users'])) void load(); };
+        const onUpdate = (e: Event) => { if (affectsCollections(e, ['trips', 'users', 'leave'])) void load(); };
         window.addEventListener('wandergrid_db_updated', onUpdate);
         return () => window.removeEventListener('wandergrid_db_updated', onUpdate);
     }, [load]);
@@ -170,6 +221,17 @@ export const useTripsData = () => {
     }, [columns, active]);
 
     const replace = (next: Trip) => setTrips(prev => prev.map(t => (t.id === next.id ? next : t)));
+
+    /** Saves the leave changes a trip save implies (see leaveChangesFor). A failure says so but keeps the trip. */
+    const syncLeave = async (saved: Trip, before: Trip | undefined, draft: TripDraft) => {
+        try {
+            const current = await dataService.getLeave();
+            const { upsert, remove } = leaveChangesFor(saved, before, draft, current, usersRef.current);
+            if (upsert.length || remove.length) await dataService.applyBatch({ upsertLeave: upsert, deleteLeave: remove });
+        } catch (e) {
+            toast.error(errorMessage(e, "The trip was saved, but its leave wasn't. Set it on the Calendar."));
+        }
+    };
     const guarded = async <T,>(run: () => Promise<T>): Promise<T> => {
         try {
             return await run();
@@ -196,8 +258,6 @@ export const useTripsData = () => {
             hugeicon: draft.icon || undefined,
             hugeiconData: draft.icon ? draft.iconData : undefined,
             privacy: draft.privacy,
-            entitlementId: draft.allocations?.[0]?.entitlementId || draft.entitlementId || undefined,
-            allocations: draft.allocations?.length ? draft.allocations : undefined,
             coordinates: draft.coordinates,
             locations: destination
                 ? [{ id: uid(), name: destination, startDate: start, endDate: end, coordinates: draft.coordinates }]
@@ -208,6 +268,7 @@ export const useTripsData = () => {
         };
         const saved = await dataService.addTrip(withIntent(payload));
         await releaseAdopted(draft, saved);
+        await syncLeave(saved, undefined, draft);
         setTrips(prev => [...prev, saved]);
         syncStops(saved);
         return saved;
@@ -235,8 +296,6 @@ export const useTripsData = () => {
             hugeicon: draft.icon || undefined,
             hugeiconData: draft.icon ? draft.iconData : undefined,
             privacy: draft.privacy ?? trip.privacy,
-            entitlementId: draft.allocations?.[0]?.entitlementId || draft.entitlementId || undefined,
-            allocations: draft.allocations?.length ? draft.allocations : undefined,
             coordinates: draft.coordinates ?? trip.coordinates,
             locations,
             transports: draft.transports ? draft.transports.map(t => toTransport(t, start)) : trip.transports,
@@ -248,6 +307,7 @@ export const useTripsData = () => {
         const saved = await guarded(() => dataService.updateTrip(next));
         replace(saved);
         await releaseAdopted(draft, saved);
+        await syncLeave(saved, trip, draft);
         syncStops(saved, trip);
         return saved;
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -315,10 +375,21 @@ export const useTripsData = () => {
     const remove = useCallback(async (id: string) => {
         setTrips(prev => prev.filter(t => t.id !== id));
         await guarded(() => dataService.deleteTrip(id));
+        // Its leave stays (the time off may still happen) but no longer points at a trip that is gone.
+        try {
+            const orphans = (await dataService.getLeave()).filter(e => e.tripId === id).map(e => ({ ...e, tripId: undefined }));
+            if (orphans.length) await dataService.applyBatch({ upsertLeave: orphans });
+        } catch { /* the link is only a pointer; the calendar copes with a missing trip */ }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [load]);
 
-    return { trips, users, entitlements, brandfetchApiKey, loading, error, reload: load, today, active, archived, cancelled, columns, years, stats, create, update, patch, duplicate, setStatus, moveTo, setArchived, remove };
+    /** The leave entry the trip form shows for a trip: the traveller's linked entry. */
+    const linkedLeaveOf = useCallback((trip: Trip): LeaveEntry | undefined => {
+        const who = leaveMemberOf(trip.participants || []);
+        return leave.find(e => e.tripId === trip.id && e.memberId === who);
+    }, [leave]);
+
+    return { trips, users, entitlements, leave, linkedLeaveOf, brandfetchApiKey, loading, error, reload: load, today, active, archived, cancelled, columns, years, stats, create, update, patch, duplicate, setStatus, moveTo, setArchived, remove };
 };
 
 export type TripsData = ReturnType<typeof useTripsData>;

@@ -44,7 +44,9 @@ export const AgendaList: React.FC<{
                         ? `${item.holiday?.countryName ?? 'Public holiday'}${item.muted ? ' · Not a day off' : ''}`
                         : item.kind === 'event'
                             ? (item.event?.isWorkingDay ? 'Working day' : 'Event')
-                            : [range, item.leave ? 'Leave' : null].filter(Boolean).join(' · ');
+                            : item.kind === 'leave'
+                                ? [range, 'Leave', item.entry?.note || null].filter(Boolean).join(' · ')
+                                : [range, item.leave ? 'Leave booked' : 'Trip'].filter(Boolean).join(' · ');
                     return (
                         <li key={item.key}>
                             {heading ? <h3 className="px-2 pt-3 pb-1 text-xs font-medium text-rp-muted">{heading}</h3> : null}
@@ -61,9 +63,9 @@ export const AgendaList: React.FC<{
                                     <span className="block truncate text-sm font-medium text-rp-ink">{item.title}</span>
                                     {meta ? <span className="rp-tabular block truncate text-xs text-rp-muted">{meta}</span> : null}
                                 </span>
-                                {item.kind === 'trip' ? (
+                                {item.kind === 'trip' || item.kind === 'leave' ? (
                                     <span className={cn('inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-medium', tripChip(item))}>
-                                        <Icon size={12} aria-hidden /> {STATE_LABEL[item.state]}
+                                        <Icon size={12} aria-hidden /> {item.kind === 'leave' && item.entry ? (item.pending ? 'Requested' : item.muted ? 'Idea' : STATE_LABEL[item.state]) : STATE_LABEL[item.state]}
                                     </span>
                                 ) : (
                                     <span className={cn('inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-medium', chipClass(item))}>

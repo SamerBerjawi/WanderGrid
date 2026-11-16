@@ -2,6 +2,7 @@
 // Background jobs and the data-management routes: /api/jobs/*, backup, restore and wipe.
 // Moved out of server.js unchanged (decision D-07).
 const crypto = require('crypto');
+const { convertTripLeave } = require('./leaveEntries');
 
 module.exports = function registerJobRoutes(app, {
   pool, sendError, requireAdmin, withTransaction, bulkUpsert, loadGlobalData, refreshAllGlobalDatasets, tripKind,
@@ -91,7 +92,7 @@ module.exports = function registerJobRoutes(app, {
   // Immediately acknowledges the request with 'Processing' state while compiling heavy table states
   app.post('/api/jobs/backup', (req, res) => {
       const jobId = runBackgroundJob('DATABASE_BACKUP', async (progress) => {
-          const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited'];
+          const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited', 'leave'];
           const backup = {};
           
           for (let i = 0; i < tables.length; i++) {
@@ -147,7 +148,7 @@ module.exports = function registerJobRoutes(app, {
   // Import/Export Full State
   app.get('/api/backup', requireAdmin, async (req, res) => {
       try {
-          const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited'];
+          const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited', 'leave'];
           const backup = {};
           
           for (const table of tables) {
@@ -183,7 +184,7 @@ module.exports = function registerJobRoutes(app, {
           return res.status(400).json({ error: 'Validation failed: Backup payload must be a JSON object' });
       }
       
-      const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited'];
+      const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited', 'leave'];
       for (const table of tables) {
           if (data[table] !== undefined) {
               if (!Array.isArray(data[table])) {
@@ -366,7 +367,7 @@ module.exports = function registerJobRoutes(app, {
 
           // 5. RESTORE CALENDAR / EVENTS / ENTITLEMENTS / CONFIGS
           if (selected.calendar !== false) {
-              const calTables = ['events', 'entitlements', 'configs'];
+              const calTables = ['events', 'entitlements', 'configs', 'leave'];
               for (const table of calTables) {
                   if (data[table] && Array.isArray(data[table])) {
                       if (mode === 'replace') await client.query(`TRUNCATE TABLE ${table}`);
@@ -374,6 +375,8 @@ module.exports = function registerJobRoutes(app, {
                   }
               }
           }
+          // A backup made before leave had its own table carries leave on trips: move it into place.
+          await convertTripLeave(client);
           
           // 6. RESTORE WORKSPACE SETTINGS & API KEYS
           if (selected.settings !== false && data.workspaceSettings && typeof data.workspaceSettings === 'object') {
@@ -417,7 +420,7 @@ module.exports = function registerJobRoutes(app, {
   app.post('/api/wipe', requireAdmin, async (req, res) => {
       try {
           await withTransaction(async (client) => {
-              const tables = ['trip_shares', 'users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited', 'settings'];
+              const tables = ['trip_shares', 'users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited', 'leave', 'settings'];
               for (const table of tables) {
                   await client.query(`TRUNCATE TABLE ${table} CASCADE`);
               }

@@ -2,6 +2,7 @@
 // Record store: validation, ownership (SEC-001), optimistic concurrency (REL-005), transactions and the generic
 // CRUD handlers behind /api/<collection>. Moved out of server.js unchanged (decision D-07).
 const TRANSPORT_MODES = ['Flight', 'Train', 'Bus', 'Car Rental', 'Personal Car', 'Cruise', 'Ferry'];
+const { LEAVE_STATES } = require('./leaveEntries');
 
 module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_PATTERN }) {
   // --- Generic CRUD Handlers & Transactions ---
@@ -72,6 +73,17 @@ module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_
       },
       visited: (r) => (!isStringOrMissing(r.type, 50) || !isStringOrMissing(r.code, 100) ? 'type/code must be text' : null),
       configs: (r) => (!isArrayOrMissing(r.holidays) ? 'holidays must be a list' : null),
+      leave: (r) => {
+          if (typeof r.memberId !== 'string' || !r.memberId) return 'memberId is required';
+          if (typeof r.startDate !== 'string' || !r.startDate || !isValidDayOrEmpty(r.startDate)) return 'startDate must be a YYYY-MM-DD date';
+          if (r.endDate !== undefined && r.endDate !== null && r.endDate !== '' && !isValidDayOrEmpty(r.endDate)) return 'endDate must be a YYYY-MM-DD date';
+          if (r.endDate && String(r.endDate).slice(0, 10) < String(r.startDate).slice(0, 10)) return 'endDate must not be before startDate';
+          if (r.state !== undefined && r.state !== null && !LEAVE_STATES.includes(r.state)) return `state must be one of ${LEAVE_STATES.join(', ')}`;
+          for (const field of ['allocations', 'excludedDates']) if (!isArrayOrMissing(r[field])) return `${field} must be a list`;
+          if (!isStringOrMissing(r.name, 500) || !isStringOrMissing(r.note, 5000)) return 'name/note must be text';
+          if (!isStringOrMissing(r.tripId, 200) || !isStringOrMissing(r.entitlementId, 200)) return 'tripId/entitlementId must be text';
+          return null;
+      },
       users: (r) => {
           if (!isStringOrMissing(r.name, 200)) return 'name must be text (max 200 characters)';
           if (r.email !== undefined && r.email !== null && (typeof r.email !== 'string' || (r.email && !EMAIL_PATTERN.test(r.email.trim())))) return 'email is not valid';
@@ -150,13 +162,29 @@ module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_
       prepareUpdate: (incoming, existing) => ({ ...incoming, ownerId: existing.ownerId }),
   };
 
+  // Leave (leave Phase 1): the household calendar shows everyone's time off, so every member reads every entry; only
+  // the member it is for, or an admin, may add, change or remove it. A member cannot hand an entry to someone else.
+  const leaveOwner = (rec, user) => isAdminUser(user) || (!!rec.memberId && normKey(rec.memberId) === normKey(user.id));
+  OWNERSHIP.leave = {
+      canRead: () => true,
+      canWrite: leaveOwner,
+      prepareNew: (rec, user) => {
+          if (!leaveOwner(rec, user)) throw new HttpError(403, 'You can only add leave for yourself');
+          return { ...rec, createdBy: user.id };
+      },
+      prepareUpdate: (incoming, existing, user) => {
+          if (!isAdminUser(user) && normKey(incoming.memberId) !== normKey(existing.memberId)) throw new HttpError(403, 'Only an administrator can move leave to another member');
+          return existing.createdBy ? { ...incoming, createdBy: existing.createdBy } : incoming;
+      },
+  };
+
   const forbidden = () => new HttpError(403, 'You do not have permission to change this record');
 
   // --- Optimistic concurrency (REL-005) ---
   // Every stored record carries an integer `version`. A write that names a version must match the
   // stored one (otherwise someone else changed it: 409); every successful write increments it.
   // Writes without a version (older clients, imports) are accepted and still bump it.
-  const conflict = (table, id) => new HttpError(409, `This ${table === 'trips' ? 'trip' : 'record'} was changed by someone else. Reload to see the latest version, then try again.`);
+  const conflict = (table, id) => new HttpError(409, `This ${table === 'trips' ? 'trip' : table === 'leave' ? 'leave' : 'record'} was changed by someone else. Reload to see the latest version, then try again.`);
   function withNextVersion(table, incoming, existing) {
       const current = Number(existing?.version) || 0;
       if (existing && incoming.version !== undefined && incoming.version !== null && Number(incoming.version) !== current) {
@@ -256,13 +284,13 @@ module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_
       if (sort === 'desc') {
         if (table === 'flights') {
           query += ` ORDER BY (data->>'departureDate') DESC`;
-        } else if (table === 'trips' || table === 'events') {
+        } else if (table === 'trips' || table === 'events' || table === 'leave') {
           query += ` ORDER BY (data->>'startDate') DESC`;
         }
       } else if (sort === 'asc') {
         if (table === 'flights') {
           query += ` ORDER BY (data->>'departureDate') ASC`;
-        } else if (table === 'trips' || table === 'events') {
+        } else if (table === 'trips' || table === 'events' || table === 'leave') {
           query += ` ORDER BY (data->>'startDate') ASC`;
         }
       }

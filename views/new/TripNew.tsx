@@ -432,6 +432,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                 entitlements={data.entitlements}
                 currentUserId={currentUserId()}
                 brandfetchApiKey={data.brandfetchApiKey}
+                linkedLeaveOf={data.linkedLeaveOf}
                 onClose={() => setSheet(null)}
                 onSave={async (draft: TripDraft, t?: Trip) => { if (t) await data.update(t, draft); }}
                 onDelete={setDeleting}
@@ -442,7 +443,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                 planner={planner}
                 entitlements={data.entitlements}
                 onClose={() => setLeaveOpen(false)}
-                onApply={(t, id) => takeLeave(t, id, data.entitlements, data.patch, undo)}
+                onApply={(t, id) => takeLeave(t, id, data.entitlements, planner, undo)}
                 onOpenCalendar={() => { setLeaveOpen(false); openPage('/calendar'); }}
                 onCreateType={() => addStarterLeaveType(planner.memberFor(trip), data.reload)}
             />

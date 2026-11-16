@@ -1,15 +1,16 @@
 
 import { Trip } from '../types';
 import { tripIcsName, tripToIcs } from '../utils/tripIcs';
-import { tripsToIcs, type FeedOptions } from '../utils/icsContext';
+import { tripsToIcs, type FeedContext, type FeedOptions } from '../utils/icsContext';
 
 export const calendarService = {
     /**
      * Trips as a calendar file. The same emitter and options as the subscription feed (see backend_files/icsFeed.mjs),
      * so a download and the subscribed calendar agree; with no options it holds what the feed holds by default.
      */
-    generateIcsContent: (trips: Trip[], appName: string = 'WanderGrid', options: Partial<FeedOptions> = {}): string =>
-        tripsToIcs(trips, options, appName),
+    /** `extra` carries the person's leave entries and leave-type names, for the Leave layer. */
+    generateIcsContent: (trips: Trip[], appName: string = 'WanderGrid', options: Partial<FeedOptions> = {}, extra: FeedContext = {}): string =>
+        tripsToIcs(trips, options, appName, extra),
 
     downloadIcs: (content: string, filename: string) => {
         const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });

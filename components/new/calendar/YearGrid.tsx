@@ -48,7 +48,7 @@ export const YearGrid: React.FC<{
                                 {week.map(day => {
                                     if (!day.inMonth) return <div key={day.iso} role="gridcell" className="size-11" />;
                                     const here = itemsOn(items, day.iso);
-                                    const trip = here.find(i => i.kind === 'trip');
+                                    const trip = here.find(i => i.kind === 'leave' && !i.muted) ?? here.find(i => i.kind === 'trip');
                                     const holiday = here.find(i => i.kind === 'holiday' && !i.muted);
                                     const event = here.find(i => i.kind === 'event');
                                     const weekend = isWeekend(day.iso, workingDays);

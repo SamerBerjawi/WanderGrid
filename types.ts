@@ -15,6 +15,8 @@ export interface User {
   policies?: UserPolicy[]; // New: Granular policy configuration
   holidayConfigIds?: string[]; // Updated: Links to multiple SavedConfig.id
   holidayWeekendRule?: 'monday' | 'lieu' | 'none'; // Per-user rule for how to handle weekend holidays
+  /** Track requests and approvals for this member's leave (Requested / Approved / Rejected) instead of Planned / Confirmed. */
+  leaveApproval?: boolean;
   activeYears?: number[]; // New: Explicitly tracked years for UI persistence
   profilePicture?: string;
   nationality?: string;
@@ -256,8 +258,9 @@ export interface Trip {
   /** What the trip is meant to cost, in the workspace currency (New trip page). */
   targetBudget?: number;
   
-  // Basic Leave Request Fields (Legacy/Simple)
-  entitlementId?: string; // If null, counts as 'General Event' (no balance impact)
+  // Legacy: leave stored on trips before leave Phase 1. Migration 0004 (and restores) move it into `LeaveEntry` records;
+  // nothing writes these any more and only the conversion (utils/leaveEntry.ts, backend_files/leaveEntries.js) reads them.
+  entitlementId?: string;
   durationMode?: 'all_full' | 'all_am' | 'all_pm' | 'single_am' | 'single_pm' | 'custom';
   startPortion?: 'full' | 'pm'; // for custom mode
   endPortion?: 'full' | 'am'; // for custom mode
@@ -292,6 +295,45 @@ export interface Trip {
 }
 
 export type TripKind = 'trip' | 'timeoff' | 'bundle';
+
+/**
+ * Where a leave entry stands. `draft` is an idea, `planned` is booked in your own plans, `requested` waits for an
+ * answer, `approved` is confirmed; `rejected` and `cancelled` are kept for the record. Planned, requested and approved
+ * leave counts against the balance (requested as pending); the others never do. Whether it is taken follows from the date.
+ */
+export type LeaveState = 'draft' | 'planned' | 'requested' | 'approved' | 'rejected' | 'cancelled';
+
+/** The day-by-day shape shared by leave entries (and, before leave Phase 1, trips that carried leave). */
+export interface LeaveSpan {
+  startDate: string;
+  endDate?: string;
+  durationMode?: 'all_full' | 'all_am' | 'all_pm' | 'single_am' | 'single_pm' | 'custom';
+  startPortion?: 'full' | 'pm';
+  endPortion?: 'full' | 'am';
+  excludedDates?: string[];
+}
+
+/**
+ * Time off for one member (leave Phase 1): its own record in the `leave` collection, optionally linked to a trip.
+ * The days it costs are counted by utils/calendarModel.ts against the member's working week and public holidays.
+ */
+export interface LeaveEntry extends LeaveSpan {
+  id: string;
+  memberId: string;
+  /** A label ("Ski week"); time off with no label shows its leave type. */
+  name?: string;
+  endDate: string;
+  /** One leave type, or `allocations` to split the days across types and years. */
+  entitlementId?: string;
+  allocations?: TripAllocation[];
+  state: LeaveState;
+  /** The trip this leave is for, when there is one. Travel dates and leave dates may differ. */
+  tripId?: string;
+  note?: string;
+  createdBy?: string;
+  version?: number;
+  updatedAt?: string;
+}
 
 export interface PublicHoliday {
   id: string;

@@ -848,9 +848,12 @@ app.get('/api/calendar/:token/feed.ics', async (req, res) => {
             const trips = rows.map(r => r.data).filter(t => t && Array.isArray(t.participants) && t.participants.includes(user.id));
 
             const entitlements = new Map();
+            let leave = [];
             if (options.leave) {
                 const { rows: ent } = await pool.query(`SELECT data FROM entitlements`);
                 ent.forEach(r => entitlements.set(r.data.id, r.data.name));
+                const { rows: lv } = await pool.query(`SELECT data FROM leave WHERE data->>'memberId' = $1`, [user.id]);
+                leave = lv.map(r => r.data);
             }
             let holidayCalendars = [];
             if (options.holidays && Array.isArray(user.holidayConfigIds) && user.holidayConfigIds.length > 0) {
@@ -859,7 +862,7 @@ app.get('/api/calendar/:token/feed.ics', async (req, res) => {
             }
 
             // DTSTAMP/LAST-MODIFIED come from the records (updatedAt), never from the clock, so an unchanged feed is byte-identical.
-            const newest = trips.reduce((m, t) => Math.max(m, Date.parse(t.updatedAt) || 0), 0);
+            const newest = [...trips, ...leave].reduce((m, t) => Math.max(m, Date.parse(t.updatedAt) || 0), 0);
             const generatedAt = newest || FEED_PLACEHOLDER_TIME;
             const body = buildFeed(trips, options, {
                 now: generatedAt, baseUrl,
@@ -867,6 +870,7 @@ app.get('/api/calendar/:token/feed.ics', async (req, res) => {
                 airportName: (iata) => memoryAirports.get(iata)?.airport_name || '',
                 entitlementName: (id) => entitlements.get(id) || '',
                 holidayCalendars,
+                leave,
             });
             entry = { body, etag: `"${crypto.createHash('sha1').update(body).digest('hex')}"`, modified: new Date(generatedAt).toUTCString(), expires: Date.now() + FEED_CACHE_MS };
             if (feedCache.size >= FEED_CACHE_MAX) feedCache.clear();

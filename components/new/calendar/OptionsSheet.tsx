@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { dataService } from '../../../services/mockDb';
 import { calendarService } from '../../../services/calendarExport';
 import { errorMessage, toast } from '../../../services/toast';
-import type { Trip } from '../../../types';
+import type { LeaveEntry, Trip } from '../../../types';
 import type { WeekStart } from '../../../utils/calendarModel';
 import HoldButton from '../../kokonutui/hold-button';
 import { CalendarCheck, Copy, DownloadSimple, Export } from '../../ui/hugeicons';
@@ -35,7 +35,10 @@ export const OptionsSheet: React.FC<{
     onColourBy: (c: ColourBy) => void;
     /** The trips the page shows, for the one-off file. */
     trips: Trip[];
-}> = ({ open, onClose, weekStart, onWeekStart, colourBy, onColourBy, trips }) => {
+    /** Your leave entries and the leave-type names, for the file's Leave layer. */
+    leave?: LeaveEntry[];
+    typeName?: (id: string) => string | undefined;
+}> = ({ open, onClose, weekStart, onWeekStart, colourBy, onColourBy, trips, leave = [], typeName }) => {
     const [token, setToken] = useState<string | null>(null);
     const [state, setState] = useState<'idle' | 'loading' | 'missing'>('idle');
     const server = dataService.isDatabaseMode();
@@ -69,7 +72,7 @@ export const OptionsSheet: React.FC<{
         }
     };
     const download = () => {
-        calendarService.downloadIcs(calendarService.generateIcsContent(trips, 'WanderGrid Trips', feed), 'wandergrid-calendar.ics');
+        calendarService.downloadIcs(calendarService.generateIcsContent(trips, 'WanderGrid Trips', feed, { leave, entitlementName: typeName }), 'wandergrid-calendar.ics');
     };
 
     return (

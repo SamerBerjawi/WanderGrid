@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import type { EntitlementType, Trip, User, UserPolicy } from '../../../types';
+import type { EntitlementType, LeaveEntry, User, UserPolicy } from '../../../types';
 import type { SettingsData } from '../../../hooks/useSettingsData';
 import { useLeaveRules } from '../../../hooks/useLeaveRules';
 import { affectsCollections } from '../../../hooks/useWanderSync';
@@ -315,7 +315,7 @@ export const LeavePane: React.FC<{ data: SettingsData }> = ({ data }) => {
     const undo = useUndoToast();
     const rules = useLeaveRules();
     const [types, setTypes] = useState<EntitlementType[]>([]);
-    const [trips, setTrips] = useState<Trip[]>([]);
+    const [leave, setLeave] = useState<LeaveEntry[]>([]);
     const [loaded, setLoaded] = useState(false);
     const [typeSheet, setTypeSheet] = useState<{ type: EntitlementType | null } | null>(null);
     const [policySheet, setPolicySheet] = useState<{ typeId: string } | null>(null);
@@ -324,17 +324,17 @@ export const LeavePane: React.FC<{ data: SettingsData }> = ({ data }) => {
     const [memberId, setMemberId] = useState<string | null>(null);
 
     const load = useCallback(async () => {
-        const [t, tr] = await Promise.all([
+        const [t, lv] = await Promise.all([
             dataService.getEntitlementTypes().catch(() => [] as EntitlementType[]),
-            dataService.getTrips().catch(() => [] as Trip[]),
+            dataService.getLeave().catch(() => [] as LeaveEntry[]),
         ]);
         setTypes(t || []);
-        setTrips(tr || []);
+        setLeave(lv || []);
         setLoaded(true);
     }, []);
     useEffect(() => {
         void load();
-        const onUpdate = (e: Event) => { if (affectsCollections(e, ['entitlements', 'trips'])) void load(); };
+        const onUpdate = (e: Event) => { if (affectsCollections(e, ['entitlements', 'leave'])) void load(); };
         window.addEventListener('wandergrid_db_updated', onUpdate);
         return () => window.removeEventListener('wandergrid_db_updated', onUpdate);
     }, [load]);
@@ -344,7 +344,7 @@ export const LeavePane: React.FC<{ data: SettingsData }> = ({ data }) => {
     const member = members.find(u => u.id === memberId) ?? members.find(u => u.id === data.sessionUserId) ?? members[0];
     const years = useMemo(() => policyYears(member ? [member] : [], thisYear), [member, thisYear]);
 
-    const balances = useMemo(() => (member ? balancesFor({ user: member, trips, entitlements: types, today: todayISO(), ctx: rules.contextFor(member) }, year) : []), [member, trips, types, year, rules]);
+    const balances = useMemo(() => (member ? balancesFor({ user: member, leave, entitlements: types, today: todayISO(), ctx: rules.contextFor(member) }, year) : []), [member, leave, types, year, rules]);
 
     const saveType = async (type: EntitlementType) => {
         await dataService.saveEntitlementType(type);
@@ -491,6 +491,14 @@ export const LeavePane: React.FC<{ data: SettingsData }> = ({ data }) => {
                             </div>
                             <p className="text-xs text-rp-muted">{WEEKEND_RULES.find(r => r.id === (member.holidayWeekendRule || 'none'))?.hint}</p>
                         </div>
+                        <div className="border-t border-rp-line pt-1">
+                            <RpToggle
+                                label="Track requests and approvals"
+                                hint={member.leaveApproval ? 'Leave is Requested, then Approved or Rejected. Requests count as pending.' : 'Leave is Planned or Confirmed. Turn on if an employer approves it.'}
+                                checked={Boolean(member.leaveApproval)}
+                                onChange={on => { void attempt(() => data.saveUser({ ...member, leaveApproval: on || undefined })); }}
+                            />
+                        </div>
                         {!data.isAdmin ? <p className="text-xs text-rp-muted">Set these to match your contract. An administrator can change them too.</p> : null}
                     </div>
                 </div>
@@ -501,7 +509,7 @@ export const LeavePane: React.FC<{ data: SettingsData }> = ({ data }) => {
                     open={typeSheet !== null}
                     type={typeSheet?.type ?? null}
                     types={types}
-                    usage={typeSheet?.type ? typeUsage(trips, typeSheet.type.id) : 0}
+                    usage={typeSheet?.type ? typeUsage(leave, typeSheet.type.id) : 0}
                     onClose={() => setTypeSheet(null)}
                     onSave={saveType}
                     onRemove={removeType}

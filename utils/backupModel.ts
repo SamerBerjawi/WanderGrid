@@ -11,7 +11,7 @@ export const BACKUP_CATEGORIES: Array<{ key: BackupCategory; label: string; hint
     { key: 'roadTrips', label: 'Road trips', hint: 'Trains, buses, cars, cruises and ferries' },
     { key: 'visited', label: 'Atlas', hint: 'Visited countries and cities' },
     { key: 'users', label: 'Members', hint: 'Profiles and leave balances' },
-    { key: 'calendar', label: 'Calendar', hint: 'Events, leave types and holiday calendars' },
+    { key: 'calendar', label: 'Calendar', hint: 'Leave, leave types, events and holiday calendars' },
     { key: 'settings', label: 'Settings', hint: 'Preferences, carriers and gear' },
 ];
 
@@ -35,7 +35,7 @@ export const countBackup = (state: any): BackupCounts => {
         roadTrips: trips.filter(isTripRoad).length + flights.filter((f: any) => f.mode && f.mode !== 'Flight').length,
         visited: list(state?.visited).length,
         users: list(state?.users).length,
-        calendar: list(state?.events).length + list(state?.entitlements).length + list(state?.configs).length,
+        calendar: list(state?.events).length + list(state?.entitlements).length + list(state?.configs).length + list(state?.leave).length,
         settings: settings && typeof settings === 'object' && Object.keys(settings).length > 0 ? 1 : 0,
         version: state?.version ? String(state.version) : null,
         timestamp: state?.timestamp ? String(state.timestamp) : null,

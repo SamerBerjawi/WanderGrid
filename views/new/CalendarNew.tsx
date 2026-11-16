@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import type { CustomEvent, SavedConfig, Trip, User } from '../../types';
-import { useCalendarData, leaveFieldsOf, NO_LEAVE, type LeaveFields, type NewLeave } from '../../hooks/useCalendarData';
+import type { CustomEvent, LeaveEntry, SavedConfig, User } from '../../types';
+import { useCalendarData } from '../../hooks/useCalendarData';
 import {
-    ALL_LAYERS, balancesFor, buildItems, calendarYears, configsFor, daysBetween, holidayDays, isStandaloneLeave, itemsOn, leaveContext, monthOf, MONTH_NAMES,
+    ALL_LAYERS, balancesFor, buildItems, calendarYears, configsFor, daysBetween, holidayDays, itemsOn, leaveTitle, leaveContext, monthOf, MONTH_NAMES,
     nextLeave, summarise, workingDaysOf, type CalendarItem, type CalendarLayer, type LeaveColor, type LeaveContext, type WeekStart,
 } from '../../utils/calendarModel';
 import { formatDate } from '../../utils/formatters';
@@ -79,7 +79,7 @@ const readColourBy = (): ColourBy => {
 const readLayers = (): Record<CalendarLayer, boolean> => {
     try {
         const v = JSON.parse(localStorage.getItem(LAYERS_KEY) || 'null');
-        if (v && typeof v === 'object') return { trip: v.trip !== false, holiday: v.holiday !== false, event: v.event !== false };
+        if (v && typeof v === 'object') return { trip: v.trip !== false, leave: v.leave !== false, holiday: v.holiday !== false, event: v.event !== false };
     } catch { /* storage unavailable or not JSON */ }
     return { ...ALL_LAYERS };
 };
@@ -137,7 +137,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
         try { localStorage.setItem(WEEK_KEY, String(next)); } catch { /* storage unavailable */ }
     };
 
-    const { users, trips, entitlements, configs, events, settings, me, isAdmin } = data;
+    const { users, trips, leave, entitlements, configs, events, settings, me, isAdmin } = data;
     const workingDays = useMemo(() => workingDaysOf(settings), [settings]);
 
     // Whose balances: the one member in view, else you.
@@ -160,18 +160,20 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
         () => (colourBy === 'type' ? Object.fromEntries(entitlements.map(e => [e.id, e.color])) as Record<string, LeaveColor> : undefined),
         [colourBy, entitlements],
     );
+    const typeName = useCallback((id: string) => entitlements.find(e => e.id === id)?.name, [entitlements]);
     const items = useMemo(
-        () => buildItems(trips, holidays, events, { memberIds, leaveOnly, query, layers }, today, leaveColors),
-        [trips, holidays, events, memberIds, leaveOnly, query, layers, today, leaveColors],
+        () => buildItems({ trips, leave, holidays, events, typeName }, { memberIds, leaveOnly, query, layers }, today, leaveColors),
+        [trips, leave, holidays, events, typeName, memberIds, leaveOnly, query, layers, today, leaveColors],
     );
 
     const balances = useMemo(
-        () => (subject ? balancesFor({ user: subject, trips, entitlements, today, ctx: contextFor(subject.id) }, balanceYear) : []),
-        [subject, trips, entitlements, today, contextFor, balanceYear],
+        () => (subject ? balancesFor({ user: subject, leave, entitlements, today, ctx: contextFor(subject.id) }, balanceYear) : []),
+        [subject, leave, entitlements, today, contextFor, balanceYear],
     );
     const summary = useMemo(() => (subject ? summarise(balances, subject, balanceYear) : null), [balances, subject, balanceYear]);
-    const years = useMemo(() => calendarYears(users, trips, thisYear), [users, trips, thisYear]);
-    const next = useMemo(() => nextLeave(trips, subject ? [subject.id] : [], today), [trips, subject, today]);
+    const years = useMemo(() => calendarYears(users, leave, thisYear), [users, leave, thisYear]);
+    const next = useMemo(() => nextLeave(leave, subject ? [subject.id] : [], today), [leave, subject, today]);
+    const nextName = next ? leaveTitle(next, typeName) : '';
 
     const upcomingHolidays = useMemo(() => holidays.filter(h => h.counted && h.observed >= today).slice(0, 3), [holidays, today]);
     // The optimizer works from the subject's own days off: their followed calendars, their working week, their booked leave.
@@ -179,15 +181,15 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
         if (!optimizerOpen || !subject) return [];
         const mine = holidayDays(configsFor(configs, [subject]), subject.holidayWeekendRule, workingDays);
         const booked = new Set<string>();
-        trips.filter(t => (t.participants || []).includes(subject.id) && t.status !== 'Cancelled' && (t.entitlementId || (t.allocations && t.allocations.length > 0))).forEach(t => {
-            for (let d = t.startDate; d && d <= (t.endDate || t.startDate); d = new Date(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10) + 1)).toISOString().slice(0, 10)) booked.add(d);
+        leave.filter(e => e.memberId === subject.id && ['planned', 'requested', 'approved'].includes(e.state)).forEach(e => {
+            for (let d = e.startDate; d && d <= (e.endDate || e.startDate); d = new Date(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10) + 1)).toISOString().slice(0, 10)) booked.add(d);
         });
         const to = new Date(Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 1 + optimizerMonths, +today.slice(8, 10))).toISOString().slice(0, 10);
         return suggestBreaks({ from: today, to, workingDays, holidays: mine, booked });
-    }, [optimizerOpen, subject, configs, workingDays, trips, today, optimizerMonths]);
+    }, [optimizerOpen, subject, configs, workingDays, leave, today, optimizerMonths]);
     const myTrips = useMemo(() => items.filter(i => i.kind === 'trip').map(i => i.trip!), [items]);
 
-    const canEdit = useCallback((trip: Trip) => isAdmin || Boolean(me && (trip.participants || []).includes(me.id)), [isAdmin, me]);
+    const canEditLeave = useCallback((memberId: string) => isAdmin || Boolean(me && memberId === me.id), [isAdmin, me]);
 
     /* ------------------------------ actions ------------------------------ */
 
@@ -210,22 +212,20 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
         setLeaveTarget({ kind: 'new', date: iso, memberId: subject?.id });
     };
 
-    const saveTripLeave = async (trip: Trip, fields: LeaveFields, extra: Partial<Trip>) => {
-        const before = latest.current.trips.find(t => t.id === trip.id) ?? trip;
-        const beforeExtra: Partial<Trip> = {};
-        (Object.keys(extra) as (keyof Trip)[]).forEach(k => { (beforeExtra as Record<string, unknown>)[k] = before[k]; });
-        await data.saveLeave(trip, fields, extra);
-        undo.show('Leave saved', () => attempt(async () => { await latest.current.saveLeave(before, leaveFieldsOf(before), beforeExtra); }));
+    const saveEntry = async (entry: LeaveEntry, before?: LeaveEntry) => {
+        await data.saveLeave(entry);
+        undo.show(before ? 'Leave saved' : 'Leave added', () => attempt(async () => {
+            if (before) await latest.current.saveLeave({ ...before, version: undefined });
+            else {
+                const current = latest.current.leave.find(e => e.id === entry.id);
+                if (current) await latest.current.deleteLeave(current);
+            }
+        }));
     };
-    const createLeave = async (input: NewLeave) => {
-        const saved = await data.createLeave(input);
-        undo.show('Leave added', () => attempt(() => latest.current.deleteLeave(saved)));
-    };
-    const removeLeave = async (trip: Trip) => {
+    const removeLeave = async (entry: LeaveEntry) => {
         await attempt(async () => {
-            if (isStandaloneLeave(trip)) await data.deleteLeave(trip);
-            else await data.saveLeave(trip, NO_LEAVE);
-            toast.success('Leave removed');
+            await data.deleteLeave(entry);
+            undo.show('Leave removed', () => attempt(async () => { await latest.current.saveLeave({ ...entry, version: undefined }); }));
         }, "Couldn't remove the leave.");
         setLeaveTarget(null);
     };
@@ -352,8 +352,8 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                         <CalendarTile tone="green" icon={SunHorizon} value={summary.left} unit="days left" sub={summary.total > 0 ? `of ${summary.total} in ${balanceYear}` : `in ${balanceYear}`} />
                         {next && daysToNext !== null ? (
                             daysToNext <= 0
-                                ? <CalendarTile tone="mustard" icon={Clock} value="Now" unit="on leave" sub={next.name} />
-                                : <CalendarTile tone="mustard" icon={Clock} value={daysToNext} unit={daysToNext === 1 ? 'day to leave' : 'days to leave'} sub={`${next.name} · ${formatDate(next.startDate, 'short')}`} />
+                                ? <CalendarTile tone="mustard" icon={Clock} value="Now" unit="on leave" sub={nextName} />
+                                : <CalendarTile tone="mustard" icon={Clock} value={daysToNext} unit={daysToNext === 1 ? 'day to leave' : 'days to leave'} sub={`${nextName} · ${formatDate(next.startDate, 'short')}`} />
                         ) : (
                             <CalendarTile tone="mustard" icon={Clock} value="None" unit="coming" sub="No leave planned" />
                         )}
@@ -463,7 +463,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                             years={years}
                             onYear={setBalanceYear}
                             balances={balances}
-                            summary={summary ?? { year: balanceYear, used: 0, planned: 0, left: 0, total: 0, fallback: true }}
+                            summary={summary ?? { year: balanceYear, used: 0, planned: 0, pending: 0, left: 0, total: 0, fallback: true }}
                             onMember={onMemberClick}
                         />
                         <section aria-label="Public holidays" className={cn(card, 'flex flex-col gap-2 p-4 sm:p-5')}>
@@ -499,8 +499,9 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                 users={users}
                 entitlements={entitlements}
                 contextFor={contextFor}
-                canEdit={canEdit}
-                onEditLeave={trip => { setDay(null); setLeaveTarget({ kind: 'edit', trip }); }}
+                canEditLeave={canEditLeave}
+                onEditLeave={entry => { setDay(null); setLeaveTarget({ kind: 'edit', entry }); }}
+                onLeaveForTrip={trip => { setDay(null); setLeaveTarget({ kind: 'new', tripId: trip.id, memberId: (me && trip.participants?.includes(me.id) ? me.id : trip.participants?.[0]) ?? subject?.id }); }}
                 onOpenTrip={id => { setDay(null); onTripClick?.(id); }}
                 onAddLeave={startLeave}
                 onManageHolidays={() => { setDay(null); setHolidaysOpen(true); }}
@@ -511,14 +512,14 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                 target={leaveTarget}
                 users={users}
                 trips={trips}
+                leave={leave}
                 entitlements={entitlements}
                 contextFor={contextFor}
                 meId={me?.id}
                 isAdmin={isAdmin}
                 today={today}
                 onClose={() => setLeaveTarget(null)}
-                onSaveTrip={saveTripLeave}
-                onCreate={createLeave}
+                onSave={saveEntry}
                 onRemove={removeLeave}
                 onOpenTrip={id => { setLeaveTarget(null); onTripClick?.(id); }}
             />
@@ -536,7 +537,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                 onAddCalendar={addCalendar}
                 onRemoveCalendar={removeCalendar}
             />
-            <OptionsSheet open={optionsOpen} onClose={() => setOptionsOpen(false)} weekStart={weekStart} onWeekStart={changeWeekStart} colourBy={colourBy} onColourBy={changeColourBy} trips={myTrips} />
+            <OptionsSheet open={optionsOpen} onClose={() => setOptionsOpen(false)} weekStart={weekStart} onWeekStart={changeWeekStart} colourBy={colourBy} onColourBy={changeColourBy} trips={myTrips} leave={leave.filter(e => e.memberId === me?.id)} typeName={typeName} />
             <EventSheet open={eventOpen !== null} date={eventOpen?.date} today={today} onClose={() => setEventOpen(null)} onSave={saveEvent} />
             <OptimizerSheet
                 open={optimizerOpen}
@@ -544,7 +545,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                 suggestions={optimizer}
                 today={today}
                 memberName={subject?.name}
-                daysLeft={summary && summary.year === thisYear ? summary.left : subject ? summarise(balancesFor({ user: subject, trips, entitlements, today, ctx: contextFor(subject.id) }, thisYear), subject, thisYear).left : null}
+                daysLeft={summary && summary.year === thisYear ? summary.left : subject ? summarise(balancesFor({ user: subject, leave, entitlements, today, ctx: contextFor(subject.id) }, thisYear), subject, thisYear).left : null}
                 window={optimizerMonths}
                 onWindow={setOptimizerMonths}
                 hasHolidays={holidays.length > 0}
@@ -561,6 +562,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
 const LayerChips: React.FC<{ layers: Record<CalendarLayer, boolean>; onToggle: (l: CalendarLayer) => void }> = ({ layers, onToggle }) => (
     <>
         <span className="mx-1 h-6 w-px shrink-0 bg-rp-line" aria-hidden />
+        <RpChip selected={layers.leave} onClick={() => onToggle('leave')} className="shrink-0"><SunHorizon size={16} aria-hidden /> Leave</RpChip>
         <RpChip selected={layers.trip} onClick={() => onToggle('trip')} className="shrink-0"><Suitcase size={16} aria-hidden /> Trips</RpChip>
         <RpChip selected={layers.holiday} onClick={() => onToggle('holiday')} className="shrink-0"><Flag size={16} aria-hidden /> Holidays</RpChip>
         <RpChip selected={layers.event} onClick={() => onToggle('event')} className="shrink-0"><Star size={16} aria-hidden /> Events</RpChip>

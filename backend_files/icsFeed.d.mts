@@ -26,6 +26,10 @@ export interface FeedContext {
     airportName?: (iata: string) => string;
     entitlementName?: (id?: string) => string | undefined;
     holidayCalendars?: Array<{ id: string; countryName?: string; year?: number; holidays?: Array<{ id?: string; name: string; date: string }> }>;
+    /** The person's leave entries, for the Leave layer. */
+    leave?: Array<Record<string, any>>;
+    /** Their leave entries linked to a trip (defaults to a lookup in `leave`). */
+    leaveForTrip?: (tripId: string) => Array<Record<string, any>>;
 }
 
 type AnyRecord = Record<string, any>;
@@ -41,5 +45,6 @@ export function validDay(iso: unknown): iso is string;
 export function zonedToUtcMs(dateIso: string, time: string, tz?: string): number | null;
 export function transportEvent(t: AnyRecord, trip: AnyRecord | null | undefined, options: FeedOptions, ctx: FeedContext): string | null;
 export function tripEvents(trip: AnyRecord, options: Partial<FeedOptions>, ctx: FeedContext): string[];
+export function leaveEntryEvent(entry: AnyRecord, ctx: FeedContext): string;
 export function wrapCalendar(events: string[], name?: string, opts?: { refresh?: boolean }): string;
 export function buildFeed(trips: AnyRecord[], options?: Partial<FeedOptions>, ctx?: FeedContext): string;

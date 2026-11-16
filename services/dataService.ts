@@ -1,6 +1,7 @@
 
 import { parseFeedOptions, type FeedOptions } from '../utils/icsContext';
-import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, WorkspaceSettings, CustomEvent as TripCustomEvent, PackingItem, Carrier, BackupSelectionOptions, RestoreOptions } from '../types';
+import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, WorkspaceSettings, CustomEvent as TripCustomEvent, PackingItem, Carrier, BackupSelectionOptions, RestoreOptions, LeaveEntry } from '../types';
+import { convertTripLeave } from '../utils/leaveEntry';
 import { tripKind } from '../utils/tripKind';
 // Geocoding (~100 KB with its place-search tables) is only needed when trips are saved; load it on first
 // use so it isn't part of the app's startup bundle (PERF-001).
@@ -266,7 +267,7 @@ export const isTripAir = (t: any): boolean => {
 // API collections touched by a mutating request to `endpoint` (used to scope refetches).
 const collectionsForEndpoint = (endpoint: string): string[] => {
   const first = endpoint.replace(/^\//, '').split(/[/?]/)[0];
-  if (first === 'batch') return ['trips', 'flights'];
+  if (first === 'batch') return ['trips', 'flights', 'leave'];
   if (first === 'restore' || first === 'wipe' || first === 'auth') return [];
   return first ? [first] : [];
 };
@@ -537,7 +538,8 @@ class DataService {
               { route: '/entitlements', storage: 'entitlements' },
               { route: '/configs', storage: 'configs' },
               { route: '/flights', storage: 'flights' },
-              { route: '/visited', storage: 'visited' }
+              { route: '/visited', storage: 'visited' },
+              { route: '/leave', storage: 'leave' }
           ];
 
           for (const col of collections) {
@@ -731,7 +733,8 @@ class DataService {
           { route: '/entitlements', storage: 'entitlements' },
           { route: '/configs', storage: 'configs' },
           { route: '/flights', storage: 'flights' },
-          { route: '/visited', storage: 'visited' }
+          { route: '/visited', storage: 'visited' },
+          { route: '/leave', storage: 'leave' }
       ];
 
        for (const col of collections) {
@@ -780,6 +783,15 @@ class DataService {
               try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
               return { success: true, count: payload.length } as unknown as T;
           }
+      }
+
+      if (endpoint === '/leave/bulk' && method === 'POST') {
+          const list = getCachedStorage<any[]>(key('leave'), []);
+          const byId = new Map(list.map((i: any) => [i.id, i]));
+          (body as any[]).forEach(e => byId.set(e.id, e));
+          setCachedStorage(key('leave'), Array.from(byId.values()));
+          try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated', { detail: { collections: ['leave'] } })); } catch (e) {}
+          return { success: true, count: (body as any[]).length, versions: {} } as unknown as T;
       }
 
       if (endpoint === '/flights/bulk') {
@@ -997,7 +1009,7 @@ class DataService {
 
           // 5. Calendar (events, entitlements, configs)
           if (selected.calendar !== false) {
-              ['events', 'entitlements', 'configs'].forEach(col => {
+              ['events', 'entitlements', 'configs', 'leave'].forEach(col => {
                   if (data[col] && Array.isArray(data[col])) {
                       const keyName = key(col);
                       if (mode === 'replace') {
@@ -1029,6 +1041,9 @@ class DataService {
               delete mergedSettings.cartoApiKey;
               setCachedStorage(key('settings'), mergedSettings, true);
           }
+
+          // A backup made before leave had its own records carries leave on trips: move it into place.
+          this.convertLocalLeave(true);
 
           // Verify primary collections actually persisted — otherwise they vanish on reload
           for (const col of ['trips', 'flights', 'users']) {
@@ -1336,7 +1351,7 @@ class DataService {
    * Apply several trip/flight changes atomically (one server transaction), e.g. bundling flights
    * into a trip. Either everything is saved or nothing is, so flights can't be lost half-way.
    */
-  async applyBatch(changes: { newTrips?: Trip[]; upsertTrips?: Trip[]; deleteTrips?: string[]; upsertFlights?: any[]; deleteFlights?: string[] }, options: { skipGeocoding?: boolean } = {}): Promise<void> {
+  async applyBatch(changes: { newTrips?: Trip[]; upsertTrips?: Trip[]; deleteTrips?: string[]; upsertFlights?: any[]; deleteFlights?: string[]; upsertLeave?: LeaveEntry[]; deleteLeave?: string[] }, options: { skipGeocoding?: boolean } = {}): Promise<void> {
     const newTrips = await Promise.all((changes.newTrips || []).map(t => this.prepareNewTrip(t)));
     // `skipGeocoding`: the caller changed text only and the stored coordinates must stay as they are.
     const updatedTrips = options.skipGeocoding ? (changes.upsertTrips || []) : await Promise.all((changes.upsertTrips || []).map(t => this.processGeocoding(t)));
@@ -1344,21 +1359,26 @@ class DataService {
       upsertTrips: [...updatedTrips.map(t => this.rebaseVersion('trips', t)), ...newTrips],
       deleteTrips: changes.deleteTrips || [],
       upsertFlights: (changes.upsertFlights || []).map(f => this.rebaseVersion('flights', f)),
-      deleteFlights: changes.deleteFlights || []
+      deleteFlights: changes.deleteFlights || [],
+      upsertLeave: (changes.upsertLeave || []).map(e => this.rebaseVersion('leave', e)),
+      deleteLeave: changes.deleteLeave || [],
     };
     if (this._useApi || import.meta.env.PROD) {
       const result = await this.fetch<any>('/batch', { method: 'POST', body: JSON.stringify(payload) });
       if (result && result.success) {
         for (const t of payload.upsertTrips) this.rememberVersion('trips', t.id, t.version, result.versions?.trips?.[t.id]);
         for (const f of payload.upsertFlights) this.rememberVersion('flights', f.id, f.version, result.versions?.flights?.[f.id]);
+        for (const e of payload.upsertLeave) this.rememberVersion('leave', e.id, e.version, result.versions?.leave?.[e.id]);
         return;
       }
     }
     // Dev localStorage fallback has no transactions; apply the steps in a loss-safe order (writes first).
     if (payload.upsertTrips.length) await this.localFetch('/trips/bulk', { method: 'POST', body: JSON.stringify(payload.upsertTrips) });
     if (payload.upsertFlights.length) await this.localFetch('/flights/bulk', { method: 'POST', body: JSON.stringify(payload.upsertFlights) });
+    if (payload.upsertLeave.length) await this.localFetch('/leave/bulk', { method: 'POST', body: JSON.stringify(payload.upsertLeave.map(e => this.stampLocal(e))) });
     for (const id of payload.deleteTrips) await this.localFetch(`/trips/${id}`, { method: 'DELETE' });
     for (const id of payload.deleteFlights) await this.localFetch(`/flights/${id}`, { method: 'DELETE' });
+    for (const id of payload.deleteLeave) await this.localFetch(`/leave/${id}`, { method: 'DELETE' });
   }
 
   async addTrips(newTrips: Trip[]): Promise<void> {
@@ -1434,6 +1454,52 @@ class DataService {
     const result = await this.fetch<any>('/trips/bulk', { method: 'POST', body: JSON.stringify(updated) });
     for (const t of updated) this.rememberVersion('trips', t.id, t.version, result?.versions?.[t.id]);
   }
+  /* ----------------------------- leave entries ----------------------------- */
+
+  /** Every member's leave entries (everyone reads them; only the member or an admin writes them). */
+  async getLeave(): Promise<LeaveEntry[]> {
+    if (!this._useApi && !import.meta.env.PROD) this.convertLocalLeave(false);
+    return (await this.fetch<LeaveEntry[]>('/leave')) || [];
+  }
+  async addLeave(entry: LeaveEntry): Promise<LeaveEntry> {
+    const saved = await this.fetch<LeaveEntry>('/leave', { method: 'POST', body: JSON.stringify(this.stampLocal(entry)) });
+    this.rememberVersion('leave', entry.id, undefined, saved?.version);
+    return saved || entry;
+  }
+  async updateLeave(entry: LeaveEntry): Promise<LeaveEntry> {
+    const saved = await this.versionedPut('leave', this._useApi || import.meta.env.PROD ? entry : this.stampLocal(entry));
+    return saved || entry;
+  }
+  async deleteLeave(id: string): Promise<void> { await this.fetch(`/leave/${encodeURIComponent(id)}`, { method: 'DELETE' }); }
+
+  /** Local mode has no server to stamp versions and dates; do what the server would. */
+  private stampLocal<T extends LeaveEntry>(entry: T): T {
+    if (this._useApi || import.meta.env.PROD) return entry;
+    return { ...entry, version: (Number(entry.version) || 0) + 1, updatedAt: new Date().toISOString() };
+  }
+
+  /**
+   * Local mode: moves leave still stored on trips into the leave collection, once per browser (and again after a
+   * restore). The server does the same in its 0004 migration and on restore.
+   */
+  private convertLocalLeave(force: boolean): void {
+    const flag = 'wandergrid_leave_converted_v1';
+    try {
+      if (!force && localStorage.getItem(flag)) return;
+      const k = (c: string) => `wandergrid_${c}`;
+      const trips = getCachedStorage<Trip[]>(k('trips'), []);
+      const leave = getCachedStorage<LeaveEntry[]>(k('leave'), []);
+      const { add, save, remove } = convertTripLeave(trips, leave);
+      if (add.length || save.length || remove.length) {
+        const saved = new Map(save.map(t => [t.id, t]));
+        const gone = new Set(remove);
+        setCachedStorage(k('trips'), trips.filter(t => !gone.has(t.id)).map(t => saved.get(t.id) || t), true);
+        setCachedStorage(k('leave'), [...leave, ...add], true);
+      }
+      localStorage.setItem(flag, '1');
+    } catch { /* storage unavailable: try again next time */ }
+  }
+
   async getCustomEvents(): Promise<TripCustomEvent[]> { return this.fetch<TripCustomEvent[]>('/events'); }
   async addCustomEvent(event: TripCustomEvent): Promise<void> { await this.fetch('/events', { method: 'POST', body: JSON.stringify(event) }); }
   async deleteCustomEvent(id: string): Promise<void> { await this.fetch(`/events/${id}`, { method: 'DELETE' }); }
@@ -1698,7 +1764,7 @@ class DataService {
       
       // Clear localStorage keys
       const key = (k: string) => `wandergrid_${k}`;
-      const collections = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'settings', 'session_user', 'dashboard_cache_v1'];
+      const collections = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'leave', 'leave_converted_v1', 'settings', 'session_user', 'dashboard_cache_v1'];
       collections.forEach(c => {
           localStorage.removeItem(key(c));
       });

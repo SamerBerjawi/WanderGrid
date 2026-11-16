@@ -429,6 +429,8 @@ module.exports = function registerAuthRoutes(app, {
                   throw new HttpError(409, 'The workspace needs at least one administrator');
               }
               await client.query(`DELETE FROM users WHERE id = $1`, [id]);
+              // Their time off goes with them; trips stay (others may be on them).
+              await client.query(`DELETE FROM leave WHERE data->>'memberId' = $1`, [id]);
           });
           res.json({ success: true });
       } catch (err) {
