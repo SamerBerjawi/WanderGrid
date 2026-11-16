@@ -28,7 +28,7 @@ describe('what a trip costs', () => {
         // Mon 30 Mar to Sun 5 Apr: four working days, Good Friday, and the weekend.
         const plan = planLeave(input(trip('a', '2026-03-30', '2026-04-05')));
         expect(plan.cost).toBe(4);
-        expect(plan.skipped).toEqual({ weekend: 2, holiday: 1, worked: 0 });
+        expect(plan.skipped).toEqual({ weekend: 2, holiday: 1, worked: 0, covered: 0 });
         expect(plan.days.map(d => d.kind)).toEqual(['leave', 'leave', 'leave', 'leave', 'holiday', 'weekend', 'weekend']);
         expect(plan.days[4].label).toBe('Good Friday');
     });

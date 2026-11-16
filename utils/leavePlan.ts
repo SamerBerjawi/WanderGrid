@@ -1,6 +1,6 @@
 import type { EntitlementType, Trip, User } from '../types';
 import {
-    balancesFor, dayWeight, hasLeave, isWeekend, leaveContext, leaveUse, tripDates, yearOfISO, type HolidayDay,
+    balancesFor, dayWeight, hasLeave, isWeekend, leaveContext, memberLeaveDays, tripDates, yearOfISO, type HolidayDay,
 } from './calendarModel';
 
 /**
@@ -24,7 +24,8 @@ export interface PlanInput {
     holidays: HolidayDay[];
 }
 
-export type DayKind = 'leave' | 'half' | 'weekend' | 'holiday' | 'worked';
+/** `covered`: another leave entry of the member (time off, another trip) already takes the day. */
+export type DayKind = 'leave' | 'half' | 'weekend' | 'holiday' | 'worked' | 'covered';
 export interface DayCell { iso: string; kind: DayKind; weight: number; /** The holiday's name. */ label?: string }
 
 export interface OptionYear { year: number; cost: number; /** Days the type has left that year without this trip; null when it has no policy or no limit. */ remaining: number | null; after: number | null }
@@ -44,7 +45,7 @@ export interface LeavePlan {
     /** Leave days the trip costs. */
     cost: number;
     days: DayCell[];
-    skipped: { weekend: number; holiday: number; worked: number };
+    skipped: { weekend: number; holiday: number; worked: number; covered: number };
     /** Cost by calendar year, for a trip that crosses New Year. */
     years: { year: number; cost: number }[];
     options: TypeOption[];
@@ -68,25 +69,47 @@ const withoutLeave = (trips: Trip[], trip: Trip): Trip[] =>
 /** Types worth suggesting for a holiday: not sick or unpaid leave. */
 const suggestable = (e: EntitlementType) => e.category !== 'Sick' && e.category !== 'Unpaid';
 
-/** The day-by-day picture of a trip against a member's working week and holidays. */
-export const dayCells = (trip: Trip, workingDays: number[], holidays: HolidayDay[]): DayCell[] => {
+/** Leave the member already has on each date from other entries: the weight taken and the entry's name. */
+export type Covered = Map<string, { weight: number; label: string }>;
+
+/** What the member's other leave entries already take, day by day (the trip itself left out). */
+export const coveredDays = (trip: Trip, user: User, trips: Trip[], ctx: ReturnType<typeof leaveContext>, today: string): Covered => {
+    const others = trips.filter(t => t.id !== trip.id);
+    const names = new Map(others.map(t => [t.id, t.name]));
+    const out: Covered = new Map();
+    memberLeaveDays(user, others, ctx, today).forEach(d => {
+        // A split's days are not dated, so only dated days are known to overlap.
+        const t = others.find(o => o.id === d.tripId);
+        if (!t || t.allocations?.length) return;
+        const slot = out.get(d.iso) || { weight: 0, label: names.get(d.tripId) || 'Leave' };
+        slot.weight += d.days;
+        out.set(d.iso, slot);
+    });
+    return out;
+};
+
+/** The day-by-day picture of a trip against a member's working week, holidays and other leave. */
+export const dayCells = (trip: Trip, workingDays: number[], holidays: HolidayDay[], covered?: Covered): DayCell[] => {
     const ctx = leaveContext(workingDays, holidays);
     const names = new Map(holidays.filter(h => h.counted).map(h => [h.observed, h.name]));
     const excluded = new Set(trip.excludedDates || []);
     return tripDates(trip).map(iso => {
-        const weight = dayWeight(trip, iso, ctx);
-        if (excluded.has(iso)) return { iso, kind: 'worked' as const, weight };
-        if (isWeekend(iso, workingDays)) return { iso, kind: 'weekend' as const, weight };
-        if (ctx.offDays.has(iso)) return { iso, kind: 'holiday' as const, weight, label: names.get(iso) };
+        const full = dayWeight(trip, iso, ctx);
+        if (excluded.has(iso)) return { iso, kind: 'worked' as const, weight: full };
+        if (isWeekend(iso, workingDays)) return { iso, kind: 'weekend' as const, weight: full };
+        if (ctx.offDays.has(iso)) return { iso, kind: 'holiday' as const, weight: full, label: names.get(iso) };
+        const other = covered?.get(iso);
+        const weight = Math.max(0, Math.min(full, 1 - (other?.weight ?? 0)));
+        if (other && weight <= 0) return { iso, kind: 'covered' as const, weight: 0, label: other.label };
         return { iso, kind: weight > 0 && weight < 1 ? ('half' as const) : ('leave' as const), weight };
     });
 };
 
 export const planLeave = ({ trip, user, trips, entitlements, today, workingDays, holidays }: PlanInput): LeavePlan => {
     const ctx = leaveContext(workingDays, holidays);
-    const days = dayCells(trip, workingDays, holidays);
-    const skipped = { weekend: 0, holiday: 0, worked: 0 };
-    days.forEach(d => { if (d.kind === 'weekend' || d.kind === 'holiday' || d.kind === 'worked') skipped[d.kind] += 1; });
+    const days = dayCells(trip, workingDays, holidays, coveredDays(trip, user, trips, ctx, today));
+    const skipped = { weekend: 0, holiday: 0, worked: 0, covered: 0 };
+    days.forEach(d => { if (d.kind === 'weekend' || d.kind === 'holiday' || d.kind === 'worked' || d.kind === 'covered') skipped[d.kind] += 1; });
     const cost = days.reduce((n, d) => n + d.weight, 0);
     const byYear = new Map<number, number>();
     days.forEach(d => byYear.set(yearOfISO(d.iso), (byYear.get(yearOfISO(d.iso)) || 0) + d.weight));
@@ -142,21 +165,24 @@ export const leaveStatus = (input: PlanInput): LeaveState => {
         return { kind: 'needed', cost: plan.cost, typeId: pick?.entitlement.id, typeName: pick?.entitlement.name, short: pick && !pick.covers ? pick.shortBy : 0 };
     }
 
-    // Booked: how far over is each type the trip draws on, in each year?
+    // Booked: how far over is each type the trip draws on, in each year? Days another entry already takes are not
+    // the trip's to pay for.
     const ctx = leaveContext(workingDays, holidays);
+    const mine = memberLeaveDays(user, trips, ctx, today).filter(d => d.tripId === trip.id);
     let cost = 0;
     let short = 0;
     const names = new Set<string>();
     for (const year of tripYears(trip)) {
-        const uses = leaveUse(trip, year, today, ctx);
+        const perType = new Map<string, number>();
+        mine.filter(d => yearOfISO(d.iso) === year).forEach(d => perType.set(d.entitlementId, (perType.get(d.entitlementId) || 0) + d.days));
+        if (perType.size === 0) continue;
         const balances = balancesFor({ user, trips, entitlements, today, ctx }, year);
-        for (const u of uses) {
-            const days = u.used + u.planned;
+        perType.forEach((days, id) => {
             cost += days;
-            names.add(entitlements.find(e => e.id === u.entitlementId)?.name || 'Leave');
-            const b = balances.find(x => x.entitlement.id === u.entitlementId);
+            names.add(entitlements.find(e => e.id === id)?.name || 'Leave');
+            const b = balances.find(x => x.entitlement.id === id);
             if (b && !b.unlimited && b.remaining !== null && b.remaining < 0) short += Math.min(days, -b.remaining);
-        }
+        });
     }
     return { kind: 'booked', cost, typeName: [...names].join(' + ') || 'Leave', short };
 };

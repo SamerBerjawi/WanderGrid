@@ -7,6 +7,7 @@ import { dataService } from '../../../services/mockDb';
 import { toast } from '../../../services/toast';
 import { useOverlayA11y } from '../../../hooks/useOverlayA11y';
 import { leaveFigures } from '../../../utils/leaveModel';
+import { useLeaveRules } from '../../../hooks/useLeaveRules';
 import { formatKg } from '../../../utils/footprint';
 import { formatMinutes } from '../../../utils/journeysModel';
 import { formatDate } from '../../../utils/formatters';
@@ -235,6 +236,7 @@ export const YearReview: React.FC<Props> = ({ open, onClose, trips, legs, today,
     const [picked, setPicked] = useState<number | null>(null);
     const [index, setIndex] = useState(0);
     const [dir, setDir] = useState<1 | -1>(1);
+    const rules = useLeaveRules();
     const swipe = useRef<{ x: number; y: number } | null>(null);
 
     useOverlayA11y(open, panel, onClose);
@@ -256,11 +258,11 @@ export const YearReview: React.FC<Props> = ({ open, onClose, trips, legs, today,
         const me = users.find(u => u.id === sessionUserId());
         let leave: Review['leave'] = null;
         if (me) {
-            const f = leaveFigures(me, trips, types, year, today);
+            const f = leaveFigures(me, trips, types, year, today, rules.contextFor(me));
             leave = { days: f.onTrips + f.planned, allowance: f.allowance, left: year === Number(today.slice(0, 4)) ? f.left : 0 };
         }
         return buildReview({ year, today, trips, legs, flights, home, leave });
-    }, [year, users, trips, types, legs, flights, home, today]);
+    }, [year, users, trips, types, legs, flights, home, today, rules]);
 
     const slides = useMemo(() => (review ? slidesFor(review) : []), [review]);
     useEffect(() => { setIndex(0); }, [year, open]);

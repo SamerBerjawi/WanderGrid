@@ -8,8 +8,9 @@ import { IntegrationsPane } from '../../components/new/settings/IntegrationsPane
 import { GearPane } from '../../components/new/settings/GearPane';
 import { CarriersPane } from '../../components/new/settings/CarriersPane';
 import { DataPane } from '../../components/new/settings/DataPane';
+import { LeavePane } from '../../components/new/settings/LeavePane';
 import { card, StatTile } from '../../components/new/settings/SettingsParts';
-import { Airplane, Backpack, Database, Gear, Plugs, Users, type Icon } from '../../components/ui/hugeicons';
+import { Airplane, Backpack, Database, Gear, Plugs, SunHorizon, Users, type Icon } from '../../components/ui/hugeicons';
 import { countKeys } from '../../utils/settingsModel';
 import { cn } from '../../utils/cn';
 
@@ -21,12 +22,13 @@ import { cn } from '../../utils/cn';
  * things; everyone else gets their own preferences and a read-only view.
  */
 
-type SectionId = 'workspace' | 'members' | 'integrations' | 'gear' | 'carriers' | 'data';
+type SectionId = 'workspace' | 'members' | 'leave' | 'integrations' | 'gear' | 'carriers' | 'data';
 const TAB_KEY = 'wandergrid_settings_new_tab';
 
 const SECTIONS: Array<{ id: SectionId; title: string; icon: Icon; admin?: boolean; pill: { bg: string; text: string; icon: string } }> = [
     { id: 'workspace', title: 'Workspace', icon: Gear, pill: { bg: 'bg-rp-ink', text: 'text-rp-on-ink', icon: 'text-rp-muted' } },
     { id: 'members', title: 'Members', icon: Users, pill: { bg: 'bg-rp-green', text: 'text-rp-paper', icon: 'text-rp-green' } },
+    { id: 'leave', title: 'Leave', icon: SunHorizon, pill: { bg: 'bg-rp-sea', text: 'text-rp-paper', icon: 'text-rp-sea' } },
     { id: 'integrations', title: 'Integrations', icon: Plugs, admin: true, pill: { bg: 'bg-rp-rust', text: 'text-rp-paper', icon: 'text-rp-rust' } },
     { id: 'gear', title: 'Gear', icon: Backpack, admin: true, pill: { bg: 'bg-rp-mustard', text: 'text-rp-on-mustard', icon: 'text-rp-ochre' } },
     { id: 'carriers', title: 'Carriers', icon: Airplane, admin: true, pill: { bg: 'bg-rp-navy', text: 'text-rp-paper dark:text-rp-on-ink', icon: 'text-rp-navy' } },
@@ -152,6 +154,7 @@ export const SettingsNew: React.FC<SettingsNewProps> = ({ theme, isDark, onTheme
                     <div className="mt-4 min-w-0 lg:mt-0">
                         {active === 'workspace' ? <WorkspacePane data={data} theme={theme} isDark={isDark} onThemeChange={onThemeChange} /> : null}
                         {active === 'members' ? <MembersPane data={data} onOpenMember={onOpenMember} /> : null}
+                        {active === 'leave' ? <LeavePane data={data} /> : null}
                         {active === 'integrations' && data.isAdmin ? <IntegrationsPane data={data} /> : null}
                         {active === 'gear' && data.isAdmin ? <GearPane data={data} /> : null}
                         {active === 'carriers' && data.isAdmin ? <CarriersPane data={data} /> : null}

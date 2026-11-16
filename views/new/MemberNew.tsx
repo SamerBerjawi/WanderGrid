@@ -3,6 +3,7 @@ import NumberFlow from '@number-flow/react';
 import type { User } from '../../types';
 import { useMemberData, type MemberTrip } from '../../hooks/useMemberData';
 import { leaveFigures, leaveYears } from '../../utils/leaveModel';
+import { useLeaveRules } from '../../hooks/useLeaveRules';
 import { destinationsOf, timingOf } from '../../utils/tripsModel';
 import { formatDate, formatDateRange } from '../../utils/formatters';
 import { errorMessage, toast } from '../../services/toast';
@@ -59,7 +60,7 @@ const ROLE_CHIP: Record<User['role'], string> = {
     Partner: 'bg-rp-green text-rp-paper',
     Child: 'bg-rp-mustard text-rp-on-mustard',
 };
-const WEEKEND_LABEL = { none: 'Standard', monday: 'Move to Monday', lieu: 'Day in lieu' } as const;
+const WEEKEND_LABEL = { none: 'No extra day', monday: 'Next working day', lieu: 'Day in lieu' } as const;
 const TRIPS_SHOWN = 6;
 const PLACES_SHOWN = 12;
 
@@ -90,7 +91,8 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
     const { member } = data;
     const thisYear = new Date().getFullYear();
     const years = useMemo(() => (member ? leaveYears(member, data.trips, thisYear) : [thisYear]), [member, data.trips, thisYear]);
-    const leave = useMemo(() => (member ? leaveFigures(member, data.trips, data.entitlements, year, data.today) : null), [member, data.trips, data.entitlements, year, data.today]);
+    const rules = useLeaveRules();
+    const leave = useMemo(() => (member ? leaveFigures(member, data.trips, data.entitlements, year, data.today, rules.contextFor(member)) : null), [member, data.trips, data.entitlements, year, data.today, rules]);
 
     const changeTab = (next: TabId) => {
         setTab(next);

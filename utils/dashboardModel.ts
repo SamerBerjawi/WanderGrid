@@ -3,6 +3,7 @@ import { calculateDistance, getCoordinatesSync } from '../services/geocoding';
 import { destinationsOf, isPastTrip, isTravelling } from './tripsModel';
 import { isRealTrip } from './tripKind';
 import { isFlightLeg } from './legMode';
+import { memberLeaveDays, yearOfISO, type LeaveContext } from './calendarModel';
 
 /**
  * Pure logic for the New Dashboard (UI_UX_DESIGN_REFERENCE.md §5.2 rows 2 and 14): what was travelled
@@ -319,25 +320,16 @@ export interface LeaveUse {
     days: number;
 }
 
-/** Days of leave a member has booked in a year, by leave type: the trip's allocations, else its single type. */
-export const leaveByType = (trips: Trip[], types: EntitlementType[], user: Pick<User, 'id'>, year: number): LeaveUse[] => {
+/**
+ * Days of leave a member has booked in a year, by leave type, counted by the calendar's rules (`memberLeaveDays`:
+ * weekends, holidays, half days and days worked cost nothing; overlapping entries count a day once).
+ */
+export const leaveByType = (trips: Trip[], types: EntitlementType[], user: Pick<User, 'id'>, year: number, ctx: LeaveContext, today: string): LeaveUse[] => {
     const days = new Map<string, number>();
-    const add = (id: string, n: number) => { if (n > 0) days.set(id, (days.get(id) || 0) + n); };
-    trips.forEach(t => {
-        if (t.status === 'Cancelled' || !t.participants?.includes(user.id)) return;
-        const startYear = Number((t.startDate || '').slice(0, 4));
-        if (t.allocations?.length) {
-            t.allocations.forEach(a => { if ((a.targetYear ?? startYear) === year) add(a.entitlementId, a.days); });
-        } else if (t.entitlementId) {
-            const excluded = new Set(t.excludedDates || []);
-            let n = 0;
-            for (let day = t.startDate; day <= (t.endDate || t.startDate); day = addDays(day, 1)) {
-                if (day.startsWith(String(year)) && !excluded.has(day)) n += 1;
-            }
-            add(t.entitlementId, n);
-        }
+    memberLeaveDays(user, trips, ctx, today).forEach(d => {
+        if (yearOfISO(d.iso) === year) days.set(d.entitlementId, (days.get(d.entitlementId) || 0) + d.days);
     });
-    return [...days.entries()].map(([id, n]) => {
+    return [...days.entries()].filter(([, n]) => n > 0).map(([id, n]) => {
         const type = types.find(e => e.id === id);
         return { entitlementId: id, name: type?.name || 'Leave', accent: type ? ENTITLEMENT_ACCENT[type.color] : 'muted', days: n };
     }).sort((a, b) => b.days - a.days);
@@ -348,22 +340,14 @@ export interface LeaveTrip {
     days: number;
 }
 
-/** The trips that use a member's leave in a year, soonest first, with the days each one takes. */
-export const leaveTrips = (trips: Trip[], user: Pick<User, 'id'>, year: number): LeaveTrip[] => {
-    const out: LeaveTrip[] = [];
-    trips.forEach(t => {
-        if (t.status === 'Cancelled' || !t.participants?.includes(user.id)) return;
-        const startYear = Number((t.startDate || '').slice(0, 4));
-        let n = 0;
-        if (t.allocations?.length) {
-            n = t.allocations.filter(a => (a.targetYear ?? startYear) === year).reduce((sum, a) => sum + a.days, 0);
-        } else if (t.entitlementId) {
-            const excluded = new Set(t.excludedDates || []);
-            for (let day = t.startDate; day <= (t.endDate || t.startDate); day = addDays(day, 1)) {
-                if (day.startsWith(String(year)) && !excluded.has(day)) n += 1;
-            }
-        }
-        if (n > 0) out.push({ trip: t, days: n });
+/** The trips that use a member's leave in a year, soonest first, with the days each one takes (same rules as above). */
+export const leaveTrips = (trips: Trip[], user: Pick<User, 'id'>, year: number, ctx: LeaveContext, today: string): LeaveTrip[] => {
+    const days = new Map<string, number>();
+    memberLeaveDays(user, trips, ctx, today).forEach(d => {
+        if (yearOfISO(d.iso) === year) days.set(d.tripId, (days.get(d.tripId) || 0) + d.days);
     });
-    return out.sort((a, b) => a.trip.startDate.localeCompare(b.trip.startDate));
+    return trips
+        .filter(t => (days.get(t.id) || 0) > 0)
+        .map(t => ({ trip: t, days: days.get(t.id) as number }))
+        .sort((a, b) => a.trip.startDate.localeCompare(b.trip.startDate));
 };
