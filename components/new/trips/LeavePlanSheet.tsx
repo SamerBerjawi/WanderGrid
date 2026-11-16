@@ -23,6 +23,7 @@ const KIND: Record<DayKind, { cell: string; word: string }> = {
     weekend: { cell: 'bg-rp-inset text-rp-muted', word: 'weekend, no leave' },
     holiday: { cell: 'bg-rp-mustard text-rp-on-mustard', word: 'public holiday, no leave' },
     worked: { cell: 'border border-rp-line text-rp-muted', word: 'a day you work, no leave' },
+    covered: { cell: 'border border-dashed border-rp-green text-rp-green', word: 'already on other leave' },
 };
 
 const dayWord = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`;
@@ -48,7 +49,7 @@ const DayStrip: React.FC<{ days: DayCell[] }> = ({ days }) => (
 );
 
 /** "Skips 2 weekend days, 1 public holiday (Good Friday) and 1 day you work." */
-const skipSentence = (days: DayCell[], skipped: { weekend: number; holiday: number; worked: number }): string => {
+const skipSentence = (days: DayCell[], skipped: { weekend: number; holiday: number; worked: number; covered: number }): string => {
     const parts: string[] = [];
     if (skipped.weekend) parts.push(`${skipped.weekend} weekend ${skipped.weekend === 1 ? 'day' : 'days'}`);
     if (skipped.holiday) {
@@ -56,6 +57,10 @@ const skipSentence = (days: DayCell[], skipped: { weekend: number; holiday: numb
         parts.push(`${skipped.holiday} public ${skipped.holiday === 1 ? 'holiday' : 'holidays'}${names.length ? ` (${names.join(', ')})` : ''}`);
     }
     if (skipped.worked) parts.push(`${skipped.worked} ${skipped.worked === 1 ? 'day' : 'days'} you work`);
+    if (skipped.covered) {
+        const others = [...new Set(days.filter(d => d.kind === 'covered' && d.label).map(d => d.label as string))];
+        parts.push(`${skipped.covered} ${skipped.covered === 1 ? 'day' : 'days'} already on other leave${others.length ? ` (${others.join(', ')})` : ''}`);
+    }
     if (parts.length === 0) return 'Every day of the trip is a working day.';
     return `Skips ${parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts[0]}.`;
 };

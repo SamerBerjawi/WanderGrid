@@ -13,6 +13,18 @@ Fixes and upgrades from using 1.2.1: Plan leave, Import a booking and Route repl
 - **Plan leave did nothing** for a workspace with no leave types, which is every workspace the new app has not set up
   (there is no screen for leave types yet). It now always opens: it shows the days a trip needs, and **Add Annual leave**
   creates a starter leave type right there (your yearly allowance, or 25 days). A trip with no travellers says to add one.
+- **Leave figures disagreed between pages.** The Member page and Year in review counted every calendar day of a leave
+  trip (weekends included) and put it all in the year it started; the Dashboard ignored weekends, holidays and half days.
+  Every page now counts leave the Calendar's way, so a Monday-to-Sunday week off is 5 days everywhere, not 7.
+- **The same day could be counted twice.** Time off and a trip over the same dates (or two trips) took a day each; a
+  working day now costs at most one day in all. The leave sheet says when new leave overlaps other leave, and Plan leave
+  shows days already covered by time off as covered rather than asking for them again.
+- **Two weekend holidays could land on the same Monday** under the "next working day" rule (Christmas on a Saturday and
+  Boxing Day on a Sunday). Each now moves to the next working day no other holiday holds.
+- **"Day in lieu" did nothing.** A counted holiday on a weekend now adds a day to the member's time-in-lieu type (or
+  their annual leave when there is none).
+- **Carry-over never expired.** Carried days are now used first and are lost after their expiry date (some months into
+  the year, or a fixed date); the balance warns before the date.
 - **Import a booking read almost nothing from real emails.** The reader now follows the layouts that are actually sent:
   a date heading above the flight, airports and times on separate lines, ticket receipts with `03MAR` dates and
   `0830` times, three-letter airline codes (EZY, BAW), labelled Departure and Arrival lines, Check-in and Checkout with the date
@@ -25,6 +37,9 @@ Fixes and upgrades from using 1.2.1: Plan leave, Import a booking and Route repl
 
 ### Added
 
+- **Settings › Leave**: leave types (name, kind, colour, default allowance, carry-over and its expiry) for admins, and each
+  member's allowance per type and year, with what is left, carried over or about to expire beside it, **Copy to next
+  year**, and the weekend-holiday rule. Members set their own allowances; admins set anyone's.
 - **PDF tickets in Import a booking.** Choose or drop one or more PDFs (e-tickets, boarding passes, hotel vouchers); the text is
   read in your browser and never leaves the device. A scanned PDF with no text says so.
 - **Choose where a booking goes before you import it**: match by dates, a new trip, or any trip. A trip's own menu also has

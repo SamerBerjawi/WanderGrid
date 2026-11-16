@@ -18,6 +18,8 @@ import {
 } from '../../components/ui/hugeicons';
 import { mapLink } from '../../utils/mapLinks';
 import { ORBIT_KM, leaveByType, leaveTrips, type LeaveTrip, type LeaveUse } from '../../utils/dashboardModel';
+import { balancesFor, summarise } from '../../utils/calendarModel';
+import { useLeaveRules } from '../../hooks/useLeaveRules';
 import { cn } from '../../utils/cn';
 
 /**
@@ -162,15 +164,19 @@ export const DashboardNew: React.FC<DashboardNewProps> = ({ onTripClick, onMembe
     const openTrip = useCallback((id: string) => onTripClick?.(id), [onTripClick]);
 
     // Leave: the chosen member, defaulting to the signed-in one, or the first.
+    const rules = useLeaveRules();
     const member = data.users.find(u => u.id === memberId) ?? data.users.find(u => u.id === userId) ?? data.users[0];
     const year = Number(data.today.slice(0, 4));
     const leave = useMemo(() => {
         if (!member) return { use: [] as LeaveUse[], trips: [] as LeaveTrip[], allowance: 0 };
-        let use = leaveByType(data.trips, data.types, member, year);
+        const ctx = rules.contextFor(member);
+        let use = leaveByType(data.trips, data.types, member, year, ctx, data.today);
         // Days logged on the member without a trip behind them still count as taken.
         if (!use.length && (member.takenLeave || 0) > 0) use = [{ entitlementId: 'taken', name: 'Taken', accent: 'rust', days: member.takenLeave }];
-        return { use, trips: leaveTrips(data.trips, member, year), allowance: member.leaveBalance || member.allowance || 0 };
-    }, [member, data.trips, data.types, year]);
+        // The same figure the Calendar and the Member page show: the leave types' totals, else the yearly allowance.
+        const allowance = summarise(balancesFor({ user: member, trips: data.trips, entitlements: data.types, today: data.today, ctx }, year), member, year).total;
+        return { use, trips: leaveTrips(data.trips, member, year, ctx, data.today), allowance };
+    }, [member, data.trips, data.types, year, data.today, rules]);
 
     const nextTrip = data.next?.trip;
     const items = useMemo<WidgetGridItem[]>(() => [

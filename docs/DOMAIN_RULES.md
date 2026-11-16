@@ -49,8 +49,11 @@
     `utils/scope.ts`: "Mine" (default) or "Everyone", chosen with the switch on the Dashboard, Flights and Atlas (D-02).
 
 ### Leave
-14. Leave is recorded on trips (`entitlementId`, `durationMode`, `allocations`, `excludedDates`) and counted by
-    `utils/leaveModel.ts` against the user's entitlements, working days, public holidays and events.
+14. Leave is recorded on trips (`entitlementId`, `durationMode`, `allocations`, `excludedDates`) and counted only by
+    `utils/calendarModel.ts` (`memberLeaveDays`, `balancesFor`) against the member's policies, the working week and their
+    public holidays; pages get those rules from `hooks/useLeaveRules.ts`. A working day costs at most one day across a
+    member's entries. Carried-over days are used first and expire on the source policy's date; weekend holidays under
+    the "lieu" rule add a day to the Lieu type (else the first Annual type).
 15. `User.leaveBalance` / `takenLeave` are stored, but balances are also computed. **→ home:** compute only;
     treat stored values as legacy.
 

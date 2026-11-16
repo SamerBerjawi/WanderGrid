@@ -1,4 +1,4 @@
-import type { CustomEvent, EntitlementType, PublicHoliday, SavedConfig, Trip, User, WorkspaceSettings } from '../types';
+import type { CustomEvent, EntitlementType, PublicHoliday, SavedConfig, Trip, User, UserPolicy, WorkspaceSettings } from '../types';
 import { isPastTrip, isTravelling } from './tripsModel';
 import { tripKind } from './tripKind';
 
@@ -61,34 +61,58 @@ export const isWeekend = (iso: string, workingDays: number[]): boolean => !worki
 /* --------------------------------- holidays -------------------------------- */
 
 export interface HolidayDay extends PublicHoliday {
-    /** The day it is taken off: the date itself, or the next working day under "Move to Monday". */
+    /** The day it is taken off: the date itself, or the next free working day under "Move to Monday". */
     observed: string;
     countryName: string;
     /** False when the holiday is switched off: shown, but not a day off. */
     counted: boolean;
+    /** A weekend holiday under the "Day in lieu" rule: it stays on its date and earns a day to take later. */
+    inLieu?: boolean;
 }
 
-/** Where a holiday falls for a member: a weekend holiday moves to the next working day under the "monday" rule. */
-export const observedDate = (date: string, rule: User['holidayWeekendRule'] | undefined, workingDays: number[]): string => {
+/**
+ * Where a holiday falls for a member: a weekend holiday moves to the next working day under the "monday" rule,
+ * skipping the days in `taken` (other holidays already there), so two weekend holidays never share a Monday.
+ */
+export const observedDate = (date: string, rule: User['holidayWeekendRule'] | undefined, workingDays: number[], taken?: ReadonlySet<string>): string => {
     if (rule !== 'monday' || workingDays.length === 0 || !isWeekend(date, workingDays)) return date;
     let day = date;
-    for (let i = 0; i < 7 && isWeekend(day, workingDays); i++) day = addDaysISO(day, 1);
+    for (let i = 0; i < 31 && (isWeekend(day, workingDays) || taken?.has(day)); i++) day = addDaysISO(day, 1);
     return day;
 };
 
-/** The holidays of the given calendars as days, each once, with the member's weekend rule applied. */
+/**
+ * The holidays of the given calendars as days, each once, with the member's weekend rule applied.
+ * Holidays on working days keep their date; weekend ones are then placed in date order, each on the next working
+ * day that no counted holiday holds yet ("monday"), or left on their date and marked `inLieu` ("lieu").
+ */
 export const holidayDays = (configs: SavedConfig[], rule: User['holidayWeekendRule'] | undefined, workingDays: number[]): HolidayDay[] => {
     const seen = new Set<string>();
-    const out: HolidayDay[] = [];
+    const all: HolidayDay[] = [];
     configs.forEach(c => (c.holidays || []).forEach(h => {
         if (!h.date) return;
-        const observed = observedDate(h.date, rule, workingDays);
-        const key = `${observed}|${h.name}`;
+        const key = `${h.date}|${h.name}`;
         if (seen.has(key)) return;
         seen.add(key);
-        out.push({ ...h, configId: c.id, observed, countryName: c.countryName, counted: h.isIncluded !== false });
+        all.push({ ...h, configId: c.id, observed: h.date, countryName: c.countryName, counted: h.isIncluded !== false });
     }));
-    return out.sort((a, b) => a.observed.localeCompare(b.observed));
+    all.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
+    const onWeekend = (h: HolidayDay) => workingDays.length > 0 && isWeekend(h.date, workingDays);
+    // Days a counted holiday already holds: a moved holiday may not land on one of them.
+    const taken = new Set(all.filter(h => h.counted && !onWeekend(h)).map(h => h.date));
+    const out = all.map(h => {
+        if (!onWeekend(h)) return h;
+        if (rule === 'lieu') return h.counted ? { ...h, inLieu: true } : h;
+        if (rule !== 'monday') return h;
+        const observed = observedDate(h.date, rule, workingDays, taken);
+        if (h.counted) taken.add(observed);
+        return { ...h, observed };
+    });
+    // The same holiday from two calendars, moved to the same day, is still one day.
+    const once = new Set<string>();
+    return out
+        .filter(h => { const k = `${h.observed}|${h.name}`; if (once.has(k)) return false; once.add(k); return true; })
+        .sort((a, b) => a.observed.localeCompare(b.observed));
 };
 
 /**
@@ -106,11 +130,14 @@ export interface LeaveContext {
     workingDays: number[];
     /** Dates that are public holidays (taken off) for the member. */
     offDays: Set<string>;
+    /** Weekend holidays that earn a day in lieu (the member's "Day in lieu" rule), one per date. */
+    lieuDates?: string[];
 }
 
 export const leaveContext = (workingDays: number[], holidays: HolidayDay[]): LeaveContext => ({
     workingDays,
     offDays: new Set(holidays.filter(h => h.counted).map(h => h.observed)),
+    lieuDates: [...new Set(holidays.filter(h => h.counted && h.inLieu).map(h => h.observed))].sort(),
 });
 
 /** A trip with a leave type or a split of days across types. */
@@ -198,6 +225,95 @@ export const leaveUse = (trip: Trip, year: number, today: string, ctx: LeaveCont
     return used + planned > 0 ? [{ entitlementId: trip.entitlementId, used, planned }] : [];
 };
 
+/* ------------------------------ a member's leave ----------------------------- */
+
+/** One piece of a member's leave: a dated day (or half day), or a split's days put on one date. */
+export interface LeaveDay {
+    iso: string;
+    entitlementId: string;
+    days: number;
+    tripId: string;
+    /** Taken already (before today); otherwise planned. */
+    used: boolean;
+}
+
+/**
+ * Which entry owns a day when two overlap: a split across types first (its days are fixed), then time off made on
+ * the calendar, then trips, earlier first.
+ */
+const leaveOrder = (a: Trip, b: Trip): number =>
+    Number(Boolean(b.allocations?.length)) - Number(Boolean(a.allocations?.length))
+    || Number(isStandaloneLeave(b)) - Number(isStandaloneLeave(a))
+    || (a.startDate || '').localeCompare(b.startDate || '')
+    || a.id.localeCompare(b.id);
+
+/** The member's leave entries that count: not cancelled, on a leave type, with the member on them. */
+export const memberLeaveTrips = (user: Pick<User, 'id'>, trips: Trip[]): Trip[] =>
+    trips.filter(t => t.status !== 'Cancelled' && hasLeave(t) && (t.participants || []).includes(user.id)).sort(leaveOrder);
+
+/**
+ * Every day of leave a member takes, each date counted once: when two entries cover the same working day (time off
+ * and a trip, or two trips), the day costs at most one day in all, and the first entry in `leaveOrder` has it. Half
+ * days add up (a morning and an afternoon make one day). A split across types keeps its own day counts and claims
+ * its dates, so a dated entry over the same days costs nothing more.
+ */
+export const memberLeaveDays = (user: Pick<User, 'id'>, trips: Trip[], ctx: LeaveContext, today: string): LeaveDay[] => {
+    const claimed = new Map<string, number>();
+    const out: LeaveDay[] = [];
+    memberLeaveTrips(user, trips).forEach(t => {
+        const split = (t.allocations || []).filter(x => x.entitlementId && Number(x.days) > 0);
+        if (split.length > 0) {
+            const startYear = yearOfISO(t.startDate);
+            const over = (t.endDate || t.startDate) < today;
+            split.forEach(x => {
+                const y = x.targetYear ?? startYear;
+                out.push({ iso: y === startYear ? t.startDate : `${y}-01-01`, entitlementId: x.entitlementId, days: Number(x.days), tripId: t.id, used: over });
+            });
+            tripDates(t).forEach(iso => {
+                const w = dayWeight(t, iso, ctx);
+                if (w > 0) claimed.set(iso, Math.min(1, (claimed.get(iso) || 0) + w));
+            });
+            return;
+        }
+        const type = t.entitlementId as string;
+        tripDates(t).forEach(iso => {
+            const w = dayWeight(t, iso, ctx);
+            if (w <= 0) return;
+            const take = Math.min(w, 1 - (claimed.get(iso) || 0));
+            if (take <= 0) return;
+            claimed.set(iso, (claimed.get(iso) || 0) + take);
+            out.push({ iso, entitlementId: type, days: take, tripId: t.id, used: iso < today });
+        });
+    });
+    return out;
+};
+
+export interface LeaveOverlap {
+    iso: string;
+    /** The entries that cover the day, in the order they claim it. */
+    tripIds: string[];
+}
+
+/**
+ * Working days that two or more of a member's leave entries cover together for more than a day (two full days, or
+ * a full day and a half day). Weekends, holidays and days worked cost nothing, so they never overlap.
+ */
+export const leaveOverlaps = (user: Pick<User, 'id'>, trips: Trip[], ctx: LeaveContext): LeaveOverlap[] => {
+    const byDay = new Map<string, { weight: number; ids: string[] }>();
+    memberLeaveTrips(user, trips).forEach(t => tripDates(t).forEach(iso => {
+        const w = dayWeight(t, iso, ctx);
+        if (w <= 0) return;
+        const slot = byDay.get(iso) || { weight: 0, ids: [] };
+        slot.weight += w;
+        slot.ids.push(t.id);
+        byDay.set(iso, slot);
+    }));
+    return [...byDay.entries()]
+        .filter(([, v]) => v.ids.length > 1 && v.weight > 1)
+        .map(([iso, v]) => ({ iso, tripIds: v.ids }))
+        .sort((x, y) => x.iso.localeCompare(y.iso));
+};
+
 /* --------------------------------- balances -------------------------------- */
 
 export interface TypeBalance {
@@ -207,11 +323,17 @@ export interface TypeBalance {
     allowance: number | null;
     /** Days carried over from the year before. */
     carryOver: number;
-    /** Allowance plus carry-over; null when unlimited or without a policy. */
+    /** Carried-over days lost because they were not used by their expiry date (counted once that date is past). */
+    expired: number;
+    /** Carried-over days that will be lost on `on` unless more leave is booked before then (null when none). */
+    expiring: { days: number; on: string } | null;
+    /** Days in lieu earned this year by weekend holidays (the member's "Day in lieu" rule). */
+    lieu: number;
+    /** Allowance plus carry-over plus days in lieu; null when unlimited or without a policy. */
     total: number | null;
     used: number;
     planned: number;
-    /** Total minus used minus planned; negative when over; null when unlimited or without a policy. */
+    /** Total minus expired, used and planned; negative when over; null when unlimited or without a policy. */
     remaining: number | null;
     unlimited: boolean;
 }
@@ -235,37 +357,116 @@ export interface BalanceInput {
     ctx: LeaveContext;
 }
 
-const usedAndPlanned = ({ user, trips, today, ctx }: BalanceInput, entitlementId: string, year: number) => {
+/** The member's leave days, worked out once per input (balances read them for every type and year). */
+const dayCache = new WeakMap<BalanceInput, LeaveDay[]>();
+const daysOf = (input: BalanceInput): LeaveDay[] => {
+    let days = dayCache.get(input);
+    if (!days) {
+        days = memberLeaveDays(input.user, input.trips, input.ctx, input.today);
+        dayCache.set(input, days);
+    }
+    return days;
+};
+
+const usedAndPlanned = (input: BalanceInput, entitlementId: string, year: number) => {
     let used = 0;
     let planned = 0;
-    trips.forEach(t => {
-        if (t.status === 'Cancelled' || !(t.participants || []).includes(user.id)) return;
-        leaveUse(t, year, today, ctx).forEach(u => {
-            if (u.entitlementId !== entitlementId) return;
-            used += u.used;
-            planned += u.planned;
-        });
+    daysOf(input).forEach(d => {
+        if (d.entitlementId !== entitlementId || yearOfISO(d.iso) !== year) return;
+        if (d.used) used += d.days; else planned += d.days;
     });
     return { used, planned };
 };
 
+/** Days of a type booked in a year up to and including a date (taken or planned). */
+const bookedThrough = (input: BalanceInput, entitlementId: string, year: number, through: string) =>
+    daysOf(input).reduce((n, d) => (d.entitlementId === entitlementId && yearOfISO(d.iso) === year && d.iso <= through ? n + d.days : n), 0);
+
 /**
- * Days carried into a leave type for a year: each policy of the year before that has carry-over on gives
- * what was left of it, up to its limit, to its target type (itself unless another is chosen).
+ * The last day carried-over days can be used, from the policy they were carried from: `months` after the start of
+ * the year (3 = to 31 March), or a fixed `MM-DD` in the year. Null when they never expire.
  */
-export const carryOverInto = (input: BalanceInput, entitlementId: string, year: number, depth = 0): number => {
-    if (depth > 4) return 0;
-    let carried = 0;
+export const carryOverExpiry = (carryOver: UserPolicy['carryOver'] | undefined, year: number): string | null => {
+    if (!carryOver) return null;
+    if (carryOver.expiryType === 'months') {
+        const n = Math.round(Number(carryOver.expiryValue));
+        if (!Number.isFinite(n) || n <= 0) return null;
+        const d = new Date(Date.UTC(year, n, 0));
+        return isoOf(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    }
+    if (carryOver.expiryType === 'fixed_date') {
+        const m = /^(\d{2})-(\d{2})$/.exec(String(carryOver.expiryValue || ''));
+        if (!m) return null;
+        const month = Number(m[1]), day = Number(m[2]);
+        if (month < 1 || month > 12 || day < 1) return null;
+        const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+        return isoOf(year, month - 1, Math.min(day, last));
+    }
+    return null;
+};
+
+interface CarryIn {
+    /** Days carried in. */
+    days: number;
+    /** Days that are lost at expiry, given what is booked now. */
+    lost: number;
+    /** The earliest expiry with days still at stake. */
+    expiresOn: string | null;
+}
+
+/**
+ * Days carried into a leave type for a year: each policy of the year before that has carry-over on gives what was
+ * left of it, up to its limit, to its target type (itself unless another is chosen). Carried days are used first;
+ * those not used by their expiry date are lost.
+ */
+const carryIn = (input: BalanceInput, entitlementId: string, year: number, depth: number): CarryIn => {
+    if (depth > 4) return { days: 0, lost: 0, expiresOn: null };
+    const sources: { days: number; expiry: string | null }[] = [];
     (input.user.policies || []).forEach(p => {
         if (p.year !== year - 1 || !p.isActive || !p.carryOver?.enabled || p.isUnlimited) return;
         if ((p.carryOver.targetEntitlementId || p.entitlementId) !== entitlementId) return;
-        const grant = policyDays(input.user, p.entitlementId, year - 1).days ?? 0;
-        const { used, planned } = usedAndPlanned(input, p.entitlementId, year - 1);
-        const left = grant + carryOverInto(input, p.entitlementId, year - 1, depth + 1) - used - planned;
-        carried += Math.min(Math.max(0, left), Math.max(0, Number(p.carryOver.maxDays) || 0));
+        const left = leftAtYearEnd(input, p.entitlementId, year - 1, depth + 1);
+        const days = Math.min(Math.max(0, left), Math.max(0, Number(p.carryOver.maxDays) || 0));
+        if (days > 0) sources.push({ days, expiry: carryOverExpiry(p.carryOver, year) });
     });
-    return carried;
+    // The soonest-expiring days are used first.
+    sources.sort((a, b) => (a.expiry ?? '9999').localeCompare(b.expiry ?? '9999'));
+    let consumed = 0;
+    let lost = 0;
+    let expiresOn: string | null = null;
+    sources.forEach(src => {
+        if (!src.expiry) return;
+        const usable = Math.max(0, bookedThrough(input, entitlementId, year, src.expiry) - consumed);
+        const usedHere = Math.min(src.days, usable);
+        consumed += usedHere;
+        const gone = src.days - usedHere;
+        if (gone > 0) { lost += gone; expiresOn = expiresOn ?? src.expiry; }
+    });
+    return { days: sources.reduce((n, x) => n + x.days, 0), lost, expiresOn };
 };
+
+/** Days in lieu a year earns for the type that takes them. */
+const lieuFor = (input: BalanceInput, entitlementId: string, year: number): number => {
+    const dates = (input.ctx.lieuDates || []).filter(d => yearOfISO(d) === year);
+    if (dates.length === 0) return 0;
+    return lieuTypeOf(input.entitlements)?.id === entitlementId ? dates.length : 0;
+};
+
+/** The type days in lieu go to: a "Lieu" type if there is one, else the first annual type, else the first type. */
+export const lieuTypeOf = (entitlements: EntitlementType[]): EntitlementType | undefined =>
+    entitlements.find(e => e.category === 'Lieu') ?? entitlements.find(e => e.category === 'Annual') ?? entitlements[0];
+
+/** What a type has left once the year is over, given what is booked now (expired carry-over taken off). */
+const leftAtYearEnd = (input: BalanceInput, entitlementId: string, year: number, depth: number): number => {
+    const grant = policyDays(input.user, entitlementId, year).days ?? 0;
+    const carried = carryIn(input, entitlementId, year, depth);
+    const { used, planned } = usedAndPlanned(input, entitlementId, year);
+    return grant + carried.days - carried.lost + lieuFor(input, entitlementId, year) - used - planned;
+};
+
+/** Days carried into a leave type for a year (before any expiry). */
+export const carryOverInto = (input: BalanceInput, entitlementId: string, year: number, depth = 0): number =>
+    carryIn(input, entitlementId, year, depth).days;
 
 /** One row per leave type the member has a policy for or has leave on, in the workspace's order. */
 export const balancesFor = (input: BalanceInput, year: number): TypeBalance[] =>
@@ -274,13 +475,17 @@ export const balancesFor = (input: BalanceInput, year: number): TypeBalance[] =>
             const grant = policyDays(input.user, entitlement.id, year);
             const { used, planned } = usedAndPlanned(input, entitlement.id, year);
             const unlimited = grant.unlimited || Boolean(entitlement.isUnlimited && grant.days === null && used + planned > 0);
-            const carryOver = carryOverInto(input, entitlement.id, year);
-            const hasPolicy = grant.days !== null;
-            const total = hasPolicy ? (grant.days as number) + carryOver : null;
-            const remaining = total === null ? null : total - used - planned;
-            return { entitlement, year, allowance: grant.days, carryOver, total, used, planned, remaining, unlimited } satisfies TypeBalance;
+            const carried = carryIn(input, entitlement.id, year, 0);
+            const lieu = lieuFor(input, entitlement.id, year);
+            const past = carried.expiresOn !== null && carried.expiresOn < input.today;
+            const expired = past ? carried.lost : 0;
+            const expiring = !past && carried.lost > 0 && carried.expiresOn ? { days: carried.lost, on: carried.expiresOn } : null;
+            const hasGrant = grant.days !== null || carried.days > 0 || lieu > 0;
+            const total = unlimited || !hasGrant ? null : (grant.days ?? 0) + carried.days + lieu;
+            const remaining = total === null ? null : total - expired - used - planned;
+            return { entitlement, year, allowance: grant.days, carryOver: carried.days, expired, expiring, lieu, total, used, planned, remaining, unlimited } satisfies TypeBalance;
         })
-        .filter(b => b.allowance !== null || b.unlimited || b.carryOver > 0 || b.used + b.planned > 0);
+        .filter(b => b.allowance !== null || b.unlimited || b.carryOver > 0 || b.lieu > 0 || b.used + b.planned > 0);
 
 export interface LeaveSummary {
     year: number;
@@ -288,7 +493,7 @@ export interface LeaveSummary {
     planned: number;
     /** Days left in the year: from the leave types' policies, else the member's yearly allowance. */
     left: number;
-    /** What the year offers in all (policies' totals, else the yearly allowance). */
+    /** What the year offers in all (policies' totals less expired carry-over, else the yearly allowance). */
     total: number;
     /** True when the figures come from the member's yearly allowance rather than per-type policies. */
     fallback: boolean;
@@ -300,7 +505,7 @@ export const summarise = (balances: TypeBalance[], user: User, year: number): Le
     const planned = balances.reduce((n, b) => n + b.planned, 0);
     const limited = balances.filter(b => b.total !== null && !b.unlimited);
     if (limited.length > 0) {
-        const total = limited.reduce((n, b) => n + (b.total as number), 0);
+        const total = limited.reduce((n, b) => n + (b.total as number) - b.expired, 0);
         const taken = limited.reduce((n, b) => n + b.used + b.planned, 0);
         return { year, used, planned, left: Math.max(0, total - taken), total, fallback: false };
     }

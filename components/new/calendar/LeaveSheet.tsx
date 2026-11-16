@@ -2,13 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { EntitlementType, Trip, User } from '../../../types';
 import type { LeaveFields, NewLeave } from '../../../hooks/useCalendarData';
 import {
-    countedDays, skippedDays, tripDates, hasLeave, isStandaloneLeave, weekdayOf, WEEKDAY_SHORT,
+    countedDays, skippedDays, tripDates, hasLeave, isStandaloneLeave, leaveOverlaps, weekdayOf, WEEKDAY_SHORT,
     type LeaveContext,
 } from '../../../utils/calendarModel';
 import { formatDateRange } from '../../../utils/formatters';
 import HoldButton from '../../kokonutui/hold-button';
 import ParticleButton from '../../kokonutui/particle-button';
-import { ArrowUpRight, CalendarBlank, Check, Clock, Suitcase, SunHorizon, Users } from '../../ui/hugeicons';
+import { ArrowUpRight, CalendarBlank, Check, Clock, Suitcase, SunHorizon, Users, Warning } from '../../ui/hugeicons';
 import { RP_FIELD, RpField } from '../fields';
 import { RpChip, RpSection, RpSheet } from '../ui';
 import { LeaveSection } from '../trips/TripSheets';
@@ -130,6 +130,18 @@ export const LeaveSheet: React.FC<{
     const ctx = useMemo(() => (draft ? contextFor(base?.participants?.[0] ?? draft.memberId) : null), [draft, base, contextFor]);
     const counted = candidate && ctx ? countedDays(candidate, ctx) : 0;
     const skipped = candidate && ctx ? skippedDays(candidate, ctx) : { weekend: 0, holiday: 0, worked: 0 };
+
+    // Working days the member already has leave on from another entry: they count once, so say so before saving.
+    const overlap = useMemo(() => {
+        if (!candidate || !ctx) return null;
+        const member = candidate.participants[0];
+        const self = { ...candidate, id: '__draft__', status: 'Upcoming' as const, entitlementId: candidate.entitlementId || 'draft', allocations: undefined };
+        const others = trips.filter(t => t.id !== candidate.id && t.id !== editing?.id);
+        const days = leaveOverlaps({ id: member }, [self, ...others], ctx).filter(o => o.tripIds.includes(self.id));
+        if (days.length === 0) return null;
+        const names = [...new Set(days.flatMap(o => o.tripIds).filter(id => id !== self.id).map(id => others.find(t => t.id === id)?.name || 'Leave'))];
+        return { days: days.length, names };
+    }, [candidate, ctx, trips, editing]);
 
     // The trips a person can put leave on: the member's own, soonest first, then the past.
     const choices = useMemo(() => {
@@ -322,6 +334,14 @@ export const LeaveSheet: React.FC<{
                                 ? ` · left out: ${[skipped.weekend ? `${skipped.weekend} weekend` : '', skipped.holiday ? `${skipped.holiday} ${skipped.holiday === 1 ? 'holiday' : 'holidays'}` : '', skipped.worked ? `${skipped.worked} worked` : ''].filter(Boolean).join(', ')}`
                                 : ''}
                         </p>
+                        {overlap ? (
+                            <p role="note" className="flex items-start gap-2 rounded-rp-inset bg-rp-mustard/25 px-3 py-2 text-sm text-rp-ink">
+                                <Warning size={16} className="mt-0.5 shrink-0 text-rp-ochre" aria-hidden />
+                                <span>
+                                    Overlaps {overlap.names.join(', ')} on {overlap.days} working {overlap.days === 1 ? 'day' : 'days'}. Each day counts once in the balance.
+                                </span>
+                            </p>
+                        ) : null}
                     </>
                 )}
             </div>

@@ -1,8 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import type { EntitlementType, SavedConfig, Trip, User } from '../types';
+import { createContext, useContext, useMemo } from 'react';
+import type { EntitlementType, Trip, User } from '../types';
 import { dataService } from '../services/mockDb';
-import { affectsCollections } from './useWanderSync';
-import { configsFor, holidayDays, workingDaysOf, type HolidayDay } from '../utils/calendarModel';
+import { useLeaveRules } from './useLeaveRules';
 import { defaultAnnualType, leaveFields, leaveNote, leaveStatus, planLeave, type LeavePlan, type LeaveState } from '../utils/leavePlan';
 import { todayISO } from '../utils/tripsModel';
 
@@ -27,30 +26,12 @@ const sessionUserId = (): string | undefined => {
 };
 
 export const useLeavePlanner = (trips: Trip[], users: User[], entitlements: EntitlementType[]): LeavePlanner => {
-    const [configs, setConfigs] = useState<SavedConfig[]>([]);
-    const [workingDays, setWorkingDays] = useState<number[]>(workingDaysOf(null));
-
-    useEffect(() => {
-        let live = true;
-        const load = () => {
-            dataService.getSavedConfigs().then(c => { if (live) setConfigs(c || []); }).catch(() => { /* holidays are optional */ });
-            dataService.getWorkspaceSettings().then(s => { if (live) setWorkingDays(workingDaysOf(s)); }).catch(() => { /* the default week is used */ });
-        };
-        load();
-        const onUpdate = (e: Event) => { if (affectsCollections(e, ['configs', 'settings'])) load(); };
-        window.addEventListener('wandergrid_db_updated', onUpdate);
-        return () => { live = false; window.removeEventListener('wandergrid_db_updated', onUpdate); };
-    }, []);
+    const rules = useLeaveRules();
 
     return useMemo<LeavePlanner>(() => {
         const today = todayISO();
         const me = sessionUserId();
-        const holidays = new Map<string, HolidayDay[]>();
-        const holidaysOf = (u: User) => {
-            let h = holidays.get(u.id);
-            if (!h) { h = holidayDays(configsFor(configs, [u]), u.holidayWeekendRule, workingDays); holidays.set(u.id, h); }
-            return h;
-        };
+        const { workingDays, holidaysOf } = rules;
         const membersOf = (trip: Trip) => (trip.participants || []).map(id => users.find(u => u.id === id)).filter((u): u is User => Boolean(u));
         const memberFor = (trip: Trip) => {
             const members = membersOf(trip);
@@ -77,7 +58,7 @@ export const useLeavePlanner = (trips: Trip[], users: User[], entitlements: Enti
                 return user ? planLeave(input(trip, user)) : null;
             },
         };
-    }, [trips, users, entitlements, configs, workingDays]);
+    }, [trips, users, entitlements, rules]);
 };
 
 /** The planner for the cards of a board or list, so a card reads its chip without a prop through every layer. */
