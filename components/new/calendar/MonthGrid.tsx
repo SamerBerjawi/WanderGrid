@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { LeaveEntry } from '../../../types';
 import {
     addDaysISO, isWeekend, itemsOn, layoutWeek, monthMatrix, weekdayOf, weekdayOrder, MONTH_NAMES, WEEKDAY_LONG, WEEKDAY_SHORT,
-    type CalendarItem, type WeekStart,
+    orderedRange, type CalendarItem, type WeekStart,
 } from '../../../utils/calendarModel';
+import { useDayDrag } from '../../../hooks/useDayDrag';
 import { chipClass, dotClass, itemIcon, itemWords } from './calendarStyles';
 import { cn } from '../../../utils/cn';
 
@@ -11,6 +13,9 @@ import { cn } from '../../../utils/cn';
  * End go to the ends of the week, Page Up and Page Down change month, Enter opens the day). Wide screens
  * show the first three items of a day as bars that run across the days they cover, then "+N"; phones
  * show dots and leave the details to the agenda under the grid.
+ *
+ * Picking days for new leave (leave Phase 2c): drag across days with a mouse or pen, or hold Shift with the arrow keys
+ * and press Enter; Escape lets go. A leave bar the viewer may change can be dragged to other days.
  */
 
 const LANES = 3;
@@ -33,13 +38,22 @@ export const MonthGrid: React.FC<{
     onShiftMonth: (by: number) => void;
     /** Set when a key moved the focus: the grid takes focus once the day is on screen (it may be in the next month). */
     wantFocus: React.MutableRefObject<boolean>;
-}> = ({ year, month0, weekStart, items, workingDays, today, selected, focusISO, compact, onFocusISO, onOpen, onShiftMonth, wantFocus }) => {
+    /** Days picked by dragging or with Shift + arrows: new leave for them. */
+    onSelectRange?: (start: string, end: string) => void;
+    /** A leave bar dragged by this many days. */
+    onMoveLeave?: (entry: LeaveEntry, by: number) => void;
+    /** The leave entry behind a bar's key, when the viewer may move it. */
+    movable?: (key: string) => LeaveEntry | undefined;
+}> = ({ year, month0, weekStart, items, workingDays, today, selected, focusISO, compact, onFocusISO, onOpen, onShiftMonth, wantFocus, onSelectRange, onMoveLeave, movable }) => {
     const weeks = useMemo(() => monthMatrix(year, month0, weekStart), [year, month0, weekStart]);
     const layouts = useMemo(
         () => weeks.map(w => layoutWeek(items, w.map(d => d.iso), LANES)),
         [weeks, items],
     );
     const gridRef = useRef<HTMLDivElement>(null);
+    const dragging = useDayDrag({ enabled: !compact, onSelectRange, onMoveLeave, movable });
+    // Shift + arrows: the day the range started from.
+    const [keyAnchor, setKeyAnchor] = useState<string | null>(null);
 
     const monthStartISO = weeks[0].find(d => d.inMonth)!.iso;
     const monthEndISO = [...weeks[weeks.length - 1]].reverse().find(d => d.inMonth)!.iso;
@@ -63,6 +77,18 @@ export const MonthGrid: React.FC<{
 
     const onKeyDown = (e: React.KeyboardEvent) => {
         const key = e.key;
+        if (key === 'Escape' && keyAnchor) { e.preventDefault(); setKeyAnchor(null); return; }
+        if (key === 'Enter' && keyAnchor && keyAnchor !== stop && onSelectRange) {
+            e.preventDefault();
+            const [a, b] = orderedRange(keyAnchor, stop);
+            setKeyAnchor(null);
+            onSelectRange(a, b);
+            return;
+        }
+        if (key.startsWith('Arrow') || key === 'Home' || key === 'End') {
+            if (e.shiftKey && onSelectRange) { if (!keyAnchor) setKeyAnchor(stop); }
+            else if (keyAnchor) setKeyAnchor(null);
+        }
         let to: string | null = null;
         if (key === 'ArrowLeft') to = addDaysISO(stop, -1);
         else if (key === 'ArrowRight') to = addDaysISO(stop, 1);
@@ -88,9 +114,23 @@ export const MonthGrid: React.FC<{
     };
 
     const order = weekdayOrder(weekStart);
+    const painted = dragging.range ?? (keyAnchor ? { ...(([start, end]) => ({ start, end }))(orderedRange(keyAnchor, stop)), mode: 'select' as const } : null);
+    const rangeWords = painted && painted.start !== painted.end
+        ? `${painted.mode === 'move' ? 'Moving to' : 'Picked'} ${Number(painted.start.slice(8))} ${MONTH_NAMES[Number(painted.start.slice(5, 7)) - 1]} to ${Number(painted.end.slice(8))} ${MONTH_NAMES[Number(painted.end.slice(5, 7)) - 1]}${painted.mode === 'select' && keyAnchor ? '. Press Enter to add leave for these days.' : ''}`
+        : '';
 
     return (
-        <div ref={gridRef} role="grid" aria-label={`${MONTH_NAMES[month0]} ${year}`} aria-readonly onKeyDown={onKeyDown} className="flex flex-col gap-px overflow-hidden rounded-rp-inset border border-rp-line bg-rp-line">
+        <div
+            ref={gridRef}
+            role="grid"
+            aria-label={`${MONTH_NAMES[month0]} ${year}`}
+            aria-readonly
+            onKeyDown={onKeyDown}
+            onPointerDown={dragging.onPointerDown}
+            onClickCapture={dragging.onClickCapture}
+            className={cn('flex select-none flex-col gap-px overflow-hidden rounded-rp-inset border border-rp-line bg-rp-line', dragging.drag && (dragging.drag.mode === 'move' ? 'cursor-grabbing' : 'cursor-cell'))}
+        >
+            <span className="sr-only" aria-live="polite">{rangeWords}</span>
             <div role="row" className="grid grid-cols-7 gap-px">
                 {order.map(d => (
                     <div key={d} role="columnheader" aria-label={WEEKDAY_LONG[d]} className="bg-rp-inset py-2 text-center text-xs font-semibold text-rp-muted">
@@ -112,6 +152,9 @@ export const MonthGrid: React.FC<{
                             : `${dateWords}, ${here.length} ${here.length === 1 ? 'item' : 'items'}: ${here.slice(0, 4).map(itemWords).join('; ')}${here.length > 4 ? `; and ${here.length - 4} more` : ''}`;
                         return (
                             <div key={iso} role="gridcell" aria-selected={selected === iso} className={cn('relative min-w-0', weekend ? 'bg-rp-inset' : 'bg-rp-surface')}>
+                                {painted && iso >= painted.start && iso <= painted.end ? (
+                                    <span className={cn('pointer-events-none absolute inset-0 z-raised ring-2 ring-inset', painted.mode === 'move' ? 'bg-rp-green/10 ring-rp-green' : 'bg-rp-ink/10 ring-rp-ink')} aria-hidden />
+                                ) : null}
                                 <button
                                     type="button"
                                     data-iso={iso}
@@ -148,10 +191,13 @@ export const MonthGrid: React.FC<{
                                                 if (!slot) return <span key={lane} className="h-6" />;
                                                 const Icon = itemIcon(slot.item);
                                                 const showLabel = slot.first || c === 0;
+                                                const grab = slot.item.kind === 'leave' && onMoveLeave && movable?.(slot.item.key) ? slot.item.key : undefined;
                                                 return (
                                                     <span
                                                         key={lane}
+                                                        data-leave-key={grab}
                                                         className={cn(
+                                                            grab && 'cursor-grab',
                                                             'flex h-6 items-center gap-1 overflow-hidden text-xs leading-none font-medium',
                                                             chipClass(slot.item),
                                                             // A bar bridges the hairline between the days it covers.
