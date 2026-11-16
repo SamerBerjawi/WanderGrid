@@ -25,6 +25,8 @@ export interface User {
   leaveAdjustments?: LeaveAdjustment[];
   /** Set once the old yearly fields (`allowance`, `takenLeave`) were turned into allowances (migration 0005). */
   legacyLeaveConverted?: boolean;
+  /** Which leave reminders this member sees in the app (each on unless set to false). */
+  leaveReminders?: Partial<Record<LeaveReminderKind, boolean>>;
   activeYears?: number[]; // New: Explicitly tracked years for UI persistence
   profilePicture?: string;
   nationality?: string;
@@ -36,6 +38,9 @@ export interface User {
   /** Frequent-flyer and hotel numbers, matched to the carrier or hotel they are for. */
   loyalty?: LoyaltyProgram[];
 }
+
+/** In-app leave reminders a member can turn off. */
+export type LeaveReminderKind = 'upcoming' | 'expiring' | 'unused' | 'requests' | 'trips';
 
 /** A manual change to a member's balance: + days given (a bonus day), − days taken back (days recorded elsewhere). */
 export interface LeaveAdjustment {
