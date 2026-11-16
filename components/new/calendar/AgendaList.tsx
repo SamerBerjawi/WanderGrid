@@ -2,7 +2,8 @@ import React from 'react';
 import { WEEKDAY_SHORT, weekdayOf, MONTH_NAMES, type CalendarItem } from '../../../utils/calendarModel';
 import { formatDateRange } from '../../../utils/formatters';
 import { RpEmpty } from '../ui';
-import { chipClass, itemIcon, STATE_LABEL, tripChip } from './calendarStyles';
+import { chipClass, STATE_LABEL, tripChip } from './calendarStyles';
+import { ItemIcon } from './ItemIcon';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -35,7 +36,6 @@ export const AgendaList: React.FC<{
             <ul className="flex flex-col">
                 {shown.map(item => {
                     const day = from && item.start < from ? from : item.start;
-                    const Icon = itemIcon(item);
                     const group = `${MONTH_NAMES[Number(day.slice(5, 7)) - 1]} ${day.slice(0, 4)}`;
                     const heading = grouped && group !== lastGroup ? group : null;
                     lastGroup = group;
@@ -65,11 +65,11 @@ export const AgendaList: React.FC<{
                                 </span>
                                 {item.kind === 'trip' || item.kind === 'leave' ? (
                                     <span className={cn('inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-medium', tripChip(item))}>
-                                        <Icon size={12} aria-hidden /> {item.kind === 'leave' && item.entry ? (item.pending ? 'Requested' : item.muted ? 'Idea' : STATE_LABEL[item.state]) : STATE_LABEL[item.state]}
+                                        <ItemIcon item={item} size={12} /> {item.kind === 'leave' && item.entry ? (item.pending ? 'Requested' : item.muted ? 'Idea' : STATE_LABEL[item.state]) : STATE_LABEL[item.state]}
                                     </span>
                                 ) : (
                                     <span className={cn('inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-medium', chipClass(item))}>
-                                        <Icon size={12} aria-hidden /> {item.kind === 'holiday' ? 'Holiday' : 'Event'}
+                                        <ItemIcon item={item} size={12} /> {item.kind === 'holiday' ? 'Holiday' : 'Event'}
                                     </span>
                                 )}
                             </button>

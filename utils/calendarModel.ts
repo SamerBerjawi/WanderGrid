@@ -619,6 +619,11 @@ export interface CalendarItem {
     muted: boolean;
     /** A leave request still waiting for an answer. */
     pending?: boolean;
+    /**
+     * Leave linked to a trip that is on the calendar and falls within the trip's dates: the trip's bar already shows it
+     * (marked as leave booked), so the grids and lists leave it out. The day's detail still lists it.
+     */
+    folded?: boolean;
     /** The leave type's colour, when the calendar colours leave by type (an entry's first type). */
     tint?: LeaveColor;
     trip?: Trip;
@@ -714,6 +719,12 @@ export const buildItems = (
         if (q && !`${t.name} ${t.location || ''}`.toLowerCase().includes(q)) return;
         items.push({ key: `trip:${t.id}`, kind: 'trip', id: t.id, title: t.name, start: t.startDate, end: t.endDate || t.startDate, state: stateOf(t, today), leave: linked.has(t.id), muted: false, trip: t });
     });
+    // Leave taken for a trip is drawn once, as the trip's bar, when it sits within the trip's dates.
+    const shownTrips = new Map(items.filter(i => i.kind === 'trip').map(i => [i.id, i]));
+    items.forEach(i => {
+        const trip = i.kind === 'leave' && i.entry?.tripId ? shownTrips.get(i.entry.tripId) : undefined;
+        if (trip && i.start >= trip.start && i.end <= trip.end) i.folded = true;
+    });
     if (layers.holiday) holidays.forEach(h => {
         if (q && !h.name.toLowerCase().includes(q)) return;
         items.push({ key: `holiday:${h.configId}:${h.id}`, kind: 'holiday', id: h.id, title: h.name, start: h.observed, end: h.observed, state: h.observed < today ? 'past' : 'planned', leave: false, muted: !h.counted, holiday: h });
@@ -730,6 +741,9 @@ const KIND_ORDER = { trip: 0, leave: 1, holiday: 2, event: 3 } as const;
 /** Orders items for a day or a lane: trips, then leave, then holidays and events; earlier and longer first, then by title. */
 export const compareItems = (a: CalendarItem, b: CalendarItem): number =>
     KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.start.localeCompare(b.start) || b.end.localeCompare(a.end) || a.title.localeCompare(b.title);
+
+/** What the grids and lists draw: every item but leave folded into its trip's bar. */
+export const gridItems = (items: CalendarItem[]): CalendarItem[] => items.filter(i => !i.folded);
 
 export const itemsOn = (items: CalendarItem[], iso: string): CalendarItem[] =>
     items.filter(i => i.start <= iso && i.end >= iso).sort(compareItems);

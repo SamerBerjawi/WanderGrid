@@ -5,7 +5,9 @@ import {
     type CalendarItem, type WeekStart,
 } from '../../../utils/calendarModel';
 import { useDayDrag } from '../../../hooks/useDayDrag';
-import { chipClass, itemIcon, itemWords } from './calendarStyles';
+import { chipClass, itemWords } from './calendarStyles';
+import { SunHorizon } from '../../ui/hugeicons';
+import { ItemIcon } from './ItemIcon';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -86,10 +88,9 @@ export const WeekGrid: React.FC<{
                                 </span>
                                 <span className="flex min-w-0 flex-1 flex-col gap-1 pt-1" aria-hidden>
                                     {here.length === 0 ? <span className="text-xs text-rp-muted">Nothing</span> : here.map(i => {
-                                        const Icon = itemIcon(i);
                                         return (
                                             <span key={i.key} className={cn('flex h-7 items-center gap-1.5 overflow-hidden rounded-full px-2.5 text-xs font-medium', chipClass(i))}>
-                                                <Icon size={12} className="shrink-0" aria-hidden />
+                                                <ItemIcon item={i} size={12} className="shrink-0" />
                                                 <span className="truncate">{i.title}</span>
                                             </span>
                                         );
@@ -147,7 +148,6 @@ export const WeekGrid: React.FC<{
                                 <span className="flex flex-col gap-1" aria-hidden>
                                     {cell.slots.map((slot, lane) => {
                                         if (!slot) return <span key={lane} className="h-8" />;
-                                        const Icon = itemIcon(slot.item);
                                         const showLabel = slot.first || c === 0;
                                         const grab = slot.item.kind === 'leave' && onMoveLeave && movable?.(slot.item.key) ? slot.item.key : undefined;
                                         return (
@@ -162,8 +162,9 @@ export const WeekGrid: React.FC<{
                                                     slot.last ? 'mr-1 rounded-r-full pr-2' : '-mr-px',
                                                 )}
                                             >
-                                                {showLabel ? <Icon size={14} className="shrink-0" aria-hidden /> : null}
+                                                {showLabel ? <ItemIcon item={slot.item} size={14} className="shrink-0" /> : null}
                                                 {showLabel ? <span className="truncate">{slot.item.title}</span> : null}
+                                                {showLabel && slot.item.kind === 'trip' && slot.item.leave ? <SunHorizon size={14} className="shrink-0 opacity-70" aria-hidden /> : null}
                                             </span>
                                         );
                                     })}

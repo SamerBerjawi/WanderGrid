@@ -7,7 +7,8 @@ import SmoothDrawer from '../../kokonutui/smooth-drawer';
 import { ArrowUpRight, Flag, PencilSimple, Plus, Star, Suitcase, SunHorizon, Trash } from '../../ui/hugeicons';
 import { Avatar } from '../member/Avatar';
 import { RpEmpty, RpSheet } from '../ui';
-import { itemIcon, STATE_LABEL, tripChip } from './calendarStyles';
+import { STATE_LABEL, tripChip } from './calendarStyles';
+import { ItemIcon } from './ItemIcon';
 import { cn } from '../../../utils/cn';
 
 /**
@@ -51,7 +52,6 @@ const DayBody: React.FC<{
     return (
         <ul className="flex flex-col gap-2">
             {items.map(item => {
-                const Icon = itemIcon(item);
                 if (item.kind === 'holiday' && item.holiday) {
                     const h = item.holiday;
                     return (
@@ -90,7 +90,7 @@ const DayBody: React.FC<{
                     return (
                         <li key={item.key} className="flex flex-col gap-2 rounded-rp-inset bg-rp-inset px-3 py-3">
                             <div className="flex items-start gap-3">
-                                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rp-surface text-rp-ink"><Icon size={18} aria-hidden /></span>
+                                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rp-surface text-rp-ink"><ItemIcon item={item} size={18} /></span>
                                 <span className="min-w-0 flex-1">
                                     <span className="block truncate text-sm font-medium text-rp-ink">{item.title}</span>
                                     <span className="rp-tabular block text-xs text-rp-muted">{formatDateRange(e.startDate, e.endDate || e.startDate)}</span>
@@ -132,7 +132,7 @@ const DayBody: React.FC<{
                 return (
                     <li key={item.key} className="flex flex-col gap-2 rounded-rp-inset bg-rp-inset px-3 py-3">
                         <div className="flex items-start gap-3">
-                            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rp-surface text-rp-ink"><Icon size={18} aria-hidden /></span>
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rp-surface text-rp-ink"><ItemIcon item={item} size={18} /></span>
                             <span className="min-w-0 flex-1">
                                 <span className="block truncate text-sm font-medium text-rp-ink">{trip.name}</span>
                                 <span className="rp-tabular block text-xs text-rp-muted">{formatDateRange(trip.startDate, trip.endDate || trip.startDate)}{item.leave ? ' · leave booked' : ''}</span>
