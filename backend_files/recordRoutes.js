@@ -7,7 +7,7 @@ module.exports = function registerRecordRoutes(app, { store, requireAdmin, share
   // Trips
   // Applies a multi-record change (e.g. bundling flights into a trip, moving a flight) in ONE
   // transaction, so a failure part-way can never leave flights deleted but not re-saved.
-  const BATCH_KEYS = { upsertTrips: 'trips', deleteTrips: 'trips', upsertFlights: 'flights', deleteFlights: 'flights' };
+  const BATCH_KEYS = { upsertTrips: 'trips', deleteTrips: 'trips', upsertFlights: 'flights', deleteFlights: 'flights', upsertLeave: 'leave', deleteLeave: 'leave' };
   app.post('/api/batch', async (req, res) => {
       const body = req.body || {};
       for (const key of Object.keys(BATCH_KEYS)) {
@@ -24,8 +24,10 @@ module.exports = function registerRecordRoutes(app, { store, requireAdmin, share
           await withTransaction(async (client) => {
               if (body.upsertTrips) versions.trips = versionMap(await guardedBulkUpsert(client, 'trips', body.upsertTrips, req.user));
               if (body.upsertFlights) versions.flights = versionMap(await guardedBulkUpsert(client, 'flights', body.upsertFlights, req.user));
+              if (body.upsertLeave) versions.leave = versionMap(await guardedBulkUpsert(client, 'leave', body.upsertLeave, req.user));
               for (const id of body.deleteTrips || []) await guardedDelete(client, 'trips', id, req.user);
               for (const id of body.deleteFlights || []) await guardedDelete(client, 'flights', id, req.user);
+              for (const id of body.deleteLeave || []) await guardedDelete(client, 'leave', id, req.user);
           });
           res.json({ success: true, versions });
       } catch (err) {
@@ -62,6 +64,24 @@ module.exports = function registerRecordRoutes(app, { store, requireAdmin, share
   });
   app.put('/api/trips/:id', updateResource('trips'));
   app.delete('/api/trips/:id', deleteResource('trips'));
+
+  // Leave entries (leave Phase 1): one per member, optionally linked to a trip by tripId.
+  app.get('/api/leave', getResources('leave'));
+  app.post('/api/leave', createResource('leave'));
+  app.post('/api/leave/bulk', async (req, res) => {
+      const list = req.body;
+      if (!Array.isArray(list)) return res.status(400).json({ error: 'Body must be an array of leave entries' });
+      try {
+          let versions = {};
+          await withTransaction(async (client) => { versions = versionMap(await guardedBulkUpsert(client, 'leave', list, req.user)); });
+          res.status(201).json({ success: true, count: list.length, versions });
+      } catch (err) {
+          if (err instanceof HttpError) return res.status(err.status).json({ error: err.message });
+          sendError(res, err, 500, 'Failed to save leave');
+      }
+  });
+  app.put('/api/leave/:id', updateResource('leave'));
+  app.delete('/api/leave/:id', deleteResource('leave'));
 
   // Events (Custom Events)
   app.get('/api/events', getResources('events'));

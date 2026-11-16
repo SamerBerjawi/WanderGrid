@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { EntitlementType, Trip, User } from '../../types';
 import {
-    balancesFor, carryOverInto, countedDays, dayWeight, holidayDays, layoutWeek, leaveContext, leaveUse, monthMatrix, observedDate, summarise,
+    balancesFor, carryOverInto, countedDays, dayWeight, holidayDays, layoutWeek, leaveContext, memberLeaveDays, monthMatrix, observedDate, summarise,
     buildItems, type BalanceInput, type CalendarItem,
 } from '../../utils/calendarModel';
+import { leaveFromTrip, tripWithoutLeave } from '../../utils/leaveEntry';
 
 const WORK = [1, 2, 3, 4, 5];
 const ctx = leaveContext(WORK, []);
@@ -42,13 +43,25 @@ describe('leave days', () => {
         expect(dayWeight(trip({ startDate: '2026-10-06', endDate: '2026-10-06', durationMode: 'single_pm' }), '2026-10-06', ctx)).toBe(0.5);
     });
 
-    it('splits a trip across New Year by date and uses allocations when present', () => {
+    it('splits leave across New Year by date and uses allocations when present', () => {
+        const per = (t: Trip, year: number) => memberLeaveDays(user(), leaveFromTrip(t), ctx, '2026-01-01').filter(d => d.iso.startsWith(String(year))).reduce((n, d) => n + d.days, 0);
         const t = trip({ entitlementId: 'annual', startDate: '2026-12-28', endDate: '2027-01-02' });
-        expect(leaveUse(t, 2026, '2026-01-01', ctx)[0].planned).toBe(4);
-        expect(leaveUse(t, 2027, '2026-01-01', ctx)[0].planned).toBe(1);
+        expect(per(t, 2026)).toBe(4);
+        expect(per(t, 2027)).toBe(1);
         const split = trip({ allocations: [{ entitlementId: 'annual', days: 3 }] });
-        expect(leaveUse(split, 2026, '2026-01-01', ctx)).toEqual([{ entitlementId: 'annual', used: 0, planned: 3 }]);
-        expect(leaveUse(split, 2027, '2026-01-01', ctx)).toEqual([]);
+        expect(per(split, 2026)).toBe(3);
+        expect(per(split, 2027)).toBe(0);
+    });
+
+    it('never counts an idea, a refusal or a cancellation, and keeps a request apart as pending', () => {
+        const [e] = leaveFromTrip(trip({ entitlementId: 'annual' }));
+        const u = user({ policies: [policy(2026, 25)] });
+        const bal = (state: typeof e.state) => balancesFor({ user: u, leave: [{ ...e, state }], entitlements: [annual], today: '2026-01-01', ctx }, 2026)[0];
+        expect(bal('draft')).toMatchObject({ planned: 0, pending: 0, remaining: 25 });
+        expect(bal('rejected').remaining).toBe(25);
+        expect(bal('cancelled').remaining).toBe(25);
+        expect(bal('requested')).toMatchObject({ planned: 0, pending: 5, remaining: 20 });
+        expect(bal('approved')).toMatchObject({ planned: 5, pending: 0, remaining: 20 });
     });
 });
 
@@ -63,7 +76,7 @@ describe('weekend holidays', () => {
 });
 
 describe('balances', () => {
-    const input = (u: User, trips: Trip[]): BalanceInput => ({ user: u, trips, entitlements: [annual], today: '2026-10-08', ctx });
+    const input = (u: User, trips: Trip[]): BalanceInput => ({ user: u, leave: trips.flatMap(leaveFromTrip), entitlements: [annual], today: '2026-10-08', ctx });
 
     it('splits used and planned and leaves the remainder', () => {
         const u = user({ policies: [policy(2026, 25)] });
@@ -105,10 +118,21 @@ describe('week layout', () => {
         expect(days[3].slots[0]?.last).toBe(true);
     });
 
-    it('filters items by member, leave and search', () => {
-        const trips = [trip({ id: 'x', name: 'Rome', entitlementId: 'annual' }), trip({ id: 'y', name: 'Oslo', participants: ['u2'] })];
-        expect(buildItems(trips, [], [], { memberIds: ['u2'], leaveOnly: false, query: '' }, '2026-10-01').map(i => i.id)).toEqual(['y']);
-        expect(buildItems(trips, [], [], { memberIds: [], leaveOnly: true, query: '' }, '2026-10-01').map(i => i.id)).toEqual(['x']);
-        expect(buildItems(trips, [], [], { memberIds: [], leaveOnly: false, query: 'osl' }, '2026-10-01').map(i => i.id)).toEqual(['y']);
+    it('shows trips and leave apart, filtered by member, leave and search', () => {
+        const raw = [trip({ id: 'x', name: 'Rome', entitlementId: 'annual' }), trip({ id: 'y', name: 'Oslo', participants: ['u2'] })];
+        const sources = { trips: raw.map(tripWithoutLeave), leave: raw.flatMap(leaveFromTrip), holidays: [], events: [] };
+        const ids = (f: Partial<{ memberIds: string[]; leaveOnly: boolean; query: string }>) => buildItems(sources, { memberIds: [], leaveOnly: false, query: '', ...f }, '2026-10-01').map(i => `${i.kind}:${i.id}`);
+        expect(ids({})).toEqual(['leave:leave:x:u1', 'trip:x', 'trip:y']);
+        expect(ids({ memberIds: ['u2'] })).toEqual(['trip:y']);
+        expect(ids({ leaveOnly: true })).toEqual(['leave:leave:x:u1']);
+        expect(ids({ query: 'osl' })).toEqual(['trip:y']);
+        // A trip with leave linked to it says so.
+        expect(buildItems(sources, { memberIds: [], leaveOnly: false, query: '' }, '2026-10-01').find(i => i.id === 'x')?.leave).toBe(true);
+    });
+
+    it('shows an idea muted and a request as pending, and leaves out refusals', () => {
+        const [e] = leaveFromTrip(trip({ id: 'z', entitlementId: 'annual' }));
+        const items = buildItems({ trips: [], leave: [{ ...e, id: 'a', state: 'draft' }, { ...e, id: 'b', state: 'requested' }, { ...e, id: 'c', state: 'rejected' }], holidays: [], events: [] }, { memberIds: [], leaveOnly: false, query: '' }, '2026-10-01');
+        expect(items.map(i => [i.id, i.muted, i.pending])).toEqual([['a', true, false], ['b', false, true]]);
     });
 });

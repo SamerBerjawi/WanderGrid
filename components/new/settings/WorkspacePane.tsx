@@ -111,8 +111,11 @@ export const WorkspacePane: React.FC<{
 
     const exportCalendar = async () => {
         await attempt(async () => {
-            const trips = await dataService.getTrips();
-            const ics = calendarService.generateIcsContent(trips, settings.orgName || 'WanderGrid', await dataService.getCalendarFeedOptions());
+            const [trips, leave, types] = await Promise.all([dataService.getTrips(), dataService.getLeave().catch(() => []), dataService.getEntitlementTypes().catch(() => [])]);
+            const mine = leave.filter(e => e.memberId === data.sessionUserId);
+            const ics = calendarService.generateIcsContent(trips, settings.orgName || 'WanderGrid', await dataService.getCalendarFeedOptions(), {
+                leave: mine, entitlementName: (id: string) => types.find(t => t.id === id)?.name || '',
+            });
             download(`wandergrid-calendar-${new Date().toISOString().split('T')[0]}.ics`, ics, 'text/calendar');
         }, "The calendar file couldn't be made.");
     };

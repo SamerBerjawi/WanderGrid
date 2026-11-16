@@ -1,4 +1,5 @@
-import type { CustomEvent, EntitlementType, PublicHoliday, SavedConfig, Trip, User, UserPolicy, WorkspaceSettings } from '../types';
+import type { CustomEvent, EntitlementType, LeaveEntry, LeaveSpan, PublicHoliday, SavedConfig, Trip, User, UserPolicy, WorkspaceSettings } from '../types';
+import { countsAsLeave } from './leaveEntry';
 import { isPastTrip, isTravelling } from './tripsModel';
 import { tripKind } from './tripKind';
 
@@ -140,21 +141,21 @@ export const leaveContext = (workingDays: number[], holidays: HolidayDay[]): Lea
     lieuDates: [...new Set(holidays.filter(h => h.counted && h.inLieu).map(h => h.observed))].sort(),
 });
 
-/** A trip with a leave type or a split of days across types. */
-export const hasLeave = (trip: Trip): boolean => Boolean(trip.entitlementId || (trip.allocations && trip.allocations.length > 0));
+/** A leave entry (or, before leave Phase 1, a trip) with a leave type or a split of days across types. */
+export const hasLeave = (x: Pick<LeaveEntry, 'entitlementId' | 'allocations'>): boolean => Boolean(x.entitlementId || (x.allocations && x.allocations.length > 0));
 
 /**
- * What one date of a trip takes from leave: 0 on a weekend, a public holiday or a day the member works
+ * What one date of a leave span takes from leave: 0 on a weekend, a public holiday or a day the member works
  * anyway, 0.5 for a half day (a morning or afternoon only, or the first day starting after lunch and the
  * last day ending before it), otherwise 1.
  */
-export const dayWeight = (trip: Trip, iso: string, ctx: LeaveContext): number => {
-    const start = trip.startDate;
-    const end = trip.endDate || trip.startDate;
+export const dayWeight = (span: LeaveSpan, iso: string, ctx: LeaveContext): number => {
+    const start = span.startDate;
+    const end = span.endDate || span.startDate;
     if (iso < start || iso > end) return 0;
-    if ((trip.excludedDates || []).includes(iso)) return 0;
+    if ((span.excludedDates || []).includes(iso)) return 0;
     if (isWeekend(iso, ctx.workingDays) || ctx.offDays.has(iso)) return 0;
-    switch (trip.durationMode) {
+    switch (span.durationMode) {
         case 'all_am':
         case 'all_pm':
             return 0.5;
@@ -162,8 +163,8 @@ export const dayWeight = (trip: Trip, iso: string, ctx: LeaveContext): number =>
         case 'single_pm':
             return iso === start ? 0.5 : 1;
         case 'custom': {
-            const startHalf = iso === start && trip.startPortion === 'pm';
-            const endHalf = iso === end && trip.endPortion === 'am';
+            const startHalf = iso === start && span.startPortion === 'pm';
+            const endHalf = iso === end && span.endPortion === 'am';
             return startHalf || endHalf ? 0.5 : 1;
         }
         default:
@@ -171,58 +172,31 @@ export const dayWeight = (trip: Trip, iso: string, ctx: LeaveContext): number =>
     }
 };
 
-/** The longest trip the model walks day by day (a mistyped year never freezes the page). */
+/** The longest span the model walks day by day (a mistyped year never freezes the page). */
 const MAX_SPAN = 800;
 
-export const tripDates = (trip: Trip): string[] => {
-    const start = trip.startDate;
-    const end = trip.endDate || trip.startDate;
+export const tripDates = (span: Pick<LeaveSpan, 'startDate' | 'endDate'>): string[] => {
+    const start = span.startDate;
+    const end = span.endDate || span.startDate;
     if (!start || !end || end < start) return [];
     const n = Math.min(daysBetween(start, end), MAX_SPAN);
     return Array.from({ length: n + 1 }, (_, i) => addDaysISO(start, i));
 };
 
-/** Days a trip counts against leave, in total or within one year. */
-export const countedDays = (trip: Trip, ctx: LeaveContext, year?: number): number =>
-    tripDates(trip).reduce((sum, iso) => (year && yearOfISO(iso) !== year ? sum : sum + dayWeight(trip, iso, ctx)), 0);
+/** Days a span counts against leave, in total or within one year. */
+export const countedDays = (span: LeaveSpan, ctx: LeaveContext, year?: number): number =>
+    tripDates(span).reduce((sum, iso) => (year && yearOfISO(iso) !== year ? sum : sum + dayWeight(span, iso, ctx)), 0);
 
-/** Why a trip's length is not all leave: the weekend days, holidays and worked days left out. */
-export const skippedDays = (trip: Trip, ctx: LeaveContext): { weekend: number; holiday: number; worked: number } => {
+/** Why a span's length is not all leave: the weekend days, holidays and worked days left out. */
+export const skippedDays = (span: LeaveSpan, ctx: LeaveContext): { weekend: number; holiday: number; worked: number } => {
     const out = { weekend: 0, holiday: 0, worked: 0 };
-    const excluded = new Set(trip.excludedDates || []);
-    tripDates(trip).forEach(iso => {
+    const excluded = new Set(span.excludedDates || []);
+    tripDates(span).forEach(iso => {
         if (excluded.has(iso)) out.worked += 1;
         else if (isWeekend(iso, ctx.workingDays)) out.weekend += 1;
         else if (ctx.offDays.has(iso)) out.holiday += 1;
     });
     return out;
-};
-
-export interface LeaveUse { entitlementId: string; used: number; planned: number }
-
-/**
- * The days a trip puts on each leave type in a year, split into used (before today) and planned (today and
- * later). A trip with `allocations` uses those days (in their target year, else the year it starts);
- * otherwise the days are counted date by date, so a trip across New Year splits itself.
- */
-export const leaveUse = (trip: Trip, year: number, today: string, ctx: LeaveContext): LeaveUse[] => {
-    const split = (trip.allocations || []).filter(a => a.entitlementId && Number(a.days) > 0);
-    if (split.length > 0) {
-        const startYear = yearOfISO(trip.startDate);
-        const over = (trip.endDate || trip.startDate) < today;
-        return split
-            .filter(a => (a.targetYear ?? startYear) === year)
-            .map(a => ({ entitlementId: a.entitlementId, used: over ? Number(a.days) : 0, planned: over ? 0 : Number(a.days) }));
-    }
-    if (!trip.entitlementId) return [];
-    let used = 0;
-    let planned = 0;
-    tripDates(trip).forEach(iso => {
-        if (yearOfISO(iso) !== year) return;
-        const w = dayWeight(trip, iso, ctx);
-        if (iso < today) used += w; else planned += w;
-    });
-    return used + planned > 0 ? [{ entitlementId: trip.entitlementId, used, planned }] : [];
 };
 
 /* ------------------------------ a member's leave ----------------------------- */
@@ -232,85 +206,95 @@ export interface LeaveDay {
     iso: string;
     entitlementId: string;
     days: number;
-    tripId: string;
+    /** The leave entry it comes from. */
+    entryId: string;
     /** Taken already (before today); otherwise planned. */
     used: boolean;
+    /** Requested and not answered yet. */
+    pending: boolean;
 }
 
 /**
- * Which entry owns a day when two overlap: a split across types first (its days are fixed), then time off made on
- * the calendar, then trips, earlier first.
+ * Which entry owns a day when two overlap: booked leave (planned or approved) before a request still waiting for an
+ * answer; then a split across types (its days are fixed); then the entry that starts first.
  */
-const leaveOrder = (a: Trip, b: Trip): number =>
-    Number(Boolean(b.allocations?.length)) - Number(Boolean(a.allocations?.length))
-    || Number(isStandaloneLeave(b)) - Number(isStandaloneLeave(a))
+const STATE_RANK: Record<string, number> = { approved: 0, planned: 0, requested: 1 };
+const leaveOrder = (a: LeaveEntry, b: LeaveEntry): number =>
+    (STATE_RANK[a.state || 'planned'] ?? 9) - (STATE_RANK[b.state || 'planned'] ?? 9)
+    || Number(Boolean(b.allocations?.length)) - Number(Boolean(a.allocations?.length))
     || (a.startDate || '').localeCompare(b.startDate || '')
     || a.id.localeCompare(b.id);
 
-/** The member's leave entries that count: not cancelled, on a leave type, with the member on them. */
-export const memberLeaveTrips = (user: Pick<User, 'id'>, trips: Trip[]): Trip[] =>
-    trips.filter(t => t.status !== 'Cancelled' && hasLeave(t) && (t.participants || []).includes(user.id)).sort(leaveOrder);
+/** The member's leave entries that count (planned, requested or approved), in the order they claim days. */
+export const memberLeaveEntries = (user: Pick<User, 'id'>, entries: LeaveEntry[]): LeaveEntry[] =>
+    entries.filter(e => e && e.memberId === user.id && countsAsLeave(e) && e.startDate).sort(leaveOrder);
 
 /**
- * Every day of leave a member takes, each date counted once: when two entries cover the same working day (time off
- * and a trip, or two trips), the day costs at most one day in all, and the first entry in `leaveOrder` has it. Half
- * days add up (a morning and an afternoon make one day). A split across types keeps its own day counts and claims
- * its dates, so a dated entry over the same days costs nothing more.
+ * Every day of leave a member takes, each date counted once: when two entries cover the same working day, the day
+ * costs at most one day in all, and the first entry in `leaveOrder` has it. Half days add up (a morning and an
+ * afternoon make one day). A split across types keeps its own day counts and claims its dates. Entries with no
+ * leave type claim their days too (they are time off) but put nothing on a balance.
  */
-export const memberLeaveDays = (user: Pick<User, 'id'>, trips: Trip[], ctx: LeaveContext, today: string): LeaveDay[] => {
+export const memberLeaveDays = (user: Pick<User, 'id'>, entries: LeaveEntry[], ctx: LeaveContext, today: string): LeaveDay[] => {
     const claimed = new Map<string, number>();
     const out: LeaveDay[] = [];
-    memberLeaveTrips(user, trips).forEach(t => {
-        const split = (t.allocations || []).filter(x => x.entitlementId && Number(x.days) > 0);
+    memberLeaveEntries(user, entries).forEach(e => {
+        const pending = e.state === 'requested';
+        const split = (e.allocations || []).filter(x => x.entitlementId && Number(x.days) > 0);
         if (split.length > 0) {
-            const startYear = yearOfISO(t.startDate);
-            const over = (t.endDate || t.startDate) < today;
+            const startYear = yearOfISO(e.startDate);
+            const over = (e.endDate || e.startDate) < today;
             split.forEach(x => {
                 const y = x.targetYear ?? startYear;
-                out.push({ iso: y === startYear ? t.startDate : `${y}-01-01`, entitlementId: x.entitlementId, days: Number(x.days), tripId: t.id, used: over });
+                out.push({ iso: y === startYear ? e.startDate : `${y}-01-01`, entitlementId: x.entitlementId, days: Number(x.days), entryId: e.id, used: over, pending });
             });
-            tripDates(t).forEach(iso => {
-                const w = dayWeight(t, iso, ctx);
+            tripDates(e).forEach(iso => {
+                const w = dayWeight(e, iso, ctx);
                 if (w > 0) claimed.set(iso, Math.min(1, (claimed.get(iso) || 0) + w));
             });
             return;
         }
-        const type = t.entitlementId as string;
-        tripDates(t).forEach(iso => {
-            const w = dayWeight(t, iso, ctx);
+        tripDates(e).forEach(iso => {
+            const w = dayWeight(e, iso, ctx);
             if (w <= 0) return;
             const take = Math.min(w, 1 - (claimed.get(iso) || 0));
             if (take <= 0) return;
             claimed.set(iso, (claimed.get(iso) || 0) + take);
-            out.push({ iso, entitlementId: type, days: take, tripId: t.id, used: iso < today });
+            if (e.entitlementId) out.push({ iso, entitlementId: e.entitlementId, days: take, entryId: e.id, used: iso < today, pending });
         });
     });
     return out;
 };
 
+/** What a single entry costs once the member's other leave has taken its share (the entry itself may be unsaved). */
+export const entryCost = (entry: LeaveEntry, entries: LeaveEntry[], ctx: LeaveContext, today: string): number => {
+    const withIt = [...entries.filter(e => e.id !== entry.id), { ...entry, state: entry.state && countsAsLeave(entry) ? entry.state : 'planned', entitlementId: entry.entitlementId || (entry.allocations?.length ? undefined : '__cost__') } as LeaveEntry];
+    return memberLeaveDays({ id: entry.memberId }, withIt, ctx, today).filter(d => d.entryId === entry.id).reduce((n, d) => n + d.days, 0);
+};
+
 export interface LeaveOverlap {
     iso: string;
     /** The entries that cover the day, in the order they claim it. */
-    tripIds: string[];
+    entryIds: string[];
 }
 
 /**
  * Working days that two or more of a member's leave entries cover together for more than a day (two full days, or
  * a full day and a half day). Weekends, holidays and days worked cost nothing, so they never overlap.
  */
-export const leaveOverlaps = (user: Pick<User, 'id'>, trips: Trip[], ctx: LeaveContext): LeaveOverlap[] => {
+export const leaveOverlaps = (user: Pick<User, 'id'>, entries: LeaveEntry[], ctx: LeaveContext): LeaveOverlap[] => {
     const byDay = new Map<string, { weight: number; ids: string[] }>();
-    memberLeaveTrips(user, trips).forEach(t => tripDates(t).forEach(iso => {
-        const w = dayWeight(t, iso, ctx);
+    memberLeaveEntries(user, entries).forEach(e => tripDates(e).forEach(iso => {
+        const w = dayWeight(e, iso, ctx);
         if (w <= 0) return;
         const slot = byDay.get(iso) || { weight: 0, ids: [] };
         slot.weight += w;
-        slot.ids.push(t.id);
+        slot.ids.push(e.id);
         byDay.set(iso, slot);
     }));
     return [...byDay.entries()]
         .filter(([, v]) => v.ids.length > 1 && v.weight > 1)
-        .map(([iso, v]) => ({ iso, tripIds: v.ids }))
+        .map(([iso, v]) => ({ iso, entryIds: v.ids }))
         .sort((x, y) => x.iso.localeCompare(y.iso));
 };
 
@@ -331,9 +315,13 @@ export interface TypeBalance {
     lieu: number;
     /** Allowance plus carry-over plus days in lieu; null when unlimited or without a policy. */
     total: number | null;
+    /** Days taken (approved or planned, before today). */
     used: number;
+    /** Days booked from today on (approved or planned). */
     planned: number;
-    /** Total minus expired, used and planned; negative when over; null when unlimited or without a policy. */
+    /** Days requested and not answered yet (any date). */
+    pending: number;
+    /** Total minus expired, used, planned and pending; negative when over; null when unlimited or without a policy. */
     remaining: number | null;
     unlimited: boolean;
 }
@@ -351,7 +339,8 @@ const policyDays = (user: User, entitlementId: string, year: number): { days: nu
 
 export interface BalanceInput {
     user: User;
-    trips: Trip[];
+    /** Every leave entry (the member's are picked out). */
+    leave: LeaveEntry[];
     entitlements: EntitlementType[];
     today: string;
     ctx: LeaveContext;
@@ -362,7 +351,7 @@ const dayCache = new WeakMap<BalanceInput, LeaveDay[]>();
 const daysOf = (input: BalanceInput): LeaveDay[] => {
     let days = dayCache.get(input);
     if (!days) {
-        days = memberLeaveDays(input.user, input.trips, input.ctx, input.today);
+        days = memberLeaveDays(input.user, input.leave, input.ctx, input.today);
         dayCache.set(input, days);
     }
     return days;
@@ -371,11 +360,14 @@ const daysOf = (input: BalanceInput): LeaveDay[] => {
 const usedAndPlanned = (input: BalanceInput, entitlementId: string, year: number) => {
     let used = 0;
     let planned = 0;
+    let pending = 0;
     daysOf(input).forEach(d => {
         if (d.entitlementId !== entitlementId || yearOfISO(d.iso) !== year) return;
-        if (d.used) used += d.days; else planned += d.days;
+        if (d.pending) pending += d.days;
+        else if (d.used) used += d.days;
+        else planned += d.days;
     });
-    return { used, planned };
+    return { used, planned, pending };
 };
 
 /** Days of a type booked in a year up to and including a date (taken or planned). */
@@ -460,8 +452,8 @@ export const lieuTypeOf = (entitlements: EntitlementType[]): EntitlementType | u
 const leftAtYearEnd = (input: BalanceInput, entitlementId: string, year: number, depth: number): number => {
     const grant = policyDays(input.user, entitlementId, year).days ?? 0;
     const carried = carryIn(input, entitlementId, year, depth);
-    const { used, planned } = usedAndPlanned(input, entitlementId, year);
-    return grant + carried.days - carried.lost + lieuFor(input, entitlementId, year) - used - planned;
+    const { used, planned, pending } = usedAndPlanned(input, entitlementId, year);
+    return grant + carried.days - carried.lost + lieuFor(input, entitlementId, year) - used - planned - pending;
 };
 
 /** Days carried into a leave type for a year (before any expiry). */
@@ -473,8 +465,8 @@ export const balancesFor = (input: BalanceInput, year: number): TypeBalance[] =>
     input.entitlements
         .map(entitlement => {
             const grant = policyDays(input.user, entitlement.id, year);
-            const { used, planned } = usedAndPlanned(input, entitlement.id, year);
-            const unlimited = grant.unlimited || Boolean(entitlement.isUnlimited && grant.days === null && used + planned > 0);
+            const { used, planned, pending } = usedAndPlanned(input, entitlement.id, year);
+            const unlimited = grant.unlimited || Boolean(entitlement.isUnlimited && grant.days === null && used + planned + pending > 0);
             const carried = carryIn(input, entitlement.id, year, 0);
             const lieu = lieuFor(input, entitlement.id, year);
             const past = carried.expiresOn !== null && carried.expiresOn < input.today;
@@ -482,15 +474,17 @@ export const balancesFor = (input: BalanceInput, year: number): TypeBalance[] =>
             const expiring = !past && carried.lost > 0 && carried.expiresOn ? { days: carried.lost, on: carried.expiresOn } : null;
             const hasGrant = grant.days !== null || carried.days > 0 || lieu > 0;
             const total = unlimited || !hasGrant ? null : (grant.days ?? 0) + carried.days + lieu;
-            const remaining = total === null ? null : total - expired - used - planned;
-            return { entitlement, year, allowance: grant.days, carryOver: carried.days, expired, expiring, lieu, total, used, planned, remaining, unlimited } satisfies TypeBalance;
+            const remaining = total === null ? null : total - expired - used - planned - pending;
+            return { entitlement, year, allowance: grant.days, carryOver: carried.days, expired, expiring, lieu, total, used, planned, pending, remaining, unlimited } satisfies TypeBalance;
         })
-        .filter(b => b.allowance !== null || b.unlimited || b.carryOver > 0 || b.lieu > 0 || b.used + b.planned > 0);
+        .filter(b => b.allowance !== null || b.unlimited || b.carryOver > 0 || b.lieu > 0 || b.used + b.planned + b.pending > 0);
 
 export interface LeaveSummary {
     year: number;
     used: number;
     planned: number;
+    /** Days requested and not answered yet. */
+    pending: number;
     /** Days left in the year: from the leave types' policies, else the member's yearly allowance. */
     left: number;
     /** What the year offers in all (policies' totals less expired carry-over, else the yearly allowance). */
@@ -503,26 +497,26 @@ export interface LeaveSummary {
 export const summarise = (balances: TypeBalance[], user: User, year: number): LeaveSummary => {
     const used = balances.reduce((n, b) => n + b.used, 0);
     const planned = balances.reduce((n, b) => n + b.planned, 0);
+    const pending = balances.reduce((n, b) => n + b.pending, 0);
     const limited = balances.filter(b => b.total !== null && !b.unlimited);
     if (limited.length > 0) {
         const total = limited.reduce((n, b) => n + (b.total as number) - b.expired, 0);
-        const taken = limited.reduce((n, b) => n + b.used + b.planned, 0);
-        return { year, used, planned, left: Math.max(0, total - taken), total, fallback: false };
+        const taken = limited.reduce((n, b) => n + b.used + b.planned + b.pending, 0);
+        return { year, used, planned, pending, left: Math.max(0, total - taken), total, fallback: false };
     }
     const allowance = Number(user.allowance ?? user.leaveBalance) || 0;
     const recorded = Number(user.takenLeave) || 0;
     // A member's recorded "taken" days stand in for trips that do not carry the leave.
     const taken = Math.max(recorded, used);
-    return { year, used: taken, planned, left: Math.max(0, allowance - taken - planned), total: allowance, fallback: true };
+    return { year, used: taken, planned, pending, left: Math.max(0, allowance - taken - planned - pending), total: allowance, fallback: true };
 };
 
-/** Years worth showing: this year, the members' tracked years and the years of leave in their trips. */
-export const calendarYears = (users: User[], trips: Trip[], thisYear: number): number[] => {
+/** Years worth showing: this year and next, the members' tracked years and the years of their leave. */
+export const calendarYears = (users: User[], leave: LeaveEntry[], thisYear: number): number[] => {
     const years = new Set<number>([thisYear, thisYear + 1]);
     users.forEach(u => (u.activeYears || []).forEach(y => years.add(y)));
-    trips.forEach(t => {
-        if (!hasLeave(t)) return;
-        [yearOfISO(t.startDate), yearOfISO(t.endDate)].forEach(y => { if (y > 1900) years.add(y); });
+    leave.forEach(e => {
+        [yearOfISO(e.startDate), yearOfISO(e.endDate)].forEach(y => { if (y > 1900) years.add(y); });
     });
     return [...years].sort((a, b) => a - b);
 };
@@ -533,19 +527,22 @@ export type ItemState = 'now' | 'confirmed' | 'planned' | 'past';
 
 export interface CalendarItem {
     key: string;
-    kind: 'trip' | 'holiday' | 'event';
+    kind: 'trip' | 'leave' | 'holiday' | 'event';
     id: string;
     title: string;
     start: string;
     end: string;
     state: ItemState;
-    /** A trip that uses leave. */
+    /** A leave entry, or a trip that has leave linked to it. */
     leave: boolean;
     /** A holiday that is switched off, or any item that does not take a day off. */
     muted: boolean;
-    /** The leave type's colour, when the calendar colours leave by type (a trip's first type). */
+    /** A leave request still waiting for an answer. */
+    pending?: boolean;
+    /** The leave type's colour, when the calendar colours leave by type (an entry's first type). */
     tint?: LeaveColor;
     trip?: Trip;
+    entry?: LeaveEntry;
     holiday?: HolidayDay;
     event?: CustomEvent;
 }
@@ -556,65 +553,101 @@ export const stateOf = (trip: Trip, today: string): ItemState => {
     return trip.status === 'Upcoming' ? 'confirmed' : 'planned';
 };
 
-/** Standalone leave made on the calendar is a hidden trip with this id prefix. */
-export const LEAVE_ID_PREFIX = 'leave-';
-export const isStandaloneLeave = (trip: Trip): boolean => trip.id.startsWith(LEAVE_ID_PREFIX);
+/** A leave entry on the grid: under way, over, approved (confirmed) or still planned or requested. */
+export const leaveItemState = (e: LeaveEntry, today: string): ItemState => {
+    const end = e.endDate || e.startDate;
+    if (end < today) return 'past';
+    if (e.startDate <= today) return 'now';
+    return e.state === 'approved' ? 'confirmed' : 'planned';
+};
+
+export { LEAVE_ID_PREFIX } from './leaveEntry';
 
 export type LeaveColor = EntitlementType['color'];
-export type CalendarLayer = 'trip' | 'holiday' | 'event';
-export const ALL_LAYERS: Record<CalendarLayer, boolean> = { trip: true, holiday: true, event: true };
+export type CalendarLayer = 'trip' | 'leave' | 'holiday' | 'event';
+export const ALL_LAYERS: Record<CalendarLayer, boolean> = { trip: true, leave: true, holiday: true, event: true };
 
 export interface ItemFilters {
     /** Member ids in view; empty means everyone. */
     memberIds: string[];
+    /** Only leave (no trips, holidays or events). */
     leaveOnly: boolean;
     query: string;
     /** Which kinds of item are shown (default all). */
     layers?: Record<CalendarLayer, boolean>;
 }
 
-/** The colour of a trip's leave type (the first of a split), by leave-type id. */
-export const tintOf = (trip: Trip, colors?: Record<string, LeaveColor>): LeaveColor | undefined => {
+/** The colour of an entry's leave type (the first of a split), by leave-type id. */
+export const tintOf = (x: Pick<LeaveEntry, 'entitlementId' | 'allocations'>, colors?: Record<string, LeaveColor>): LeaveColor | undefined => {
     if (!colors) return undefined;
-    const id = trip.entitlementId || trip.allocations?.[0]?.entitlementId;
+    const id = x.entitlementId || x.allocations?.[0]?.entitlementId;
     return id ? colors[id] : undefined;
 };
 
-/** Trips, holidays and events as calendar items. Cancelled trips and flight bundles are left out. */
+/** What a leave entry is called on the calendar: its own name, else its leave type's, else "Time off". */
+export const leaveTitle = (e: LeaveEntry, typeName?: (id: string) => string | undefined): string => {
+    const own = (e.name || '').trim();
+    if (own && !/^time off$/i.test(own)) return own;
+    const id = e.entitlementId || e.allocations?.[0]?.entitlementId;
+    return (id && typeName?.(id)) || own || 'Time off';
+};
+
+export interface ItemSources {
+    trips: Trip[];
+    leave: LeaveEntry[];
+    holidays: HolidayDay[];
+    events: CustomEvent[];
+    /** A leave type's name, for entries with no name of their own. */
+    typeName?: (id: string) => string | undefined;
+}
+
+/**
+ * Trips, leave, holidays and events as calendar items. Cancelled trips, flight bundles and leave that does not count
+ * (an idea, a refusal, a cancellation) are left out, except that ideas show muted so they can be found again.
+ */
 export const buildItems = (
-    trips: Trip[],
-    holidays: HolidayDay[],
-    events: CustomEvent[],
+    { trips, leave, holidays, events, typeName }: ItemSources,
     filters: ItemFilters,
     today: string,
     leaveColors?: Record<string, LeaveColor>,
 ): CalendarItem[] => {
     const q = filters.query.trim().toLowerCase();
     const layers = filters.layers ?? ALL_LAYERS;
+    const inView = (id: string) => filters.memberIds.length === 0 || filters.memberIds.includes(id);
     const items: CalendarItem[] = [];
-    if (layers.trip) trips.forEach(t => {
-        if (t.status === 'Cancelled' || tripKind(t) === 'bundle' || !t.startDate) return;
-        if (filters.memberIds.length > 0 && !(t.participants || []).some(p => filters.memberIds.includes(p))) return;
-        if (filters.leaveOnly && !hasLeave(t)) return;
-        if (q && !`${t.name} ${t.location || ''}`.toLowerCase().includes(q)) return;
-        items.push({ key: `trip:${t.id}`, kind: 'trip', id: t.id, title: t.name, start: t.startDate, end: t.endDate || t.startDate, state: stateOf(t, today), leave: hasLeave(t), muted: false, tint: hasLeave(t) ? tintOf(t, leaveColors) : undefined, trip: t });
+    const linked = new Set(leave.filter(e => e.tripId && countsAsLeave(e) && inView(e.memberId)).map(e => e.tripId as string));
+    if (layers.leave) leave.forEach(e => {
+        if (!e.startDate || !inView(e.memberId)) return;
+        if (!countsAsLeave(e) && e.state !== 'draft') return;
+        const title = leaveTitle(e, typeName);
+        if (q && !`${title} ${e.note || ''}`.toLowerCase().includes(q)) return;
+        items.push({
+            key: `leave:${e.id}`, kind: 'leave', id: e.id, title, start: e.startDate, end: e.endDate || e.startDate,
+            state: leaveItemState(e, today), leave: true, muted: e.state === 'draft', pending: e.state === 'requested',
+            tint: tintOf(e, leaveColors), entry: e,
+        });
     });
-    if (!filters.leaveOnly) {
-        if (layers.holiday) holidays.forEach(h => {
-            if (q && !h.name.toLowerCase().includes(q)) return;
-            items.push({ key: `holiday:${h.configId}:${h.id}`, kind: 'holiday', id: h.id, title: h.name, start: h.observed, end: h.observed, state: h.observed < today ? 'past' : 'planned', leave: false, muted: !h.counted, holiday: h });
-        });
-        if (layers.event) events.forEach(e => {
-            if (!e.date || (q && !e.name.toLowerCase().includes(q))) return;
-            items.push({ key: `event:${e.id}`, kind: 'event', id: e.id, title: e.name, start: e.date, end: e.date, state: e.date < today ? 'past' : 'planned', leave: false, muted: Boolean(e.isWorkingDay), event: e });
-        });
-    }
+    if (filters.leaveOnly) return items;
+    if (layers.trip) trips.forEach(t => {
+        if (t.status === 'Cancelled' || tripKind(t) !== 'trip' || !t.startDate) return;
+        if (filters.memberIds.length > 0 && !(t.participants || []).some(p => filters.memberIds.includes(p))) return;
+        if (q && !`${t.name} ${t.location || ''}`.toLowerCase().includes(q)) return;
+        items.push({ key: `trip:${t.id}`, kind: 'trip', id: t.id, title: t.name, start: t.startDate, end: t.endDate || t.startDate, state: stateOf(t, today), leave: linked.has(t.id), muted: false, trip: t });
+    });
+    if (layers.holiday) holidays.forEach(h => {
+        if (q && !h.name.toLowerCase().includes(q)) return;
+        items.push({ key: `holiday:${h.configId}:${h.id}`, kind: 'holiday', id: h.id, title: h.name, start: h.observed, end: h.observed, state: h.observed < today ? 'past' : 'planned', leave: false, muted: !h.counted, holiday: h });
+    });
+    if (layers.event) events.forEach(e => {
+        if (!e.date || (q && !e.name.toLowerCase().includes(q))) return;
+        items.push({ key: `event:${e.id}`, kind: 'event', id: e.id, title: e.name, start: e.date, end: e.date, state: e.date < today ? 'past' : 'planned', leave: false, muted: Boolean(e.isWorkingDay), event: e });
+    });
     return items;
 };
 
-const KIND_ORDER = { trip: 0, holiday: 1, event: 2 } as const;
+const KIND_ORDER = { trip: 0, leave: 1, holiday: 2, event: 3 } as const;
 
-/** Orders items for a day or a lane: trips first, longer first, then by title. */
+/** Orders items for a day or a lane: trips, then leave, then holidays and events; earlier and longer first, then by title. */
 export const compareItems = (a: CalendarItem, b: CalendarItem): number =>
     KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.start.localeCompare(b.start) || b.end.localeCompare(a.end) || a.title.localeCompare(b.title);
 
@@ -650,9 +683,9 @@ export const layoutWeek = (items: CalendarItem[], days: string[], lanes: number)
 };
 
 /** The next leave to start (or under way) on or after today, soonest first. */
-export const nextLeave = (trips: Trip[], memberIds: string[], today: string): Trip | null => {
-    const mine = trips
-        .filter(t => t.status !== 'Cancelled' && hasLeave(t) && (t.endDate || t.startDate) >= today && (memberIds.length === 0 || (t.participants || []).some(p => memberIds.includes(p))))
+export const nextLeave = (leave: LeaveEntry[], memberIds: string[], today: string): LeaveEntry | null => {
+    const mine = leave
+        .filter(e => countsAsLeave(e) && (e.endDate || e.startDate) >= today && (memberIds.length === 0 || memberIds.includes(e.memberId)))
         .sort((a, b) => a.startDate.localeCompare(b.startDate));
     return mine[0] ?? null;
 };

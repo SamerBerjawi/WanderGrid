@@ -5,7 +5,9 @@ import { dataService } from '../services/mockDb';
 import { getCoordinatesSync } from '../services/geocoding';
 import { centroidOf, loadCentroids, type LatLng } from '../services/countryCentroids';
 import { affectsCollections } from './useWanderSync';
-import { configsFor, dayWeight, hasLeave, holidayDays, leaveContext, tripDates, workingDaysOf } from '../utils/calendarModel';
+import { configsFor, dayWeight, holidayDays, leaveContext, tripDates, workingDaysOf } from '../utils/calendarModel';
+import { countsAsLeave } from '../utils/leaveEntry';
+import { useLeaveEntries } from './useLeaveEntries';
 import { buildIdeas, type Candidate, type Idea } from '../utils/whereNext';
 
 /**
@@ -22,6 +24,7 @@ export const useWhereNextIdeas = (data: DashboardData): Idea[] => {
     const [workingDays, setWorkingDays] = useState<number[]>(workingDaysOf(null));
     const [startAirport, setStartAirport] = useState<string | undefined>();
     const [centroids, setCentroids] = useState<Map<string, LatLng>>(new Map());
+    const { leave } = useLeaveEntries();
 
     useEffect(() => {
         let live = true;
@@ -42,8 +45,8 @@ export const useWhereNextIdeas = (data: DashboardData): Idea[] => {
         const holidays = me ? holidayDays(configsFor(configs, [me]), me.holidayWeekendRule, workingDays) : [];
         const ctx = leaveContext(workingDays, holidays);
         const booked = new Set<string>();
-        data.trips.filter(t => t.status !== 'Cancelled' && hasLeave(t) && (!me || (t.participants || []).includes(me.id))).forEach(t => {
-            tripDates(t).forEach(iso => { if (dayWeight(t, iso, ctx) > 0) booked.add(iso); });
+        leave.filter(e => countsAsLeave(e) && (!me || e.memberId === me.id)).forEach(e => {
+            tripDates(e).forEach(iso => { if (dayWeight(e, iso, ctx) > 0) booked.add(iso); });
         });
         const homePoint = startAirport ? getCoordinatesSync(startAirport) : undefined;
         const places: Candidate[] = data.wishlist.map(item => {
@@ -55,5 +58,5 @@ export const useWhereNextIdeas = (data: DashboardData): Idea[] => {
             trips: data.trips.filter(t => !me || (t.participants || []).includes(me.id)),
             home: homePoint ? { lat: homePoint.lat, lng: homePoint.lng } : undefined,
         });
-    }, [data.wishlist, data.users, data.trips, data.today, configs, workingDays, startAirport, centroids]);
+    }, [data.wishlist, data.users, data.trips, data.today, configs, workingDays, startAirport, centroids, leave]);
 };

@@ -8,7 +8,8 @@
 | Entity | Stored in | Owner field | Meaning |
 | --- | --- | --- | --- |
 | User | `users` | itself | A member of the one workspace. `role` is `Admin` or `Partner`. Leave balances live on the record |
-| Trip | `trips` | `participants[]` (user ids; migration 0003 converted stored emails) | A journey with dates. **Also** used for: leave/time off (`entitlementId`, `allocations`), flight bundles (`isBundleOnly`), and "Time off" entries |
+| Trip | `trips` | `participants[]` (user ids; migration 0003 converted stored emails) | A journey with dates. **Also** used for flight bundles (`isBundleOnly`). Leave is no longer stored on trips (migration 0004) |
+| Leave entry | `leave` | `memberId` (the member or an admin writes; everyone reads) | Time off for one member: dates, day length, days worked, a leave type or a split, a state (draft, planned, requested, approved, rejected, cancelled), an optional `tripId` and a note |
 | Transport (leg) | embedded in `trip.transports[]` **or** a row in `flights` with `tripId` | `ownerId` on `flights` rows | One flight, train, ferry, bus, car leg. The `flights` table holds every mode, not only flights |
 | Visited item | `visited` | `ownerId` | Atlas entry: a country or city with a residence status |
 | Entitlement type | `entitlements` | admin-managed | A leave category with accrual and carry-over policy |
@@ -49,7 +50,9 @@
     `utils/scope.ts`: "Mine" (default) or "Everyone", chosen with the switch on the Dashboard, Flights and Atlas (D-02).
 
 ### Leave
-14. Leave is recorded on trips (`entitlementId`, `durationMode`, `allocations`, `excludedDates`) and counted only by
+14. Leave is recorded as leave entries (`leave` collection, one per member, `tripId` links one to a trip; its dates may
+    differ from the trip's). Planned, requested (as pending) and approved entries count; drafts, rejections and
+    cancellations never do. Deleting a trip unlinks its leave; deleting a member deletes theirs. Leave is counted only by
     `utils/calendarModel.ts` (`memberLeaveDays`, `balancesFor`) against the member's policies, the working week and their
     public holidays; pages get those rules from `hooks/useLeaveRules.ts`. A working day costs at most one day across a
     member's entries. Carried-over days are used first and expire on the source policy's date; weekend holidays under

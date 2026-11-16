@@ -1,4 +1,4 @@
-import type { EntitlementType, Trip, User, UserPolicy } from '../types';
+import type { EntitlementType, LeaveEntry, User, UserPolicy } from '../types';
 import { carryOverExpiry } from './calendarModel';
 
 /**
@@ -115,8 +115,8 @@ export const describePolicy = (p: PolicyShape): string => {
 };
 
 /** How many leave entries use a type (so removing it can say what it affects). */
-export const typeUsage = (trips: Trip[], id: string): number =>
-    trips.filter(t => t.entitlementId === id || (t.allocations || []).some(a => a.entitlementId === id)).length;
+export const typeUsage = (leave: Pick<LeaveEntry, 'entitlementId' | 'allocations'>[], id: string): number =>
+    leave.filter(t => t.entitlementId === id || (t.allocations || []).some(a => a.entitlementId === id)).length;
 
 /** The years worth offering in the allowance editor: last year, this year, the next, and any year with a policy. */
 export const policyYears = (users: User[], thisYear: number): number[] => {

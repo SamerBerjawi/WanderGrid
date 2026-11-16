@@ -6,6 +6,10 @@ import {
 import { leaveFigures } from '../../utils/leaveModel';
 import { leaveByType, leaveTrips } from '../../utils/dashboardModel';
 import { planLeave } from '../../utils/leavePlan';
+import { leaveFromTrip, tripWithoutLeave } from '../../utils/leaveEntry';
+
+/** Fixtures are trips that carry leave (the old shape), turned into leave entries. */
+const L = (...trips: Trip[]) => trips.flatMap(leaveFromTrip);
 
 /**
  * Phase 0 of the leave work: one way of counting for every page, a day counted once, weekend holidays that never
@@ -38,21 +42,21 @@ describe('every page counts leave the same way', () => {
     const today = '2026-01-01';
 
     it('gives the calendar, member, dashboard and planner the same figure', () => {
-        const [b] = balancesFor({ user: u, trips: [week], entitlements: [annual], today, ctx: c }, 2026);
+        const [b] = balancesFor({ user: u, leave: L(week), entitlements: [annual], today, ctx: c }, 2026);
         expect(b.planned).toBe(4);
-        const f = leaveFigures(u, [week], [annual], 2026, today, c);
+        const f = leaveFigures(u, L(week), [annual], 2026, today, c);
         expect(f.types[0].planned).toBe(4);
         expect(f.left).toBe(21);
-        expect(leaveByType([week], [annual], u, 2026, c, today)[0].days).toBe(4);
-        expect(leaveTrips([week], u, 2026, c, today)[0].days).toBe(4);
-        expect(planLeave({ trip: week, user: u, trips: [week], entitlements: [annual], today, workingDays: WORK, holidays }).cost).toBe(4);
+        expect(leaveByType(L(week), [annual], u, 2026, c, today)[0].days).toBe(4);
+        expect(leaveTrips(L(week), [tripWithoutLeave(week)], u, 2026, c, today)[0].days).toBe(4);
+        expect(planLeave({ trip: tripWithoutLeave(week), user: u, leave: L(week), entitlements: [annual], today, workingDays: WORK, holidays }).cost).toBe(4);
     });
 
     it('splits a trip across New Year on every page', () => {
         const nye = trip('nye', '2026-12-28', '2027-01-02');
-        expect(leaveByType([nye], [annual], u, 2026, ctx, today)[0].days).toBe(4);
-        expect(leaveByType([nye], [annual], u, 2027, ctx, today)[0].days).toBe(1);
-        expect(leaveFigures(u, [nye], [annual], 2026, today, ctx).planned).toBe(4);
+        expect(leaveByType(L(nye), [annual], u, 2026, ctx, today)[0].days).toBe(4);
+        expect(leaveByType(L(nye), [annual], u, 2027, ctx, today)[0].days).toBe(1);
+        expect(leaveFigures(u, L(nye), [annual], 2026, today, ctx).planned).toBe(4);
     });
 });
 
@@ -62,37 +66,37 @@ describe('a day is counted once', () => {
     const travel = trip('paris', '2026-10-07', '2026-10-13', { name: 'Paris' });
 
     it('does not count the days two entries share twice', () => {
-        const days = memberLeaveDays(user(), [travel, timeOff], ctx, today);
+        const days = memberLeaveDays(user(), L(travel, timeOff), ctx, today);
         // Time off Mon–Fri (5) + the trip's own Mon–Tue after it (2).
         expect(days.reduce((n, d) => n + d.days, 0)).toBe(7);
         // Time off made on the calendar owns the shared days.
-        expect(days.filter(d => d.tripId === 'leave-1')).toHaveLength(5);
-        const [b] = balancesFor({ user: user(), trips: [travel, timeOff], entitlements: [annual], today, ctx }, 2026);
+        expect(days.filter(d => d.entryId === 'leave-1')).toHaveLength(5);
+        const [b] = balancesFor({ user: user(), leave: L(travel, timeOff), entitlements: [annual], today, ctx }, 2026);
         expect(b.planned).toBe(7);
     });
 
     it('adds a morning and an afternoon up to one day', () => {
         const am = trip('am', '2026-10-05', '2026-10-05', { durationMode: 'all_am' });
         const pm = trip('pm', '2026-10-05', '2026-10-05', { durationMode: 'all_pm' });
-        expect(memberLeaveDays(user(), [am, pm], ctx, today).reduce((n, d) => n + d.days, 0)).toBe(1);
-        expect(leaveOverlaps(user(), [am, pm], ctx)).toEqual([]);
+        expect(memberLeaveDays(user(), L(am, pm), ctx, today).reduce((n, d) => n + d.days, 0)).toBe(1);
+        expect(leaveOverlaps(user(), L(am, pm), ctx)).toEqual([]);
     });
 
     it('lists the working days that overlap', () => {
-        const overlaps = leaveOverlaps(user(), [travel, timeOff], ctx);
+        const overlaps = leaveOverlaps(user(), L(travel, timeOff), ctx);
         expect(overlaps.map(o => o.iso)).toEqual(['2026-10-07', '2026-10-08', '2026-10-09']);
-        expect(overlaps[0].tripIds).toEqual(['leave-1', 'paris']);
+        expect(overlaps[0].entryIds).toEqual(['leave-1', 'leave:paris:u1']);
     });
 
     it('ignores cancelled entries and other members', () => {
         const cancelled = trip('x', '2026-10-05', '2026-10-09', { status: 'Cancelled' });
         const theirs = trip('y', '2026-10-05', '2026-10-09', { participants: ['u2'] });
-        expect(leaveOverlaps(user(), [timeOff, cancelled, theirs], ctx)).toEqual([]);
+        expect(leaveOverlaps(user(), L(timeOff, cancelled, theirs), ctx)).toEqual([]);
     });
 
     it('shows the trip planner the days time off already covers', () => {
         const plain = { ...travel, entitlementId: undefined };
-        const plan = planLeave({ trip: plain, user: user(), trips: [plain, timeOff], entitlements: [annual], today, workingDays: WORK, holidays: [] });
+        const plan = planLeave({ trip: plain, user: user(), leave: L(plain, timeOff), entitlements: [annual], today, workingDays: WORK, holidays: [] });
         expect(plan.cost).toBe(2);
         expect(plan.skipped.covered).toBe(3);
         expect(plan.days.find(d => d.iso === '2026-10-07')).toMatchObject({ kind: 'covered', label: 'Time off' });
@@ -131,17 +135,17 @@ describe('weekend holidays', () => {
         expect(c.lieuDates).toEqual(['2027-12-25', '2027-12-26']);
         const u = user({ policies: [policy(2027, 25)] });
         // A "Lieu" type takes them when there is one…
-        const rows = balancesFor({ user: u, trips: [], entitlements: [annual, lieuType], today: '2027-01-01', ctx: c }, 2027);
+        const rows = balancesFor({ user: u, leave: [], entitlements: [annual, lieuType], today: '2027-01-01', ctx: c }, 2027);
         expect(rows.find(r => r.entitlement.id === 'lieu')).toMatchObject({ lieu: 2, total: 2, remaining: 2 });
         expect(rows.find(r => r.entitlement.id === 'annual')).toMatchObject({ lieu: 0, total: 25 });
         // …else the annual type.
-        const [only] = balancesFor({ user: u, trips: [], entitlements: [annual], today: '2027-01-01', ctx: c }, 2027);
+        const [only] = balancesFor({ user: u, leave: [], entitlements: [annual], today: '2027-01-01', ctx: c }, 2027);
         expect(only).toMatchObject({ lieu: 2, total: 27 });
     });
 });
 
 describe('carry-over expiry', () => {
-    const input = (u: User, trips: Trip[], today: string): BalanceInput => ({ user: u, trips, entitlements: [annual], today, ctx });
+    const input = (u: User, trips: Trip[], today: string): BalanceInput => ({ user: u, leave: L(...trips), entitlements: [annual], today, ctx });
 
     it('reads the expiry date from the policy', () => {
         expect(carryOverExpiry({ enabled: true, maxDays: 5, expiryType: 'months', expiryValue: 3 }, 2027)).toBe('2027-03-31');
@@ -183,5 +187,25 @@ describe('carry-over expiry', () => {
         ] });
         // 2027: 25 + 5 carried, the 5 expire unused, nothing taken: 25 left to carry, capped at 10.
         expect(balancesFor(input(chain, [used2026], '2028-01-02'), 2028)[0].carryOver).toBe(10);
+    });
+});
+
+describe('which entry owns a shared day', () => {
+    const today = '2026-01-01';
+    const first = trip('first', '2026-10-05', '2026-10-09', { status: 'Planning' });
+    const second = trip('second', '2026-10-07', '2026-10-13', { status: 'Upcoming' });
+    const owned = (leave: ReturnType<typeof L>) => {
+        const out: Record<string, number> = {};
+        memberLeaveDays(user(), leave, ctx, today).forEach(d => { out[d.entryId] = (out[d.entryId] || 0) + d.days; });
+        return out;
+    };
+
+    it('gives it to the entry that starts first, planned or approved alike', () => {
+        expect(owned(L(first, second))).toEqual({ 'leave:first:u1': 5, 'leave:second:u1': 2 });
+    });
+
+    it('lets a request yield to booked leave', () => {
+        const leave = L(first, second).map(e => (e.id === 'leave:first:u1' ? { ...e, state: 'requested' as const } : e));
+        expect(owned(leave)).toEqual({ 'leave:first:u1': 2, 'leave:second:u1': 5 });
     });
 });

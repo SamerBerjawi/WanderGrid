@@ -203,3 +203,26 @@ test('a broken record does not break the rest', async () => {
     assert.doesNotMatch(out, /Broken/);
     assert.match(out, /UID:t1@/);
 });
+
+test('leave entries are all-day events; drafts, refusals and cancellations are not', async () => {
+    const { buildFeed } = await load();
+    const entry = (id, state, extra = {}) => ({ id, memberId: 'a', name: 'Time off', startDate: '2026-12-24', endDate: '2026-12-31', entitlementId: 'ann', state, ...extra });
+    const leave = [entry('leave-1', 'approved'), entry('l2', 'requested', { name: 'Ski week' }), entry('l3', 'draft'), entry('l4', 'rejected'), entry('l5', 'cancelled')];
+    const c = { ...ctx, entitlementName: () => 'Annual leave', leave };
+    assert.equal(events(buildFeed([], {}, c)).length, 0);
+    const on = events(buildFeed([], { leave: true }, c));
+    assert.equal(on.length, 2);
+    assert.match(prop(on[0], 'SUMMARY'), /^🌴 Annual leave$/);
+    assert.equal(prop(on[0], 'UID').startsWith('leave-leave-1'), true);
+    assert.equal(prop(on[0], 'STATUS'), 'CONFIRMED');
+    assert.match(prop(on[1], 'SUMMARY'), /Ski week \(requested\)/);
+    assert.equal(prop(on[1], 'STATUS'), 'TENTATIVE');
+});
+
+test('a trip names the leave linked to it', async () => {
+    const { buildFeed } = await load();
+    const t = trip({ id: 'rome', name: 'Rome' });
+    const c = { ...ctx, entitlementName: () => 'Annual leave', leave: [{ id: 'x', memberId: 'a', tripId: 'rome', startDate: t.startDate, endDate: t.endDate, entitlementId: 'ann', state: 'approved' }] };
+    const out = buildFeed([t], { leave: true }, c);
+    assert.match(out, /Leave: Annual leave/);
+});

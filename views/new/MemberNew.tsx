@@ -4,6 +4,7 @@ import type { User } from '../../types';
 import { useMemberData, type MemberTrip } from '../../hooks/useMemberData';
 import { leaveFigures, leaveYears } from '../../utils/leaveModel';
 import { useLeaveRules } from '../../hooks/useLeaveRules';
+import { useLeaveEntries } from '../../hooks/useLeaveEntries';
 import { destinationsOf, timingOf } from '../../utils/tripsModel';
 import { formatDate, formatDateRange } from '../../utils/formatters';
 import { errorMessage, toast } from '../../services/toast';
@@ -90,9 +91,10 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
 
     const { member } = data;
     const thisYear = new Date().getFullYear();
-    const years = useMemo(() => (member ? leaveYears(member, data.trips, thisYear) : [thisYear]), [member, data.trips, thisYear]);
     const rules = useLeaveRules();
-    const leave = useMemo(() => (member ? leaveFigures(member, data.trips, data.entitlements, year, data.today, rules.contextFor(member)) : null), [member, data.trips, data.entitlements, year, data.today, rules]);
+    const { leave: leaveEntries } = useLeaveEntries();
+    const years = useMemo(() => (member ? leaveYears(member, leaveEntries, thisYear) : [thisYear]), [member, leaveEntries, thisYear]);
+    const leave = useMemo(() => (member ? leaveFigures(member, leaveEntries, data.entitlements, year, data.today, rules.contextFor(member)) : null), [member, leaveEntries, data.entitlements, year, data.today, rules]);
 
     const changeTab = (next: TabId) => {
         setTab(next);

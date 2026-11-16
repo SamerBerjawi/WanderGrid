@@ -51,10 +51,10 @@ const BackupSheet: React.FC<{ open: boolean; data: SettingsData; onClose: () => 
         let live = true;
         (async () => {
             try {
-                const [trips, visited, events, entitlements] = await Promise.all([
-                    dataService.getTrips(), dataService.getVisited(), dataService.getCustomEvents().catch(() => []), dataService.getEntitlementTypes().catch(() => []),
+                const [trips, visited, events, entitlements, leave] = await Promise.all([
+                    dataService.getTrips(), dataService.getVisited(), dataService.getCustomEvents().catch(() => []), dataService.getEntitlementTypes().catch(() => []), dataService.getLeave().catch(() => []),
                 ]);
-                if (live) setCounts(countBackup({ trips, visited, events, entitlements, configs: data.savedConfigs, users: data.users, workspaceSettings: data.settings }));
+                if (live) setCounts(countBackup({ trips, visited, events, entitlements, leave, configs: data.savedConfigs, users: data.users, workspaceSettings: data.settings }));
             } catch { /* counts are a nicety */ }
         })();
         return () => { live = false; };

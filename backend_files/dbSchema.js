@@ -13,7 +13,7 @@ module.exports = function createInitDb({ pool, onReady }) {
         try {
           // We use a generic structure where 'data' contains the JSON object
           // and 'id' is extracted for easier lookups.
-          const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited'];
+          const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited', 'leave'];
           
           for (const table of tables) {
             await client.query(`
@@ -97,6 +97,7 @@ module.exports = function createInitDb({ pool, onReady }) {
           // Trip Field Performance Indexes
           await client.query("CREATE INDEX IF NOT EXISTS idx_trips_status ON trips ((data->>'status'))");
           await client.query("CREATE INDEX IF NOT EXISTS idx_trips_start_date ON trips ((data->>'startDate'))");
+          await client.query("CREATE INDEX IF NOT EXISTS idx_leave_member ON leave ((data->>'memberId'))");
           await client.query("CREATE INDEX IF NOT EXISTS idx_trips_end_date ON trips ((data->>'endDate'))");
           await client.query("CREATE INDEX IF NOT EXISTS idx_trips_privacy ON trips ((data->>'privacy'))");
 

@@ -109,3 +109,45 @@ test('0003 replaces participant emails with user ids and leaves everything else 
     assert.deepEqual((await get('t2')).participants, ['u-ann']);
     assert.equal((await get('t3')).participants, undefined);
 });
+
+test('0004 moves leave off trips into the leave table, once', async () => {
+    const pool = makePool();
+    await pool.query('CREATE TABLE trips (id TEXT PRIMARY KEY, data JSONB NOT NULL)');
+    await pool.query('CREATE TABLE trip_shares (trip_id TEXT)');
+    await pool.query('CREATE TABLE leave (id TEXT PRIMARY KEY, data JSONB NOT NULL)');
+    const put = (id, data) => pool.query('INSERT INTO trips (id, data) VALUES ($1, $2)', [id, JSON.stringify({ id, ...data })]);
+    await put('leave-a', { name: 'Dentist', kind: 'timeoff', startDate: '2026-03-02', endDate: '2026-03-02', status: 'Planning', participants: ['u1'], entitlementId: 'annual', durationMode: 'single_am' });
+    await put('rome', { name: 'Rome', startDate: '2026-05-04', endDate: '2026-05-08', status: 'Upcoming', participants: ['u1', 'u2'], entitlementId: 'annual', excludedDates: ['2026-05-06'], transports: [] });
+    await put('split', { name: 'Split', startDate: '2026-12-28', endDate: '2027-01-04', status: 'Cancelled', participants: ['u1'], allocations: [{ entitlementId: 'annual', days: 3 }, { entitlementId: 'lieu', days: 2, targetYear: 2027 }] });
+    await put('plain', { name: 'Plain', startDate: '2026-06-01', endDate: '2026-06-03', status: 'Planning', participants: ['u1'] });
+    const m = [{ id: '0004_leave_entries', ...require('../migrations/0004_leave_entries') }];
+    await runMigrations(pool, m, quiet);
+
+    const leave = Object.fromEntries((await pool.query('SELECT id, data FROM leave')).rows.map(r => [r.id, r.data]));
+    assert.deepEqual(Object.keys(leave).sort(), ['leave-a', 'leave:rome:u1', 'leave:rome:u2', 'leave:split:u1']);
+    assert.deepEqual(
+        { ...leave['leave-a'], updatedAt: undefined },
+        { id: 'leave-a', memberId: 'u1', name: 'Dentist', startDate: '2026-03-02', endDate: '2026-03-02', entitlementId: 'annual', durationMode: 'single_am', state: 'planned', version: 1, updatedAt: undefined },
+    );
+    assert.equal(leave['leave:rome:u2'].tripId, 'rome');
+    assert.equal(leave['leave:rome:u2'].state, 'approved');
+    assert.deepEqual(leave['leave:rome:u1'].excludedDates, ['2026-05-06']);
+    assert.equal(leave['leave:split:u1'].state, 'cancelled');
+    assert.equal(leave['leave:split:u1'].allocations.length, 2);
+
+    const trips = Object.fromEntries((await pool.query('SELECT id, data FROM trips')).rows.map(r => [r.id, r.data]));
+    assert.deepEqual(Object.keys(trips).sort(), ['plain', 'rome', 'split']);
+    assert.equal(trips.rome.entitlementId, undefined);
+    assert.equal(trips.rome.excludedDates, undefined);
+    assert.deepEqual(trips.rome.transports, []);
+    assert.equal(trips.split.allocations, undefined);
+    assert.equal(trips.plain.name, 'Plain');
+
+    // A second run (as a restore does) adds nothing and keeps edits made since.
+    await pool.query('UPDATE leave SET data = $2 WHERE id = $1', ['leave:rome:u1', JSON.stringify({ ...leave['leave:rome:u1'], note: 'edited' })]);
+    const { convertTripLeave } = require('../leaveEntries');
+    const client = await pool.connect();
+    assert.deepEqual(await convertTripLeave(client), { created: 0, tripsChanged: 0 });
+    client.release();
+    assert.equal((await pool.query('SELECT data FROM leave WHERE id = $1', ['leave:rome:u1'])).rows[0].data.note, 'edited');
+});

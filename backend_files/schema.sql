@@ -38,6 +38,11 @@ CREATE TABLE IF NOT EXISTS visited (
   data JSONB NOT NULL CHECK (jsonb_typeof(data) = 'object')
 );
 
+CREATE TABLE IF NOT EXISTS leave (
+  id TEXT PRIMARY KEY CHECK (id <> ''),
+  data JSONB NOT NULL CHECK (jsonb_typeof(data) = 'object')
+);
+
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY CHECK (key <> ''),
   data JSONB NOT NULL CHECK (jsonb_typeof(data) = 'object')
@@ -82,6 +87,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users ((LOWER(data->
 CREATE INDEX IF NOT EXISTS idx_users_calendar_token ON users ((data->>'calendarToken')) WHERE (data->>'calendarToken' IS NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_trips_status ON trips ((data->>'status'));
 CREATE INDEX IF NOT EXISTS idx_trips_start_date ON trips ((data->>'startDate'));
+CREATE INDEX IF NOT EXISTS idx_leave_member ON leave ((data->>'memberId'));
 CREATE INDEX IF NOT EXISTS idx_trips_end_date ON trips ((data->>'endDate'));
 CREATE INDEX IF NOT EXISTS idx_trips_privacy ON trips ((data->>'privacy'));
 CREATE INDEX IF NOT EXISTS idx_flights_departure_date ON flights ((data->>'departureDate'));

@@ -14,7 +14,7 @@ const { newDb } = require('pg-mem');  // only used when TEST_DATABASE_URL is not
 // TEST_DATABASE_URL runs the same tests against a real PostgreSQL (CI does, with a postgres:15 service). Each test
 // process gets its own schema, so files running in parallel never see each other's rows.
 const REAL_URL = process.env.TEST_DATABASE_URL || '';
-const DATA_TABLES = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited', 'settings', 'trip_shares', 'cached_routes', 'geocoding_cache'];
+const DATA_TABLES = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited', 'leave', 'settings', 'trip_shares', 'cached_routes', 'geocoding_cache'];
 
 function installHooks() {
     const db = REAL_URL ? null : newDb({ autoCreateForeignKeyIndices: true });

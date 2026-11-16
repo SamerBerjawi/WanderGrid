@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { EntitlementType, Trip, User } from '../../types';
 import { holidayDays } from '../../utils/calendarModel';
-import { dayCells, defaultAnnualType, leaveFields, leaveNote, leaveStatus, planLeave, tracksLeave, type PlanInput } from '../../utils/leavePlan';
+import { dayCells, defaultAnnualType, leaveNote, leaveStatus, linkedEntryFor, planLeave, tracksLeave, type PlanInput } from '../../utils/leavePlan';
+import { leaveFromTrip, tripWithoutLeave } from '../../utils/leaveEntry';
 
 const WEEK = [1, 2, 3, 4, 5];
 const TODAY = '2026-02-01';
@@ -19,9 +20,11 @@ const trip = (id: string, start: string, end: string, over: Partial<Trip> = {}):
 });
 const goodFriday = holidayDays([{ id: 'be', countryName: 'Belgium', holidays: [{ id: 'h1', name: 'Good Friday', date: '2026-04-03', countryCode: 'BE', isIncluded: true }] } as any], 'none', WEEK);
 
-const input = (t: Trip, over: Partial<PlanInput> = {}): PlanInput => ({
-    trip: t, user: user(), trips: [t], entitlements: [annual, sick], today: TODAY, workingDays: WEEK, holidays: goodFriday, ...over,
-});
+/** Fixtures are written as trips that carry leave (the old shape); leaveFromTrip turns that into linked leave entries. */
+const input = (t: Trip, over: Partial<PlanInput> & { trips?: Trip[] } = {}): PlanInput => {
+    const { trips = [t], ...rest } = over;
+    return { trip: tripWithoutLeave(t), user: user(), leave: trips.flatMap(leaveFromTrip), entitlements: [annual, sick], today: TODAY, workingDays: WEEK, holidays: goodFriday, ...rest };
+};
 
 describe('what a trip costs', () => {
     it('skips weekends and public holidays', () => {
@@ -34,9 +37,10 @@ describe('what a trip costs', () => {
     });
 
     it('counts half days and days the member works anyway', () => {
-        const t = trip('b', '2026-03-02', '2026-03-06', { durationMode: 'custom', startPortion: 'pm', endPortion: 'am', excludedDates: ['2026-03-04'] });
+        const t = trip('b', '2026-03-02', '2026-03-06', { entitlementId: 'annual', durationMode: 'custom', startPortion: 'pm', endPortion: 'am', excludedDates: ['2026-03-04'] });
         const cells = dayCells(t, WEEK, []);
         expect(cells.map(c => c.kind)).toEqual(['half', 'leave', 'worked', 'leave', 'half']);
+        // The day length and the days worked live on the trip's leave entry.
         expect(planLeave(input(t)).cost).toBe(3);
     });
 
@@ -140,7 +144,7 @@ describe('the trip chip', () => {
     it('says what a trip with leave takes, and when it runs over the balance', () => {
         const t = trip('y', '2026-03-30', '2026-04-05', { entitlementId: 'annual' });
         const ok = leaveStatus(input(t));
-        expect(ok).toEqual({ kind: 'booked', cost: 4, typeName: 'Annual leave', short: 0 });
+        expect(ok).toEqual({ kind: 'booked', cost: 4, typeName: 'Annual leave', short: 0, pending: false });
         expect(leaveNote(ok)).toEqual({ tone: 'ok', text: '4 days of Annual leave' });
         const over = leaveStatus(input(t, { user: user({ policies: [policy('annual', 2026, 1)] }) }));
         expect(over).toMatchObject({ kind: 'booked', short: 3 });
@@ -149,14 +153,34 @@ describe('the trip chip', () => {
 
     it('counts a split trip against each of its types', () => {
         const t = trip('z', '2026-03-02', '2026-03-06', { entitlementId: 'annual', allocations: [{ entitlementId: 'annual', days: 3 }, { entitlementId: 'sick', days: 2 }] });
-        expect(leaveStatus(input(t))).toEqual({ kind: 'booked', cost: 5, typeName: 'Annual leave + Sick leave', short: 0 });
+        expect(leaveStatus(input(t))).toEqual({ kind: 'booked', cost: 5, typeName: 'Annual leave + Sick leave', short: 0, pending: false });
     });
 });
 
 describe('applying', () => {
-    it('puts the leave on one type and clears any split', () => {
-        expect(leaveFields('annual')).toEqual({ entitlementId: 'annual', allocations: undefined });
-        expect(leaveFields(undefined)).toEqual({ entitlementId: undefined, allocations: undefined });
+    it('makes a linked leave entry over the trip, or changes the existing one\'s type and keeps its dates', () => {
+        const t = tripWithoutLeave(trip('k', '2026-03-02', '2026-03-06', { status: 'Planning' }));
+        const fresh = linkedEntryFor(t, user(), 'annual');
+        expect(fresh).toMatchObject({ memberId: 'u1', tripId: 'k', startDate: '2026-03-02', endDate: '2026-03-06', entitlementId: 'annual', state: 'planned' });
+        expect(linkedEntryFor({ ...t, status: 'Upcoming' }, user(), 'annual').state).toBe('approved');
+        expect(linkedEntryFor(t, user({ leaveApproval: true }), 'annual').state).toBe('requested');
+        const own = { ...fresh, startDate: '2026-03-03', allocations: [{ entitlementId: 'sick', days: 1 }] };
+        expect(linkedEntryFor(t, user(), 'sick', own)).toMatchObject({ id: fresh.id, startDate: '2026-03-03', entitlementId: 'sick', allocations: undefined });
+    });
+
+    it('shows a requested booking as pending', () => {
+        const t = trip('q', '2026-03-30', '2026-04-05', { entitlementId: 'annual' });
+        const base = input(t);
+        const state = leaveStatus({ ...base, leave: base.leave.map(e => ({ ...e, state: 'requested' as const })) });
+        expect(state).toMatchObject({ kind: 'booked', pending: true });
+        expect(leaveNote(state)).toEqual({ tone: 'needed', text: '4 days of Annual leave, requested' });
+    });
+
+    it('plans the linked leave\'s own dates when they differ from the trip\'s', () => {
+        const t = trip('m', '2026-03-30', '2026-04-05', { entitlementId: 'annual' });
+        const base = input(t);
+        const plan = planLeave({ ...base, leave: base.leave.map(e => ({ ...e, startDate: '2026-03-31', endDate: '2026-04-01' })) });
+        expect(plan).toMatchObject({ cost: 2, datesDiffer: true });
     });
 });
 

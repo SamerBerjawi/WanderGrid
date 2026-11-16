@@ -418,6 +418,7 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
                 entitlements={data.entitlements}
                 currentUserId={currentUserId()}
                 brandfetchApiKey={data.brandfetchApiKey}
+                linkedLeaveOf={data.linkedLeaveOf}
                 onClose={() => setSheet(null)}
                 onSave={async (draft: TripDraft, trip?: Trip) => { if (trip) await data.update(trip, draft); else await data.create(draft); }}
                 onDelete={setDeleting}
@@ -465,7 +466,7 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
                 planner={planner}
                 entitlements={data.entitlements}
                 onClose={() => setLeaveTripId(null)}
-                onApply={(trip, id) => takeLeave(trip, id, data.entitlements, data.patch, undo)}
+                onApply={(trip, id) => takeLeave(trip, id, data.entitlements, planner, undo)}
                 onOpenCalendar={() => { setLeaveTripId(null); openPage('/calendar'); }}
                 onCreateType={() => addStarterLeaveType(leaveTrip ? planner.memberFor(leaveTrip) : undefined, data.reload)}
             />

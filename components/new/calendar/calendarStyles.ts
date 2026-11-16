@@ -52,9 +52,15 @@ export const TINT: Record<LeaveColor, { chip: string; dot: string; swatch: strin
     gray: { chip: 'bg-rp-line text-rp-ink border-l-[3px] border-rp-muted', dot: 'bg-rp-muted', swatch: 'bg-rp-muted' },
 };
 
-/** The pill for a trip item in a list: its leave type's tint when it has one, else its state. */
-export const tripChip = (item: CalendarItem): string =>
-    item.tint ? `${TINT[item.tint].chip}${item.state === 'past' ? ' opacity-60' : ''}` : STATE_CHIP[item.state];
+/** Leave coloured by state still reads as leave: a sun-coloured edge. A request or an idea is outlined in dashes. */
+const LEAVE_EDGE = ' border-l-[3px] border-rp-ochre';
+const TENTATIVE = ' outline-dashed outline-1 -outline-offset-1 outline-rp-muted';
+
+/** The pill for a trip or leave item in a list: its leave type's tint when it has one, else its state. */
+export const tripChip = (item: CalendarItem): string => {
+    const base = item.tint ? `${TINT[item.tint].chip}${item.state === 'past' ? ' opacity-60' : ''}` : `${STATE_CHIP[item.state]}${item.kind === 'leave' ? LEAVE_EDGE : ''}`;
+    return `${base}${item.kind === 'leave' && (item.pending || item.muted) ? `${TENTATIVE}${item.muted ? ' opacity-70' : ''}` : ''}`;
+};
 
 /** Chip classes for an item. */
 export const chipClass = (item: CalendarItem): string => {
@@ -72,12 +78,13 @@ export const dotClass = (item: CalendarItem): string => {
 export const itemIcon = (item: CalendarItem): Icon => {
     if (item.kind === 'holiday') return Flag;
     if (item.kind === 'event') return Star;
-    return item.leave ? SunHorizon : Suitcase;
+    return item.kind === 'leave' ? SunHorizon : Suitcase;
 };
 
 /** The words for an item, for screen readers and tooltips. */
 export const itemWords = (item: CalendarItem): string => {
     if (item.kind === 'holiday') return `${item.title}, public holiday${item.muted ? ', not a day off' : ''}`;
     if (item.kind === 'event') return `${item.title}, event`;
-    return `${item.title}, ${STATE_LABEL[item.state].toLowerCase()}${item.leave ? ', leave' : ''}`;
+    if (item.kind === 'leave') return `${item.title}, leave${item.pending ? ', requested' : item.muted ? ', an idea' : `, ${STATE_LABEL[item.state].toLowerCase()}`}`;
+    return `${item.title}, trip, ${STATE_LABEL[item.state].toLowerCase()}${item.leave ? ', leave booked' : ''}`;
 };

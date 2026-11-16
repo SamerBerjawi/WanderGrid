@@ -367,16 +367,21 @@ function activityEvent(a, trip, options, ctx) {
 }
 
 const hasLeave = (trip) => Boolean(trip.entitlementId) || (Array.isArray(trip.allocations) && trip.allocations.length > 0);
+/** Time off saved as a hidden trip (before leave had its own records); the 0004 migration converts these. */
 export const isStandaloneLeave = (trip) => String(trip.id || '').startsWith('leave-');
 
 function tripEvent(trip, options, ctx) {
-    const leaveType = options.leave && hasLeave(trip) ? ctx.entitlementName?.(trip.entitlementId || trip.allocations?.[0]?.entitlementId) : '';
+    // Leave linked to this trip (leave entries with its tripId), else leave still stored on the trip itself.
+    const linked = options.leave ? (ctx.leaveForTrip?.(trip.id) || []) : [];
+    const typeId = linked[0]?.entitlementId || linked[0]?.allocations?.[0]?.entitlementId || trip.entitlementId || trip.allocations?.[0]?.entitlementId;
+    const onLeave = options.leave && (linked.length > 0 || hasLeave(trip));
+    const leaveType = onLeave ? ctx.entitlementName?.(typeId) : '';
     const place = trip.location && String(trip.location).trim().toLowerCase() !== String(trip.name || '').trim().toLowerCase() ? trip.location : '';
     const description = [
         `Status: ${trip.status}`,
         trip.subtitle || '',
         trip.description || '',
-        options.leave && hasLeave(trip) ? `Leave${leaveType ? `: ${leaveType}` : ''}` : '',
+        onLeave ? `Leave${leaveType ? `: ${leaveType}` : ''}` : '',
         trip.notes || '',
         tripUrl(trip, ctx),
     ].filter(Boolean).join('\n');
@@ -393,6 +398,25 @@ function leaveEvent(trip, ctx) {
         summary: `🌴 ${kind ? `${kind}` : 'Time off'}${trip.name && !isStandaloneLeave(trip) ? ` · ${trip.name}` : ''}`,
         start: { date: trip.startDate }, end: { date: trip.endDate },
         description: [trip.notes || '', tripUrl(trip, ctx)].filter(Boolean).join('\n'), status: statusOf(trip),
+    });
+}
+
+/** The leave states that are on the calendar (a draft, a refusal or a cancellation is not time off). */
+const FEED_LEAVE_STATES = new Set(['planned', 'requested', 'approved']);
+
+/**
+ * A leave entry (its own record since leave Phase 1) as an all-day event. Same uid as the hidden trip it may have
+ * been converted from, so a subscribed calendar updates the event instead of adding a second one.
+ */
+export function leaveEntryEvent(entry, ctx) {
+    const kind = ctx.entitlementName?.(entry.entitlementId || entry.allocations?.[0]?.entitlementId);
+    const label = entry.name && !/^time off$/i.test(entry.name) ? entry.name : '';
+    const requested = entry.state === 'requested' ? ' (requested)' : '';
+    return vevent(`leave-${entry.id}`, metaOf(entry, ctx), {
+        summary: `🌴 ${kind || 'Time off'}${label ? ` · ${label}` : ''}${requested}`,
+        start: { date: entry.startDate }, end: { date: entry.endDate || entry.startDate },
+        description: [entry.note || '', entry.tripId && ctx.baseUrl ? tripUrl({ id: entry.tripId }, ctx) : ''].filter(Boolean).join('\n'),
+        status: entry.state === 'approved' ? 'CONFIRMED' : 'TENTATIVE',
     });
 }
 
@@ -455,12 +479,18 @@ export function wrapCalendar(events, name = 'WanderGrid Trips', { refresh = true
 /**
  * The whole feed for one person.
  * `trips` are that person's trips (the caller has already limited them to the owner); `ctx` may carry
- * `now` (ms), `baseUrl`, `airportTz(iata)`, `airportName(iata)`, `entitlementName(id)`, `holidayCalendars`, `currency`, `name`.
+ * `now` (ms), `baseUrl`, `airportTz(iata)`, `airportName(iata)`, `entitlementName(id)`, `holidayCalendars`, `currency`, `name`,
+ * `leave` (that person's leave entries) and `leaveForTrip(tripId)` (their entries linked to a trip).
  * Cancelled trips disappear from the feed, and so does anything deleted: subscribed calendars drop events that are no longer listed.
  */
 export function buildFeed(trips, options = {}, ctx = {}) {
     const o = { ...DEFAULT_FEED_OPTIONS, ...options };
-    const context = { viewer: 'owner', now: Date.now(), ...ctx };
+    const leaveList = Array.isArray(ctx.leave) ? ctx.leave : [];
+    const context = {
+        viewer: 'owner', now: Date.now(),
+        leaveForTrip: (id) => leaveList.filter(e => e && e.tripId === id && FEED_LEAVE_STATES.has(e.state || 'planned')),
+        ...ctx,
+    };
     const events = [];
     for (const trip of Array.isArray(trips) ? trips : []) {
         if (!trip || typeof trip !== 'object' || !trip.id) continue;
@@ -468,6 +498,12 @@ export function buildFeed(trips, options = {}, ctx = {}) {
         if (trip.status === 'Planning' && !o.planning && !isStandaloneLeave(trip)) continue;
         if (trip.kind === 'bundle' || trip.isBundleOnly) continue;
         try { events.push(...tripEvents(trip, o, context)); } catch { /* one bad record must not break the feed */ }
+    }
+    if (o.leave) {
+        for (const entry of Array.isArray(context.leave) ? context.leave : []) {
+            if (!entry || !entry.id || !FEED_LEAVE_STATES.has(entry.state || 'planned') || !validDay(entry.startDate)) continue;
+            try { events.push(leaveEntryEvent(entry, context)); } catch { /* one bad record must not break the feed */ }
+        }
     }
     if (o.holidays) events.push(...holidayEvents(context.holidayCalendars, context));
     return wrapCalendar(events, context.name || 'WanderGrid Trips');
