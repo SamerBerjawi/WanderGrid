@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { SavedConfig, User } from '../types';
 import { dataService } from '../services/mockDb';
 import { affectsCollections } from './useWanderSync';
-import { configsFor, holidayDays, leaveContext, workingDaysOf, type HolidayDay, type LeaveContext } from '../utils/calendarModel';
+import { configsFor, holidayDays, leaveContext, memberWorkingDays, workingDaysOf, type HolidayDay, type LeaveContext } from '../utils/calendarModel';
 
 /**
  * The rules that decide what a day of leave costs, for any page that counts leave: the saved holiday calendars
@@ -16,6 +16,8 @@ export interface LeaveRules {
     ready: boolean;
     holidaysOf: (user: User) => HolidayDay[];
     contextFor: (user: User) => LeaveContext;
+    /** The member's own working week, else the workspace's. */
+    workingDaysOf: (user: User | undefined) => number[];
 }
 
 export const useLeaveRules = (): LeaveRules => {
@@ -39,12 +41,14 @@ export const useLeaveRules = (): LeaveRules => {
 
     return useMemo<LeaveRules>(() => {
         const holidays = new Map<string, HolidayDay[]>();
+        const weekOf = (u: User | undefined) => memberWorkingDays(u, workingDays);
         const holidaysOf = (u: User) => {
-            const key = `${u.id}|${u.holidayWeekendRule || ''}|${(u.holidayConfigIds || []).join(',')}`;
+            const week = weekOf(u);
+            const key = `${u.id}|${u.holidayWeekendRule || ''}|${(u.holidayConfigIds || []).join(',')}|${week.join('')}`;
             let h = holidays.get(key);
-            if (!h) { h = holidayDays(configsFor(configs, [u]), u.holidayWeekendRule, workingDays); holidays.set(key, h); }
+            if (!h) { h = holidayDays(configsFor(configs, [u]), u.holidayWeekendRule, week); holidays.set(key, h); }
             return h;
         };
-        return { configs, workingDays, ready, holidaysOf, contextFor: u => leaveContext(workingDays, holidaysOf(u)) };
+        return { configs, workingDays, ready, holidaysOf, workingDaysOf: weekOf, contextFor: u => leaveContext(weekOf(u), holidaysOf(u)) };
     }, [configs, workingDays, ready]);
 };

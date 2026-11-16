@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import type { CustomEvent, LeaveEntry, SavedConfig, User } from '../../types';
 import { useCalendarData } from '../../hooks/useCalendarData';
 import {
-    ALL_LAYERS, balancesFor, buildItems, calendarYears, configsFor, daysBetween, holidayDays, itemsOn, leaveTitle, leaveContext, monthOf, MONTH_NAMES,
+    ALL_LAYERS, balancesFor, buildItems, calendarYears, configsFor, daysBetween, holidayDays, itemsOn, leaveTitle, memberWorkingDays, leaveContext, monthOf, MONTH_NAMES,
     nextLeave, summarise, workingDaysOf, type CalendarItem, type CalendarLayer, type LeaveColor, type LeaveContext, type WeekStart,
 } from '../../utils/calendarModel';
 import { formatDate } from '../../utils/formatters';
@@ -150,12 +150,17 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
     // Counting rules per member: their followed holiday calendars and weekend rule.
     const contexts = useMemo(() => {
         const map = new Map<string, LeaveContext>();
-        users.forEach(u => map.set(u.id, leaveContext(workingDays, holidayDays(configsFor(configs, [u]), u.holidayWeekendRule, workingDays))));
+        users.forEach(u => {
+            const week = memberWorkingDays(u, workingDays);
+            map.set(u.id, leaveContext(week, holidayDays(configsFor(configs, [u]), u.holidayWeekendRule, week)));
+        });
         return map;
     }, [users, configs, workingDays]);
     const contextFor = useCallback((id: string) => contexts.get(id) ?? leaveContext(workingDays, []), [contexts, workingDays]);
 
-    const holidays = useMemo(() => holidayDays(configsFor(configs, inView), subject?.holidayWeekendRule, workingDays), [configs, inView, subject, workingDays]);
+    // With one member in view the grid shows their own working week; otherwise the workspace's.
+    const viewWeek = useMemo(() => (memberIds.length === 1 ? memberWorkingDays(subject, workingDays) : workingDays), [memberIds, subject, workingDays]);
+    const holidays = useMemo(() => holidayDays(configsFor(configs, inView), subject?.holidayWeekendRule, viewWeek), [configs, inView, subject, viewWeek]);
     const leaveColors = useMemo(
         () => (colourBy === 'type' ? Object.fromEntries(entitlements.map(e => [e.id, e.color])) as Record<string, LeaveColor> : undefined),
         [colourBy, entitlements],
@@ -179,13 +184,14 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
     // The optimizer works from the subject's own days off: their followed calendars, their working week, their booked leave.
     const optimizer = useMemo(() => {
         if (!optimizerOpen || !subject) return [];
-        const mine = holidayDays(configsFor(configs, [subject]), subject.holidayWeekendRule, workingDays);
+        const week = memberWorkingDays(subject, workingDays);
+        const mine = holidayDays(configsFor(configs, [subject]), subject.holidayWeekendRule, week);
         const booked = new Set<string>();
         leave.filter(e => e.memberId === subject.id && ['planned', 'requested', 'approved'].includes(e.state)).forEach(e => {
             for (let d = e.startDate; d && d <= (e.endDate || e.startDate); d = new Date(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10) + 1)).toISOString().slice(0, 10)) booked.add(d);
         });
         const to = new Date(Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 1 + optimizerMonths, +today.slice(8, 10))).toISOString().slice(0, 10);
-        return suggestBreaks({ from: today, to, workingDays, holidays: mine, booked });
+        return suggestBreaks({ from: today, to, workingDays: week, holidays: mine, booked });
     }, [optimizerOpen, subject, configs, workingDays, leave, today, optimizerMonths]);
     const myTrips = useMemo(() => items.filter(i => i.kind === 'trip').map(i => i.trip!), [items]);
 
@@ -420,7 +426,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                                             month0={cursor.month0}
                                             weekStart={weekStart}
                                             items={items}
-                                            workingDays={workingDays}
+                                            workingDays={viewWeek}
                                             today={today}
                                             selected={day}
                                             focusISO={focusISO}
@@ -444,7 +450,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                                         year={cursor.year}
                                         weekStart={weekStart}
                                         items={items}
-                                        workingDays={workingDays}
+                                        workingDays={viewWeek}
                                         today={today}
                                         onOpenDay={openDay}
                                         onOpenMonth={m => { setCursor({ year: cursor.year, month0: m }); changeTab('month'); }}
@@ -463,7 +469,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                             years={years}
                             onYear={setBalanceYear}
                             balances={balances}
-                            summary={summary ?? { year: balanceYear, used: 0, planned: 0, pending: 0, left: 0, total: 0, fallback: true }}
+                            summary={summary ?? { year: balanceYear, used: 0, planned: 0, pending: 0, left: 0, total: 0 }}
                             onMember={onMemberClick}
                         />
                         <section aria-label="Public holidays" className={cn(card, 'flex flex-col gap-2 p-4 sm:p-5')}>

@@ -95,3 +95,13 @@ test('restoring an older backup moves leave off its trips', async () => {
     assert.deepEqual(trips.map(t => t.id), ['rome']);
     assert.equal(trips[0].entitlementId, undefined);
 });
+
+test('a new member starts with each leave type\'s default allowance', async () => {
+    const type = { id: 'annual', name: 'Annual leave', category: 'Annual', color: 'green', accrual: { period: 'yearly', amount: 26 }, carryOver: { enabled: false, maxDays: 0, expiryType: 'none' } };
+    assert.equal((await srv.api('PUT', '/api/entitlements/annual', { token: admin.token, body: type })).status, 200);
+    const added = await srv.api('POST', '/api/users', { token: admin.token, body: { id: 'new@test.dev', email: 'new@test.dev', name: 'New', role: 'Partner' } });
+    assert.equal(added.status, 201);
+    const year = new Date().getFullYear();
+    assert.deepEqual(added.json.policies.map(p => [p.entitlementId, p.year, p.accrual.amount]), [['annual', year, 26]]);
+    assert.equal(added.json.legacyLeaveConverted, true);
+});

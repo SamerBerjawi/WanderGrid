@@ -1,4 +1,4 @@
-import type { EntitlementType, LeaveEntry, User, UserPolicy } from '../types';
+import type { EntitlementType, LeaveAdjustment, LeaveEntry, User, UserPolicy } from '../types';
 import { carryOverExpiry } from './calendarModel';
 
 /**
@@ -124,3 +124,49 @@ export const policyYears = (users: User[], thisYear: number): number[] => {
     users.forEach(u => (u.policies || []).forEach(p => years.add(p.year)));
     return [...years].filter(y => y >= thisYear - 5 && y <= thisYear + 5).sort((a, b) => a - b);
 };
+
+/* ------------------------------ the old yearly fields ------------------------------ */
+
+/**
+ * Local-mode copy of backend_files/legacyLeave.js `convertLegacyUser` (leave plan A8): a member's old yearly allowance
+ * becomes an allowance on the Annual type for `year`, and days recorded as taken an adjustment (unless the member has
+ * leave entries that year, which already count them). Keep the two in step.
+ */
+export const convertLegacyUser = (user: User, annual: EntitlementType | undefined, year: number, hasLeaveIn: boolean): User | null => {
+    if (!user || user.legacyLeaveConverted) return null;
+    const next: User = { ...user, legacyLeaveConverted: true };
+    const amount = Number(user.allowance ?? user.leaveBalance) || 0;
+    if (!(user.policies || []).length && amount > 0 && annual) {
+        next.policies = [{ ...policyFromType(annual, year), isUnlimited: undefined, accrual: { period: 'yearly', amount } }];
+        next.activeYears = [...new Set([...(user.activeYears || []), year])].sort((a, b) => a - b);
+    }
+    const taken = Number(user.takenLeave) || 0;
+    if (taken > 0 && annual && !hasLeaveIn && !(user.leaveAdjustments || []).some(a => a.id === `legacy-taken-${year}`)) {
+        next.leaveAdjustments = [...(user.leaveAdjustments || []), { id: `legacy-taken-${year}`, entitlementId: annual.id, year, days: -taken, date: `${year}-01-01`, note: 'Days recorded as taken before WanderGrid counted leave' }];
+    }
+    return next;
+};
+
+/** The allowances a new member starts with: every leave type's default for the year. */
+export const policiesFromTypes = (types: EntitlementType[], year: number): UserPolicy[] => types.map(t => policyFromType(t, year));
+
+/* ---------------------------------- adjustments ---------------------------------- */
+
+export const newAdjustment = (entitlementId: string, year: number, days: number, note: string, today: string): LeaveAdjustment => ({
+    id: `adj-${Math.random().toString(36).slice(2, 10)}`, entitlementId, year, days, date: today, note: note.trim() || undefined,
+});
+
+export const withAdjustment = (user: User, adjustment: LeaveAdjustment): User => ({
+    ...user,
+    leaveAdjustments: [...(user.leaveAdjustments || []).filter(a => a.id !== adjustment.id), adjustment],
+});
+
+export const withoutAdjustment = (user: User, id: string): User => ({
+    ...user,
+    leaveAdjustments: (user.leaveAdjustments || []).filter(a => a.id !== id),
+});
+
+export const adjustmentsOf = (user: User, entitlementId: string, year: number): LeaveAdjustment[] =>
+    (user.leaveAdjustments || []).filter(a => a.entitlementId === entitlementId && a.year === year);
+
+export const MONTH_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];

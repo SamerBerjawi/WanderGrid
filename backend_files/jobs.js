@@ -3,6 +3,7 @@
 // Moved out of server.js unchanged (decision D-07).
 const crypto = require('crypto');
 const { convertTripLeave } = require('./leaveEntries');
+const { convertLegacyAllowances } = require('./legacyLeave');
 
 module.exports = function registerJobRoutes(app, {
   pool, sendError, requireAdmin, withTransaction, bulkUpsert, loadGlobalData, refreshAllGlobalDatasets, tripKind,
@@ -375,8 +376,10 @@ module.exports = function registerJobRoutes(app, {
                   }
               }
           }
-          // A backup made before leave had its own table carries leave on trips: move it into place.
+          // A backup made before leave had its own table carries leave on trips: move it into place; its members' old
+          // yearly allowance becomes leave-type allowances.
           await convertTripLeave(client);
+          await convertLegacyAllowances(client);
           
           // 6. RESTORE WORKSPACE SETTINGS & API KEYS
           if (selected.settings !== false && data.workspaceSettings && typeof data.workspaceSettings === 'object') {

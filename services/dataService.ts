@@ -2,6 +2,7 @@
 import { parseFeedOptions, type FeedOptions } from '../utils/icsContext';
 import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, WorkspaceSettings, CustomEvent as TripCustomEvent, PackingItem, Carrier, BackupSelectionOptions, RestoreOptions, LeaveEntry } from '../types';
 import { convertTripLeave } from '../utils/leaveEntry';
+import { convertLegacyUser, policiesFromTypes } from '../utils/leaveSettings';
 import { tripKind } from '../utils/tripKind';
 // Geocoding (~100 KB with its place-search tables) is only needed when trips are saved; load it on first
 // use so it isn't part of the app's startup bundle (PERF-001).
@@ -1066,6 +1067,7 @@ class DataService {
   }
 
   async getUsers(): Promise<User[]> {
+      if (!this._useApi && !import.meta.env.PROD) this.convertLocalLeave(false);
       return this.fetch<User[]>('/users');
   }
 
@@ -1135,6 +1137,12 @@ class DataService {
 
   async addUser(user: User): Promise<void> {
       const userCopy = await this.prepareUserForSave(user);
+      // Local mode has no server to give a new member each leave type's default allowance: do it here.
+      if (!this._useApi && !import.meta.env.PROD && !(userCopy.policies || []).length) {
+          const types = await this.getEntitlementTypes().catch(() => [] as EntitlementType[]);
+          userCopy.policies = policiesFromTypes(types, new Date().getFullYear());
+          userCopy.legacyLeaveConverted = true;
+      }
       await this.fetch('/users', { method: 'POST', body: JSON.stringify(userCopy) });
   }
 
@@ -1483,20 +1491,35 @@ class DataService {
    * restore). The server does the same in its 0004 migration and on restore.
    */
   private convertLocalLeave(force: boolean): void {
-    const flag = 'wandergrid_leave_converted_v1';
+    const k = (c: string) => `wandergrid_${c}`;
     try {
-      if (!force && localStorage.getItem(flag)) return;
-      const k = (c: string) => `wandergrid_${c}`;
-      const trips = getCachedStorage<Trip[]>(k('trips'), []);
-      const leave = getCachedStorage<LeaveEntry[]>(k('leave'), []);
-      const { add, save, remove } = convertTripLeave(trips, leave);
-      if (add.length || save.length || remove.length) {
-        const saved = new Map(save.map(t => [t.id, t]));
-        const gone = new Set(remove);
-        setCachedStorage(k('trips'), trips.filter(t => !gone.has(t.id)).map(t => saved.get(t.id) || t), true);
-        setCachedStorage(k('leave'), [...leave, ...add], true);
+      if (force || !localStorage.getItem('wandergrid_leave_converted_v1')) {
+        const trips = getCachedStorage<Trip[]>(k('trips'), []);
+        const leave = getCachedStorage<LeaveEntry[]>(k('leave'), []);
+        const { add, save, remove } = convertTripLeave(trips, leave);
+        if (add.length || save.length || remove.length) {
+          const saved = new Map(save.map(t => [t.id, t]));
+          const gone = new Set(remove);
+          setCachedStorage(k('trips'), trips.filter(t => !gone.has(t.id)).map(t => saved.get(t.id) || t), true);
+          setCachedStorage(k('leave'), [...leave, ...add], true);
+        }
+        localStorage.setItem('wandergrid_leave_converted_v1', '1');
       }
-      localStorage.setItem(flag, '1');
+      // The old yearly allowance becomes leave-type allowances (the server's 0005 migration does the same).
+      const users = getCachedStorage<User[]>(k('users'), []);
+      if (users.some(u => !u.legacyLeaveConverted)) {
+        const year = new Date().getFullYear();
+        const allLeave = getCachedStorage<LeaveEntry[]>(k('leave'), []);
+        let types = getCachedStorage<EntitlementType[]>(k('entitlements'), []);
+        let annual = types.find(t => t.category === 'Annual');
+        const needs = users.some(u => !u.legacyLeaveConverted && !(u.policies || []).length && (Number(u.allowance ?? u.leaveBalance) > 0 || Number(u.takenLeave) > 0));
+        if (!annual && needs) {
+          annual = { id: 'annual-leave', name: 'Annual leave', category: 'Annual', color: 'green', accrual: { period: 'yearly', amount: 25 }, carryOver: { enabled: false, maxDays: 0, expiryType: 'none' } };
+          types = [...types, annual];
+          setCachedStorage(k('entitlements'), types, true);
+        }
+        setCachedStorage(k('users'), users.map(u => convertLegacyUser(u, annual, year, allLeave.some(e => e.memberId === u.id && e.startDate.startsWith(String(year)))) || u), true);
+      }
     } catch { /* storage unavailable: try again next time */ }
   }
 

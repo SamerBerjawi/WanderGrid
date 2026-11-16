@@ -57,8 +57,10 @@
     public holidays; pages get those rules from `hooks/useLeaveRules.ts`. A working day costs at most one day across a
     member's entries. Carried-over days are used first and expire on the source policy's date; weekend holidays under
     the "lieu" rule add a day to the Lieu type (else the first Annual type).
-15. `User.leaveBalance` / `takenLeave` are stored, but balances are also computed. **→ home:** compute only;
-    treat stored values as legacy.
+15. `User.allowance` / `leaveBalance` / `takenLeave` are legacy: migration 0005 turned them into an Annual allowance and
+    an adjustment (`legacyLeaveConverted`), and nothing reads them. A balance is the type's allowance for the leave year
+    (its `yearStartMonth`), plus the policy's opening balance, the member's `leaveAdjustments`, carry-over and days in
+    lieu; monthly allowances report what has accrued so far. A member's own `workingDays` replace the workspace's.
 
 ### Data hygiene
 16. Every write is shape-checked by `validateRecord` (ids, dates, list fields, sizes). Rules are thin: unknown

@@ -71,3 +71,22 @@ describe('member allowances', () => {
         expect(policyYears([user({ policies: [policyFromType(annual, 2029)] })], 2026)).toEqual([2025, 2026, 2027, 2029]);
     });
 });
+
+describe('the old yearly fields', () => {
+    it('become an Annual allowance and an adjustment, once', async () => {
+        const { convertLegacyUser } = await import('../../utils/leaveSettings');
+        const annualType = blankType('Annual', 'annual');
+        const old = user({ allowance: 30, takenLeave: 4 });
+        const next = convertLegacyUser(old, annualType, 2026, false)!;
+        expect(next.policies).toEqual([expect.objectContaining({ entitlementId: 'annual', year: 2026, accrual: { period: 'yearly', amount: 30 } })]);
+        expect(next.leaveAdjustments).toEqual([expect.objectContaining({ entitlementId: 'annual', year: 2026, days: -4 })]);
+        expect(next.legacyLeaveConverted).toBe(true);
+        expect(convertLegacyUser(next, annualType, 2026, false)).toBeNull();
+        // Leave already booked that year counts what was recorded: no second deduction.
+        expect(convertLegacyUser(old, annualType, 2026, true)!.leaveAdjustments).toBeUndefined();
+        // Existing allowances are kept.
+        const kept = convertLegacyUser(user({ allowance: 30, policies: [policyFromType(annualType, 2026)] }), annualType, 2026, false)!;
+        expect(kept.policies).toHaveLength(1);
+        expect(kept.policies![0].accrual.amount).toBe(25);
+    });
+});

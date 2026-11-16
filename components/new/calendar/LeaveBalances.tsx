@@ -27,14 +27,10 @@ export const LeaveBalances: React.FC<{
 }> = ({ member, year, years, onYear, balances, summary, onMember }) => {
     const categories = useMemo<SpendingCategory[]>(() => {
         const used = balances
-            .filter(b => b.used + b.planned > 0)
-            .map(b => ({ name: b.entitlement.name, amount: b.used + b.planned, accent: ENTITLEMENT_ACCENT[b.entitlement.color] }));
-        // Without leave types, the days recorded as taken stand alone.
-        const other = summary.fallback && used.length === 0 && summary.used + summary.planned > 0
-            ? [{ name: 'Leave', amount: summary.used + summary.planned, accent: 'mustard' as const }]
-            : [];
+            .filter(b => b.used + b.planned + b.pending > 0)
+            .map(b => ({ name: b.entitlement.name, amount: b.used + b.planned + b.pending, accent: ENTITLEMENT_ACCENT[b.entitlement.color] }));
         const left = summary.left > 0 ? [{ name: 'Left', amount: summary.left, accent: 'ink' as const }] : [];
-        return [...used, ...other, ...left];
+        return [...used, ...left];
     }, [balances, summary]);
 
     const empty = categories.length === 0;
@@ -93,9 +89,12 @@ export const LeaveBalances: React.FC<{
                                     ) : null}
                                 </div>
                                 <p className="rp-tabular mt-0.5 pl-5 text-xs text-rp-muted">
-                                    {b.total !== null ? `${b.allowance} a year` : 'No allowance'}
+                                    {b.total !== null ? (b.allowance !== null ? `${b.allowance} a year` : `${days(b.total)} in all`) : 'No allowance'}
                                     {b.carryOver > 0 ? ` + ${days(b.carryOver)} carried over` : ''}
+                                    {b.opening !== 0 || b.adjusted !== 0 ? ` ${b.opening + b.adjusted >= 0 ? '+' : '−'} ${days(Math.abs(b.opening + b.adjusted))} opening and adjustments` : ''}
                                     {` · ${b.used} used · ${b.planned} planned`}
+                                    {b.pending > 0 ? ` · ${b.pending} requested` : ''}
+                                    {b.accrued !== null && b.total !== null && b.accrued < b.total ? ` · ${days(b.accrued)} accrued so far` : ''}
                                 </p>
                             </li>
                         );

@@ -37,6 +37,8 @@ interface MemberNewProps {
     onLogout?: () => void;
     /** Called after the member was removed. */
     onRemoved?: () => void;
+    /** Opens Settings › Leave (leave types and allowances). */
+    onOpenLeaveSettings?: () => void;
 }
 
 type TabId = 'overview' | 'leave' | 'trips' | 'places' | 'documents' | 'settings';
@@ -79,7 +81,7 @@ const passportStatus = (expiry?: string): { label: string; className: string } |
     return { label: 'Valid', className: 'bg-rp-green text-rp-paper' };
 };
 
-export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTrip, onLogout, onRemoved }) => {
+export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTrip, onLogout, onRemoved, onOpenLeaveSettings }) => {
     const data = useMemberData(memberId);
     const mobile = useIsMobile();
     const [tab, setTab] = useState<TabId>(readTab);
@@ -151,9 +153,10 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
     // ---- Leave -------------------------------------------------------------------------------
     const segments: RingSegment[] = [
         ...leave.types.map(t => ({ id: t.entitlement.id, label: t.entitlement.name, days: t.used + t.planned, className: leaveColor(t.entitlement.color).stroke })),
-        { id: 'recorded', label: 'Recorded as taken', days: Math.max(0, leave.taken - leave.onTrips), className: 'stroke-rp-ink' },
     ];
-    const noLeave = leave.allowance === 0 && leave.taken === 0 && leave.types.length === 0;
+    const noLeave = leave.allowance === 0 && leave.types.length === 0;
+    // Members set their own allowances; admins anyone's (Settings › Leave).
+    const canSetLeave = data.isAdmin || data.isSelf;
 
     // ---- Settings-style panels ---------------------------------------------------------------
     const documentPages: Record<string, StackPage> = {
@@ -209,7 +212,7 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                     title: 'Leave',
                     rows: [
                         { id: 'weekend', icon: CalendarBlank, label: 'Weekend holidays', detail: WEEKEND_LABEL[weekendRule], to: 'weekend' },
-                        ...(data.isAdmin ? [{ id: 'allowance', icon: SunHorizon, label: 'Leave allowance', detail: `${leave.allowance} days a year`, onSelect: () => setTopic('leave' as MemberTopic) }] : []),
+                        ...(canSetLeave && onOpenLeaveSettings ? [{ id: 'allowance', icon: SunHorizon, label: 'Leave allowances', detail: leave.allowance > 0 ? `${leave.allowance} days in ${leave.year}` : 'Not set', onSelect: onOpenLeaveSettings }] : []),
                     ],
                 },
             ],
@@ -324,9 +327,9 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                                 {noLeave ? (
                                     <RpEmpty
                                         title="No leave set up"
-                                        action={data.isAdmin ? <button type="button" onClick={() => setTopic('leave')} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-ink px-5 text-sm font-medium text-rp-on-ink"><Plus size={16} aria-hidden /> Set allowance</button> : undefined}
+                                        action={canSetLeave && onOpenLeaveSettings ? <button type="button" onClick={onOpenLeaveSettings} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-ink px-5 text-sm font-medium text-rp-on-ink"><Plus size={16} aria-hidden /> Set allowance</button> : undefined}
                                     >
-                                        {data.isAdmin ? `Give ${firstName} a yearly allowance.` : `${firstName} has no leave allowance yet.`}
+                                        {canSetLeave ? `Set ${data.isSelf ? 'your' : `${firstName}'s`} allowance per leave type in Settings › Leave.` : `${firstName} has no leave allowance yet.`}
                                     </RpEmpty>
                                 ) : (
                                     <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-8">
@@ -353,10 +356,10 @@ export const MemberNew: React.FC<MemberNewProps> = ({ memberId, onBack, onOpenTr
                                             ) : (
                                                 <p className="text-sm text-rp-muted">No trips use leave in {leave.year}.</p>
                                             )}
-                                            {data.isAdmin ? (
+                                            {canSetLeave && onOpenLeaveSettings ? (
                                                 <div>
-                                                    <button type="button" onClick={() => setTopic('leave')} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-inset px-4 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted">
-                                                        <PencilSimple size={16} aria-hidden /> Edit allowance
+                                                    <button type="button" onClick={onOpenLeaveSettings} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-inset px-4 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted">
+                                                        <PencilSimple size={16} aria-hidden /> Allowances in Settings
                                                     </button>
                                                 </div>
                                             ) : null}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { EntitlementType, SavedConfig, Trip, User, UserPolicy } from '../../types';
 import {
-    balancesFor, carryOverExpiry, holidayDays, leaveContext, leaveOverlaps, memberLeaveDays, summarise, type BalanceInput,
+    balancesFor, carryOverExpiry, holidayDays, leaveContext, leaveOverlaps, leaveYearLabel, leaveYearOf, leaveYearRange, memberLeaveDays, memberWorkingDays, monthsBegun, summarise, type BalanceInput,
 } from '../../utils/calendarModel';
 import { leaveFigures } from '../../utils/leaveModel';
 import { leaveByType, leaveTrips } from '../../utils/dashboardModel';
@@ -207,5 +207,74 @@ describe('which entry owns a shared day', () => {
     it('lets a request yield to booked leave', () => {
         const leave = L(first, second).map(e => (e.id === 'leave:first:u1' ? { ...e, state: 'requested' as const } : e));
         expect(owned(leave)).toEqual({ 'leave:first:u1': 2, 'leave:second:u1': 5 });
+    });
+});
+
+describe('the balance ledger (leave Phase 1b)', () => {
+    const june: EntitlementType = { ...annual, yearStartMonth: 6 };
+
+    it('places dates in leave years that start in any month', () => {
+        expect(leaveYearOf('2027-03-10', 6)).toBe(2026);
+        expect(leaveYearOf('2026-06-01', 6)).toBe(2026);
+        expect(leaveYearOf('2026-05-31', 6)).toBe(2025);
+        expect(leaveYearOf('2026-03-10', 1)).toBe(2026);
+        expect(leaveYearRange(2026, 6)).toEqual({ from: '2026-06-01', to: '2027-05-31' });
+        expect(leaveYearRange(2024, 3)).toEqual({ from: '2024-03-01', to: '2025-02-28' });
+        expect(leaveYearLabel(2026, 6)).toBe('2026–27');
+        expect(leaveYearLabel(2026)).toBe('2026');
+    });
+
+    it('counts leave in the leave year it falls in', () => {
+        const u = user({ policies: [{ ...policy(2025, 25), entitlementId: 'annual' }, policy(2026, 25)] });
+        const spring = trip('s', '2026-03-02', '2026-03-06'); // leave year 2025 for a June start
+        const summer = trip('t', '2026-07-06', '2026-07-10'); // leave year 2026
+        const b = (y: number) => balancesFor({ user: u, leave: L(spring, summer), entitlements: [june], today: '2026-01-01', ctx }, y)[0];
+        expect(b(2025)).toMatchObject({ yearStart: 6, planned: 5, remaining: 20 });
+        expect(b(2026)).toMatchObject({ planned: 5, remaining: 20 });
+    });
+
+    it('expires carried days counted from the leave year start', () => {
+        expect(carryOverExpiry({ enabled: true, maxDays: 5, expiryType: 'months', expiryValue: 3 }, 2026, 6)).toBe('2026-08-31');
+        expect(carryOverExpiry({ enabled: true, maxDays: 5, expiryType: 'fixed_date', expiryValue: '03-31' }, 2026, 6)).toBe('2027-03-31');
+        expect(carryOverExpiry({ enabled: true, maxDays: 5, expiryType: 'fixed_date', expiryValue: '09-30' }, 2026, 6)).toBe('2026-09-30');
+    });
+
+    it('adds an opening balance and adjustments to the total', () => {
+        const u = user({
+            policies: [{ ...policy(2026, 25), openingBalance: 3 }],
+            leaveAdjustments: [
+                { id: 'a', entitlementId: 'annual', year: 2026, days: 1, note: 'Bonus' },
+                { id: 'b', entitlementId: 'annual', year: 2026, days: -2.5 },
+                { id: 'c', entitlementId: 'annual', year: 2027, days: 9 },
+            ],
+        });
+        const [b] = balancesFor({ user: u, leave: [], entitlements: [annual], today: '2026-01-01', ctx }, 2026);
+        expect(b).toMatchObject({ opening: 3, adjusted: -1.5, total: 26.5, remaining: 26.5 });
+        // A member with only an adjustment still gets a row.
+        const only = user({ policies: [], leaveAdjustments: [{ id: 'x', entitlementId: 'annual', year: 2026, days: 2 }] });
+        expect(balancesFor({ user: only, leave: [], entitlements: [annual], today: '2026-01-01', ctx }, 2026)[0]).toMatchObject({ allowance: null, total: 2 });
+    });
+
+    it('accrues monthly allowances month by month, from the leave year start', () => {
+        const monthly = (start?: number) => user({ policies: [{ ...policy(2026, 0), accrual: { period: 'monthly', amount: 2 } }] });
+        const b = (today: string, type = annual) => balancesFor({ user: monthly(), leave: [], entitlements: [type], today, ctx }, 2026)[0];
+        expect(b('2025-12-31')).toMatchObject({ total: 24, accrued: 0 });
+        expect(b('2026-01-01')).toMatchObject({ accrued: 2 });
+        expect(b('2026-03-15')).toMatchObject({ accrued: 6 });
+        expect(b('2027-02-01')).toMatchObject({ accrued: 24 });
+        expect(b('2026-07-01', june)).toMatchObject({ accrued: 4 });
+        expect(monthsBegun(2026, 6, '2027-05-31')).toBe(12);
+        // A yearly allowance is there in full from the start.
+        expect(balancesFor({ user: user(), leave: [], entitlements: [annual], today: '2026-01-01', ctx }, 2026)[0].accrued).toBe(25);
+    });
+
+    it('follows the member\'s own working week', () => {
+        expect(memberWorkingDays({ workingDays: [1, 2, 3] }, WORK)).toEqual([1, 2, 3]);
+        expect(memberWorkingDays({ workingDays: [] }, WORK)).toEqual(WORK);
+        expect(memberWorkingDays(undefined, WORK)).toEqual(WORK);
+        const partTime = leaveContext([1, 2, 3], []);
+        const week = trip('w', '2026-10-05', '2026-10-11');
+        const [b] = balancesFor({ user: user(), leave: L(week), entitlements: [annual], today: '2026-01-01', ctx: partTime }, 2026);
+        expect(b.planned).toBe(3);
     });
 });

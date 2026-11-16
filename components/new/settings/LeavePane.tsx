@@ -1,25 +1,25 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import type { EntitlementType, LeaveEntry, User, UserPolicy } from '../../../types';
+import type { EntitlementType, LeaveAdjustment, LeaveEntry, User, UserPolicy } from '../../../types';
 import type { SettingsData } from '../../../hooks/useSettingsData';
 import { useLeaveRules } from '../../../hooks/useLeaveRules';
 import { affectsCollections } from '../../../hooks/useWanderSync';
 import { dataService } from '../../../services/mockDb';
 import { errorMessage, toast } from '../../../services/toast';
-import { balancesFor, carryOverExpiry, type TypeBalance } from '../../../utils/calendarModel';
+import { balancesFor, carryOverExpiry, leaveYearLabel, yearStartOf, type TypeBalance } from '../../../utils/calendarModel';
 import {
-    LEAVE_CATEGORIES, LEAVE_COLORS, blankType, copyPolicies, describePolicy, policyFor, policyFromType, policyProblem, policyYears,
+    LEAVE_CATEGORIES, LEAVE_COLORS, MONTH_LONG, adjustmentsOf, blankType, copyPolicies, describePolicy, newAdjustment, policyFor, policyFromType, policyProblem, policyYears,
     typeProblem, typeUsage, withPolicy, withoutPolicy,
 } from '../../../utils/leaveSettings';
 import { formatDate } from '../../../utils/formatters';
 import { todayISO } from '../../../utils/tripsModel';
 import ParticleButton from '../../kokonutui/particle-button';
-import { RpChip, RpEmpty, RpSection, RpSheet, RpToggle } from '../ui';
+import { RpChip, RpEmpty, RpIconButton, RpSection, RpSheet, RpToggle } from '../ui';
 import { RpField } from '../fields';
 import { useUndoToast } from '../UndoToast';
 import { leaveColor } from '../member/MemberRing';
-import { CalendarBlank, Copy, InfinityMark, PencilSimple, Plus, SunHorizon, Trash, Users, Warning } from '../../ui/hugeicons';
+import { CalendarBlank, Clock, Copy, InfinityMark, Minus, PencilSimple, Plus, SunHorizon, Trash, Users, Warning } from '../../ui/hugeicons';
 import { cn } from '../../../utils/cn';
-import { attempt, card, CANCEL_BTN, FIELD, PaneHeader } from './SettingsParts';
+import { attempt, card, CANCEL_BTN, FIELD, GHOST_BTN, PaneHeader } from './SettingsParts';
 
 /**
  * Settings › Leave: the workspace's leave types (admins) and each member's allowance per type and year, with
@@ -45,11 +45,13 @@ const PolicyFields: React.FC<{
     selfId: string;
     /** The year whose days carry into the next one, for the expiry wording. */
     year?: number;
-}> = ({ value, onChange, targets, selfId, year }) => {
+    /** The month the leave year starts (carried days expire counted from it). */
+    yearStart?: number;
+}> = ({ value, onChange, targets, selfId, year, yearStart = 1 }) => {
     const set = (patch: Partial<PolicyShape>) => onChange({ ...value, ...patch });
     const carry = (patch: Partial<PolicyShape['carryOver']>) => onChange({ ...value, carryOver: { ...value.carryOver, ...patch } });
     const [mm, dd] = String(value.carryOver.expiryValue || '03-31').split('-');
-    const until = value.carryOver.enabled ? carryOverExpiry(value.carryOver, (year ?? new Date().getFullYear()) + 1) : null;
+    const until = value.carryOver.enabled ? carryOverExpiry(value.carryOver, (year ?? new Date().getFullYear()) + 1, yearStart) : null;
     return (
         <>
             <RpSection title="Allowance" icon={SunHorizon}>
@@ -95,7 +97,7 @@ const PolicyFields: React.FC<{
                                 </div>
                             </div>
                             {value.carryOver.expiryType === 'months' ? (
-                                <RpField label="Months into the new year">
+                                <RpField label="Months into the next leave year">
                                     {id => <input id={id} type="number" inputMode="numeric" min={1} max={24} value={Number(value.carryOver.expiryValue) || ''} onChange={e => carry({ expiryValue: num(e.target.value) })} className={cn(FIELD, 'rp-tabular')} />}
                                 </RpField>
                             ) : null}
@@ -199,11 +201,26 @@ const TypeSheet: React.FC<{
                         </div>
                     </div>
                 </RpSection>
+                <RpSection title="Leave year" icon={Clock}>
+                    <RpField label="The leave year starts in">
+                        {id => (
+                            <select id={id} value={draft.yearStartMonth || 1} onChange={e => setDraft(d => ({ ...d, yearStartMonth: Number(e.target.value) === 1 ? undefined : Number(e.target.value) }))} className={FIELD}>
+                                {MONTH_LONG.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                            </select>
+                        )}
+                    </RpField>
+                    <p className="pb-1 text-xs text-rp-muted">
+                        {(draft.yearStartMonth || 1) > 1
+                            ? `"${new Date().getFullYear()}" runs from ${MONTH_LONG[(draft.yearStartMonth || 1) - 1]} ${new Date().getFullYear()} to ${MONTH_LONG[(draft.yearStartMonth || 1) - 2]} ${new Date().getFullYear() + 1}.`
+                            : 'Calendar years, January to December.'}
+                    </p>
+                </RpSection>
                 <PolicyFields
                     value={{ accrual: draft.accrual, carryOver: draft.carryOver, isUnlimited: draft.isUnlimited }}
                     onChange={p => setDraft(d => ({ ...d, accrual: p.accrual, carryOver: p.carryOver, isUnlimited: p.isUnlimited }))}
                     targets={[draft, ...types.filter(t => t.id !== draft.id && !t.isUnlimited)]}
                     selfId={draft.id}
+                    yearStart={draft.yearStartMonth || 1}
                 />
                 {error ? <p role="alert" className="text-sm text-rp-rust">{error}</p> : null}
                 {type ? (
@@ -230,15 +247,21 @@ const PolicySheet: React.FC<{
     year: number;
     types: EntitlementType[];
     onClose: () => void;
-    onSave: (policy: UserPolicy) => Promise<void>;
+    onSave: (policy: UserPolicy, adjustments: LeaveAdjustment[]) => Promise<void>;
     onRemove: () => Promise<void>;
 }> = ({ open, member, type, year, types, onClose, onSave, onRemove }) => {
     const existing = member && type ? policyFor(member, type.id, year) : undefined;
     const [draft, setDraft] = useState<UserPolicy | null>(null);
+    const [adjustments, setAdjustments] = useState<LeaveAdjustment[]>([]);
+    const [adjDays, setAdjDays] = useState('');
+    const [adjNote, setAdjNote] = useState('');
     const [error, setError] = useState('');
     useEffect(() => {
         if (!open || !type) return;
         setDraft(existing ? { ...existing, accrual: { ...existing.accrual }, carryOver: { ...existing.carryOver } } : policyFromType(type, year));
+        setAdjustments(member ? adjustmentsOf(member, type.id, year) : []);
+        setAdjDays('');
+        setAdjNote('');
         setError('');
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, type?.id, year, member?.id]);
@@ -248,7 +271,7 @@ const PolicySheet: React.FC<{
         if (problem) { setError(problem); throw new Error(problem); }
         setError('');
         try {
-            await onSave({ ...draft, isActive: true });
+            await onSave({ ...draft, isActive: true }, adjustments);
             onClose();
         } catch (e) {
             setError(errorMessage(e, "That didn't save. Try again."));
@@ -259,7 +282,7 @@ const PolicySheet: React.FC<{
         <RpSheet
             open={open}
             onClose={onClose}
-            title={`${type.name}, ${year}`}
+            title={`${type.name}, ${leaveYearLabel(year, yearStartOf(type))}`}
             subtitle={`${member.name.split(' ')[0]}'s allowance. Leave already booked is counted against it.`}
             footer={
                 <>
@@ -275,7 +298,42 @@ const PolicySheet: React.FC<{
                     targets={[type, ...types.filter(t => t.id !== type.id && !t.isUnlimited)]}
                     selfId={type.id}
                     year={year}
+                    yearStart={yearStartOf(type)}
                 />
+                <RpSection title="Balance changes" icon={Minus}>
+                    <RpField label="Opening balance (days already there when the year starts)">
+                        {id => <input id={id} type="number" inputMode="decimal" step={0.5} value={draft.openingBalance ?? ''} placeholder="0" onChange={e => setDraft(d => (d ? { ...d, openingBalance: e.target.value.trim() === '' ? undefined : Number(e.target.value) } : d))} className={cn(FIELD, 'rp-tabular')} />}
+                    </RpField>
+                    {adjustments.length > 0 ? (
+                        <ul className="flex flex-col gap-1 py-1" aria-label="Adjustments">
+                            {adjustments.map(a => (
+                                <li key={a.id} className="flex min-h-11 items-center gap-2 rounded-rp-inset bg-rp-surface px-3">
+                                    <span className={cn('rp-tabular shrink-0 text-sm font-medium', a.days < 0 ? 'text-rp-rust' : 'text-rp-green')}>{a.days > 0 ? '+' : '−'}{days(Math.abs(a.days))}</span>
+                                    <span className="min-w-0 flex-1 truncate text-xs text-rp-muted">{a.note || 'Adjustment'}{a.date ? ` · ${formatDate(a.date, 'short')}` : ''}</span>
+                                    <RpIconButton label={`Remove the adjustment of ${a.days} days`} tone="ghost" onClick={() => setAdjustments(list => list.filter(x => x.id !== a.id))}><Trash size={16} aria-hidden /></RpIconButton>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : null}
+                    <div className="grid grid-cols-[6.5rem_1fr] gap-2 py-1">
+                        <RpField label="Days (+ or −)">
+                            {id => <input id={id} type="number" inputMode="decimal" step={0.5} value={adjDays} placeholder="+1" onChange={e => setAdjDays(e.target.value)} className={cn(FIELD, 'rp-tabular')} />}
+                        </RpField>
+                        <RpField label="Why">
+                            {id => <input id={id} value={adjNote} maxLength={200} placeholder="Bonus day, days taken elsewhere" onChange={e => setAdjNote(e.target.value)} className={FIELD} />}
+                        </RpField>
+                    </div>
+                    <div className="pb-1">
+                        <button
+                            type="button"
+                            disabled={!Number(adjDays)}
+                            onClick={() => { setAdjustments(list => [...list, newAdjustment(type.id, year, Number(adjDays), adjNote, todayISO())]); setAdjDays(''); setAdjNote(''); }}
+                            className={cn(GHOST_BTN, 'disabled:opacity-50')}
+                        >
+                            <Plus size={16} aria-hidden /> Add adjustment
+                        </button>
+                    </div>
+                </RpSection>
                 {error ? <p role="alert" className="text-sm text-rp-rust">{error}</p> : null}
                 {existing ? (
                     <div>
@@ -292,9 +350,13 @@ const PolicySheet: React.FC<{
 /** The balance line under an allowance: what is left, or over, and carry-over news. */
 const balanceLine = (b: TypeBalance | undefined): { text: string; tone: 'muted' | 'rust' | 'ochre' } | null => {
     if (!b) return null;
-    if (b.unlimited) return { text: `${days(b.used + b.planned)} booked`, tone: 'muted' };
-    if (b.remaining === null) return b.used + b.planned > 0 ? { text: `${days(b.used + b.planned)} booked, no allowance`, tone: 'ochre' } : null;
+    if (b.unlimited) return { text: `${days(b.used + b.planned + b.pending)} booked`, tone: 'muted' };
+    if (b.remaining === null) return b.used + b.planned + b.pending > 0 ? { text: `${days(b.used + b.planned + b.pending)} booked, no allowance`, tone: 'ochre' } : null;
     const parts = [`${days(b.used)} taken`, `${days(b.planned)} planned`];
+    if (b.pending > 0) parts.push(`${days(b.pending)} requested`);
+    if (b.accrued !== null && b.total !== null && b.accrued < b.total) parts.push(`${days(b.accrued)} accrued so far`);
+    if (b.opening !== 0) parts.push(`${days(b.opening)} opening`);
+    if (b.adjusted !== 0) parts.push(`${b.adjusted > 0 ? '+' : '−'}${days(Math.abs(b.adjusted))} adjusted`);
     if (b.carryOver > 0) parts.push(`${days(b.carryOver)} carried over`);
     if (b.lieu > 0) parts.push(`${days(b.lieu)} in lieu`);
     if (b.expired > 0) parts.push(`${days(b.expired)} expired`);
@@ -354,9 +416,14 @@ export const LeavePane: React.FC<{ data: SettingsData }> = ({ data }) => {
         const ok = await attempt(async () => { await dataService.deleteEntitlementType(type.id); await load(); }, "The leave type couldn't be removed.");
         if (ok) undo.show(`Removed ${type.name}`, async () => { await dataService.saveEntitlementType(type); await load(); });
     };
-    const savePolicy = async (policy: UserPolicy) => {
+    const savePolicy = async (policy: UserPolicy, adjustments: LeaveAdjustment[]) => {
         if (!member) return;
-        await data.saveUser(withPolicy(member, policy));
+        const others = (member.leaveAdjustments || []).filter(a => !(a.entitlementId === policy.entitlementId && a.year === policy.year));
+        await data.saveUser({ ...withPolicy(member, policy), leaveAdjustments: [...others, ...adjustments] });
+    };
+    const setWorkingWeek = (week: number[] | undefined) => {
+        if (!member) return;
+        void attempt(() => data.saveUser({ ...member, workingDays: week && week.length ? [...week].sort((a, b) => a - b) : undefined }));
     };
     const removePolicy = async (typeId: string) => {
         if (!member) return;
@@ -469,7 +536,7 @@ export const LeavePane: React.FC<{ data: SettingsData }> = ({ data }) => {
                                             <span className={cn('size-3 shrink-0 rounded-full', leaveColor(t.color).dot)} aria-hidden />
                                             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                                                 <span className="flex flex-wrap items-baseline gap-x-2">
-                                                    <span className="text-sm font-medium text-rp-ink">{t.name}</span>
+                                                    <span className="text-sm font-medium text-rp-ink">{t.name}{yearStartOf(t) > 1 ? <span className="rp-tabular font-normal text-rp-muted"> · {leaveYearLabel(year, yearStartOf(t))}</span> : null}</span>
                                                     <span className="text-xs text-rp-muted">{p ? describePolicy(p) : 'Not set'}</span>
                                                 </span>
                                                 {line ? (
@@ -484,6 +551,25 @@ export const LeavePane: React.FC<{ data: SettingsData }> = ({ data }) => {
                                 );
                             })}
                         </ul>
+                        <div className="flex flex-col gap-1.5 border-t border-rp-line pt-3">
+                            <span id="working-week" className="text-xs text-rp-muted">Working week</span>
+                            <div role="group" aria-labelledby="working-week" className="flex flex-wrap gap-1.5">
+                                {[1, 2, 3, 4, 5, 6, 0].map(d => {
+                                    const week = member.workingDays && member.workingDays.length ? member.workingDays : rules.workingDays;
+                                    const on = week.includes(d);
+                                    return (
+                                        <RpChip key={d} selected={on} onClick={() => setWorkingWeek(on ? week.filter(x => x !== d) : [...week, d])} className="w-14 justify-center px-0">
+                                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d]}
+                                        </RpChip>
+                                    );
+                                })}
+                            </div>
+                            <p className="text-xs text-rp-muted">
+                                {member.workingDays && member.workingDays.length ? (
+                                    <>Days off outside these cost no leave.{' '}<button type="button" onClick={() => setWorkingWeek(undefined)} className="inline-flex min-h-11 items-center font-medium text-rp-ink underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-rp-muted">Use the workspace's week</button></>
+                                ) : 'The workspace\'s week. Change it for someone who works part time.'}
+                            </p>
+                        </div>
                         <div className="flex flex-col gap-1.5 border-t border-rp-line pt-3">
                             <span id="weekend-rule" className="text-xs text-rp-muted">Public holidays on a weekend</span>
                             <div role="group" aria-labelledby="weekend-rule" className="flex flex-wrap gap-2">

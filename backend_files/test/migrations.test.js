@@ -151,3 +151,29 @@ test('0004 moves leave off trips into the leave table, once', async () => {
     client.release();
     assert.equal((await pool.query('SELECT data FROM leave WHERE id = $1', ['leave:rome:u1'])).rows[0].data.note, 'edited');
 });
+
+test('0005 turns the old yearly allowance into an Annual leave allowance, once', async () => {
+    const pool = makePool();
+    for (const t of ['users', 'entitlements', 'leave']) await pool.query(`CREATE TABLE ${t} (id TEXT PRIMARY KEY, data JSONB NOT NULL)`);
+    const put = (t, id, data) => pool.query(`INSERT INTO ${t} (id, data) VALUES ($1, $2)`, [id, JSON.stringify({ id, ...data })]);
+    await put('users', 'a', { allowance: 30, takenLeave: 4 });
+    await put('users', 'b', { leaveBalance: 20, takenLeave: 2 });
+    await put('users', 'c', { allowance: 25, policies: [{ entitlementId: 'x', year: 2026, isActive: true, accrual: { period: 'yearly', amount: 10 } }] });
+    await put('users', 'd', { allowance: 0 });
+    await put('leave', 'l1', { memberId: 'b', startDate: '2026-03-02', endDate: '2026-03-03', state: 'approved' });
+    const { convertLegacyAllowances } = require('../legacyLeave');
+    const client = await pool.connect();
+    assert.deepEqual(await convertLegacyAllowances(client, 2026), { converted: 4, typeCreated: true });
+    const users = Object.fromEntries((await client.query('SELECT id, data FROM users')).rows.map(r => [r.id, r.data]));
+    const types = (await client.query('SELECT data FROM entitlements')).rows.map(r => r.data);
+    assert.deepEqual(types.map(t => [t.id, t.category]), [['annual-leave', 'Annual']]);
+    assert.deepEqual(users.a.policies, [{ entitlementId: 'annual-leave', year: 2026, isActive: true, accrual: { period: 'yearly', amount: 30 }, carryOver: { enabled: false, maxDays: 0, expiryType: 'none' } }]);
+    assert.deepEqual(users.a.leaveAdjustments.map(x => [x.entitlementId, x.year, x.days]), [['annual-leave', 2026, -4]]);
+    assert.equal(users.b.policies[0].accrual.amount, 20);
+    assert.equal(users.b.leaveAdjustments, undefined, 'leave entries already count what was recorded');
+    assert.equal(users.c.policies.length, 1, 'existing allowances are kept');
+    assert.equal(users.d.policies, undefined);
+    assert.ok(Object.values(users).every(u => u.legacyLeaveConverted));
+    assert.deepEqual(await convertLegacyAllowances(client, 2026), { converted: 0, typeCreated: false });
+    client.release();
+});
