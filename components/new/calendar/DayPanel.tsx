@@ -27,6 +27,39 @@ const weightWords = (span: LeaveSpan, iso: string, ctx: LeaveContext): string =>
     return w === 0.5 ? 'Counts as half a day' : 'Counts as a day';
 };
 
+/** A leave entry's facts for one day: who, its leave type and what the day counts for, and its note. */
+const LeaveLines: React.FC<{
+    item: CalendarItem;
+    iso: string;
+    users: User[];
+    entitlements: EntitlementType[];
+    contextFor: (memberId: string) => LeaveContext;
+    /** Inside a trip's card: no indent, and the member only when the trip has several travellers. */
+    nested?: boolean;
+    showWho?: boolean;
+}> = ({ item, iso, users, entitlements, contextFor, nested, showWho = true }) => {
+    const e = item.entry!;
+    const who = users.find(u => u.id === e.memberId);
+    const split = (e.allocations || []).length > 1;
+    const type = entitlements.find(t => t.id === (e.entitlementId || e.allocations?.[0]?.entitlementId));
+    const pad = nested ? '' : 'pl-[3.25rem]';
+    return (
+        <>
+            {who && showWho ? (
+                <p className={cn('flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-rp-muted', pad)}>
+                    <Avatar user={who} size={22} className="ring-2 ring-rp-inset" />
+                    <span className="truncate">{who.name.split(' ')[0]}</span>
+                </p>
+            ) : null}
+            <p className={cn('text-xs text-rp-ink', pad)}>
+                {nested ? null : <SunHorizon size={14} className="mr-1 inline text-rp-ochre" aria-hidden />}
+                {split ? 'Split across leave types' : type?.name ?? 'Time off, no leave type'} · {weightWords(e, iso, contextFor(e.memberId))}
+            </p>
+            {e.note ? <p className={cn('text-xs text-rp-muted', pad)}>{e.note}</p> : null}
+        </>
+    );
+};
+
 const DayBody: React.FC<{
     iso: string;
     items: CalendarItem[];
@@ -49,9 +82,12 @@ const DayBody: React.FC<{
             <RpEmpty title="Nothing on this day" action={<button type="button" onClick={onAddLeave} className={cn(PILL, 'bg-rp-ink text-rp-on-ink hover:bg-rp-ink/90')}><Plus size={16} aria-hidden /> Add leave</button>} />
         );
     }
+    // Leave taken for a trip shows inside the trip's card, as one thing.
+    const leaveOf = new Map<string, CalendarItem[]>();
+    items.forEach(i => { if (i.folded && i.entry?.tripId) leaveOf.set(i.entry.tripId, [...(leaveOf.get(i.entry.tripId) || []), i]); });
     return (
         <ul className="flex flex-col gap-2">
-            {items.map(item => {
+            {items.filter(i => !i.folded).map(item => {
                 if (item.kind === 'holiday' && item.holiday) {
                     const h = item.holiday;
                     return (
@@ -84,9 +120,6 @@ const DayBody: React.FC<{
                 }
                 if (item.kind === 'leave' && item.entry) {
                     const e = item.entry;
-                    const who = users.find(u => u.id === e.memberId);
-                    const split = (e.allocations || []).length > 1;
-                    const type = entitlements.find(t => t.id === (e.entitlementId || e.allocations?.[0]?.entitlementId));
                     return (
                         <li key={item.key} className="flex flex-col gap-2 rounded-rp-inset bg-rp-inset px-3 py-3">
                             <div className="flex items-start gap-3">
@@ -95,19 +128,9 @@ const DayBody: React.FC<{
                                     <span className="block truncate text-sm font-medium text-rp-ink">{item.title}</span>
                                     <span className="rp-tabular block text-xs text-rp-muted">{formatDateRange(e.startDate, e.endDate || e.startDate)}</span>
                                 </span>
-                                <span className={cn('inline-flex h-6 shrink-0 items-center rounded-full px-2.5 text-xs font-medium', tripChip(item))}>{stateLabel(e.state, who)}</span>
+                                <span className={cn('inline-flex h-6 shrink-0 items-center rounded-full px-2.5 text-xs font-medium', tripChip(item))}>{stateLabel(e.state, users.find(u => u.id === e.memberId))}</span>
                             </div>
-                            {who ? (
-                                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 pl-[3.25rem] text-xs text-rp-muted">
-                                    <Avatar user={who} size={22} className="ring-2 ring-rp-inset" />
-                                    <span className="truncate">{who.name.split(' ')[0]}</span>
-                                </p>
-                            ) : null}
-                            <p className="pl-[3.25rem] text-xs text-rp-ink">
-                                <SunHorizon size={14} className="mr-1 inline text-rp-ochre" aria-hidden />
-                                {split ? 'Split across leave types' : type?.name ?? 'Time off, no leave type'} · {weightWords(e, iso, contextFor(e.memberId))}
-                            </p>
-                            {e.note ? <p className="pl-[3.25rem] text-xs text-rp-muted">{e.note}</p> : null}
+                            <LeaveLines item={item} iso={iso} users={users} entitlements={entitlements} contextFor={contextFor} />
                             <div className="flex flex-wrap gap-2 pl-[3.25rem]">
                                 {canEditLeave(e.memberId) ? (
                                     <button type="button" onClick={() => onEditLeave(e)} className={cn(PILL, 'bg-rp-surface text-rp-ink hover:bg-rp-line')}>
@@ -145,6 +168,26 @@ const DayBody: React.FC<{
                                 <span className="truncate">{who.map(u => u.name.split(' ')[0]).join(', ')}</span>
                             </p>
                         ) : null}
+                        {(leaveOf.get(trip.id) || []).map(l => {
+                            const e = l.entry!;
+                            return (
+                                <div key={l.key} className="ml-[3.25rem] flex flex-col gap-2 rounded-rp-inset bg-rp-surface px-3 py-2.5">
+                                    <div className="flex items-center gap-2">
+                                        <SunHorizon size={16} className="shrink-0 text-rp-ochre" aria-hidden />
+                                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-rp-ink">{l.title === trip.name ? 'Leave' : l.title}</span>
+                                        <span className={cn('inline-flex h-6 shrink-0 items-center rounded-full px-2.5 text-xs font-medium', tripChip(l))}>{stateLabel(e.state, users.find(u => u.id === e.memberId))}</span>
+                                    </div>
+                                    <LeaveLines item={l} iso={iso} users={users} entitlements={entitlements} contextFor={contextFor} nested showWho={who.length > 1} />
+                                    {canEditLeave(e.memberId) ? (
+                                        <div>
+                                            <button type="button" onClick={() => onEditLeave(e)} className={cn(PILL, 'bg-rp-inset text-rp-ink hover:bg-rp-line')}>
+                                                <PencilSimple size={16} aria-hidden /> Edit leave
+                                            </button>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            );
+                        })}
                         <div className="flex flex-wrap gap-2 pl-[3.25rem]">
                             {!item.leave && who.some(u => canEditLeave(u.id)) ? (
                                 <button type="button" onClick={() => onLeaveForTrip(trip)} className={cn(PILL, 'bg-rp-surface text-rp-ink hover:bg-rp-line')}>
@@ -182,7 +225,8 @@ export const DayPanel: React.FC<{
 }> = ({ iso, mobile, onClose, items, users, entitlements, contextFor, canEditLeave, onEditLeave, onLeaveForTrip, onPlanTrip, onOpenTrip, onAddLeave, onManageHolidays, canManageEvents, onRemoveEvent }) => {
     const day = iso ?? '';
     const title = iso ? formatDate(iso, 'weekday-long') : '';
-    const count = items.length === 0 ? 'Nothing planned' : `${items.length} ${items.length === 1 ? 'thing' : 'things'}`;
+    const shown = items.filter(i => !i.folded).length;
+    const count = shown === 0 ? 'Nothing planned' : `${shown} ${shown === 1 ? 'thing' : 'things'}`;
     const body = iso ? (
         <DayBody
             iso={day}
