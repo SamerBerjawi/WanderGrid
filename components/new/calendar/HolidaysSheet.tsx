@@ -8,6 +8,7 @@ import { calendarKey, followedKeys } from '../../../utils/holidayCalendar';
 import { cn } from '../../../utils/cn';
 import HoldButton from '../../kokonutui/hold-button';
 import { AddCalendar } from './AddCalendar';
+import { RpDatePicker } from '../DateFields';
 
 /**
  * Public holidays: which calendars a member follows (a country or one of its regions, every year), which of their
@@ -138,7 +139,7 @@ const ConfigCard: React.FC<{
                 adding ? (
                     <div className="flex flex-col gap-2 rounded-rp-inset bg-rp-surface p-3">
                         <div className="grid grid-cols-[9.5rem_1fr] gap-2">
-                            <RpField label="Date">{id => <input id={id} type="date" value={newDate} min={`${config.year}-01-01`} max={`${config.year}-12-31`} onChange={e => setNewDate(e.target.value)} className={cn(RP_FIELD, 'rp-date rp-tabular bg-rp-inset')} />}</RpField>
+                            <RpField label="Date">{id => <RpDatePicker label="Date" id={id} value={newDate} min={`${config.year}-01-01`} max={`${config.year}-12-31`} onChange={setNewDate} className="bg-rp-inset" />}</RpField>
                             <RpField label="Name">{id => <input id={id} value={newName} maxLength={120} onChange={e => setNewName(e.target.value)} placeholder="Company day, local feast" className={cn(RP_FIELD, 'bg-rp-inset')} />}</RpField>
                         </div>
                         {newDate && !inYear ? <p role="alert" className="text-xs text-rp-rust">Pick a day in {config.year}.</p> : null}

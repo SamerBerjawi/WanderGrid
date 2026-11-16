@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { AirplaneLanding, AirplaneTakeoff, Calendar, CalendarBlank, CheckCircle, MagnifyingGlass } from '../../ui/hugeicons';
 import { RpChip, RpSection, RpSheet } from '../ui';
+import { RpDateRangePicker } from '../DateFields';
 
 type Status = 'all' | 'Past' | 'Upcoming' | 'Planning';
 interface Option { label: string; value: string }
@@ -35,7 +36,6 @@ const STATUSES: { value: Status; label: string }[] = [
     { value: 'Planning', label: 'Planning' },
 ];
 
-const DATE_INPUT = 'min-h-11 w-full rounded-full bg-rp-surface px-4 text-sm text-rp-ink outline-none focus-visible:ring-2 focus-visible:ring-rp-muted [color-scheme:light] dark:[color-scheme:dark]';
 
 /** Search a long list of places and toggle them as chips; selected ones stay on top. */
 const PlacePicker: React.FC<{ label: string; options: Option[]; selected: string[]; onChange: (v: string[]) => void }> = ({ label, options, selected, onChange }) => {
@@ -111,15 +111,16 @@ export const MapFilterSheet: React.FC<MapFilterSheetProps> = props => {
                     <PlacePicker label="To" options={props.destinations} selected={props.arrFilter} onChange={props.setArrFilter} />
                 </RpSection>
                 <RpSection icon={CalendarBlank} title="Dates">
-                    <div className="grid grid-cols-2 gap-2 py-2">
-                        <label className="flex flex-col gap-1">
-                            <span className="px-1 text-xs text-rp-muted">From</span>
-                            <input type="date" value={props.dateFrom} max={props.dateTo || undefined} onChange={e => props.setDateFrom(e.target.value)} className={DATE_INPUT} />
-                        </label>
-                        <label className="flex flex-col gap-1">
-                            <span className="px-1 text-xs text-rp-muted">To</span>
-                            <input type="date" value={props.dateTo} min={props.dateFrom || undefined} onChange={e => props.setDateTo(e.target.value)} className={DATE_INPUT} />
-                        </label>
+                    <div className="py-2">
+                        <RpDateRangePicker
+                            label="Dates"
+                            value={{ start: props.dateFrom, end: props.dateTo }}
+                            onChange={r => { props.setDateFrom(r.start); props.setDateTo(r.end); }}
+                            placeholder="Any dates"
+                            pastPresets
+                            clearable
+                            className="rounded-full px-4"
+                        />
                     </div>
                 </RpSection>
             </div>

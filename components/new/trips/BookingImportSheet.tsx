@@ -14,6 +14,7 @@ import { RpField, RP_FIELD } from '../fields';
 import { TripMenu, type TripMenuItem } from './TripMenu';
 import { CarrierCell } from '../journeys/JourneyParts';
 import { cn } from '../../../utils/cn';
+import { RpDatePicker } from '../DateFields';
 
 /**
  * Import a booking: paste a confirmation email or drop the saved email file, and the flights, trains,
@@ -71,7 +72,7 @@ const IncompleteRow: React.FC<{ booking: Extract<ParsedBooking, { kind: 'transpo
             </span>
             <span className="grid grid-cols-2 gap-2">
                 <input aria-label="Flight number" value={t.identifier} onChange={e => onChange({ identifier: e.target.value.toUpperCase(), provider: e.target.value.trim().slice(0, 2).toUpperCase(), providerCode: e.target.value.trim().slice(0, 2).toUpperCase() })} placeholder="Flight, e.g. TP 1234" className={SMALL} />
-                <input aria-label="Flight date" type="date" value={t.departureDate} onChange={e => onChange({ departureDate: e.target.value, arrivalDate: e.target.value })} className={cn(SMALL, 'rp-date rp-tabular')} />
+                <RpDatePicker label="Flight date" value={t.departureDate} onChange={v => onChange({ departureDate: v, arrivalDate: v })} className="bg-rp-inset" />
                 <input aria-label="From airport code" value={t.origin} onChange={e => onChange({ origin: code(e.target.value) })} placeholder="From, e.g. BRU" className={cn(SMALL, 'rp-tabular')} />
                 <input aria-label="To airport code" value={t.destination} onChange={e => onChange({ destination: code(e.target.value) })} placeholder="To, e.g. LIS" className={cn(SMALL, 'rp-tabular')} />
             </span>

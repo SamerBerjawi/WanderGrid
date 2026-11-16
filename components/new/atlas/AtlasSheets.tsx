@@ -15,6 +15,7 @@ import { FlagBadge, RpChipLabel, ToneChip } from './AtlasParts';
 import { NamePlaceSheet } from './NamePlaceSheets';
 import { isUnknownPlaceName } from '../../../services/cityRegistry';
 import { cn } from '../../../utils/cn';
+import { RpDatePicker } from '../DateFields';
 
 /** Sheets of the New Atlas page: a country, a city, adding a country, and finding places in trips. */
 
@@ -158,7 +159,7 @@ export const CountrySheet: React.FC<{ target: CountryTarget | null; onClose: () 
 
                 <RpSection title="Details" icon={Suitcase}>
                     <Field label="Date">
-                        {id => <input id={id} type="date" value={visitDate} onChange={e => setVisitDate(e.target.value)} className={cn(FIELD, 'rp-date rp-tabular')} />}
+                        {id => <RpDatePicker label="Date" id={id} value={visitDate} onChange={setVisitDate} clearable />}
                     </Field>
                     <Field label="Notes">
                         {id => (
@@ -240,7 +241,7 @@ export const CitySheet: React.FC<{ city: VisitedItem | null; onClose: () => void
                     <MapPin size={16} aria-hidden /> Match to a place
                 </button>
                 <Field label="Date">
-                    {id => <input id={id} type="date" value={visitDate} onChange={e => setVisitDate(e.target.value)} className={cn(FIELD, 'rp-date rp-tabular')} />}
+                    {id => <RpDatePicker label="Date" id={id} value={visitDate} onChange={setVisitDate} clearable />}
                 </Field>
                 <Field label="Notes">
                     {id => <textarea id={id} value={notes} onChange={e => setNotes(e.target.value)} rows={3} className={cn(FIELD, 'resize-none py-2.5')} />}

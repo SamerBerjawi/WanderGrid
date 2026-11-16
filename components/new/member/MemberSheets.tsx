@@ -9,13 +9,13 @@ import { checkProgram, levelsText, newProgram, parseLevels, type LoyaltyKind, ty
 import { errorMessage, toast } from '../../../services/toast';
 import { cn } from '../../../utils/cn';
 import { Avatar } from './Avatar';
+import { RpDatePicker } from '../DateFields';
 
 /** Which part of the profile a sheet edits. */
 export type MemberTopic = 'profile' | 'passport' | 'account' | 'leave' | 'loyalty';
 
 export const TOPIC_TITLE: Record<MemberTopic, string> = { profile: 'Edit profile', passport: 'Passport', account: 'Change password', leave: 'Leave allowance', loyalty: 'Loyalty wallet' };
 
-const DATE = cn(RP_FIELD, 'rp-date rp-tabular');
 const ROLES: User['role'][] = ['Admin', 'Partner', 'Child'];
 
 /** Avatars live inside the user record, so a photo is shrunk to a 512px JPEG (well under the 1 MB limit). */
@@ -144,12 +144,12 @@ export const MemberSheet: React.FC<{
                 {topic === 'passport' ? (
                     <RpSection title="Passport">
                         <RpField label="Nationality">{id => <input id={id} value={draft.nationality || ''} onChange={e => set('nationality', e.target.value)} className={RP_FIELD} placeholder="Lebanese" autoComplete="off" />}</RpField>
-                        <RpField label="Date of birth">{id => <input id={id} type="date" value={draft.dateOfBirth || ''} max={new Date().toISOString().slice(0, 10)} onChange={e => set('dateOfBirth', e.target.value)} className={DATE} />}</RpField>
+                        <RpField label="Date of birth">{id => <RpDatePicker label="Date of birth" id={id} value={draft.dateOfBirth || ''} max={new Date().toISOString().slice(0, 10)} onChange={v => set('dateOfBirth', v)} clearable />}</RpField>
                         <RpField label="Passport number">{id => <input id={id} value={draft.passportNumber || ''} onChange={e => set('passportNumber', e.target.value)} className={RP_FIELD} placeholder="RL1234567" autoComplete="off" />}</RpField>
                         <RpField label="Issued by">{id => <input id={id} value={draft.passportIssuingEntity || ''} onChange={e => set('passportIssuingEntity', e.target.value)} className={RP_FIELD} placeholder="General Security" autoComplete="off" />}</RpField>
                         <div className="grid grid-cols-2 gap-3">
-                            <RpField label="Issued">{id => <input id={id} type="date" value={draft.passportIssueDate || ''} onChange={e => set('passportIssueDate', e.target.value)} className={DATE} />}</RpField>
-                            <RpField label="Expires">{id => <input id={id} type="date" value={draft.passportExpiryDate || ''} min={draft.passportIssueDate || undefined} onChange={e => set('passportExpiryDate', e.target.value)} className={DATE} />}</RpField>
+                            <RpField label="Issued">{id => <RpDatePicker label="Issued" id={id} value={draft.passportIssueDate || ''} onChange={v => set('passportIssueDate', v)} clearable />}</RpField>
+                            <RpField label="Expires">{id => <RpDatePicker label="Expires" id={id} value={draft.passportExpiryDate || ''} min={draft.passportIssueDate || undefined} onChange={v => set('passportExpiryDate', v)} clearable />}</RpField>
                         </div>
                     </RpSection>
                 ) : null}

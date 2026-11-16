@@ -14,6 +14,7 @@ import { extractIata } from '../../../hooks/useFlightLog';
 import { MODE_SPEED_KMH, durationBetween, eastwardShare, elapsedMinutes, estimateMinutes, fromLog, isIndependent, journeyKm, localArrival, type JourneyRecord } from '../../../utils/journeysModel';
 import { errorMessage, toast } from '../../../services/toast';
 import { cn } from '../../../utils/cn';
+import { RpDatePicker } from '../DateFields';
 
 /**
  * Add or change one journey. The fields are the transport editor of the trip sheets (LegForm), so a
@@ -270,7 +271,7 @@ export const JourneyEditor: React.FC<{
                             <div className="flex flex-col gap-1 pb-2">
                                 <div className="grid gap-x-3 sm:grid-cols-2">
                                     <RpField label="Flight number">{id => <input id={id} value={leg.identifier || ''} onChange={e => patch({ identifier: e.target.value })} placeholder="ME215" className={RP_FIELD} autoComplete="off" autoCapitalize="characters" />}</RpField>
-                                    <RpField label="Departure date">{id => <input id={id} type="date" value={leg.departureDate || ''} onChange={e => patch({ departureDate: e.target.value, arrivalDate: leg.arrivalDate && leg.arrivalDate >= e.target.value ? leg.arrivalDate : e.target.value })} className={LEG_DATE} />}</RpField>
+                                    <RpField label="Departure date">{id => <RpDatePicker label="Departure date" id={id} value={leg.departureDate || ''} onChange={v => patch({ departureDate: v, arrivalDate: leg.arrivalDate && leg.arrivalDate >= v ? leg.arrivalDate : v })} clearable />}</RpField>
                                 </div>
                                 <FlightFinder
                                     status={lookup.status}

@@ -23,6 +23,7 @@ import { LoggedFlights } from './LoggedFlights';
 import { calculateDistance } from '../../../services/geocoding';
 import { cn } from '../../../utils/cn';
 import { RpCarrierLogo } from '../CarrierLogos';
+import { RpDatePicker, RpDateRangePicker } from '../DateFields';
 
 /**
  * Sheets of the New Trips page: a three-step New trip flow (Trip basics, Transport, Stays); an edit
@@ -229,14 +230,9 @@ const Basics: React.FC<{
             </RpSection>
 
             <RpSection title="Dates" icon={CalendarBlank}>
-                <div className="grid gap-x-3 sm:grid-cols-2">
-                    <RpField label="Start" error={startError}>
-                        {id => <input id={id} type="date" value={draft.startDate} onChange={e => set('startDate', e.target.value)} className={DATE} />}
-                    </RpField>
-                    <RpField label="End" error={endError}>
-                        {id => <input id={id} type="date" value={draft.endDate} min={draft.startDate || undefined} onChange={e => set('endDate', e.target.value)} className={DATE} />}
-                    </RpField>
-                </div>
+                <RpField label="Start and end" error={startError || endError}>
+                    {id => <RpDateRangePicker label="Trip dates" id={id} value={{ start: draft.startDate, end: draft.endDate }} onChange={r => { set('startDate', r.start); set('endDate', r.end); }} />}
+                </RpField>
             </RpSection>
             <LoggedFlights draft={draft} set={set} brandfetchApiKey={brandfetchApiKey} />
 
@@ -466,9 +462,8 @@ const StaysStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKey?: 
                 </div>
                 <RpField label="Address">{id => <input id={id} value={stay.address} onChange={e => patch({ address: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
                 <div className="grid gap-x-3 sm:grid-cols-2">
-                    <RpField label="Check-in">{id => <input id={id} type="date" value={stay.checkInDate} onChange={e => patch({ checkInDate: e.target.value, checkOutDate: stay.checkOutDate && stay.checkOutDate >= e.target.value ? stay.checkOutDate : e.target.value })} className={DATE} />}</RpField>
+                    <div className="sm:col-span-2"><RpField label="Check-in and check-out">{id => <RpDateRangePicker label="Check-in and check-out" id={id} value={{ start: stay.checkInDate, end: stay.checkOutDate }} onChange={r => patch({ checkInDate: r.start, checkOutDate: r.end })} clearable />}</RpField></div>
                     <RpField label="Check-in time">{id => <input id={id} type="time" value={stay.checkInTime} onChange={e => patch({ checkInTime: e.target.value })} className={DATE} />}</RpField>
-                    <RpField label="Check-out">{id => <input id={id} type="date" value={stay.checkOutDate} min={stay.checkInDate || undefined} onChange={e => patch({ checkOutDate: e.target.value })} className={DATE} />}</RpField>
                     <RpField label="Check-out time">{id => <input id={id} type="time" value={stay.checkOutTime} onChange={e => patch({ checkOutTime: e.target.value })} className={DATE} />}</RpField>
                     <RpField label="Confirmation">{id => <input id={id} value={stay.confirmationCode} onChange={e => patch({ confirmationCode: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
                     <RpField label="Cost">{id => <input id={id} inputMode="decimal" value={cost} onChange={e => setCost(e.target.value)} className={cn(RP_FIELD, 'rp-tabular')} placeholder="0" autoComplete="off" />}</RpField>
@@ -528,7 +523,7 @@ const ActivitiesStep: React.FC<{ draft: TripDraft; set: SetDraft }> = ({ draft, 
                     {ACTIVITY_TYPES.map(t => <RpChip key={t} selected={item.type === t} onClick={() => patch({ type: t })}>{t}</RpChip>)}
                 </div>
                 <div className="grid gap-x-3 sm:grid-cols-2">
-                    <RpField label="Date">{id => <input id={id} type="date" value={item.date} onChange={e => patch({ date: e.target.value })} className={DATE} />}</RpField>
+                    <RpField label="Date">{id => <RpDatePicker label="Date" id={id} value={item.date} onChange={v => patch({ date: v })} clearable />}</RpField>
                     <RpField label="Time">{id => <input id={id} type="time" value={item.time} onChange={e => patch({ time: e.target.value })} className={DATE} />}</RpField>
                     <RpField label="Where">{id => <input id={id} value={item.location} onChange={e => patch({ location: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
                     <RpField label="Cost">{id => <input id={id} inputMode="decimal" value={cost} onChange={e => setCost(e.target.value)} className={cn(RP_FIELD, 'rp-tabular')} placeholder="0" autoComplete="off" />}</RpField>

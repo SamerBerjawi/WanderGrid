@@ -7,13 +7,14 @@ import {
 import { shiftDate } from '../../../utils/tripItinerary';
 import { formatDate } from '../../../utils/formatters';
 import { ArrowDown, ArrowRight, ArrowUp, CalendarBlank, MapPin, Moon, Path, Plus, Trash } from '../../ui/hugeicons';
-import { RP_FIELD, RpField } from '../fields';
+import { RpField } from '../fields';
 import { PlaceField } from '../PlaceField';
 import { RpEmpty } from '../ui';
 import { WeatherChip } from '../WeatherChip';
 import ParticleButton from '../../kokonutui/particle-button';
 import { LEG_PLACES, legText, modeLook } from '../trips/transportModes';
 import { cn } from '../../../utils/cn';
+import { RpDatePicker } from '../DateFields';
 
 /**
  * The route planner (UI_UX_DESIGN_REFERENCE.md decision 56): the main journey from place to place on
@@ -23,7 +24,6 @@ import { cn } from '../../../utils/cn';
  */
 
 const CARD = 'rounded-rp-card bg-rp-surface p-4 rp-shadow-rest sm:p-6';
-const DATE = cn(RP_FIELD, 'rp-date rp-tabular');
 const GHOST = 'inline-flex min-h-11 items-center gap-2 rounded-full bg-rp-inset px-4 text-sm font-medium text-rp-ink outline-none transition-colors duration-150 hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted';
 const ICON_BTN = 'inline-flex size-11 shrink-0 items-center justify-center rounded-full text-rp-muted outline-none hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted disabled:opacity-30';
 /** The modes a route is driven, taken or sailed in; flights live under Bookings. */
@@ -188,7 +188,7 @@ const RouteEditor: React.FC<{ trip: Trip; initial: RouteSector[]; onSave: (trans
                                             </div>
                                         </div>
                                         <div className="mt-1 flex flex-wrap items-end gap-x-3 gap-y-1">
-                                            <div className="w-40"><RpField label="Date">{id => <input id={id} type="date" value={seg.date} min={trip.startDate || undefined} onChange={e => patchSegment(journey.id, seg.id, { date: e.target.value })} className={DATE} />}</RpField></div>
+                                            <div className="w-40"><RpField label="Date">{id => <RpDatePicker label="Date" id={id} value={seg.date} min={trip.startDate || undefined} onChange={v => patchSegment(journey.id, seg.id, { date: v })} clearable />}</RpField></div>
                                             <div className="pb-1.5"><ModePicker value={seg.mode} onChange={mode => patchSegment(journey.id, seg.id, { mode })} /></div>
                                         </div>
                                         <Places seg={seg} onChange={p => patchSegment(journey.id, seg.id, p)} />
@@ -249,7 +249,7 @@ const RouteEditor: React.FC<{ trip: Trip; initial: RouteSector[]; onSave: (trans
                                         <button type="button" aria-label={`Remove ${sector.title}`} onClick={() => removeSector(sector.id)} className={cn(ICON_BTN, 'hover:text-rp-rust')}><Trash size={16} aria-hidden /></button>
                                     </div>
                                     <div className="mt-1 flex flex-wrap items-end gap-x-3 gap-y-1">
-                                        <div className="w-40"><RpField label="Date">{id => <input id={id} type="date" value={out.date} min={trip.startDate || undefined} max={trip.endDate || undefined} onChange={e => patchSegment(sector.id, out.id, { date: e.target.value })} className={DATE} />}</RpField></div>
+                                        <div className="w-40"><RpField label="Date">{id => <RpDatePicker label="Date" id={id} value={out.date} min={trip.startDate || undefined} max={trip.endDate || undefined} onChange={v => patchSegment(sector.id, out.id, { date: v })} clearable />}</RpField></div>
                                         <div className="pb-1.5"><ModePicker value={out.mode} onChange={mode => patchSegment(sector.id, out.id, { mode })} /></div>
                                     </div>
                                     <Places seg={out} originLabel="Starting from" onChange={p => patchSegment(sector.id, out.id, p)} />

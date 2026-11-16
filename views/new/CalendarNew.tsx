@@ -9,6 +9,7 @@ import {
     nextLeave, summarise, workingDaysOf, type CalendarItem, type CalendarLayer, type LeaveColor, type LeaveContext, type WeekStart,
 } from '../../utils/calendarModel';
 import { formatDate, formatDateRange } from '../../utils/formatters';
+import { readWeekStart, WEEK_START_KEY } from '../../utils/datePicker';
 import { errorMessage, toast } from '../../services/toast';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import type { DockTool } from '../../components/kokonutui/tool-dock';
@@ -58,7 +59,6 @@ interface CalendarNewProps {
 
 type Tab = 'week' | 'month' | 'year' | 'schedule';
 const TAB_KEY = 'wandergrid_calendar_new_tab';
-const WEEK_KEY = 'wandergrid_calendar_new_week_start';
 const COLOUR_KEY = 'wandergrid_calendar_new_colour_by';
 const LAYERS_KEY = 'wandergrid_calendar_new_layers';
 const TABS: { id: Tab; title: string; icon: typeof CalendarBlank; pill: { bg: string; text: string }; iconClassName: string }[] = [
@@ -75,16 +75,6 @@ const readTab = (): Tab => {
     } catch { return 'month'; }
 };
 /** The saved first day of the week, else the locale's, else Monday. */
-const readWeekStart = (): WeekStart => {
-    try {
-        const v = Number(localStorage.getItem(WEEK_KEY));
-        if (localStorage.getItem(WEEK_KEY) !== null && (v === 0 || v === 1 || v === 6)) return v;
-        const first = (new Intl.Locale(navigator.language) as unknown as { weekInfo?: { firstDay?: number } }).weekInfo?.firstDay;
-        if (first === 7) return 0;
-        if (first === 6) return 6;
-    } catch { /* locale unavailable */ }
-    return 1;
-};
 
 const readColourBy = (): ColourBy => {
     try { return localStorage.getItem(COLOUR_KEY) === 'type' ? 'type' : 'status'; } catch { return 'status'; }
@@ -156,7 +146,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
     });
     const changeWeekStart = (next: WeekStart) => {
         setWeekStart(next);
-        try { localStorage.setItem(WEEK_KEY, String(next)); } catch { /* storage unavailable */ }
+        try { localStorage.setItem(WEEK_START_KEY, String(next)); } catch { /* storage unavailable */ }
     };
 
     const { users, trips, leave, entitlements, configs: savedConfigs, events, settings, me, isAdmin } = data;
