@@ -14,6 +14,7 @@ import { RpChip, RpSection, RpSheet } from '../ui';
 import { LeaveSection } from '../trips/TripSheets';
 import { TripMenu } from '../trips/TripMenu';
 import { cn } from '../../../utils/cn';
+import { RpDateRangePicker } from '../DateFields';
 
 /**
  * Create, change or remove a leave entry (leave Phase 1): who it is for, its dates, where it stands (an idea, planned,
@@ -27,7 +28,6 @@ export type LeaveTarget =
     | { kind: 'edit'; entry: LeaveEntry };
 
 type Mode = NonNullable<LeaveEntry['durationMode']>;
-const DATE = cn(RP_FIELD, 'rp-date rp-tabular');
 const MAX_WORK_CHIPS = 62;
 const days = (n: number) => `${Number.isInteger(n) ? n : n.toFixed(1)} ${Math.abs(n) === 1 ? 'day' : 'days'}`;
 
@@ -247,14 +247,9 @@ export const LeaveSheet: React.FC<{
                             {members.map(m => <RpChip key={m.id} selected={draft.memberId === m.id} onClick={() => setDraft(d => (d ? { ...d, memberId: m.id, tripId: undefined } : d))}>{m.name.split(' ')[0]}</RpChip>)}
                         </div>
                     ) : null}
-                    <div className="grid gap-x-3 sm:grid-cols-2">
-                        <RpField label="First day" error={touched ? dateError : undefined}>
-                            {id => <input id={id} type="date" value={draft.startDate} onChange={e => { const v = e.target.value; setDraft(d => (d ? { ...d, startDate: v, endDate: !d.endDate || d.endDate < v ? v : d.endDate } : d)); }} className={DATE} />}
-                        </RpField>
-                        <RpField label="Last day">
-                            {id => <input id={id} type="date" value={draft.endDate} min={draft.startDate || undefined} onChange={e => set('endDate', e.target.value)} className={DATE} />}
-                        </RpField>
-                    </div>
+                    <RpField label="First and last day" error={touched ? dateError : undefined}>
+                        {id => <RpDateRangePicker label="First and last day" id={id} value={{ start: draft.startDate, end: draft.endDate }} onChange={r => setDraft(d => (d ? { ...d, startDate: r.start, endDate: r.end } : d))} />}
+                    </RpField>
                     <RpField label="Name (optional)">
                         {id => <input id={id} value={draft.name} onChange={e => set('name', e.target.value)} className={RP_FIELD} autoComplete="off" placeholder="Time off" />}
                     </RpField>

@@ -3,6 +3,7 @@ import type { CustomEvent } from '../../../types';
 import ParticleButton from '../../kokonutui/particle-button';
 import { RP_FIELD, RpField } from '../fields';
 import { RpSheet, RpToggle } from '../ui';
+import { RpDatePicker } from '../DateFields';
 
 /**
  * A one-day event on the calendar (a company offsite, a school day, a work Saturday). Whether it counts as
@@ -57,7 +58,7 @@ export const EventSheet: React.FC<{
                     {id => <input id={id} value={name} onChange={e => setName(e.target.value)} placeholder="Company offsite" maxLength={80} autoComplete="off" className={RP_FIELD} />}
                 </RpField>
                 <RpField label="Day" error={dayError}>
-                    {id => <input id={id} type="date" value={day} onChange={e => setDay(e.target.value)} className={RP_FIELD} />}
+                    {id => <RpDatePicker label="Day" id={id} value={day} onChange={setDay} />}
                 </RpField>
                 <RpToggle label="A working day" hint={working ? 'Counts as a working day, even on a weekend' : 'A company day off: leave over it costs nothing'} checked={working} onChange={setWorking} />
             </div>

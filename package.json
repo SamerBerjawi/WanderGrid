@@ -1,7 +1,7 @@
 {
   "name": "wandergrid-v0.2",
   "private": true,
-  "version": "1.2-261116.11",
+  "version": "1.2-261116.12",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -24,6 +24,7 @@
     "@fontsource-variable/urbanist": "^5.3.0",
     "@hugeicons/core-free-icons": "^4.3.5",
     "@hugeicons/react": "^1.1.10",
+    "@internationalized/date": "^3.12.4",
     "@loaders.gl/core": "^4.5.4",
     "@luma.gl/core": "~9.4.2",
     "@luma.gl/engine": "~9.4.2",
@@ -41,6 +42,8 @@
     "pdfjs-dist": "^4.10.38",
     "pmtiles": "^4.5.0",
     "react": "^19.2.3",
+    "react-aria": "^3.53.1",
+    "react-aria-components": "^1.22.1",
     "react-dom": "^19.2.3",
     "searoute-js": "^0.1.0",
     "tailwind-merge": "^3.6.0",

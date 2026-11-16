@@ -9,6 +9,7 @@ import { LegDetails } from './LegDetails';
 import { LEG_PLACES, MODE_LOOKS, legText, modeLook } from './transportModes';
 import { cn } from '../../../utils/cn';
 import { RpCarrierLogo } from '../CarrierLogos';
+import { RpDatePicker } from '../DateFields';
 
 /**
  * The fields of one transport leg: kind of transport, From and To (place search tuned to the kind),
@@ -101,10 +102,10 @@ export const LegForm: React.FC<{
                         onPick={(text, c) => patch({ destination: text, destLat: c.lat, destLng: c.lng, destGeoKey: text })}
                     />
                 )}</RpField>
-                {noDate ? null : <RpField label="Departs">{id => <input id={id} type="date" value={leg.departureDate || ''} onChange={e => patch({ departureDate: e.target.value, arrivalDate: leg.arrivalDate && leg.arrivalDate >= e.target.value ? leg.arrivalDate : e.target.value })} className={LEG_DATE} />}</RpField>}
+                {noDate ? null : <RpField label="Departs">{id => <RpDatePicker label="Departs" id={id} value={leg.departureDate || ''} onChange={v => patch({ departureDate: v, arrivalDate: leg.arrivalDate && leg.arrivalDate >= v ? leg.arrivalDate : v })} clearable />}</RpField>}
                 <RpField label="Departure time">{id => <input id={id} type="time" value={leg.departureTime || ''} onChange={e => patch({ departureTime: e.target.value })} className={LEG_DATE} />}</RpField>
                 {noDate ? <RpField label="Arrival time">{id => <input id={id} type="time" value={leg.arrivalTime || ''} onChange={e => patch({ arrivalTime: e.target.value })} className={LEG_DATE} />}</RpField> : null}
-                <RpField label="Arrives">{id => <input id={id} type="date" value={leg.arrivalDate || ''} min={leg.departureDate || undefined} onChange={e => patch({ arrivalDate: e.target.value })} className={LEG_DATE} />}</RpField>
+                <RpField label="Arrives">{id => <RpDatePicker label="Arrives" id={id} value={leg.arrivalDate || ''} min={leg.departureDate || undefined} onChange={v => patch({ arrivalDate: v })} clearable />}</RpField>
                 {noDate ? null : <RpField label="Arrival time">{id => <input id={id} type="time" value={leg.arrivalTime || ''} onChange={e => patch({ arrivalTime: e.target.value })} className={LEG_DATE} />}</RpField>}
             </div>
             <RpField label={isFlight ? 'Airline' : 'Operator'}>

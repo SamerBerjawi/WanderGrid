@@ -9,6 +9,7 @@ import { Trash } from '../../ui/hugeicons';
 import { RpChip, RpSection, RpSheet } from '../ui';
 import { RpField, RP_FIELD } from '../fields';
 import { cn } from '../../../utils/cn';
+import { RpDatePicker } from '../DateFields';
 
 /**
  * Add or edit one expense: what, how much and in which currency, the day (the exchange rate is the ECB's for that
@@ -137,7 +138,7 @@ export const ExpenseSheet: React.FC<{
                         )}
                     </RpField>
                 </div>
-                <RpField label="Date">{id => <input id={id} type="date" value={date} onChange={e => { manualRate.current = false; setDate(e.target.value); }} className={RP_FIELD} />}</RpField>
+                <RpField label="Date">{id => <RpDatePicker label="Date" id={id} value={date} onChange={v => { manualRate.current = false; setDate(v); }} />}</RpField>
 
                 {foreign ? (
                     <RpSection title={`Rate to ${ledger}`}>

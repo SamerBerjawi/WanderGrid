@@ -36,6 +36,12 @@ Fixes and upgrades from using 1.2.1: Plan leave, Import a booking and Route repl
 
 ### Changed
 
+- **New date pickers everywhere.** Every date field (trips, stays, legs, activities, leave, events, holidays,
+  expenses, journeys, members, the Atlas and the Map filter) now opens a calendar in a popover, built on the Untitled UI
+  date pickers, instead of the browser's own date input. Dates show in the format chosen in Settings, the calendar starts
+  the week on the day chosen on the Calendar page, and a picked date only counts once you press **Apply**. Date ranges
+  (trip dates, check-in and check-out, leave) are picked in one calendar; the Map's filter keeps separate From and To
+  dates, so either can be left open.
 - The Dashboard's **Reset widgets** button only shows in Edit mode, and uses the list-restart icon.
 
 ### Added
