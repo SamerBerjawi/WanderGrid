@@ -113,3 +113,28 @@ export const convertTripLeave = (trips: Trip[], existing: LeaveEntry[]): { add: 
     });
     return { add, save, remove };
 };
+
+const shiftISO = (iso: string, by: number): string => {
+    const d = new Date(Date.parse(`${iso}T00:00:00Z`) + by * 86_400_000);
+    return d.toISOString().slice(0, 10);
+};
+
+/**
+ * Leave dragged to other dates on the calendar (leave Phase 2c): every date moves by `by` days (days marked as worked
+ * too), and a split across years follows the move. Approved or refused leave of a member who tracks approvals goes back
+ * to Requested, because the answer was for other dates.
+ */
+export const moveLeave = (e: LeaveEntry, by: number, user?: Pick<User, 'leaveApproval'>): LeaveEntry => {
+    if (!by) return e;
+    const startDate = shiftISO(e.startDate, by);
+    const years = Number(startDate.slice(0, 4)) - Number(e.startDate.slice(0, 4));
+    const reanswer = Boolean(user?.leaveApproval) && (e.state === 'approved' || e.state === 'rejected');
+    return {
+        ...e,
+        startDate,
+        endDate: shiftISO(e.endDate || e.startDate, by),
+        ...(e.excludedDates?.length ? { excludedDates: e.excludedDates.map(d => shiftISO(d, by)) } : {}),
+        ...(e.allocations?.length && years ? { allocations: e.allocations.map(a => (a.targetYear ? { ...a, targetYear: a.targetYear + years } : a)) } : {}),
+        ...(reanswer ? { state: 'requested' as LeaveState } : {}),
+    };
+};

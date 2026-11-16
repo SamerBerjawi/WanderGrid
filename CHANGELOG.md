@@ -54,6 +54,9 @@ Fixes and upgrades from using 1.2.1: Plan leave, Import a booking and Route repl
   Calendar has a Reminders card (leave coming up, carried-over days expiring, leave left late in the year, requests still
   waiting), the Dashboard's leave widget shows the most pressing one, and Year in review says what the leave bought.
   Each reminder can be switched off in Settings › Leave.
+- **Drag on the Calendar, and a week view.** Drag across days to add leave for them, or drag a leave bar to other days
+  to move it (with Undo); Shift + arrow keys pick days from the keyboard. A new **Week** view shows every item of a week
+  (a list of days on a phone).
 - **Trips and leave check each other.** A trip shows when its leave was refused, is still waiting, sits on other dates,
   or leaves working days uncovered; the Calendar lists the trips whose leave needs a look; leave with no trip offers
   **Plan a trip for these days**, and the new trip takes that leave over.

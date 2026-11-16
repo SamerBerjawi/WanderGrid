@@ -769,3 +769,12 @@ export const nextLeave = (leave: LeaveEntry[], memberIds: string[], today: strin
         .sort((a, b) => a.startDate.localeCompare(b.startDate));
     return mine[0] ?? null;
 };
+
+/** The seven days of the week `iso` falls in, from the chosen first day (the Calendar's week view). */
+export const weekOf = (iso: string, weekStart: WeekStart): string[] => {
+    const first = addDaysISO(iso, -((weekdayOf(iso) - weekStart + 7) % 7));
+    return Array.from({ length: 7 }, (_, i) => addDaysISO(first, i));
+};
+
+/** The days from `a` to `b` in date order, whichever was picked first (a range dragged across the grid). */
+export const orderedRange = (a: string, b: string): [string, string] => (a <= b ? [a, b] : [b, a]);

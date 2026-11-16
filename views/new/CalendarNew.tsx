@@ -5,7 +5,7 @@ import { useCalendarData } from '../../hooks/useCalendarData';
 import { buildConfig, calendarKey, followedKeys, missingYears, withCustomHoliday, withoutHoliday } from '../../utils/holidayCalendar';
 import { fetchHolidays } from '../../services/holidayCalendars';
 import {
-    ALL_LAYERS, balancesFor, addDaysISO, buildItems, calendarYears, configsFor, daysBetween, holidayDays, itemsOn, leaveTitle, memberWorkingDays, tripDates, leaveContext, monthOf, MONTH_NAMES,
+    ALL_LAYERS, balancesFor, addDaysISO, weekOf, buildItems, calendarYears, configsFor, daysBetween, holidayDays, itemsOn, leaveTitle, memberWorkingDays, tripDates, leaveContext, monthOf, MONTH_NAMES,
     nextLeave, summarise, workingDaysOf, type CalendarItem, type CalendarLayer, type LeaveColor, type LeaveContext, type WeekStart,
 } from '../../utils/calendarModel';
 import { formatDate, formatDateRange } from '../../utils/formatters';
@@ -34,8 +34,10 @@ import { dataService } from '../../services/mockDb';
 import { tripsNeedingAttention } from '../../utils/tripLeave';
 import { LeaveAttention } from '../../components/new/calendar/LeaveAttention';
 import { LeaveReminders } from '../../components/new/calendar/LeaveReminders';
+import { WeekGrid } from '../../components/new/calendar/WeekGrid';
+import { moveLeave } from '../../utils/leaveEntry';
 import { leaveReminders } from '../../utils/leaveInsights';
-import { CalendarBlank, CalendarCheck, CaretLeft, CaretRight, Clock, Flag, Gear, List, MagnifyingGlass, Plus, Sparkle, SquaresFour, Star, SunHorizon, Suitcase, Users } from '../../components/ui/hugeicons';
+import { CalendarBlank, CalendarCheck, CaretLeft, CaretRight, Clock, Columns, Flag, Gear, List, MagnifyingGlass, Plus, Sparkle, SquaresFour, Star, SunHorizon, Suitcase, Users } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -54,12 +56,13 @@ interface CalendarNewProps {
     onNavigate?: (path: string) => void;
 }
 
-type Tab = 'month' | 'year' | 'schedule';
+type Tab = 'week' | 'month' | 'year' | 'schedule';
 const TAB_KEY = 'wandergrid_calendar_new_tab';
 const WEEK_KEY = 'wandergrid_calendar_new_week_start';
 const COLOUR_KEY = 'wandergrid_calendar_new_colour_by';
 const LAYERS_KEY = 'wandergrid_calendar_new_layers';
 const TABS: { id: Tab; title: string; icon: typeof CalendarBlank; pill: { bg: string; text: string }; iconClassName: string }[] = [
+    { id: 'week', title: 'Week', icon: Columns, pill: { bg: 'bg-rp-navy', text: 'text-rp-paper' }, iconClassName: 'text-rp-navy' },
     { id: 'month', title: 'Month', icon: CalendarBlank, pill: { bg: 'bg-rp-ink', text: 'text-rp-on-ink' }, iconClassName: 'text-rp-ink' },
     { id: 'year', title: 'Year', icon: SquaresFour, pill: { bg: 'bg-rp-green', text: 'text-rp-paper' }, iconClassName: 'text-rp-green' },
     { id: 'schedule', title: 'Schedule', icon: List, pill: { bg: 'bg-rp-mustard', text: 'text-rp-on-mustard' }, iconClassName: 'text-rp-ochre' },
@@ -68,7 +71,7 @@ const TABS: { id: Tab; title: string; icon: typeof CalendarBlank; pill: { bg: st
 const readTab = (): Tab => {
     try {
         const v = localStorage.getItem(TAB_KEY);
-        return v === 'year' || v === 'schedule' ? v : 'month';
+        return v === 'week' || v === 'year' || v === 'schedule' ? v : 'month';
     } catch { return 'month'; }
 };
 /** The saved first day of the week, else the locale's, else Monday. */
@@ -131,6 +134,14 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
     useEffect(() => { setBalanceYear(cursor.year); }, [cursor.year]);
 
     const changeTab = (next: Tab) => {
+        // The week view opens on the month being looked at: today when it is in it, else its first day.
+        if (next === 'week') {
+            const m = monthOf(focusISO);
+            if (m.year !== cursor.year || m.month0 !== cursor.month0) {
+                const first = `${cursor.year}-${String(cursor.month0 + 1).padStart(2, '0')}-01`;
+                setFocusISO(monthOf(today).year === cursor.year && monthOf(today).month0 === cursor.month0 ? today : first);
+            }
+        }
         setTab(next);
         try { localStorage.setItem(TAB_KEY, next); } catch { /* storage unavailable */ }
     };
@@ -285,7 +296,17 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
         });
     }, []);
     const goToday = () => { setCursor(monthOf(today)); setFocusISO(today); };
-    const step = (by: number) => (tab === 'year' ? setCursor(c => ({ ...c, year: c.year + by })) : shiftMonth(by));
+    const step = (by: number) => {
+        if (tab === 'year') setCursor(c => ({ ...c, year: c.year + by }));
+        else if (tab === 'week') setFocusISO(f => addDaysISO(f, 7 * by));
+        else shiftMonth(by);
+    };
+    // The week view follows the focused day; the month (and the balances' year) follow it there.
+    useEffect(() => {
+        if (tab !== 'week') return;
+        const m = monthOf(focusISO);
+        setCursor(c => (c.year === m.year && c.month0 === m.month0 ? c : m));
+    }, [tab, focusISO]);
 
     const openDay = (iso: string) => { setFocusISO(iso); setDay(iso); };
     const startLeave = (iso?: string) => {
@@ -303,6 +324,24 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
             }
         }));
     };
+    // Dragging on the grid (leave Phase 2c): days picked open new leave for them; a leave bar dragged moves the leave.
+    const pickDays = useCallback((start: string, end: string) => {
+        setDay(null);
+        setLeaveTarget({ kind: 'new', date: start, endDate: end, memberId: subject?.id });
+    }, [subject]);
+    const movable = useCallback((key: string) => {
+        const entry = items.find(i => i.key === key)?.entry;
+        return entry && (isAdmin || entry.memberId === me?.id) ? entry : undefined;
+    }, [items, isAdmin, me]);
+    const dragLeave = useCallback((entry: LeaveEntry, by: number) => {
+        const moved = moveLeave(entry, by, users.find(u => u.id === entry.memberId));
+        void attempt(async () => {
+            await latest.current.saveLeave(moved);
+            undo.show(`Moved to ${formatDateRange(moved.startDate, moved.endDate)}${moved.state !== entry.state ? ', to be asked again' : ''}`, () => attempt(async () => {
+                await latest.current.saveLeave({ ...entry, version: undefined });
+            }));
+        }, "Couldn't move the leave.");
+    }, [users, undo]);
     const removeLeave = async (entry: LeaveEntry) => {
         await attempt(async () => {
             await data.deleteLeave(entry);
@@ -420,7 +459,8 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
     const monthEnd = `${cursor.year}-${String(cursor.month0 + 1).padStart(2, '0')}-${String(new Date(Date.UTC(cursor.year, cursor.month0 + 1, 0)).getUTCDate()).padStart(2, '0')}`;
     const monthItems = items.filter(i => i.end >= monthStart && i.start <= monthEnd);
     const scheduleItems = items.filter(i => i.end >= today);
-    const heading = tab === 'year' ? String(cursor.year) : `${MONTH_NAMES[cursor.month0]} ${cursor.year}`;
+    const shownWeek = weekOf(focusISO, weekStart);
+    const heading = tab === 'year' ? String(cursor.year) : tab === 'week' ? formatDateRange(shownWeek[0], shownWeek[6]) : `${MONTH_NAMES[cursor.month0]} ${cursor.year}`;
     const tabItems = TABS.map(t => ({ id: t.id, title: t.title, icon: t.icon, hideTitle: mobile && t.id !== tab, iconClassName: tab === t.id ? undefined : t.iconClassName }));
     const activeTab = TABS.find(t => t.id === tab)!;
 
@@ -509,9 +549,9 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                             </div>
                             {tab !== 'schedule' ? (
                                 <div className="flex items-center justify-between gap-1 sm:justify-end lg:justify-between xl:justify-end">
-                                    <RpIconButton label={tab === 'year' ? 'Previous year' : 'Previous month'} tone="ghost" onClick={() => step(-1)}><CaretLeft size={20} /></RpIconButton>
+                                    <RpIconButton label={tab === 'year' ? 'Previous year' : tab === 'week' ? 'Previous week' : 'Previous month'} tone="ghost" onClick={() => step(-1)}><CaretLeft size={20} /></RpIconButton>
                                     <h2 aria-live="polite" className="rp-tabular min-w-[9.5rem] text-center text-lg font-medium text-rp-ink">{heading}</h2>
-                                    <RpIconButton label={tab === 'year' ? 'Next year' : 'Next month'} tone="ghost" onClick={() => step(1)}><CaretRight size={20} /></RpIconButton>
+                                    <RpIconButton label={tab === 'year' ? 'Next year' : tab === 'week' ? 'Next week' : 'Next month'} tone="ghost" onClick={() => step(1)}><CaretRight size={20} /></RpIconButton>
                                     <button type="button" onClick={goToday} className={cn(PILL, 'bg-rp-inset text-rp-ink hover:bg-rp-line')}>Today</button>
                                 </div>
                             ) : null}
@@ -519,7 +559,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
 
                         {/* A short fade in when the view or month changes; no exit, so a key press lands on the new month at once. */}
                         <motion.div
-                            key={tab === 'month' ? `m-${cursor.year}-${cursor.month0}` : tab === 'year' ? `y-${cursor.year}` : 's'}
+                            key={tab === 'month' ? `m-${cursor.year}-${cursor.month0}` : tab === 'year' ? `y-${cursor.year}` : tab === 'week' ? `w-${shownWeek[0]}` : 's'}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ duration: 0.15 }}
@@ -540,6 +580,9 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                                             onOpen={openDay}
                                             onShiftMonth={shiftMonth}
                                             wantFocus={wantFocus}
+                                            onSelectRange={pickDays}
+                                            onMoveLeave={dragLeave}
+                                            movable={movable}
                                         />
                                         <Legend colourBy={colourBy} types={entitlements} />
                                         {mobile ? (
@@ -548,6 +591,26 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                                                 <AgendaList items={monthItems} from={monthStart} empty="Nothing this month" onOpen={openItem} today={today} />
                                             </div>
                                         ) : null}
+                                    </>
+                                ) : null}
+                                {tab === 'week' ? (
+                                    <>
+                                        <WeekGrid
+                                            weekStart={weekStart}
+                                            items={items}
+                                            workingDays={viewWeek}
+                                            today={today}
+                                            selected={day}
+                                            focusISO={focusISO}
+                                            compact={mobile}
+                                            onFocusISO={setFocusISO}
+                                            onOpen={openDay}
+                                            wantFocus={wantFocus}
+                                            onSelectRange={pickDays}
+                                            onMoveLeave={dragLeave}
+                                            movable={movable}
+                                        />
+                                        <Legend colourBy={colourBy} types={entitlements} />
                                     </>
                                 ) : null}
                                 {tab === 'year' ? (

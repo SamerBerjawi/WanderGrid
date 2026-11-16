@@ -107,3 +107,15 @@ the build, without asking. Each entry says what was decided, why, and where it l
 | 2b.4 | The Calendar's Reminders card leaves out the "trips need a look" reminder | The Calendar already has the "Leave to look at" card listing those trips. **(own call)** |
 | 2b.5 | The Dashboard widget has room for one line: your most pressing reminder, otherwise what the year's leave bought | Keeps the widget the same size. **(own call)** |
 | 2b.6 | The Member page shows leave by month as simple bars and a year-by-year table; future years with nothing offered or booked are hidden; the current year reads "this year", later ones "forecast" | A chart library would be heavy for twelve bars. **(own call)** |
+
+## Phase 2c: calendar interactions (PR: feat/leave-calendar-drag)
+
+| # | Decision | Why / alternative |
+|---|---|---|
+| 2c.1 | Dragging across days on the month or week grid opens **Add leave** for them rather than saving straight away | The sheet still needs a type and a state; nothing is saved by accident. **(own call)** |
+| 2c.2 | Dragging a leave bar saves the move at once, with Undo; only the member themselves or an admin can drag their leave | Fast for the common case of shifting a week; Undo makes it safe. Matches who may edit leave (1a.4). **(own call)** |
+| 2c.3 | A move shifts every date by the same number of calendar days (days marked as worked too, and a split across years follows); the days it costs are counted again where it lands | A literal move is predictable; moving Mon–Fri by two days gives Wed–Sun, which costs 3 days. **(own call)** |
+| 2c.4 | Moving approved or refused leave of a member who tracks approvals sets it back to **Requested** (the toast says "to be asked again") | The answer was for other dates. **(own call)** |
+| 2c.5 | Drag works with a mouse or pen only; on touch screens the page keeps scrolling and the leave sheet sets dates. The keyboard has Shift + arrows and Enter | A touch drag would fight scrolling on a phone. **(own call)** |
+| 2c.6 | Leave linked to a trip can be dragged too; if it no longer matches the trip, the trip's issue checks (1d) flag it | Leave dates may differ from travel dates by design (1a). **(own call)** |
+| 2c.7 | The **Week** view shows whole days (no hours): every item in the app is all-day. It comes first among the tabs; the Month tab stays the default | Hours would be empty space. **(own call)** |
