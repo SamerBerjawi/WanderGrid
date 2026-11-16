@@ -17,6 +17,9 @@ const COUNTRY_CODE = /^[A-Za-z]{2}$/;
 
 const isValidYear = year => Number.isInteger(year) && year >= 1970 && year <= 2100;
 const isValidCountryCode = code => COUNTRY_CODE.test(String(code || ''));
+/** An ISO 3166-2 subdivision ("DE-BY", "BE-VLG", "GB-SCT"). */
+const REGION_CODE = /^[A-Za-z]{2}-[A-Za-z0-9]{1,4}$/;
+const isValidRegion = (region, code) => REGION_CODE.test(String(region || '')) && (!code || String(region).toUpperCase().startsWith(`${String(code).toUpperCase()}-`));
 
 const upstream = (key, url, fetchImpl, ttlMs = DAY_MS) =>
     fetchUpstream({ key, url, ttlMs, staleMs: 30 * DAY_MS, timeoutMs: 6000, maxBytes: 1024 * 1024, hostGate: { minIntervalMs: 100 }, ...(fetchImpl ? { fetchImpl } : {}) });
@@ -29,9 +32,13 @@ const addDays = (iso, n) => {
     return d.toISOString().slice(0, 10);
 };
 
-/** Nager.Date rows to ours; keeps nationwide public holidays only. */
-function fromNager(rows, year, code) {
+/**
+ * Nager.Date rows to ours: nationwide public holidays, plus, when a region is given, the public holidays of that region
+ * (marked `regional`). Other regions' days are left out and counted.
+ */
+function fromNager(rows, year, code, region) {
     if (!Array.isArray(rows)) return null;
+    const want = region ? String(region).toUpperCase() : '';
     let regional = 0;
     const holidays = [];
     for (const r of rows) {
@@ -39,28 +46,34 @@ function fromNager(rows, year, code) {
         if (!date || !date.startsWith(String(year))) continue;
         const types = Array.isArray(r.types) && r.types.length ? r.types : ['Public'];
         if (!types.includes('Public')) continue;
-        if (r.global === false || (Array.isArray(r.counties) && r.counties.length)) { regional++; continue; }
-        holidays.push({ date, name: String(r.name || r.localName || 'Public holiday'), localName: String(r.localName || r.name || '') });
+        const counties = Array.isArray(r.counties) ? r.counties.map(c => String(c).toUpperCase()) : [];
+        const nationwide = r.global !== false && counties.length === 0;
+        const mine = !nationwide && want && counties.includes(want);
+        if (!nationwide && !mine) { regional++; continue; }
+        holidays.push({ date, name: String(r.name || r.localName || 'Public holiday'), localName: String(r.localName || r.name || ''), ...(mine ? { regional: true } : {}) });
     }
     return { holidays, regionalSkipped: regional };
 }
 
-/** OpenHolidays rows to ours; a multi-day holiday (up to a week) becomes one entry per day. */
-function fromOpenHolidays(rows, year) {
+/** OpenHolidays rows to ours (same rule as above); a multi-day holiday (up to a week) becomes one entry per day. */
+function fromOpenHolidays(rows, year, region) {
     if (!Array.isArray(rows)) return null;
+    const want = region ? String(region).toUpperCase() : '';
     let regional = 0;
     const holidays = [];
     for (const r of rows) {
         const start = isoDay(r?.startDate);
         if (!start) continue;
         if (r.type && r.type !== 'Public') continue;
-        if (r.nationwide === false) { regional++; continue; }
+        const subdivisions = Array.isArray(r.subdivisions) ? r.subdivisions.map(x => String(x?.code || x?.shortName || '').toUpperCase()) : [];
+        const mine = r.nationwide === false && want && subdivisions.some(c => c === want || c.startsWith(`${want}-`));
+        if (r.nationwide === false && !mine) { regional++; continue; }
         const names = Array.isArray(r.name) ? r.name : [];
         const en = names.find(n => String(n.language).toUpperCase() === 'EN') || names[0];
         const name = String(en?.text || 'Public holiday');
         const end = isoDay(r.endDate) || start;
         for (let i = 0, d = start; d <= end && i < 7; i++, d = addDays(start, i)) {
-            if (d.startsWith(String(year))) holidays.push({ date: d, name, localName: name });
+            if (d.startsWith(String(year))) holidays.push({ date: d, name, localName: name, ...(mine ? { regional: true } : {}) });
         }
     }
     return { holidays, regionalSkipped: regional };
@@ -77,22 +90,24 @@ const tidy = holidays => {
 /**
  * @returns {Promise<{ ok: true, countryCode: string, year: number, source: string, holidays: object[], regionalSkipped: number } | { ok: false, status: number, error: string }>}
  */
-async function listHolidays(year, countryCode, { fetchImpl } = {}) {
+async function listHolidays(year, countryCode, { fetchImpl, region } = {}) {
     if (!isValidYear(year)) return { ok: false, status: 400, error: 'Year must be between 1970 and 2100' };
     if (!isValidCountryCode(countryCode)) return { ok: false, status: 400, error: 'Country must be a two-letter code' };
+    if (region && !isValidRegion(region, countryCode)) return { ok: false, status: 400, error: 'Region must be a code like DE-BY within the country' };
     const code = String(countryCode).toUpperCase();
+    const reg = region ? String(region).toUpperCase() : undefined;
 
     const nager = await upstream(`holidays:nager:${year}:${code}`, `${NAGER}/PublicHolidays/${year}/${code}`, fetchImpl);
     if (nager.ok) {
-        const parsed = fromNager(nager.data, year, code);
-        if (parsed && parsed.holidays.length > 0) return { ok: true, countryCode: code, year, source: 'nager', holidays: tidy(parsed.holidays), regionalSkipped: parsed.regionalSkipped };
+        const parsed = fromNager(nager.data, year, code, reg);
+        if (parsed && parsed.holidays.length > 0) return { ok: true, countryCode: code, region: reg, year, source: 'nager', holidays: tidy(parsed.holidays), regionalSkipped: parsed.regionalSkipped };
     }
 
     const url = `${OPEN_HOLIDAYS}/PublicHolidays?countryIsoCode=${code}&languageIsoCode=EN&validFrom=${year}-01-01&validTo=${year}-12-31`;
     const fallback = await upstream(`holidays:open:${year}:${code}`, url, fetchImpl);
     if (fallback.ok) {
-        const parsed = fromOpenHolidays(fallback.data, year);
-        if (parsed && parsed.holidays.length > 0) return { ok: true, countryCode: code, year, source: 'openholidays', holidays: tidy(parsed.holidays), regionalSkipped: parsed.regionalSkipped };
+        const parsed = fromOpenHolidays(fallback.data, year, reg);
+        if (parsed && parsed.holidays.length > 0) return { ok: true, countryCode: code, region: reg, year, source: 'openholidays', holidays: tidy(parsed.holidays), regionalSkipped: parsed.regionalSkipped };
     }
 
     // Nager answers 404 for a country it does not know; both empty means there is nothing to add.
@@ -119,6 +134,30 @@ async function listCountries({ fetchImpl } = {}) {
     return { ok: false, status: 502, error: 'The holiday services could not be reached. Try again later.' };
 }
 
+/**
+ * A country's regions (ISO 3166-2 subdivisions) for regional holidays: names from OpenHolidays; when it does not know the
+ * country, the region codes Nager.Date uses in this year's holidays (named by their code).
+ * @returns {Promise<{ ok: true, regions: Array<{ code: string, name: string }> } | { ok: false, status: number, error: string }>}
+ */
+async function listRegions(countryCode, { fetchImpl, year = new Date().getFullYear() } = {}) {
+    if (!isValidCountryCode(countryCode)) return { ok: false, status: 400, error: 'Country must be a two-letter code' };
+    const code = String(countryCode).toUpperCase();
+    const open = await upstream(`holidays:open:regions:${code}`, `${OPEN_HOLIDAYS}/Subdivisions?countryIsoCode=${code}&languageIsoCode=EN`, fetchImpl, 7 * DAY_MS);
+    if (open.ok && Array.isArray(open.data) && open.data.length > 0) {
+        const regions = open.data
+            .map(r => ({ code: String(r?.isoCode || r?.code || '').toUpperCase(), name: String((r?.name || []).find(n => String(n.language).toUpperCase() === 'EN')?.text || r?.name?.[0]?.text || '') }))
+            .filter(r => isValidRegion(r.code, code) && r.name);
+        if (regions.length > 0) return { ok: true, regions: regions.sort((a, b) => a.name.localeCompare(b.name)) };
+    }
+    const nager = await upstream(`holidays:nager:${year}:${code}`, `${NAGER}/PublicHolidays/${year}/${code}`, fetchImpl);
+    if (nager.ok && Array.isArray(nager.data)) {
+        const codes = new Set();
+        nager.data.forEach(r => (Array.isArray(r?.counties) ? r.counties : []).forEach(c => { if (isValidRegion(c, code)) codes.add(String(c).toUpperCase()); }));
+        return { ok: true, regions: [...codes].sort().map(c => ({ code: c, name: c })) };
+    }
+    return nager.status === 404 || open.status === 404 ? { ok: true, regions: [] } : { ok: false, status: 502, error: 'The holiday services could not be reached. Try again later.' };
+}
+
 /** Express handlers (mounted under /api/proxy/holidays; the whole /api is behind the session token). */
 const handleCountries = async (req, res) => {
     const r = await listCountries();
@@ -127,10 +166,17 @@ const handleCountries = async (req, res) => {
     return res.json({ countries: r.countries });
 };
 const handleHolidays = async (req, res) => {
-    const r = await listHolidays(Number(req.params.year), req.params.countryCode);
+    const region = typeof req.query?.region === 'string' && req.query.region ? req.query.region : undefined;
+    const r = await listHolidays(Number(req.params.year), req.params.countryCode, { region });
     if (!r.ok) return res.status(r.status).json({ error: r.error });
     res.setHeader('Cache-Control', 'private, max-age=3600');
-    return res.json({ countryCode: r.countryCode, year: r.year, source: r.source, holidays: r.holidays, regionalSkipped: r.regionalSkipped });
+    return res.json({ countryCode: r.countryCode, region: r.region, year: r.year, source: r.source, holidays: r.holidays, regionalSkipped: r.regionalSkipped });
+};
+const handleRegions = async (req, res) => {
+    const r = await listRegions(req.params.countryCode);
+    if (!r.ok) return res.status(r.status).json({ error: r.error });
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    return res.json({ regions: r.regions });
 };
 
-module.exports = { listHolidays, listCountries, handleCountries, handleHolidays, fromNager, fromOpenHolidays, isValidYear, isValidCountryCode };
+module.exports = { listHolidays, listCountries, listRegions, handleCountries, handleHolidays, handleRegions, fromNager, fromOpenHolidays, isValidYear, isValidCountryCode, isValidRegion };

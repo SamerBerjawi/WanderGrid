@@ -1082,6 +1082,7 @@ module.exports = function registerProxyRoutes(app, {
   // Route handlers for geocoding search
   // Public holidays for the calendar's "Add a country calendar" (Nager.Date, OpenHolidays as fallback).
   app.get('/api/proxy/holidays/countries', holidays.handleCountries);
+  app.get('/api/proxy/holidays/regions/:countryCode', holidays.handleRegions);
   app.get('/api/proxy/holidays/:year/:countryCode', holidays.handleHolidays);
   // Exchange rates for trip expenses (Frankfurter, the ECB's reference rates), one day's rate cached for a month.
   app.get('/api/proxy/fx/:date', fxRates.handleRate);

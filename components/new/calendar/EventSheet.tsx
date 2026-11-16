@@ -6,8 +6,9 @@ import { RpSheet, RpToggle } from '../ui';
 
 /**
  * A one-day event on the calendar (a company offsite, a school day, a work Saturday). Whether it counts as
- * a working day is the only thing it changes: an event on a working day takes nothing off, one marked
- * "not a working day" is shown like a day off. Only admins can add or remove events (the server decides).
+ * a working day is the only thing it changes: one marked "not a working day" is a company day off for everyone (leave
+ * over it costs nothing); a working day on a weekend (a working Saturday) makes that day cost leave like any other.
+ * Only admins can add or remove events (the server decides).
  */
 
 const newId = () => `event-${crypto.randomUUID()}`;
@@ -58,7 +59,7 @@ export const EventSheet: React.FC<{
                 <RpField label="Day" error={dayError}>
                     {id => <input id={id} type="date" value={day} onChange={e => setDay(e.target.value)} className={RP_FIELD} />}
                 </RpField>
-                <RpToggle label="A working day" hint={working ? 'Shown as a normal day' : 'Shown like a day off'} checked={working} onChange={setWorking} />
+                <RpToggle label="A working day" hint={working ? 'Counts as a working day, even on a weekend' : 'A company day off: leave over it costs nothing'} checked={working} onChange={setWorking} />
             </div>
         </RpSheet>
     );

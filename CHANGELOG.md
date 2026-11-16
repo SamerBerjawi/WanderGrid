@@ -45,6 +45,11 @@ Fixes and upgrades from using 1.2.1: Plan leave, Import a booking and Route repl
   Settings › Leave to use the request flow.
 - **The Calendar shows trips and leave apart**, with a Leave layer, an **Add leave for this trip** action on a trip, and
   in the leave sheet the trip it is for, a note, and what each balance would have left before you save.
+- **Holiday calendars for every year, and regions.** Follow a country or a region once and its holidays count every
+  year: a missing year is fetched when the Calendar opens. A region (for example Bavaria) adds its own holidays to the
+  country's. Admins can add days by hand to a calendar (kept when it is refreshed).
+- **Company days count.** An event marked "not a working day" is a day off for everyone (leave over it costs nothing);
+  a working Saturday costs leave like any other working day.
 - **The balance ledger** in Settings › Leave: a leave year that starts in any month (a June start makes "2026" run
   June 2026 – May 2027), an opening balance, adjustments with a note (+ a bonus day, − days taken elsewhere),
   "accrued so far" for monthly allowances, and each member's own working week for part-time schedules.

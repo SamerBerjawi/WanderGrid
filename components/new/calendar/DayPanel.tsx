@@ -1,6 +1,6 @@
 import React from 'react';
 import type { CustomEvent, EntitlementType, LeaveEntry, LeaveSpan, Trip, User } from '../../../types';
-import { dayWeight, isWeekend, type CalendarItem, type LeaveContext } from '../../../utils/calendarModel';
+import { dayWeight, isRestDay, type CalendarItem, type LeaveContext } from '../../../utils/calendarModel';
 import { stateLabel } from '../../../utils/leaveEntry';
 import { formatDate, formatDateRange } from '../../../utils/formatters';
 import SmoothDrawer from '../../kokonutui/smooth-drawer';
@@ -20,8 +20,8 @@ const PILL = 'inline-flex min-h-11 shrink-0 items-center justify-center gap-2 ro
 
 const weightWords = (span: LeaveSpan, iso: string, ctx: LeaveContext): string => {
     if ((span.excludedDates || []).includes(iso)) return 'A day you work: not counted';
-    if (isWeekend(iso, ctx.workingDays)) return 'Weekend: not counted';
-    if (ctx.offDays.has(iso)) return 'Public holiday: not counted';
+    if (isRestDay(iso, ctx)) return 'Weekend: not counted';
+    if (ctx.offDays.has(iso)) return 'Holiday or company day off: not counted';
     const w = dayWeight(span, iso, ctx);
     return w === 0.5 ? 'Counts as half a day' : 'Counts as a day';
 };

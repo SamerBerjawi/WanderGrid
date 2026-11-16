@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'motion/react';
 import type { CustomEvent, LeaveEntry, SavedConfig, User } from '../../types';
 import { useCalendarData } from '../../hooks/useCalendarData';
+import { buildConfig, calendarKey, followedKeys, missingYears, withCustomHoliday, withoutHoliday } from '../../utils/holidayCalendar';
+import { fetchHolidays } from '../../services/holidayCalendars';
 import {
     ALL_LAYERS, balancesFor, buildItems, calendarYears, configsFor, daysBetween, holidayDays, itemsOn, leaveTitle, memberWorkingDays, leaveContext, monthOf, MONTH_NAMES,
     nextLeave, summarise, workingDaysOf, type CalendarItem, type CalendarLayer, type LeaveColor, type LeaveContext, type WeekStart,
@@ -137,7 +139,32 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
         try { localStorage.setItem(WEEK_KEY, String(next)); } catch { /* storage unavailable */ }
     };
 
-    const { users, trips, leave, entitlements, configs, events, settings, me, isAdmin } = data;
+    const { users, trips, leave, entitlements, configs: savedConfigs, events, settings, me, isAdmin } = data;
+
+    // Followed calendars cover every year: a year the workspace has no saved calendar for yet (this year, next year, the
+    // year in view) is fetched once. An admin saves it for everyone; for anyone else it is used for this visit only.
+    const [fetched, setFetched] = useState<SavedConfig[]>([]);
+    const tried = useRef(new Set<string>());
+    const configs = useMemo(() => [...savedConfigs, ...fetched.filter(f => !savedConfigs.some(c => c.id === f.id))], [savedConfigs, fetched]);
+    useEffect(() => {
+        if (data.loading) return;
+        const keys = [...new Set(savedConfigs.map(calendarKey))];
+        const wanted = [...new Set([thisYear, thisYear + 1, cursor.year])];
+        missingYears(keys, configs, wanted).forEach(m => {
+            const id = `${m.key}-${m.year}`;
+            if (tried.current.has(id)) return;
+            tried.current.add(id);
+            fetchHolidays(m.countryCode, m.year, m.region)
+                .then(async answer => {
+                    const config = buildConfig(answer, m.countryName, new Date(), m.regionName);
+                    if (isAdmin) await latest.current.addCalendar(config);
+                    else setFetched(prev => [...prev.filter(c => c.id !== config.id), config]);
+                })
+                .catch(() => { /* the service is down or has nothing for that year: the calendar simply has no holidays */ });
+        });
+        // configs is derived from savedConfigs and fetched, both listed.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data.loading, savedConfigs, fetched, thisYear, cursor.year, isAdmin]);
     const workingDays = useMemo(() => workingDaysOf(settings), [settings]);
 
     // Whose balances: the one member in view, else you.
@@ -152,10 +179,10 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
         const map = new Map<string, LeaveContext>();
         users.forEach(u => {
             const week = memberWorkingDays(u, workingDays);
-            map.set(u.id, leaveContext(week, holidayDays(configsFor(configs, [u]), u.holidayWeekendRule, week)));
+            map.set(u.id, leaveContext(week, holidayDays(configsFor(configs, [u]), u.holidayWeekendRule, week), events));
         });
         return map;
-    }, [users, configs, workingDays]);
+    }, [users, configs, workingDays, events]);
     const contextFor = useCallback((id: string) => contexts.get(id) ?? leaveContext(workingDays, []), [contexts, workingDays]);
 
     // With one member in view the grid shows their own working week; otherwise the workspace's.
@@ -247,13 +274,27 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
             }));
         });
     };
-    const followCalendar = (member: User, configId: string, name: string, linked: boolean) => {
+    const followCalendar = (member: User, key: string, name: string, linked: boolean) => {
         void attempt(async () => {
-            await data.setMemberCalendar(member, configId, linked);
+            await data.setMemberCalendar(member, key, linked);
             undo.show(`${linked ? 'Following' : 'Stopped following'} ${name}`, () => attempt(async () => {
                 const current = latest.current.users.find(u => u.id === member.id);
-                if (current) await latest.current.setMemberCalendar(current, configId, !linked);
+                if (current) await latest.current.setMemberCalendar(current, key, !linked);
             }));
+        });
+    };
+    const addHolidayDay = (config: SavedConfig, date: string, name: string) => {
+        void attempt(async () => {
+            const next = withCustomHoliday(config, date, name);
+            await data.saveCalendar(next);
+            undo.show(`Added ${name || 'a holiday'}`, () => attempt(() => latest.current.saveCalendar(config)));
+        });
+    };
+    const removeHolidayDay = (config: SavedConfig, holidayId: string) => {
+        void attempt(async () => {
+            const name = config.holidays.find(h => h.id === holidayId)?.name ?? 'Holiday';
+            await data.saveCalendar(withoutHoliday(config, holidayId));
+            undo.show(`Removed ${name}`, () => attempt(() => latest.current.saveCalendar(config)));
         });
     };
 
@@ -272,8 +313,8 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
         await data.addCalendar(config);
         // A member who already follows calendars follows the new one too; with none followed every calendar shows anyway.
         const who = subject;
-        if (!existed && who && (who.holidayConfigIds || []).length > 0 && (isAdmin || who.id === me?.id)) await data.setMemberCalendar(who, config.id, true);
-        toast.success(`${config.countryName} ${config.year}: ${config.holidays.length} ${config.holidays.length === 1 ? 'holiday' : 'holidays'} ${existed ? 'refreshed' : 'added'}${regionalSkipped > 0 ? ` (${regionalSkipped} regional left out)` : ''}`);
+        if (!existed && who && followedKeys(who).length > 0 && !followedKeys(who).includes(calendarKey(config)) && (isAdmin || who.id === me?.id)) await data.setMemberCalendar(who, calendarKey(config), true);
+        toast.success(`${config.regionName ? `${config.countryName}, ${config.regionName}` : config.countryName} ${config.year}: ${config.holidays.length} ${config.holidays.length === 1 ? 'holiday' : 'holidays'} ${existed ? 'refreshed' : 'added'}${regionalSkipped > 0 ? ` (${regionalSkipped} regional left out)` : ''}`);
         setCursor(c => (c.year === config.year ? c : { ...c, year: config.year }));
     };
     const removeCalendar = async (config: SavedConfig) => {
@@ -537,7 +578,9 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                 canLink={isAdmin || Boolean(subject && me && subject.id === me.id)}
                 canEditDays={isAdmin}
                 initialYear={cursor.year}
-                onLink={(member, config, linked) => followCalendar(member, config.id, config.countryName, linked)}
+                onLink={(member, config, linked) => followCalendar(member, calendarKey(config), config.regionName ? `${config.countryName}, ${config.regionName}` : config.countryName, linked)}
+                onAddDay={addHolidayDay}
+                onRemoveDay={removeHolidayDay}
                 onToggleDay={(config, holidayId, included) => toggleHolidayDay(config.id, holidayId, config.holidays.find(h => h.id === holidayId)?.name ?? 'Holiday', included)}
                 thisYear={thisYear}
                 onAddCalendar={addCalendar}

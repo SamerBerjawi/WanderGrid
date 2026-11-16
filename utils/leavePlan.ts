@@ -1,6 +1,6 @@
-import type { EntitlementType, LeaveEntry, LeaveSpan, Trip, User } from '../types';
+import type { CustomEvent, EntitlementType, LeaveEntry, LeaveSpan, Trip, User } from '../types';
 import {
-    balancesFor, dayWeight, isWeekend, leaveContext, memberLeaveDays, tripDates, yearOfISO, type HolidayDay,
+    balancesFor, dayWeight, isRestDay, leaveContext, memberLeaveDays, tripDates, yearOfISO, type HolidayDay,
 } from './calendarModel';
 import { countsAsLeave, defaultState, hasLeaveType, newLeaveId } from './leaveEntry';
 
@@ -23,6 +23,8 @@ export interface PlanInput {
     workingDays: number[];
     /** The member's holidays (utils/calendarModel `holidayDays`). */
     holidays: HolidayDay[];
+    /** The workspace's events (company days off, working weekend days). */
+    events?: Pick<CustomEvent, 'date' | 'isWorkingDay'>[];
 }
 
 /** `covered`: another leave entry of the member already takes the day. */
@@ -96,15 +98,15 @@ export const coveredDays = (skip: ReadonlySet<string>, user: Pick<User, 'id'>, l
 };
 
 /** The day-by-day picture of a span against a member's working week, holidays and other leave. */
-export const dayCells = (span: LeaveSpan, workingDays: number[], holidays: HolidayDay[], covered?: Covered): DayCell[] => {
-    const ctx = leaveContext(workingDays, holidays);
+export const dayCells = (span: LeaveSpan, workingDays: number[], holidays: HolidayDay[], covered?: Covered, events: PlanInput['events'] = []): DayCell[] => {
+    const ctx = leaveContext(workingDays, holidays, events);
     const names = new Map(holidays.filter(h => h.counted).map(h => [h.observed, h.name]));
     const excluded = new Set(span.excludedDates || []);
     return tripDates(span).map(iso => {
         const full = dayWeight(span, iso, ctx);
         if (excluded.has(iso)) return { iso, kind: 'worked' as const, weight: full };
-        if (isWeekend(iso, workingDays)) return { iso, kind: 'weekend' as const, weight: full };
-        if (ctx.offDays.has(iso)) return { iso, kind: 'holiday' as const, weight: full, label: names.get(iso) };
+        if (isRestDay(iso, ctx)) return { iso, kind: 'weekend' as const, weight: full };
+        if (ctx.offDays.has(iso)) return { iso, kind: 'holiday' as const, weight: full, label: names.get(iso) ?? 'Company day off' };
         const other = covered?.get(iso);
         const weight = Math.max(0, Math.min(full, 1 - (other?.weight ?? 0)));
         if (other && weight <= 0) return { iso, kind: 'covered' as const, weight: 0, label: other.label };
@@ -112,15 +114,15 @@ export const dayCells = (span: LeaveSpan, workingDays: number[], holidays: Holid
     });
 };
 
-export const planLeave = ({ trip, user, leave, entitlements, today, workingDays, holidays }: PlanInput): LeavePlan => {
-    const ctx = leaveContext(workingDays, holidays);
+export const planLeave = ({ trip, user, leave, entitlements, today, workingDays, holidays, events = [] }: PlanInput): LeavePlan => {
+    const ctx = leaveContext(workingDays, holidays, events);
     const linked = linkedLeave(trip, user, leave);
     const skip = new Set(linked.map(e => e.id));
     const covered = coveredDays(skip, user, leave, ctx, today);
     // With linked leave the plan shows its days (they may differ from the trip's); without, the trip's as full days.
     const spans: LeaveSpan[] = linked.length ? linked : [{ startDate: trip.startDate, endDate: trip.endDate || trip.startDate }];
     const seen = new Set<string>();
-    const days = spans.flatMap(s => dayCells(s, workingDays, holidays, covered)).filter(d => (seen.has(d.iso) ? false : (seen.add(d.iso), true)))
+    const days = spans.flatMap(s => dayCells(s, workingDays, holidays, covered, events)).filter(d => (seen.has(d.iso) ? false : (seen.add(d.iso), true)))
         .sort((a, b) => a.iso.localeCompare(b.iso));
     const skipped = { weekend: 0, holiday: 0, worked: 0, covered: 0 };
     days.forEach(d => { if (d.kind === 'weekend' || d.kind === 'holiday' || d.kind === 'worked' || d.kind === 'covered') skipped[d.kind] += 1; });
@@ -169,7 +171,7 @@ export const tracksLeave = (user: User, leave: LeaveEntry[]): boolean =>
 
 /** The state behind a trip's chip for one member. */
 export const leaveStatus = (input: PlanInput): TripLeaveStatus => {
-    const { trip, user, leave, entitlements, today, workingDays, holidays } = input;
+    const { trip, user, leave, entitlements, today, workingDays, holidays, events = [] } = input;
     if (!trip.startDate || trip.status === 'Cancelled' || trip.archived) return { kind: 'none' };
     if ((trip.endDate || trip.startDate) < today) return { kind: 'none' };
     const linked = linkedLeave(trip, user, leave);
@@ -184,7 +186,7 @@ export const leaveStatus = (input: PlanInput): TripLeaveStatus => {
 
     // Booked: how far over is each type the linked leave draws on, in each year? Days another entry already takes
     // are not the trip's to pay for.
-    const ctx = leaveContext(workingDays, holidays);
+    const ctx = leaveContext(workingDays, holidays, events);
     const ids = new Set(linked.map(e => e.id));
     const mine = memberLeaveDays(user, leave, ctx, today).filter(d => ids.has(d.entryId));
     let cost = 0;

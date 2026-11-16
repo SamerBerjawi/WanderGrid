@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { SavedConfig } from '../../../types';
-import { fetchHolidayCountries, fetchHolidays } from '../../../services/holidayCalendars';
-import { buildConfig, matchCountries, offeredYears, type CountryOption } from '../../../utils/holidayCalendar';
+import { fetchHolidayCountries, fetchHolidays, fetchRegions, type RegionOption } from '../../../services/holidayCalendars';
+import { buildConfig, configId, matchCountries, offeredYears, type CountryOption } from '../../../utils/holidayCalendar';
 import { errorMessage } from '../../../services/toast';
 import ParticleButton from '../../kokonutui/particle-button';
 import { Check, MagnifyingGlass, Plus } from '../../ui/hugeicons';
@@ -10,9 +10,9 @@ import { RpChip } from '../ui';
 import { cn } from '../../../utils/cn';
 
 /**
- * Adds a country's public holidays as a saved calendar: pick a country (searched by name or code) and a
- * year, and the holidays are fetched from the holiday service (nationwide public holidays only; regional
- * days are left out and counted). A calendar that is already saved is refreshed, keeping its day-off switches.
+ * Adds a country's public holidays as a saved calendar: pick a country (searched by name or code), optionally one of
+ * its regions (its own holidays are added to the country's), and a year. Other regions' days are left out and
+ * counted. A calendar that is already saved is refreshed, keeping its day-off switches and the days added by hand.
  */
 
 export const AddCalendar: React.FC<{
@@ -28,6 +28,8 @@ export const AddCalendar: React.FC<{
     const [query, setQuery] = useState('');
     const [country, setCountry] = useState<CountryOption | null>(null);
     const [year, setYear] = useState(initialYear);
+    const [regions, setRegions] = useState<RegionOption[] | null>(null);
+    const [region, setRegion] = useState<RegionOption | null>(null);
 
     useEffect(() => { setYear(initialYear); }, [initialYear]);
     useEffect(() => {
@@ -39,15 +41,28 @@ export const AddCalendar: React.FC<{
         return () => { cancelled = true; };
     }, [open, countries]);
 
+    // A country's regions, for regional holidays (optional: the whole country is the default).
+    useEffect(() => {
+        setRegion(null);
+        setRegions(null);
+        if (!country) return;
+        let cancelled = false;
+        fetchRegions(country.code).then(r => { if (!cancelled) setRegions(r); }).catch(() => { if (!cancelled) setRegions([]); });
+        return () => { cancelled = true; };
+    }, [country]);
+
     const matches = useMemo(() => (countries ? matchCountries(countries, query) : []), [countries, query]);
-    const exists = country ? saved.some(c => c.id === `${country.code}-${year}`) : false;
+    const id = country ? configId(country.code, year, region?.code) : '';
+    const exists = country ? saved.some(c => c.id === id) : false;
+    const tag = country ? (region ? region.code : country.code) : '';
     const years = useMemo(() => [...new Set([...offeredYears(thisYear), initialYear])].sort(), [thisYear, initialYear]);
 
     const add = async () => {
         if (!country) throw new Error('Choose a country.');
-        const answer = await fetchHolidays(country.code, year);
-        await onAdd(buildConfig(answer, country.name), answer.regionalSkipped ?? 0);
+        const answer = await fetchHolidays(country.code, year, region?.code);
+        await onAdd(buildConfig(answer, country.name, new Date(), region?.name, saved.find(c => c.id === id)), answer.regionalSkipped ?? 0);
         setCountry(null);
+        setRegion(null);
         setQuery('');
     };
 
@@ -95,6 +110,20 @@ export const AddCalendar: React.FC<{
                             <p className="px-1 text-sm text-rp-muted">No country matches "{query}".</p>
                         )
                     ) : null}
+                    {country && regions && regions.length > 0 ? (
+                        <div className="flex flex-col gap-1.5">
+                            <label htmlFor="holiday-region" className="text-xs text-rp-muted">Region (adds its own holidays)</label>
+                            <select
+                                id="holiday-region"
+                                value={region?.code ?? ''}
+                                onChange={e => setRegion(regions.find(x => x.code === e.target.value) ?? null)}
+                                className={RP_FIELD}
+                            >
+                                <option value="">The whole country</option>
+                                {regions.map(x => <option key={x.code} value={x.code}>{x.name === x.code ? x.code : `${x.name} (${x.code})`}</option>)}
+                            </select>
+                        </div>
+                    ) : null}
                     <div role="group" aria-label="Year" className="-m-3 flex gap-2 overflow-x-auto p-3 [scrollbar-width:none]">
                         {years.map(y => <RpChip key={y} selected={y === year} onClick={() => setYear(y)} className="rp-tabular">{y}</RpChip>)}
                     </div>
@@ -103,7 +132,7 @@ export const AddCalendar: React.FC<{
             <div className="flex items-center justify-between gap-2">
                 <button type="button" onClick={() => setOpen(false)} className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium text-rp-muted outline-none hover:text-rp-ink focus-visible:ring-2 focus-visible:ring-rp-muted">Close</button>
                 <ParticleButton onClick={add} disabled={!country || Boolean(loadError)} pendingLabel="Fetching" successLabel={exists ? 'Refreshed' : 'Added'} errorLabel="Try again">
-                    {exists ? <><Check size={16} aria-hidden /> Refresh {country?.code} {year}</> : <><Plus size={16} aria-hidden /> Add {country ? `${country.code} ${year}` : 'calendar'}</>}
+                    {exists ? <><Check size={16} aria-hidden /> Refresh {tag} {year}</> : <><Plus size={16} aria-hidden /> Add {country ? `${tag} ${year}` : 'calendar'}</>}
                 </ParticleButton>
             </div>
         </section>

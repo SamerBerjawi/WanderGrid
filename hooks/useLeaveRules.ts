@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { SavedConfig, User } from '../types';
+import type { CustomEvent, SavedConfig, User } from '../types';
 import { dataService } from '../services/mockDb';
+import { followedKeys } from '../utils/holidayCalendar';
 import { affectsCollections } from './useWanderSync';
 import { configsFor, holidayDays, leaveContext, memberWorkingDays, workingDaysOf, type HolidayDay, type LeaveContext } from '../utils/calendarModel';
 
@@ -11,6 +12,8 @@ import { configsFor, holidayDays, leaveContext, memberWorkingDays, workingDaysOf
  */
 export interface LeaveRules {
     configs: SavedConfig[];
+    /** The workspace's events (company days off, working weekend days). */
+    events: CustomEvent[];
     workingDays: number[];
     /** False until the calendars and the working week have loaded (figures before that skip holidays). */
     ready: boolean;
@@ -24,6 +27,7 @@ export const useLeaveRules = (): LeaveRules => {
     const [configs, setConfigs] = useState<SavedConfig[]>([]);
     const [workingDays, setWorkingDays] = useState<number[]>(workingDaysOf(null));
     const [ready, setReady] = useState(false);
+    const [events, setEvents] = useState<CustomEvent[]>([]);
 
     useEffect(() => {
         let live = true;
@@ -31,10 +35,11 @@ export const useLeaveRules = (): LeaveRules => {
             Promise.allSettled([
                 dataService.getSavedConfigs().then(c => { if (live) setConfigs(c || []); }),
                 dataService.getWorkspaceSettings().then(s => { if (live) setWorkingDays(workingDaysOf(s)); }),
+                dataService.getCustomEvents().then(e => { if (live) setEvents(e || []); }),
             ]).then(() => { if (live) setReady(true); });
         };
         load();
-        const onUpdate = (e: Event) => { if (affectsCollections(e, ['configs', 'settings'])) load(); };
+        const onUpdate = (e: Event) => { if (affectsCollections(e, ['configs', 'settings', 'events'])) load(); };
         window.addEventListener('wandergrid_db_updated', onUpdate);
         return () => { live = false; window.removeEventListener('wandergrid_db_updated', onUpdate); };
     }, []);
@@ -44,11 +49,11 @@ export const useLeaveRules = (): LeaveRules => {
         const weekOf = (u: User | undefined) => memberWorkingDays(u, workingDays);
         const holidaysOf = (u: User) => {
             const week = weekOf(u);
-            const key = `${u.id}|${u.holidayWeekendRule || ''}|${(u.holidayConfigIds || []).join(',')}|${week.join('')}`;
+            const key = `${u.id}|${u.holidayWeekendRule || ''}|${followedKeys(u).join(',')}|${week.join('')}`;
             let h = holidays.get(key);
             if (!h) { h = holidayDays(configsFor(configs, [u]), u.holidayWeekendRule, week); holidays.set(key, h); }
             return h;
         };
-        return { configs, workingDays, ready, holidaysOf, workingDaysOf: weekOf, contextFor: u => leaveContext(weekOf(u), holidaysOf(u)) };
-    }, [configs, workingDays, ready]);
+        return { configs, events, workingDays, ready, holidaysOf, workingDaysOf: weekOf, contextFor: u => leaveContext(weekOf(u), holidaysOf(u), events) };
+    }, [configs, events, workingDays, ready]);
 };
