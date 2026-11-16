@@ -45,6 +45,9 @@ Fixes and upgrades from using 1.2.1: Plan leave, Import a booking and Route repl
   Settings › Leave to use the request flow.
 - **The Calendar shows trips and leave apart**, with a Leave layer, an **Add leave for this trip** action on a trip, and
   in the leave sheet the trip it is for, a note, and what each balance would have left before you save.
+- **Trips and leave check each other.** A trip shows when its leave was refused, is still waiting, sits on other dates,
+  or leaves working days uncovered; the Calendar lists the trips whose leave needs a look; leave with no trip offers
+  **Plan a trip for these days**, and the new trip takes that leave over.
 - **Holiday calendars for every year, and regions.** Follow a country or a region once and its holidays count every
   year: a missing year is fetched when the Calendar opens. A region (for example Bavaria) adds its own holidays to the
   country's. Admins can add days by hand to a calendar (kept when it is refreshed).

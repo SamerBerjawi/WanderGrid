@@ -29,6 +29,8 @@ import { EventSheet } from '../../components/new/calendar/EventSheet';
 import { OptimizerSheet } from '../../components/new/calendar/OptimizerSheet';
 import { TINT } from '../../components/new/calendar/calendarStyles';
 import { suggestBreaks } from '../../utils/leaveOptimizer';
+import { tripsNeedingAttention } from '../../utils/tripLeave';
+import { LeaveAttention } from '../../components/new/calendar/LeaveAttention';
 import { CalendarBlank, CalendarCheck, CaretLeft, CaretRight, Clock, Flag, Gear, List, MagnifyingGlass, Plus, Sparkle, SquaresFour, Star, SunHorizon, Suitcase, Users } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
@@ -44,6 +46,8 @@ interface CalendarNewProps {
     onTripClick?: (tripId: string) => void;
     /** Opens a member's New page. */
     onMemberClick?: (memberId: string) => void;
+    /** Opens another page (a new trip for leave that has none). */
+    onNavigate?: (path: string) => void;
 }
 
 type Tab = 'month' | 'year' | 'schedule';
@@ -89,7 +93,7 @@ const readLayers = (): Record<CalendarLayer, boolean> => {
 const PILL = 'inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-rp-muted focus-visible:ring-offset-2 focus-visible:ring-offset-rp-surface active:scale-[0.97]';
 const card = 'rounded-rp-card bg-rp-surface rp-shadow-rest';
 
-export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberClick }) => {
+export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberClick, onNavigate }) => {
     const data = useCalendarData();
     const mobile = useIsMobile();
     const undo = useUndoToast();
@@ -207,6 +211,11 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
     const next = useMemo(() => nextLeave(leave, subject ? [subject.id] : [], today), [leave, subject, today]);
     const nextName = next ? leaveTitle(next, typeName) : '';
 
+    // The subject's trips whose leave needs a look (working days without leave, refused leave, ...).
+    const attention = useMemo(
+        () => (subject && entitlements.length > 0 ? tripsNeedingAttention(trips, subject, leave, contextFor(subject.id), today) : []),
+        [subject, entitlements.length, trips, leave, contextFor, today],
+    );
     const upcomingHolidays = useMemo(() => holidays.filter(h => h.counted && h.observed >= today).slice(0, 3), [holidays, today]);
     // The optimizer works from the subject's own days off: their followed calendars, their working week, their booked leave.
     const optimizer = useMemo(() => {
@@ -513,6 +522,7 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                             summary={summary ?? { year: balanceYear, used: 0, planned: 0, pending: 0, left: 0, total: 0 }}
                             onMember={onMemberClick}
                         />
+                        <LeaveAttention items={attention} onOpenTrip={id => onTripClick?.(id)} />
                         <section aria-label="Public holidays" className={cn(card, 'flex flex-col gap-2 p-4 sm:p-5')}>
                             <div className="flex items-center justify-between gap-2">
                                 <h2 className="text-base font-medium text-rp-ink">Public holidays</h2>
@@ -548,6 +558,11 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                 contextFor={contextFor}
                 canEditLeave={canEditLeave}
                 onEditLeave={entry => { setDay(null); setLeaveTarget({ kind: 'edit', entry }); }}
+                onPlanTrip={onNavigate ? entry => {
+                    setDay(null);
+                    const q = new URLSearchParams({ new: '1', start: entry.startDate, end: entry.endDate || entry.startDate, leave: entry.id, ...(entry.name ? { to: entry.name } : {}) });
+                    onNavigate(`/trips?${q.toString()}`);
+                } : undefined}
                 onLeaveForTrip={trip => { setDay(null); setLeaveTarget({ kind: 'new', tripId: trip.id, memberId: (me && trip.participants?.includes(me.id) ? me.id : trip.participants?.[0]) ?? subject?.id }); }}
                 onOpenTrip={id => { setDay(null); onTripClick?.(id); }}
                 onAddLeave={startLeave}

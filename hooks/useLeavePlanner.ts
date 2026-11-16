@@ -5,6 +5,7 @@ import { useLeaveRules } from './useLeaveRules';
 import { useLeaveEntries } from './useLeaveEntries';
 import { defaultAnnualType, leaveNote, leaveStatus, linkedEntryFor, planLeave, type LeavePlan, type TripLeaveStatus } from '../utils/leavePlan';
 import { todayISO } from '../utils/tripsModel';
+import { tripLeaveIssues, type TripLeaveIssue } from '../utils/tripLeave';
 
 /**
  * Leave meets trips, for a page that already has the trips, members and leave types (the Trips board and a
@@ -20,6 +21,8 @@ export interface LeavePlanner {
     statusFor: (trip: Trip) => TripLeaveStatus;
     noteFor: (trip: Trip) => ReturnType<typeof leaveNote>;
     planFor: (trip: Trip, member?: User) => LeavePlan | null;
+    /** Where the trip and the member's leave disagree (working days without leave, refused leave, ...). */
+    issuesFor: (trip: Trip, member?: User) => TripLeaveIssue[];
     /** Every leave entry (loaded by the planner). */
     leave: LeaveEntry[];
     reloadLeave: () => Promise<void>;
@@ -61,6 +64,10 @@ export const useLeavePlanner = (trips: Trip[], users: User[], entitlements: Enti
             planFor: (trip, member) => {
                 const user = member ?? memberFor(trip);
                 return user ? planLeave(input(trip, user)) : null;
+            },
+            issuesFor: (trip, member) => {
+                const user = member ?? memberFor(trip);
+                return user && entitlements.length > 0 ? tripLeaveIssues(trip, user, leave, rules.contextFor(user), today) : [];
             },
             leave,
             reloadLeave: reload,
