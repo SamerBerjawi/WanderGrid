@@ -5,10 +5,10 @@ import { useCalendarData } from '../../hooks/useCalendarData';
 import { buildConfig, calendarKey, followedKeys, missingYears, withCustomHoliday, withoutHoliday } from '../../utils/holidayCalendar';
 import { fetchHolidays } from '../../services/holidayCalendars';
 import {
-    ALL_LAYERS, balancesFor, buildItems, calendarYears, configsFor, daysBetween, holidayDays, itemsOn, leaveTitle, memberWorkingDays, leaveContext, monthOf, MONTH_NAMES,
+    ALL_LAYERS, balancesFor, addDaysISO, buildItems, calendarYears, configsFor, daysBetween, holidayDays, itemsOn, leaveTitle, memberWorkingDays, tripDates, leaveContext, monthOf, MONTH_NAMES,
     nextLeave, summarise, workingDaysOf, type CalendarItem, type CalendarLayer, type LeaveColor, type LeaveContext, type WeekStart,
 } from '../../utils/calendarModel';
-import { formatDate } from '../../utils/formatters';
+import { formatDate, formatDateRange } from '../../utils/formatters';
 import { errorMessage, toast } from '../../services/toast';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import type { DockTool } from '../../components/kokonutui/tool-dock';
@@ -26,9 +26,11 @@ import { LeaveSheet, type LeaveTarget } from '../../components/new/calendar/Leav
 import { HolidaysSheet } from '../../components/new/calendar/HolidaysSheet';
 import { OptionsSheet, type ColourBy } from '../../components/new/calendar/OptionsSheet';
 import { EventSheet } from '../../components/new/calendar/EventSheet';
-import { OptimizerSheet } from '../../components/new/calendar/OptimizerSheet';
+import { BREAK_LENGTHS, OptimizerSheet, type PlanPrefs } from '../../components/new/calendar/OptimizerSheet';
 import { TINT } from '../../components/new/calendar/calendarStyles';
-import { suggestBreaks } from '../../utils/leaveOptimizer';
+import { breakSentence, planYear, suggestBreaks, type PlannedBreak } from '../../utils/leaveOptimizer';
+import { newLeaveId } from '../../utils/leaveEntry';
+import { dataService } from '../../services/mockDb';
 import { tripsNeedingAttention } from '../../utils/tripLeave';
 import { LeaveAttention } from '../../components/new/calendar/LeaveAttention';
 import { CalendarBlank, CalendarCheck, CaretLeft, CaretRight, Clock, Flag, Gear, List, MagnifyingGlass, Plus, Sparkle, SquaresFour, Star, SunHorizon, Suitcase, Users } from '../../components/ui/hugeicons';
@@ -120,7 +122,8 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
     const [layers, setLayers] = useState<Record<CalendarLayer, boolean>>(readLayers);
     const [eventOpen, setEventOpen] = useState<{ date?: string } | null>(null);
     const [optimizerOpen, setOptimizerOpen] = useState(false);
-    const [optimizerMonths, setOptimizerMonths] = useState<3 | 6 | 12>(6);
+    const [optimizerMonths, setOptimizerMonths] = useState<3 | 6 | 12>(12);
+    const [planPrefs, setPlanPrefs] = useState<PlanPrefs>({ budget: 10, months: [], length: 'any' });
 
     // The balances follow the year being looked at.
     useEffect(() => { setBalanceYear(cursor.year); }, [cursor.year]);
@@ -231,6 +234,33 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
     }, [optimizerOpen, subject, configs, workingDays, leave, today, optimizerMonths]);
     const myTrips = useMemo(() => items.filter(i => i.kind === 'trip').map(i => i.trip!), [items]);
 
+    // The year plan: the best breaks for the leave days chosen, over the look-ahead, with the subject's own rules.
+    const yearPlan = useMemo(() => {
+        if (!optimizerOpen || !subject) return null;
+        const ctx = contextFor(subject.id);
+        const booked = new Set<string>();
+        leave.filter(e => e.memberId === subject.id && ['planned', 'requested', 'approved'].includes(e.state)).forEach(e => tripDates(e).forEach(d => booked.add(d)));
+        const to = new Date(Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 1 + optimizerMonths, +today.slice(8, 10))).toISOString().slice(0, 10);
+        const len = BREAK_LENGTHS[planPrefs.length];
+        const mine = holidayDays(configsFor(configs, [subject]), subject.holidayWeekendRule, ctx.workingDays);
+        const companyDays = new Set([...ctx.offDays].filter(d => !mine.some(h => h.counted && h.observed === d)));
+        return planYear({
+            from: addDaysISO(today, 1), to, workingDays: ctx.workingDays, holidays: mine, offDays: companyDays, workDays: ctx.workDays, booked,
+            budget: planPrefs.budget, months: planPrefs.months, minDays: len.min, maxDays: len.max,
+        });
+    }, [optimizerOpen, subject, contextFor, leave, today, optimizerMonths, planPrefs, configs]);
+    // Opening the optimizer starts from what is left this year.
+    const openedFor = useRef<string | null>(null);
+    useEffect(() => {
+        if (!optimizerOpen) { openedFor.current = null; return; }
+        if (!subject || openedFor.current === subject.id) return;
+        openedFor.current = subject.id;
+        const left = summarise(balancesFor({ user: subject, leave, entitlements, today, ctx: contextFor(subject.id) }, thisYear), subject, thisYear).left;
+        setPlanPrefs(p => ({ ...p, budget: Math.max(0, Math.floor(left)) || p.budget }));
+        // Only when the sheet opens (or the member changes): later edits to leave must not reset the budget being set.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [optimizerOpen, subject?.id]);
+
     const canEditLeave = useCallback((memberId: string) => isAdmin || Boolean(me && memberId === me.id), [isAdmin, me]);
 
     /* ------------------------------ actions ------------------------------ */
@@ -328,6 +358,22 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
     };
     const removeCalendar = async (config: SavedConfig) => {
         await attempt(async () => { await data.removeCalendar(config); toast.success(`${config.countryName} ${config.year} removed`); }, "Couldn't remove the calendar.");
+    };
+    /** Adds every planned break as an idea (a draft: on the calendar, counting nothing until planned or confirmed). */
+    const planAll = async (breaks: PlannedBreak[]) => {
+        if (!subject || breaks.length === 0) return;
+        const type = entitlements.find(e => e.category === 'Annual') ?? entitlements.find(e => e.category !== 'Sick' && e.category !== 'Unpaid');
+        const ideas: LeaveEntry[] = breaks.map(b => ({
+            id: newLeaveId(), memberId: subject.id, name: `Break: ${breakSentence(b).toLowerCase()}`, startDate: b.leaveDates[0], endDate: b.leaveDates[b.leaveDates.length - 1],
+            state: 'draft', ...(type ? { entitlementId: type.id } : {}), note: `Suggested by the optimizer: ${formatDateRange(b.start, b.end)} off${b.holidays.length ? ` around ${b.holidays.join(', ')}` : ''}.`,
+        }));
+        await dataService.applyBatch({ upsertLeave: ideas });
+        await data.reload();
+        setOptimizerOpen(false);
+        undo.show(`${ideas.length} ${ideas.length === 1 ? 'idea' : 'ideas'} added`, () => attempt(async () => {
+            await dataService.applyBatch({ deleteLeave: ideas.map(i => i.id) });
+            await latest.current.reload();
+        }));
     };
     const planBreak = (s: { leaveDates: string[] }) => {
         if (s.leaveDates.length === 0) return;
@@ -607,6 +653,10 @@ export const CalendarNew: React.FC<CalendarNewProps> = ({ onTripClick, onMemberC
                 open={optimizerOpen}
                 onClose={() => setOptimizerOpen(false)}
                 suggestions={optimizer}
+                plan={yearPlan}
+                prefs={planPrefs}
+                onPrefs={setPlanPrefs}
+                onPlanAll={planAll}
                 today={today}
                 memberName={subject?.name}
                 daysLeft={summary && summary.year === thisYear ? summary.left : subject ? summarise(balancesFor({ user: subject, leave, entitlements, today, ctx: contextFor(subject.id) }, thisYear), subject, thisYear).left : null}

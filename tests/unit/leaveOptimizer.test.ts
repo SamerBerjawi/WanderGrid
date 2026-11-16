@@ -71,3 +71,46 @@ describe('suggestBreaks', () => {
         expect(s.some(x => x.holidays.includes('A'))).toBe(false);
     });
 });
+
+describe('the year planner', () => {
+    const WORK = [1, 2, 3, 4, 5];
+    const hol = (date: string, name: string) => ({ id: date, name, date, countryCode: 'XX', isIncluded: true, observed: date, countryName: 'X', counted: true });
+    // Thu 14 May 2026 (Ascension) and Mon 25 May (Whit Monday); Mon 6 Apr (Easter Monday).
+    const holidays = [hol('2026-04-06', 'Easter Monday'), hol('2026-05-14', 'Ascension'), hol('2026-05-25', 'Whit Monday')];
+    const base = { from: '2026-04-01', to: '2026-06-30', workingDays: WORK, holidays, budget: 4 };
+
+    it('spends the budget on the best breaks, never overlapping', async () => {
+        const { planYear } = await import('../../utils/leaveOptimizer');
+        const plan = planYear(base);
+        expect(plan.leaveUsed).toBeLessThanOrEqual(4);
+        // A Friday next to Ascension makes 4 days off for 1 leave day.
+        expect(plan.breaks.some(b => b.start === '2026-05-14' && b.end === '2026-05-17' && b.leaveDates.join() === '2026-05-15')).toBe(true);
+        for (let i = 1; i < plan.breaks.length; i++) expect(plan.breaks[i].start > plan.breaks[i - 1].end).toBe(true);
+        expect(plan.efficiency).toBeGreaterThanOrEqual(2);
+        expect(plan.free.map(f => f.start)).toEqual(['2026-04-04', '2026-05-23']);
+    });
+
+    it('spends nothing without a budget, skips booked days and blocked weeks', async () => {
+        const { planYear } = await import('../../utils/leaveOptimizer');
+        expect(planYear({ ...base, budget: 0 }).breaks).toEqual([]);
+        const blocked = planYear({ ...base, avoid: [{ from: '2026-05-11', to: '2026-05-17' }] });
+        expect(blocked.breaks.some(b => !(b.end < '2026-05-11' || b.start > '2026-05-17'))).toBe(false);
+        const booked = planYear({ ...base, booked: new Set(['2026-05-15']) });
+        expect(booked.breaks.some(b => b.leaveDates.includes('2026-05-15'))).toBe(false);
+    });
+
+    it('favours preferred months and respects the break length', async () => {
+        const { planYear } = await import('../../utils/leaveOptimizer');
+        const june = planYear({ ...base, budget: 1, months: [4] });
+        expect(june.breaks[0].preferred).toBe(true);
+        expect(june.breaks[0].start.slice(5, 7)).toBe('04');
+        const long = planYear({ ...base, budget: 10, minDays: 9, maxDays: 10 });
+        expect(long.breaks.every(b => b.daysOff >= 9 && b.daysOff <= 10)).toBe(true);
+    });
+
+    it('says what a break gives', async () => {
+        const { breakSentence } = await import('../../utils/leaveOptimizer');
+        expect(breakSentence({ leaveDates: ['a', 'b', 'c', 'd'], daysOff: 9 })).toBe('Take 4 days off to enjoy 9 days in a row');
+        expect(breakSentence({ leaveDates: [], daysOff: 3 })).toBe('3 days off in a row, no leave needed');
+    });
+});

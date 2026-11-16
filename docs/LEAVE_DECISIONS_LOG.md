@@ -84,3 +84,14 @@ the build, without asking. Each entry says what was decided, why, and where it l
 | 1d.3 | The trip page shows the most pressing issue as a pill next to the leave chip; Plan leave lists them all; the Calendar shows "Leave to look at" (the subject's trips in the next year, up to five) | One glance per place, without a separate page. **(own call)** |
 | 1d.4 | "Plan a trip for these days" on leave with no trip opens the new-trip sheet with its dates and name, and the new trip **takes over that leave** (links it) | Suggest creating a trip from time off without duplicating the leave. **(own call)** |
 | 1d.5 | "Suggest reserving leave when creating a trip" is the existing chip ("Needs N days of leave") and Plan leave on every trip card and page, plus the trip form's Leave section; no extra prompt | Avoids a nag in the trip flow. **(own call)** |
+
+## Phase 2a: optimizer v2 (PR: feat/leave-optimizer)
+
+| # | Decision | Why / alternative |
+|---|---|---|
+| 2a.1 | The **Year plan** ranks every stretch bounded by working days by days off per leave day and fills the leave budget greedily, never overlapping or touching another break | Simple, explainable and fast (a year is a few thousand stretches); an exact optimum (a knapsack over overlapping intervals) would rarely differ and would be harder to explain. **(own call)** |
+| 2a.2 | A break may run into leave already booked or company days off (they count as days off, not as leave to take) | That is when an extra day pays off most. **(own call)** |
+| 2a.3 | Breaks need at least 1.4 days off per leave day to be suggested; preferred months count a quarter more; lengths are Long weekends (3–5), About a week (6–10), Longer (11–16) or Any (4–16) | Avoids suggesting plain weeks of work as "breaks"; favourites nudge without excluding. **(own call)** |
+| 2a.4 | The budget starts at what is left this year and can be changed; the look-ahead defaults to 12 months | Plan section 4 ("available leave balances, preferred periods, constraints"). **(own call)** |
+| 2a.5 | **Add all to the calendar as ideas** adds each break as a draft leave entry on the first Annual-style type, with a note; ideas cost nothing until planned or confirmed, and Undo removes them | Lets the plan be seen next to everything else without committing a balance. **(own call)** |
+| 2a.6 | Blocked periods (`avoid`) are supported by the planner but not yet offered in the sheet | Kept the sheet short; booked leave and trips already shape the plan. **(own call)** |

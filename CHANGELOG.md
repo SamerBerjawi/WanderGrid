@@ -45,6 +45,10 @@ Fixes and upgrades from using 1.2.1: Plan leave, Import a booking and Route repl
   Settings › Leave to use the request flow.
 - **The Calendar shows trips and leave apart**, with a Leave layer, an **Add leave for this trip** action on a trip, and
   in the leave sheet the trip it is for, a note, and what each balance would have left before you save.
+- **A year plan in the leave optimizer.** Say how many leave days to spend, the kind of breaks you like and your
+  favourite months: it picks the breaks that give the most days off ("Take 4 days off to enjoy 9 days in a row"),
+  shows the total ("66 days off for 20 leave days"), lists the long weekends that need no leave, and can add the whole
+  plan to the calendar as ideas.
 - **Trips and leave check each other.** A trip shows when its leave was refused, is still waiting, sits on other dates,
   or leaves working days uncovered; the Calendar lists the trips whose leave needs a look; leave with no trip offers
   **Plan a trip for these days**, and the new trip takes that leave over.
