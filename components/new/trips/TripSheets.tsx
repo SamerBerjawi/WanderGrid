@@ -203,11 +203,12 @@ const Basics: React.FC<{
     set: SetDraft;
     users: User[];
     trips: Trip[];
+    savedCompanions?: import('../../../types').TripCompanion[];
     entitlements: EntitlementType[];
     showErrors: boolean;
     autoFocus: boolean;
     brandfetchApiKey?: string;
-}> = ({ draft, set, users, trips, entitlements, showErrors, autoFocus, brandfetchApiKey }) => {
+}> = ({ draft, set, users, trips, savedCompanions = [], entitlements, showErrors, autoFocus, brandfetchApiKey }) => {
     const [pickingIcon, setPickingIcon] = useState(false);
     const nameError = showErrors && !draft.name.trim() ? 'Give the trip a name.' : undefined;
     const startError = showErrors && !draft.startDate ? 'Pick a start date.' : undefined;
@@ -299,6 +300,7 @@ const Basics: React.FC<{
                 companions={draft.companions || []}
                 onCompanionsChange={next => set('companions', next)}
                 trips={trips}
+                savedCompanions={savedCompanions}
             />
 
             <RpSection title="Notes">
@@ -774,6 +776,7 @@ export const TripSheet: React.FC<{
     target: TripSheetTarget | null;
     trips?: Trip[];
     users: User[];
+    savedCompanions?: import('../../../types').TripCompanion[];
     entitlements: EntitlementType[];
     currentUserId?: string;
     brandfetchApiKey?: string;
@@ -783,7 +786,7 @@ export const TripSheet: React.FC<{
     onSave: (draft: TripDraft, trip?: Trip) => Promise<void>;
     onDelete: (trip: Trip) => void;
     onOpenTrip: (trip: Trip) => void;
-}> = ({ target, trips = [], users, entitlements, currentUserId, brandfetchApiKey, linkedLeaveOf, onClose, onSave, onDelete, onOpenTrip }) => {
+}> = ({ target, trips = [], users, savedCompanions = [], entitlements, currentUserId, brandfetchApiKey, linkedLeaveOf, onClose, onSave, onDelete, onOpenTrip }) => {
     const [draft, setDraft] = useState<TripDraft>(() => emptyDraft('Planning'));
     const [touched, setTouched] = useState(false);
     const [step, setStep] = useState(0);
@@ -836,6 +839,7 @@ export const TripSheet: React.FC<{
                     set={set}
                     users={users}
                     trips={trips}
+                    savedCompanions={savedCompanions}
                     entitlements={entitlements}
                     showErrors={touched}
                     autoFocus={!editing}

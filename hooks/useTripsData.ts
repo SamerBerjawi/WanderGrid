@@ -150,6 +150,7 @@ export const useTripsData = () => {
     const [trips, setTrips] = useState<Trip[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [entitlements, setEntitlements] = useState<EntitlementType[]>([]);
+    const [savedCompanions, setSavedCompanions] = useState<TripCompanion[]>([]);
     const [brandfetchApiKey, setBrandfetchApiKey] = useState<string | undefined>(undefined);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -174,6 +175,7 @@ export const useTripsData = () => {
             setLeave(lv || []);
             setUsers(u || []);
             setEntitlements(ents || []);
+            setSavedCompanions(settings?.savedCompanions || []);
             setBrandfetchApiKey(settings?.brandfetchApiKey || undefined);
             setError(null);
         } catch (e) {
@@ -186,7 +188,7 @@ export const useTripsData = () => {
 
     useEffect(() => { void load(); }, [load]);
     useEffect(() => {
-        const onUpdate = (e: Event) => { if (affectsCollections(e, ['trips', 'users', 'leave'])) void load(); };
+        const onUpdate = (e: Event) => { if (affectsCollections(e, ['trips', 'users', 'leave', 'settings'])) void load(); };
         window.addEventListener('wandergrid_db_updated', onUpdate);
         return () => window.removeEventListener('wandergrid_db_updated', onUpdate);
     }, [load]);
@@ -398,7 +400,7 @@ export const useTripsData = () => {
         return leave.find(e => e.tripId === trip.id && e.memberId === who);
     }, [leave]);
 
-    return { trips, users, entitlements, leave, linkedLeaveOf, brandfetchApiKey, loading, error, reload: load, today, active, archived, cancelled, columns, years, stats, create, update, patch, duplicate, setStatus, moveTo, setArchived, remove };
+    return { trips, users, savedCompanions, entitlements, leave, linkedLeaveOf, brandfetchApiKey, loading, error, reload: load, today, active, archived, cancelled, columns, years, stats, create, update, patch, duplicate, setStatus, moveTo, setArchived, remove };
 };
 
 export type TripsData = ReturnType<typeof useTripsData>;

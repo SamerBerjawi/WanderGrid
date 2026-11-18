@@ -91,6 +91,8 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
     const [docsOpen, setDocsOpen] = useState(false);
     const trip = useMemo(() => data.trips.find(t => t.id === tripId), [data.trips, tripId]);
     const scrollRef = useRef<HTMLDivElement>(null);
+    // Keep all hook calls above the loading/missing early returns so React's hook count never changes.
+    const ledgerMembers = useMemo(() => (trip ? ledgerMembersFor(trip, data.users) : []), [trip, data.users]);
 
     const changeTab = (next: TabId) => {
         setTab(next);
@@ -140,7 +142,6 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
     const stats = tripStats(trip);
     const members = (trip.participants || []).map(id => data.users.find(u => u.id === id)).filter((u): u is User => Boolean(u));
     const travellers = tripTravellers(trip, data.users);
-    const ledgerMembers = useMemo(() => ledgerMembersFor(trip, data.users), [trip, data.users]);
     const classification = tripClassification(trip);
     const docsChecks = checkTrip(trip, data.users);
     const docsSummary = summarise(docsChecks, trip);
@@ -464,6 +465,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                 target={sheet}
                 trips={data.trips}
                 users={data.users}
+                savedCompanions={data.savedCompanions}
                 entitlements={data.entitlements}
                 currentUserId={currentUserId()}
                 brandfetchApiKey={data.brandfetchApiKey}

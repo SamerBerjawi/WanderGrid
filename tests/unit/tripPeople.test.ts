@@ -1,7 +1,7 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Expense, Trip, TripCompanion, User } from '../../types';
+import type { Expense, Trip, TripCompanion, User, WorkspaceSettings } from '../../types';
 import type { TripDraft } from '../../hooks/useTripsData';
 import {
     COMPANION_ROLES,
@@ -24,6 +24,9 @@ import { byPassenger, journeyTotals, passengersOf, totalsByYear, type JourneyRec
 import { balances, includedExpenses, settle, totals } from '../../utils/expenses';
 import { TripSheet } from '../../components/new/trips/TripSheets';
 import { CostsPanel } from '../../components/new/trip/TripPanels';
+import { MembersPane } from '../../components/new/settings/MembersPane';
+import { TripNew } from '../../views/new/TripNew';
+import { dataService } from '../../services/mockDb';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -226,6 +229,12 @@ describe('TripSheet and CostsPanel UI integration', () => {
             unobserve() {}
             disconnect() {}
         } as unknown as typeof ResizeObserver;
+        if (!('fonts' in document) || !document.fonts) {
+            Object.defineProperty(document, 'fonts', {
+                value: { ready: Promise.resolve() },
+                configurable: true,
+            });
+        }
     });
 
     afterEach(() => {
@@ -358,5 +367,96 @@ describe('TripSheet and CostsPanel UI integration', () => {
         expect(container.textContent).toContain('Acme Corp');
         expect(container.textContent).toContain('Maya');
         unmount();
+    });
+
+    it('surfaces workspace savedCompanions alongside trip companions via knownCompanions', () => {
+        const list = knownCompanions(
+            [makeTrip({ companions: [partner] })],
+            [],
+            [employer],
+        );
+        expect(list.map(c => c.name)).toEqual(['Acme Corp', 'Maya']);
+    });
+
+    it('lets admins add passwordless members and people without accounts under Settings -> Members', async () => {
+        const addUser = vi.fn<(user: User) => Promise<void>>(async () => undefined);
+        const save = vi.fn<(changes: Partial<WorkspaceSettings>) => Promise<void>>(async () => undefined);
+        const { unmount } = mount(React.createElement(MembersPane, {
+            data: {
+                settings: { orgName: 'Test', currency: 'USD', dateFormat: 'YYYY-MM-DD', autoSync: false, theme: 'light', workingDays: [1, 2, 3, 4, 5], savedCompanions: [] },
+                users: [userMe],
+                savedConfigs: [],
+                loading: false,
+                error: null,
+                isAdmin: true,
+                sessionUserId: 'u1',
+                reload: vi.fn(async () => undefined),
+                save,
+                saveUser: vi.fn(async () => undefined),
+                addUser,
+                removeUser: vi.fn(async () => undefined),
+            },
+            onOpenMember: vi.fn(),
+        }));
+
+        // 1. Add workspace member without requiring a password
+        const addMemberBtn = Array.from(document.body.querySelectorAll('button')).find(b => b.textContent?.includes('Add member'));
+        act(() => { addMemberBtn!.click(); });
+        const nameInputs = Array.from(document.body.querySelectorAll('input')) as HTMLInputElement[];
+        act(() => { setNativeValue(nameInputs[0], 'Alex Kid'); });
+        const childChip = Array.from(document.body.querySelectorAll('button')).find(b => b.textContent?.trim() === 'Child');
+        act(() => { childChip!.click(); });
+        const submitMember = Array.from(document.body.querySelectorAll('button')).filter(b => b.textContent?.includes('Add member')).pop();
+        await act(async () => { submitMember!.click(); });
+
+        expect(addUser).toHaveBeenCalledTimes(1);
+        expect(addUser.mock.calls[0][0]).toMatchObject({ name: 'Alex Kid', role: 'Child' });
+        expect(addUser.mock.calls[0][0].password).toBeUndefined();
+
+        // 2. Add person without an account (e.g. Employer) under People without accounts
+        const addPersonBtn = Array.from(document.body.querySelectorAll('button')).find(b => b.textContent?.includes('Add person'));
+        act(() => { addPersonBtn!.click(); });
+        const personNameInput = document.body.querySelector('input[placeholder="Sarah, Mom or Employer"]') as HTMLInputElement;
+        act(() => { setNativeValue(personNameInput, 'Acme Corp'); });
+        const empChip = Array.from(document.body.querySelectorAll('button')).find(b => b.textContent?.trim() === 'Employer');
+        act(() => { empChip!.click(); });
+        const submitPerson = Array.from(document.body.querySelectorAll('button')).filter(b => b.textContent?.includes('Add person')).pop();
+        await act(async () => { submitPerson!.click(); });
+
+        expect(save).toHaveBeenCalledTimes(1);
+        expect(save.mock.calls[0][0].savedCompanions?.[0]).toMatchObject({
+            name: 'Acme Corp',
+            role: 'Employer',
+            isPayerOnly: true,
+            excludeFromAnalytics: true,
+        });
+        unmount();
+    });
+
+    it('renders TripNew cleanly from loading into a loaded trip without a hooks-order crash', async () => {
+        const trip = makeTrip({ id: 't_tripnew', name: 'Paris Escape' });
+        const spyTrips = vi.spyOn(dataService, 'getTrips').mockResolvedValue([trip]);
+        const spyUsers = vi.spyOn(dataService, 'getUsers').mockResolvedValue([userMe]);
+        const spySettings = vi.spyOn(dataService, 'getWorkspaceSettings').mockResolvedValue({
+            orgName: 'Test', currency: 'USD', dateFormat: 'YYYY-MM-DD', autoSync: false, theme: 'light', workingDays: [1, 2, 3, 4, 5],
+        });
+        const spyEnt = vi.spyOn(dataService, 'getEntitlementTypes').mockResolvedValue([]);
+        const spyLeave = vi.spyOn(dataService, 'getLeave').mockResolvedValue([]);
+
+        try {
+            const { container, unmount } = mount(React.createElement(TripNew, {
+                tripId: 't_tripnew',
+                onBack: vi.fn(),
+            }));
+            await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+            expect(container.textContent).toContain('Paris Escape');
+            unmount();
+        } finally {
+            spyTrips.mockRestore();
+            spyUsers.mockRestore();
+            spySettings.mockRestore();
+            spyEnt.mockRestore();
+            spyLeave.mockRestore();
+        }
     });
 });

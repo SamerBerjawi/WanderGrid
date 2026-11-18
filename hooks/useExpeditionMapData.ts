@@ -215,8 +215,12 @@ export const deriveScratchCountryData = (
         if (isLayoverOnly(value)) countrySet.delete(key);
     });
 
-    if (Array.from(countrySet).some(isUKConstituent)) {
+    if (countrySet.has('GB')) {
         countrySet.delete('GB');
+        if (!Array.from(countrySet).some(isUKConstituent)) {
+            const targets = ukNations.length > 0 ? ukNations : ['GB-ENG'];
+            targets.forEach(n => { if (!excludedCodes.has(n)) countrySet.add(n); });
+        }
     }
     countrySet.delete('XX');
 

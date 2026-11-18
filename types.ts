@@ -494,6 +494,7 @@ export interface WorkspaceSettings {
     defaultBasemapLight?: 'liberty' | 'bright' | 'positron' | 'satellite' | 'snow' | 'vibrant' | 'ocean';
     defaultBasemapDark?: 'citylights' | 'ocean' | 'satellite' | 'onyx';
     allowSelfRegistration?: boolean; // Public "Sign Up" after the first admin exists (default off; ALLOW_SIGNUP=true on the server flips the default)
+    savedCompanions?: TripCompanion[]; // Workspace-wide people/payers without accounts (family, partner, friend, employer)
     configuredKeys?: Partial<Record<'aviationStackApiKey' | 'aeroDataBoxApiKey' | 'openAipApiKey', boolean>>; // Read-only, from the server
     /** Read-only, from the server: where each key comes from (saved in the workspace, or the host's environment). */
     keySources?: Partial<Record<'aviationStackApiKey' | 'aeroDataBoxApiKey' | 'openAipApiKey', 'workspace' | 'env' | 'none'>>;

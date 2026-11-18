@@ -68,7 +68,7 @@ const useCoarsePointer = () => {
 };
 
 export interface AtlasMapProps {
-    /** Tone per country code (UK nations already folded into "GB" by the caller or here). */
+    /** Tone per country code. */
     tones: Record<string, AtlasTone>;
     counts: Record<AtlasTone, number>;
     onCountryClick: (code: string, name: string) => void;
@@ -124,12 +124,12 @@ export const AtlasMap: React.FC<AtlasMapProps> = ({ tones, counts, onCountryClic
         return () => { alive = false; };
     }, []);
 
-    // UK nations colour the whole UK shape, using the strongest tone among them.
+    // Colour each country feature independently (including GB-ENG, GB-SCT, GB-WLS, GB-NIR).
     const byFeature = useMemo(() => {
         const rank: Record<AtlasTone, number> = { lived: 4, visited: 3, wishlist: 2, layover: 1 };
         const out: Record<string, AtlasTone> = {};
         Object.entries(tones).forEach(([raw, tone]) => {
-            const code = normalizeCountryCode(raw).startsWith('GB-') ? 'GB' : normalizeCountryCode(raw);
+            const code = normalizeCountryCode(raw);
             if (!out[code] || rank[tone] > rank[out[code]]) out[code] = tone;
         });
         return out;

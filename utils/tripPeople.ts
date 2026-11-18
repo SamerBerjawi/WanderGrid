@@ -75,17 +75,23 @@ export const personName = (id: string | undefined, trip?: Pick<Trip, 'companions
     return 'Someone';
 };
 
-/** Companion templates harvested from existing trips so recurring people/payers (like Partner or Employer) are one tap away. */
-export const knownCompanions = (trips: Trip[], current: TripCompanion[] = []): TripCompanion[] => {
+/** Companion templates from workspace settings and existing trips so recurring people/payers (like Partner or Employer) are one tap away. */
+export const knownCompanions = (
+    trips: Trip[],
+    current: TripCompanion[] = [],
+    savedCompanions: TripCompanion[] = [],
+): TripCompanion[] => {
     const taken = new Set(current.map(c => `${c.name.trim().toLowerCase()}|${c.role}`));
     const out: TripCompanion[] = [];
+    const consider = (c: TripCompanion) => {
+        const key = `${(c.name || '').trim().toLowerCase()}|${c.role || 'Other'}`;
+        if (!c.name?.trim() || taken.has(key)) return;
+        taken.add(key);
+        out.push({ ...c });
+    };
+    for (const c of savedCompanions) consider(c);
     for (const t of trips) {
-        for (const c of t.companions || []) {
-            const key = `${(c.name || '').trim().toLowerCase()}|${c.role || 'Other'}`;
-            if (!c.name?.trim() || taken.has(key)) continue;
-            taken.add(key);
-            out.push({ ...c });
-        }
+        for (const c of t.companions || []) consider(c);
     }
     return out;
 };

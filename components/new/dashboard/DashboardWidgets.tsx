@@ -640,10 +640,7 @@ export const MapWidget: React.FC<{ data: DashboardData }> = ({ data }) => {
         return () => { alive = false; };
     }, []);
 
-    const visited = useMemo(() => new Set(data.countries.map(c => {
-        const code = normalizeCountryCode(c.code);
-        return code.startsWith('GB-') ? 'GB' : code;
-    })), [data.countries]);
+    const visited = useMemo(() => new Set(data.countries.map(c => normalizeCountryCode(c.code))), [data.countries]);
     const model = useMemo(() => buildMapModel(data.trips, { mode: 'all', groupAirports: false }), [data.trips]);
     // Land and sea routes follow their traced road, rail or lane once it is known (the same cache as the Map page).
     const requests = useMemo(() => model.routes.map(r => ({ id: r.id, mode: r.rawMode, from: r.from, to: r.to, via: (r.waypoints || []).filter((w: any) => w?.coordinates).map((w: any) => [w.coordinates.lng, w.coordinates.lat] as [number, number]) })), [model.routes]);

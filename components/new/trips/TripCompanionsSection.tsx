@@ -21,14 +21,15 @@ export const TripCompanionsSection: React.FC<{
     companions: TripCompanion[];
     onCompanionsChange: (next: TripCompanion[]) => void;
     trips?: Trip[];
-}> = ({ users, participants, onParticipantsChange, companions, onCompanionsChange, trips = [] }) => {
+    savedCompanions?: TripCompanion[];
+}> = ({ users, participants, onParticipantsChange, companions, onCompanionsChange, trips = [], savedCompanions = [] }) => {
     const [adding, setAdding] = useState(false);
     const [name, setName] = useState('');
     const [role, setRole] = useState<CompanionRole>('Partner');
     const [isPayerOnly, setIsPayerOnly] = useState(false);
     const [excludeFromAnalytics, setExcludeFromAnalytics] = useState(false);
 
-    const suggestions = useMemo(() => knownCompanions(trips, companions), [trips, companions]);
+    const suggestions = useMemo(() => knownCompanions(trips, companions, savedCompanions), [trips, companions, savedCompanions]);
 
     const selectRole = (next: CompanionRole) => {
         setRole(next);
@@ -115,7 +116,7 @@ export const TripCompanionsSection: React.FC<{
 
                 {suggestions.length > 0 ? (
                     <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-xs text-rp-muted">From earlier trips:</span>
+                        <span className="text-xs text-rp-muted">Quick add:</span>
                         {suggestions.slice(0, 6).map(s => (
                             <RpChip key={`${s.name}-${s.role}`} selected={false} onClick={() => addSuggestion(s)}>
                                 <Plus size={14} aria-hidden /> {s.name} ({s.role})
