@@ -418,6 +418,7 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
 
             <TripSheet
                 target={sheet}
+                trips={data.trips}
                 users={data.users}
                 entitlements={data.entitlements}
                 currentUserId={currentUserId()}

@@ -61,7 +61,6 @@ export const LegForm: React.FC<{
     const noNumber = omit.includes('identifier');
     return (
         <>
-            {lead}
             {choices.length > 1 ? (
                 <div role="group" aria-label="Type of transport" className="flex flex-wrap gap-2 py-2">
                     {choices.map(o => (
@@ -71,6 +70,7 @@ export const LegForm: React.FC<{
                     ))}
                 </div>
             ) : null}
+            {lead}
             <div className="grid gap-x-3 sm:grid-cols-2">
                 <RpField label="From">{id => (
                     <PlaceField

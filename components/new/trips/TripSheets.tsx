@@ -1,26 +1,31 @@
-import React, { useEffect, useState } from 'react';
-import type { Accommodation, Activity, EntitlementType, LeaveEntry, Transport, Trip, TripAllocation, TransportMode, User } from '../../../types';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { Accommodation, Activity, EntitlementType, LeaveEntry, Transport, Trip, TripAllocation, User } from '../../../types';
 import type { TripDraft } from '../../../hooks/useTripsData';
+import { useFlightLegAssist } from '../../../hooks/useFlightLegAssist';
+import { extractIata } from '../../../hooks/useFlightLog';
 import { BUCKET_STATUS, tripDays, type TripBucket } from '../../../utils/tripsModel';
+import { durationBetween, type JourneyRecord } from '../../../utils/journeysModel';
+import { isFlightLeg } from '../../../utils/legMode';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import HoldButton from '../../kokonutui/hold-button';
 import ParticleButton from '../../kokonutui/particle-button';
 import {
-    Airplane, ArrowLeft, ArrowRight, ArrowUpRight, Bed, Boat, Bus, CalendarBlank, CalendarCheck, Car, CarProfile, Check, CheckCircle, Clock, Globe, Lock, MapPin,
-    Palette, Plus, Suitcase, Train, Users, X, type Icon,
+    Airplane, ArrowLeft, ArrowRight, ArrowUpRight, Bed, CalendarBlank, CalendarCheck, Check, CheckCircle, Clock, Globe, Lock, MapPin,
+    Palette, Plus, Suitcase, Users, X, type Icon,
 } from '../../ui/hugeicons';
 import { RP_FIELD, RpField } from '../fields';
 import { IconPicker } from '../IconPicker';
 import { PlaceField } from '../PlaceField';
 import { RpHugeicon } from '../RpHugeicon';
 import { RpChip, RpIconButton, RpLogo, RpSection, RpSheet, RpToggle } from '../ui';
+import { FlightLookupLead } from '../journeys/FlightFinder';
 import { TripMenu } from './TripMenu';
 import { stayIcon } from './stayIcon';
 import { STAY_ACCENT } from './accents';
 import { modeLook } from './transportModes';
 import { LegForm } from './LegForm';
 import { LoggedFlights } from './LoggedFlights';
-import { calculateDistance } from '../../../services/geocoding';
+import { calculateDistance, calculateDurationMinutes } from '../../../services/geocoding';
 import { cn } from '../../../utils/cn';
 import { RpCarrierLogo } from '../CarrierLogos';
 import { RpDatePicker, RpDateRangePicker } from '../DateFields';
@@ -323,7 +328,13 @@ const upsert = <T,>(list: T[], at: number | null, item: T): T[] => (at === null 
 /* Transport */
 /* ------------------------------------------------------------------ */
 
-const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKey?: string }> = ({ draft, set, brandfetchApiKey }) => {
+const TransportStep: React.FC<{
+    draft: TripDraft;
+    set: SetDraft;
+    brandfetchApiKey?: string;
+    history?: JourneyRecord[];
+    commitRef?: React.MutableRefObject<(() => Partial<Transport>[] | undefined) | null>;
+}> = ({ draft, set, brandfetchApiKey, history = [], commitRef }) => {
     const blank = (): Partial<Transport> => ({
         mode: 'Flight', origin: '', destination: '', departureDate: draft.startDate, departureTime: '10:00',
         arrivalDate: draft.startDate, arrivalTime: '14:00', provider: '', identifier: '', confirmationCode: '',
@@ -331,23 +342,62 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
     const [leg, setLeg] = useState<Partial<Transport>>(blank);
     const [cost, setCost] = useState('');
     const [editing, setEditing] = useState<number | null>(null);
+    const [resetSeq, setResetSeq] = useState(0);
+    const [estimateError, setEstimateError] = useState('');
     const list = draft.transports || [];
-    const m = modeOf(leg.mode);
     const patch = (p: Partial<Transport>) => setLeg(l => ({ ...l, ...p }));
     const valid = Boolean(leg.origin?.trim() && leg.destination?.trim());
+    const assist = useFlightLegAssist({
+        leg,
+        setLeg,
+        editing: editing !== null,
+        resetKey: `${editing ?? 'new'}:${resetSeq}`,
+        history,
+    });
 
-    const reset = () => { setLeg(blank()); setCost(''); setEditing(null); };
-    const save = () => {
-        if (!valid) return;
-        // Distance is worked out from the two places when it wasn't typed; empty stops are dropped.
-        const distance = leg.distance ?? (leg.originLat != null && leg.originLng != null && leg.destLat != null && leg.destLng != null
-            ? Math.round(calculateDistance(leg.originLat, leg.originLng, leg.destLat, leg.destLng))
-            : undefined);
-        const waypoints = (leg.waypoints || []).filter(w => w.name.trim()).map(w => ({ ...w, name: w.name.trim() }));
-        set('transports', upsert(list, editing, { ...leg, origin: leg.origin!.trim(), destination: leg.destination!.trim(), cost: num(cost), distance, waypoints: waypoints.length ? waypoints : undefined }));
-        reset();
+    const reset = () => {
+        setLeg(blank());
+        setCost('');
+        setEditing(null);
+        setEstimateError('');
+        setResetSeq(s => s + 1);
     };
-    const edit = (i: number) => { setLeg({ ...list[i] }); setCost(costText(list[i].cost)); setEditing(i); };
+    const save = (): Partial<Transport>[] | undefined => {
+        if (!valid) return undefined;
+        const flight = leg.mode === 'Flight';
+        const origin = flight ? extractIata(leg.origin || '').toUpperCase() || leg.origin!.trim() : leg.origin!.trim();
+        const destination = flight ? extractIata(leg.destination || '').toUpperCase() || leg.destination!.trim() : leg.destination!.trim();
+        const arrivalDate = leg.arrivalDate || leg.departureDate;
+        const duration = flight && leg.departureDate && arrivalDate
+            ? (durationBetween(origin, destination, leg.departureDate, leg.departureTime || '00:00', arrivalDate, leg.arrivalTime || '00:00')
+                ?? calculateDurationMinutes(origin, destination, leg.departureDate, leg.departureTime || '00:00', arrivalDate, leg.arrivalTime || '00:00')) || leg.duration
+            : leg.duration;
+        // Distance is worked out from the two places when it wasn't typed; empty stops are dropped.
+        const distance = flight ? undefined : (leg.distance ?? (leg.originLat != null && leg.originLng != null && leg.destLat != null && leg.destLng != null
+            ? Math.round(calculateDistance(leg.originLat, leg.originLng, leg.destLat, leg.destLng))
+            : undefined));
+        const waypoints = (leg.waypoints || []).filter(w => w.name.trim()).map(w => ({ ...w, name: w.name.trim() }));
+        const next = upsert(list, editing, {
+            ...leg,
+            origin,
+            destination,
+            identifier: (leg.identifier || '').toUpperCase(),
+            confirmationCode: (leg.confirmationCode || '').toUpperCase(),
+            duration,
+            cost: num(cost),
+            distance,
+            waypoints: waypoints.length ? waypoints : undefined,
+        });
+        set('transports', next);
+        reset();
+        return next;
+    };
+    useEffect(() => {
+        if (!commitRef) return;
+        commitRef.current = () => (valid ? save() : undefined);
+        return () => { commitRef.current = null; };
+    });
+    const edit = (i: number) => { setLeg({ ...list[i] }); setCost(costText(list[i].cost)); setEditing(i); setEstimateError(''); };
     const remove = (i: number) => {
         const removed = list[i];
         let next = list.filter((_, j) => j !== i);
@@ -374,7 +424,7 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
                                     active={editing === i}
                                     logo={<RpCarrierLogo provider={t.provider} identifier={t.identifier} src={t.logoUrl} fallback={tm.icon} iconClassName={tm.text} />}
                                     title={`${t.origin} → ${t.destination}`}
-                                    meta={[t.provider, t.departureDate ? formatDate(t.departureDate, 'short') : '', t.cost != null ? formatCurrency(t.cost) : ''].filter(Boolean).join(' · ') || tm.label}
+                                    meta={[t.provider, t.identifier, t.departureDate ? formatDate(t.departureDate, 'short') : '', t.cost != null ? formatCurrency(t.cost) : ''].filter(Boolean).join(' · ') || tm.label}
                                     onEdit={() => edit(i)}
                                     onRemove={() => remove(i)}
                                     removeLabel={`Remove ${t.origin} to ${t.destination}`}
@@ -395,7 +445,34 @@ const TransportStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKe
                     bias={draft.coordinates}
                     detailsKey={editing ?? 'new'}
                     detailsOpen={editing !== null && Boolean(leg.waypoints?.length)}
+                    omit={assist.flight ? ['identifier', 'departureDate'] : []}
+                    lead={assist.flight ? (
+                        <FlightLookupLead
+                            leg={leg}
+                            patch={patch}
+                            lookup={assist.lookup}
+                            appliedIndex={assist.appliedIndex}
+                            onUse={assist.useCandidate}
+                            editing={editing !== null}
+                            logged={assist.logged}
+                            onUseLogged={assist.useLogged}
+                            brandfetchApiKey={brandfetchApiKey}
+                        />
+                    ) : undefined}
                 />
+                {assist.canEstimate ? (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            const r = assist.estimate();
+                            setEstimateError(r.ok ? '' : r.error);
+                        }}
+                        className="mt-1 inline-flex min-h-11 items-center gap-2 self-start rounded-full bg-rp-inset px-4 text-sm font-medium text-rp-ink outline-none hover:bg-rp-line focus-visible:ring-2 focus-visible:ring-rp-muted"
+                    >
+                        Estimate arrival time
+                    </button>
+                ) : null}
+                {estimateError ? <p role="alert" className="text-sm text-rp-rust">{estimateError}</p> : null}
                 <FormActions editing={editing !== null} valid={valid} addLabel="Add transport" onSave={save} onCancel={reset} />
             </RpSection>
         </div>
@@ -575,6 +652,7 @@ const Stepper: React.FC<{ labels: readonly string[]; step: number; reached: numb
 
 export const TripSheet: React.FC<{
     target: TripSheetTarget | null;
+    trips?: Trip[];
     users: User[];
     entitlements: EntitlementType[];
     currentUserId?: string;
@@ -585,11 +663,16 @@ export const TripSheet: React.FC<{
     onSave: (draft: TripDraft, trip?: Trip) => Promise<void>;
     onDelete: (trip: Trip) => void;
     onOpenTrip: (trip: Trip) => void;
-}> = ({ target, users, entitlements, currentUserId, brandfetchApiKey, linkedLeaveOf, onClose, onSave, onDelete, onOpenTrip }) => {
+}> = ({ target, trips = [], users, entitlements, currentUserId, brandfetchApiKey, linkedLeaveOf, onClose, onSave, onDelete, onOpenTrip }) => {
     const [draft, setDraft] = useState<TripDraft>(() => emptyDraft('Planning'));
     const [touched, setTouched] = useState(false);
     const [step, setStep] = useState(0);
     const [reached, setReached] = useState(0);
+    const commitTransportRef = useRef<(() => Partial<Transport>[] | undefined) | null>(null);
+    const flightHistory = useMemo<JourneyRecord[]>(
+        () => trips.flatMap(trip => (trip.transports || []).filter(isFlightLeg).map(flight => ({ flight, trip }))),
+        [trips],
+    );
 
     useEffect(() => {
         if (!target) return;
@@ -610,6 +693,7 @@ export const TripSheet: React.FC<{
 
     const go = (i: number) => {
         if (i > 0 && !basicsValid) { setTouched(true); setStep(0); return; }
+        if (step === 1 && i !== 1) commitTransportRef.current?.();
         setStep(i);
         setReached(r => Math.max(r, i));
     };
@@ -617,7 +701,8 @@ export const TripSheet: React.FC<{
     const save = async () => {
         setTouched(true);
         if (!basicsValid) { setStep(0); throw new Error('invalid'); }
-        await onSave(draft, editing);
+        const transports = step === 1 ? commitTransportRef.current?.() : undefined;
+        await onSave(transports ? { ...draft, transports } : draft, editing);
         onClose();
     };
 
@@ -634,7 +719,7 @@ export const TripSheet: React.FC<{
                     brandfetchApiKey={brandfetchApiKey}
                 />
             ) : null}
-            {step === 1 ? <TransportStep draft={draft} set={set} brandfetchApiKey={brandfetchApiKey} /> : null}
+            {step === 1 ? <TransportStep draft={draft} set={set} brandfetchApiKey={brandfetchApiKey} history={flightHistory} commitRef={commitTransportRef} /> : null}
             {step === 2 ? <StaysStep draft={draft} set={set} brandfetchApiKey={brandfetchApiKey} /> : null}
             {step === 3 && editing ? <ActivitiesStep draft={draft} set={set} /> : null}
         </>

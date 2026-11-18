@@ -1,9 +1,10 @@
 import React from 'react';
-import type { Carrier } from '../../../types';
-import type { FlightCandidate } from '../../../services/flightLookup';
+import type { Carrier, Transport } from '../../../types';
+import type { FlightCandidate, LookupResult } from '../../../services/flightLookup';
 import type { LookupStatus } from '../../../hooks/useFlightLookup';
-import type { LookupResult } from '../../../services/flightLookup';
 import { Airplane, ArrowRight, Check, Broadcast, WarningCircle } from '../../ui/hugeicons';
+import { RP_FIELD, RpField } from '../fields';
+import { RpDatePicker } from '../DateFields';
 import { StatusPill } from './JourneyParts';
 import { formatDate } from '../../../utils/formatters';
 import { formatMinutes, type JourneyStatus } from '../../../utils/journeysModel';
@@ -125,3 +126,39 @@ export const FlightFinder: React.FC<{
         </div>
     );
 };
+
+/** Flight number, departure date, live flight lookup and prior-log fallback shown at the top of a flight form. */
+export const FlightLookupLead: React.FC<{
+    leg: Partial<Transport>;
+    patch: (p: Partial<Transport>) => void;
+    lookup: { status: LookupStatus; result: LookupResult | null; message: string; valid: boolean; run: () => Promise<void> };
+    appliedIndex: number;
+    onUse: (c: FlightCandidate, index: number) => void;
+    editing: boolean;
+    logged: Transport | null;
+    onUseLogged: () => void;
+    brandfetchApiKey?: string;
+}> = ({ leg, patch, lookup, appliedIndex, onUse, editing, logged, onUseLogged, brandfetchApiKey }) => (
+    <div className="flex flex-col gap-1 pb-2">
+        <div className="grid gap-x-3 sm:grid-cols-2">
+            <RpField label="Flight number">{id => <input id={id} value={leg.identifier || ''} onChange={e => patch({ identifier: e.target.value })} placeholder="ME215" className={RP_FIELD} autoComplete="off" autoCapitalize="characters" />}</RpField>
+            <RpField label="Departure date">{id => <RpDatePicker label="Departure date" id={id} value={leg.departureDate || ''} onChange={v => patch({ departureDate: v, arrivalDate: leg.arrivalDate && leg.arrivalDate >= v ? leg.arrivalDate : v })} clearable />}</RpField>
+        </div>
+        <FlightFinder
+            status={lookup.status}
+            result={lookup.result}
+            message={lookup.message}
+            valid={lookup.valid}
+            appliedIndex={appliedIndex}
+            onUse={onUse}
+            onRun={editing ? () => void lookup.run() : undefined}
+            brandfetchApiKey={brandfetchApiKey}
+        />
+        {logged ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-rp-inset bg-rp-surface p-3">
+                <p className="text-sm text-rp-ink">You logged {logged.identifier} before: <span className="rp-tabular font-medium">{logged.origin} {logged.departureTime} → {logged.destination} {logged.arrivalTime}</span></p>
+                <button type="button" onClick={onUseLogged} className="inline-flex min-h-11 items-center rounded-full bg-rp-ink px-4 text-sm font-medium text-rp-on-ink outline-none hover:bg-rp-ink/90 focus-visible:ring-2 focus-visible:ring-rp-muted">Use these times</button>
+            </div>
+        ) : null}
+    </div>
+);
