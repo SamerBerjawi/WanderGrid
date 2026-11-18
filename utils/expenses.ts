@@ -1,4 +1,5 @@
-import type { Expense, ExpenseSplit } from '../types';
+import type { Expense, ExpenseSplit, Trip } from '../types';
+import { isCostExcluded } from './tripPeople';
 
 /**
  * The expense ledger of a trip: what was spent, in what currency, who paid and who shares it, and from that who
@@ -75,6 +76,10 @@ export const settle = (bal: Record<string, Balance>): Transfer[] => {
 };
 
 export interface Totals { cents: number; byCategory: { category: Expense['category']; cents: number }[]; count: number }
+
+/** Expenses included in personal cost analytics (excludes items marked excluded or paid by an excluded payer). */
+export const includedExpenses = (expenses: Expense[], trip?: Pick<Trip, 'excludeCostsFromAnalytics' | 'companions'> | null): Expense[] =>
+    expenses.filter(e => !isCostExcluded({ paidBy: e.paidBy, excludeFromAnalytics: e.excludeFromAnalytics }, trip));
 
 export const totals = (expenses: Expense[]): Totals => {
     const byCat = new Map<Expense['category'], number>();

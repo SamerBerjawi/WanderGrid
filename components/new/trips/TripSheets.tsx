@@ -6,12 +6,13 @@ import { extractIata } from '../../../hooks/useFlightLog';
 import { BUCKET_STATUS, tripDays, type TripBucket } from '../../../utils/tripsModel';
 import { durationBetween, type JourneyRecord } from '../../../utils/journeysModel';
 import { isFlightLeg } from '../../../utils/legMode';
+import { TRIP_CLASSIFICATIONS, isCostExcluded, personName, tripAllPeople, tripTravellers, type TripPerson } from '../../../utils/tripPeople';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import HoldButton from '../../kokonutui/hold-button';
 import ParticleButton from '../../kokonutui/particle-button';
 import {
     Airplane, ArrowLeft, ArrowRight, ArrowUpRight, Bed, CalendarBlank, CalendarCheck, Check, CheckCircle, Clock, Globe, Lock, MapPin,
-    Palette, Plus, Suitcase, Users, X, type Icon,
+    Palette, Plus, Suitcase, Tag, X, type Icon,
 } from '../../ui/hugeicons';
 import { RP_FIELD, RpField } from '../fields';
 import { IconPicker } from '../IconPicker';
@@ -25,6 +26,8 @@ import { STAY_ACCENT } from './accents';
 import { modeLook } from './transportModes';
 import { LegForm } from './LegForm';
 import { LoggedFlights } from './LoggedFlights';
+import { ItemSharingFields } from './ItemSharingFields';
+import { TripCompanionsSection } from './TripCompanionsSection';
 import { calculateDistance, calculateDurationMinutes } from '../../../services/geocoding';
 import { cn } from '../../../utils/cn';
 import { RpCarrierLogo } from '../CarrierLogos';
@@ -50,7 +53,8 @@ const STAY_TYPES: Accommodation['type'][] = ['Hotel', 'Airbnb', 'Resort', 'Villa
 const ACTIVITY_TYPES = ['Activity', 'Dining', 'Tour', 'Sightseeing', 'Museum', 'Outdoor', 'Entertainment', 'Shopping', 'Wellness', 'Nightlife'];
 
 const emptyDraft = (status: Trip['status']): TripDraft => ({
-    name: '', destination: '', startDate: '', endDate: '', status, participants: [], notes: '', icon: undefined,
+    name: '', destination: '', startDate: '', endDate: '', status, classification: 'Personal', excludeCostsFromAnalytics: false,
+    participants: [], companions: [], notes: '', icon: undefined,
     privacy: 'Private', entitlementId: undefined, allocations: [], coordinates: undefined, transports: [], stays: [], activities: [],
 });
 const draftOf = (trip: Trip, leave?: LeaveEntry): TripDraft => ({
@@ -59,7 +63,10 @@ const draftOf = (trip: Trip, leave?: LeaveEntry): TripDraft => ({
     startDate: trip.startDate || '',
     endDate: trip.endDate || '',
     status: trip.status,
+    classification: trip.classification || 'Personal',
+    excludeCostsFromAnalytics: Boolean(trip.excludeCostsFromAnalytics),
     participants: trip.participants || [],
+    companions: (trip.companions || []).map(c => ({ ...c })),
     notes: trip.notes || '',
     icon: trip.hugeicon,
     iconData: trip.hugeiconData,
@@ -195,15 +202,17 @@ const Basics: React.FC<{
     draft: TripDraft;
     set: SetDraft;
     users: User[];
+    trips: Trip[];
     entitlements: EntitlementType[];
     showErrors: boolean;
     autoFocus: boolean;
     brandfetchApiKey?: string;
-}> = ({ draft, set, users, entitlements, showErrors, autoFocus, brandfetchApiKey }) => {
+}> = ({ draft, set, users, trips, entitlements, showErrors, autoFocus, brandfetchApiKey }) => {
     const [pickingIcon, setPickingIcon] = useState(false);
     const nameError = showErrors && !draft.name.trim() ? 'Give the trip a name.' : undefined;
     const startError = showErrors && !draft.startDate ? 'Pick a start date.' : undefined;
     const endError = draft.startDate && draft.endDate && draft.endDate < draft.startDate ? 'The trip ends before it starts.' : undefined;
+    const classification = draft.classification || 'Personal';
     return (
         <div className="flex flex-col gap-5">
             <RpSection title="Status" icon={Clock}>
@@ -214,6 +223,22 @@ const Basics: React.FC<{
                         </RpChip>
                     ))}
                 </div>
+            </RpSection>
+
+            <RpSection title="Classification" icon={Tag}>
+                <div role="group" aria-label="Trip classification" className="flex flex-wrap gap-2 py-2">
+                    {TRIP_CLASSIFICATIONS.map(c => (
+                        <RpChip key={c} selected={classification === c} onClick={() => set('classification', c)}>
+                            {c}
+                        </RpChip>
+                    ))}
+                </div>
+                <RpToggle
+                    label="Exclude trip costs from personal analytics"
+                    hint="Useful for employer-paid business trips; individual items can override this."
+                    checked={Boolean(draft.excludeCostsFromAnalytics)}
+                    onChange={v => set('excludeCostsFromAnalytics', v || undefined)}
+                />
             </RpSection>
 
             <RpSection title="Trip" icon={MapPin}>
@@ -267,20 +292,14 @@ const Basics: React.FC<{
                 </div>
             </RpSection>
 
-            {users.length > 1 ? (
-                <RpSection title="Members" icon={Users}>
-                    <div role="group" aria-label="Members" className="flex flex-wrap gap-2 py-2">
-                        {users.map(u => {
-                            const on = draft.participants.includes(u.id);
-                            return (
-                                <RpChip key={u.id} selected={on} onClick={() => set('participants', on ? draft.participants.filter(p => p !== u.id) : [...draft.participants, u.id])}>
-                                    {u.name}
-                                </RpChip>
-                            );
-                        })}
-                    </div>
-                </RpSection>
-            ) : null}
+            <TripCompanionsSection
+                users={users}
+                participants={draft.participants}
+                onParticipantsChange={next => set('participants', next)}
+                companions={draft.companions || []}
+                onCompanionsChange={next => set('companions', next)}
+                trips={trips}
+            />
 
             <RpSection title="Notes">
                 <textarea aria-label="Notes" value={draft.notes} onChange={e => set('notes', e.target.value)} rows={3} className={cn(RP_FIELD, 'my-2 resize-none py-2.5')} />
@@ -324,6 +343,22 @@ const modeOf = modeLook;
 /** Replace item `at` (when editing) or append, and give back the new list. */
 const upsert = <T,>(list: T[], at: number | null, item: T): T[] => (at === null ? [...list, item] : list.map((x, i) => (i === at ? item : x)));
 
+const sharingMeta = (
+    item: { cost?: number; paidBy?: string; excludeFromAnalytics?: boolean },
+    selectedMembers: string[] | undefined,
+    travellers: TripPerson[],
+    draft: TripDraft,
+    users: User[],
+): string[] => {
+    const out: string[] = [];
+    if (selectedMembers !== undefined && travellers.length > 1) {
+        out.push(`${selectedMembers.length} of ${travellers.length} travellers`);
+    }
+    if (item.paidBy) out.push(`Paid by ${personName(item.paidBy, draft, users)}`);
+    if ((item.cost || 0) > 0 && isCostExcluded(item, draft)) out.push('Excluded');
+    return out;
+};
+
 /* ------------------------------------------------------------------ */
 /* Transport */
 /* ------------------------------------------------------------------ */
@@ -331,10 +366,13 @@ const upsert = <T,>(list: T[], at: number | null, item: T): T[] => (at === null 
 const TransportStep: React.FC<{
     draft: TripDraft;
     set: SetDraft;
+    users: User[];
+    people: TripPerson[];
+    travellers: TripPerson[];
     brandfetchApiKey?: string;
     history?: JourneyRecord[];
-    commitRef?: React.MutableRefObject<(() => Partial<Transport>[] | undefined) | null>;
-}> = ({ draft, set, brandfetchApiKey, history = [], commitRef }) => {
+    commitRef?: React.MutableRefObject<(() => Partial<TripDraft> | undefined) | null>;
+}> = ({ draft, set, users, people, travellers, brandfetchApiKey, history = [], commitRef }) => {
     const blank = (): Partial<Transport> => ({
         mode: 'Flight', origin: '', destination: '', departureDate: draft.startDate, departureTime: '10:00',
         arrivalDate: draft.startDate, arrivalTime: '14:00', provider: '', identifier: '', confirmationCode: '',
@@ -362,7 +400,7 @@ const TransportStep: React.FC<{
         setEstimateError('');
         setResetSeq(s => s + 1);
     };
-    const save = (): Partial<Transport>[] | undefined => {
+    const save = (): Partial<TripDraft> | undefined => {
         if (!valid) return undefined;
         const flight = leg.mode === 'Flight';
         const origin = flight ? extractIata(leg.origin || '').toUpperCase() || leg.origin!.trim() : leg.origin!.trim();
@@ -390,7 +428,7 @@ const TransportStep: React.FC<{
         });
         set('transports', next);
         reset();
-        return next;
+        return { transports: next };
     };
     useEffect(() => {
         if (!commitRef) return;
@@ -424,7 +462,13 @@ const TransportStep: React.FC<{
                                     active={editing === i}
                                     logo={<RpCarrierLogo provider={t.provider} identifier={t.identifier} src={t.logoUrl} fallback={tm.icon} iconClassName={tm.text} />}
                                     title={`${t.origin} → ${t.destination}`}
-                                    meta={[t.provider, t.identifier, t.departureDate ? formatDate(t.departureDate, 'short') : '', t.cost != null ? formatCurrency(t.cost) : ''].filter(Boolean).join(' · ') || tm.label}
+                                    meta={[
+                                        t.provider,
+                                        t.identifier,
+                                        t.departureDate ? formatDate(t.departureDate, 'short') : '',
+                                        t.cost != null ? formatCurrency(t.cost) : '',
+                                        ...sharingMeta(t, t.passengers, travellers, draft, users),
+                                    ].filter(Boolean).join(' · ') || tm.label}
                                     onEdit={() => edit(i)}
                                     onRemove={() => remove(i)}
                                     removeLabel={`Remove ${t.origin} to ${t.destination}`}
@@ -473,6 +517,18 @@ const TransportStep: React.FC<{
                     </button>
                 ) : null}
                 {estimateError ? <p role="alert" className="text-sm text-rp-rust">{estimateError}</p> : null}
+                <ItemSharingFields
+                    travellers={travellers}
+                    people={people}
+                    selectedMembers={leg.passengers}
+                    onSelectedMembersChange={next => patch({ passengers: next })}
+                    membersLabel={assist.flight ? "Who's flying" : "Who's travelling"}
+                    paidBy={leg.paidBy}
+                    onPaidByChange={next => patch({ paidBy: next })}
+                    excludeFromAnalytics={leg.excludeFromAnalytics}
+                    onExcludeChange={next => patch({ excludeFromAnalytics: next })}
+                    trip={draft}
+                />
                 <FormActions editing={editing !== null} valid={valid} addLabel="Add transport" onSave={save} onCancel={reset} />
             </RpSection>
         </div>
@@ -483,7 +539,15 @@ const TransportStep: React.FC<{
 /* Stays */
 /* ------------------------------------------------------------------ */
 
-const StaysStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKey?: string }> = ({ draft, set, brandfetchApiKey }) => {
+const StaysStep: React.FC<{
+    draft: TripDraft;
+    set: SetDraft;
+    users: User[];
+    people: TripPerson[];
+    travellers: TripPerson[];
+    brandfetchApiKey?: string;
+    commitRef?: React.MutableRefObject<(() => Partial<TripDraft> | undefined) | null>;
+}> = ({ draft, set, users, people, travellers, brandfetchApiKey, commitRef }) => {
     const blank = (): Partial<Accommodation> => ({
         name: '', type: 'Hotel', address: draft.destination, checkInDate: draft.startDate, checkInTime: '15:00',
         checkOutDate: draft.endDate || draft.startDate, checkOutTime: '11:00', confirmationCode: '',
@@ -496,11 +560,18 @@ const StaysStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKey?: 
     const valid = Boolean(stay.name?.trim());
 
     const reset = () => { setStay(blank()); setCost(''); setEditing(null); };
-    const save = () => {
-        if (!valid) return;
-        set('stays', upsert(list, editing, { ...stay, name: stay.name!.trim(), cost: num(cost) }));
+    const save = (): Partial<TripDraft> | undefined => {
+        if (!valid) return undefined;
+        const next = upsert(list, editing, { ...stay, name: stay.name!.trim(), cost: num(cost) });
+        set('stays', next);
         reset();
+        return { stays: next };
     };
+    useEffect(() => {
+        if (!commitRef) return;
+        commitRef.current = () => (valid ? save() : undefined);
+        return () => { commitRef.current = null; };
+    });
     const edit = (i: number) => { setStay({ ...list[i] }); setCost(costText(list[i].cost)); setEditing(i); };
     const remove = (i: number) => { set('stays', list.filter((_, j) => j !== i)); if (editing === i) reset(); else if (editing !== null && editing > i) setEditing(editing - 1); };
 
@@ -515,7 +586,12 @@ const StaysStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKey?: 
                                 active={editing === i}
                                 logo={<RpLogo name={a.name} src={a.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={stayIcon(a.type)} iconClassName={STAY_ACCENT} />}
                                 title={a.name || 'Stay'}
-                                meta={[a.type, a.checkInDate && a.checkOutDate ? `${formatDate(a.checkInDate, 'short')} – ${formatDate(a.checkOutDate, 'short')}` : '', a.cost != null ? formatCurrency(a.cost) : ''].filter(Boolean).join(' · ')}
+                                meta={[
+                                    a.type,
+                                    a.checkInDate && a.checkOutDate ? `${formatDate(a.checkInDate, 'short')} – ${formatDate(a.checkOutDate, 'short')}` : '',
+                                    a.cost != null ? formatCurrency(a.cost) : '',
+                                    ...sharingMeta(a, a.participants, travellers, draft, users),
+                                ].filter(Boolean).join(' · ')}
                                 onEdit={() => edit(i)}
                                 onRemove={() => remove(i)}
                                 removeLabel={`Remove ${a.name}`}
@@ -545,6 +621,18 @@ const StaysStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKey?: 
                     <RpField label="Confirmation">{id => <input id={id} value={stay.confirmationCode} onChange={e => patch({ confirmationCode: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
                     <RpField label="Cost">{id => <input id={id} inputMode="decimal" value={cost} onChange={e => setCost(e.target.value)} className={cn(RP_FIELD, 'rp-tabular')} placeholder="0" autoComplete="off" />}</RpField>
                 </div>
+                <ItemSharingFields
+                    travellers={travellers}
+                    people={people}
+                    selectedMembers={stay.participants}
+                    onSelectedMembersChange={next => patch({ participants: next })}
+                    membersLabel="Who's staying"
+                    paidBy={stay.paidBy}
+                    onPaidByChange={next => patch({ paidBy: next })}
+                    excludeFromAnalytics={stay.excludeFromAnalytics}
+                    onExcludeChange={next => patch({ excludeFromAnalytics: next })}
+                    trip={draft}
+                />
                 <FormActions editing={editing !== null} valid={valid} addLabel="Add stay" onSave={save} onCancel={reset} />
             </RpSection>
         </div>
@@ -555,7 +643,14 @@ const StaysStep: React.FC<{ draft: TripDraft; set: SetDraft; brandfetchApiKey?: 
 /* Activities (editing only) */
 /* ------------------------------------------------------------------ */
 
-const ActivitiesStep: React.FC<{ draft: TripDraft; set: SetDraft }> = ({ draft, set }) => {
+const ActivitiesStep: React.FC<{
+    draft: TripDraft;
+    set: SetDraft;
+    users: User[];
+    people: TripPerson[];
+    travellers: TripPerson[];
+    commitRef?: React.MutableRefObject<(() => Partial<TripDraft> | undefined) | null>;
+}> = ({ draft, set, users, people, travellers, commitRef }) => {
     const blank = (): Partial<Activity> => ({ title: '', type: 'Activity', date: draft.startDate, time: '10:00', location: '', description: '' });
     const [item, setItem] = useState<Partial<Activity>>(blank);
     const [cost, setCost] = useState('');
@@ -565,11 +660,18 @@ const ActivitiesStep: React.FC<{ draft: TripDraft; set: SetDraft }> = ({ draft, 
     const valid = Boolean(item.title?.trim());
 
     const reset = () => { setItem(blank()); setCost(''); setEditing(null); };
-    const save = () => {
-        if (!valid) return;
-        set('activities', upsert(list, editing, { ...item, title: item.title!.trim(), cost: num(cost) }));
+    const save = (): Partial<TripDraft> | undefined => {
+        if (!valid) return undefined;
+        const next = upsert(list, editing, { ...item, title: item.title!.trim(), cost: num(cost) });
+        set('activities', next);
         reset();
+        return { activities: next };
     };
+    useEffect(() => {
+        if (!commitRef) return;
+        commitRef.current = () => (valid ? save() : undefined);
+        return () => { commitRef.current = null; };
+    });
     const edit = (i: number) => { setItem({ ...list[i] }); setCost(costText(list[i].cost)); setEditing(i); };
     const remove = (i: number) => { set('activities', list.filter((_, j) => j !== i)); if (editing === i) reset(); else if (editing !== null && editing > i) setEditing(editing - 1); };
 
@@ -584,7 +686,13 @@ const ActivitiesStep: React.FC<{ draft: TripDraft; set: SetDraft }> = ({ draft, 
                                 active={editing === i}
                                 logo={<span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-white"><CalendarBlank size={16} className="text-rp-muted" aria-hidden /></span>}
                                 title={a.title || 'Activity'}
-                                meta={[a.date ? formatDate(a.date, 'short') : '', a.time, a.location, a.cost != null && a.cost > 0 ? formatCurrency(a.cost) : ''].filter(Boolean).join(' · ')}
+                                meta={[
+                                    a.date ? formatDate(a.date, 'short') : '',
+                                    a.time,
+                                    a.location,
+                                    a.cost != null && a.cost > 0 ? formatCurrency(a.cost) : '',
+                                    ...sharingMeta(a, a.participants, travellers, draft, users),
+                                ].filter(Boolean).join(' · ')}
                                 onEdit={() => edit(i)}
                                 onRemove={() => remove(i)}
                                 removeLabel={`Remove ${a.title}`}
@@ -605,6 +713,18 @@ const ActivitiesStep: React.FC<{ draft: TripDraft; set: SetDraft }> = ({ draft, 
                     <RpField label="Where">{id => <input id={id} value={item.location} onChange={e => patch({ location: e.target.value })} className={RP_FIELD} autoComplete="off" />}</RpField>
                     <RpField label="Cost">{id => <input id={id} inputMode="decimal" value={cost} onChange={e => setCost(e.target.value)} className={cn(RP_FIELD, 'rp-tabular')} placeholder="0" autoComplete="off" />}</RpField>
                 </div>
+                <ItemSharingFields
+                    travellers={travellers}
+                    people={people}
+                    selectedMembers={item.participants}
+                    onSelectedMembersChange={next => patch({ participants: next })}
+                    membersLabel="Who's joining"
+                    paidBy={item.paidBy}
+                    onPaidByChange={next => patch({ paidBy: next })}
+                    excludeFromAnalytics={item.excludeFromAnalytics}
+                    onExcludeChange={next => patch({ excludeFromAnalytics: next })}
+                    trip={draft}
+                />
                 <RpField label="Notes">{id => <textarea id={id} value={item.description} onChange={e => patch({ description: e.target.value })} rows={2} className={cn(RP_FIELD, 'resize-none py-2.5')} />}</RpField>
                 <FormActions editing={editing !== null} valid={valid} addLabel="Add activity" onSave={save} onCancel={reset} />
             </RpSection>
@@ -668,11 +788,13 @@ export const TripSheet: React.FC<{
     const [touched, setTouched] = useState(false);
     const [step, setStep] = useState(0);
     const [reached, setReached] = useState(0);
-    const commitTransportRef = useRef<(() => Partial<Transport>[] | undefined) | null>(null);
+    const commitStepRef = useRef<(() => Partial<TripDraft> | undefined) | null>(null);
     const flightHistory = useMemo<JourneyRecord[]>(
         () => trips.flatMap(trip => (trip.transports || []).filter(isFlightLeg).map(flight => ({ flight, trip }))),
         [trips],
     );
+    const people = useMemo(() => tripAllPeople(draft, users), [draft.participants, draft.companions, users]);
+    const travellers = useMemo(() => tripTravellers(draft, users), [draft.participants, draft.companions, users]);
 
     useEffect(() => {
         if (!target) return;
@@ -693,7 +815,7 @@ export const TripSheet: React.FC<{
 
     const go = (i: number) => {
         if (i > 0 && !basicsValid) { setTouched(true); setStep(0); return; }
-        if (step === 1 && i !== 1) commitTransportRef.current?.();
+        if (step > 0 && i !== step) commitStepRef.current?.();
         setStep(i);
         setReached(r => Math.max(r, i));
     };
@@ -701,8 +823,8 @@ export const TripSheet: React.FC<{
     const save = async () => {
         setTouched(true);
         if (!basicsValid) { setStep(0); throw new Error('invalid'); }
-        const transports = step === 1 ? commitTransportRef.current?.() : undefined;
-        await onSave(transports ? { ...draft, transports } : draft, editing);
+        const stepPatch = step > 0 ? commitStepRef.current?.() : undefined;
+        await onSave(stepPatch ? { ...draft, ...stepPatch } : draft, editing);
         onClose();
     };
 
@@ -713,15 +835,16 @@ export const TripSheet: React.FC<{
                     draft={draft}
                     set={set}
                     users={users}
+                    trips={trips}
                     entitlements={entitlements}
                     showErrors={touched}
                     autoFocus={!editing}
                     brandfetchApiKey={brandfetchApiKey}
                 />
             ) : null}
-            {step === 1 ? <TransportStep draft={draft} set={set} brandfetchApiKey={brandfetchApiKey} history={flightHistory} commitRef={commitTransportRef} /> : null}
-            {step === 2 ? <StaysStep draft={draft} set={set} brandfetchApiKey={brandfetchApiKey} /> : null}
-            {step === 3 && editing ? <ActivitiesStep draft={draft} set={set} /> : null}
+            {step === 1 ? <TransportStep draft={draft} set={set} users={users} people={people} travellers={travellers} brandfetchApiKey={brandfetchApiKey} history={flightHistory} commitRef={commitStepRef} /> : null}
+            {step === 2 ? <StaysStep draft={draft} set={set} users={users} people={people} travellers={travellers} brandfetchApiKey={brandfetchApiKey} commitRef={commitStepRef} /> : null}
+            {step === 3 && editing ? <ActivitiesStep draft={draft} set={set} users={users} people={people} travellers={travellers} commitRef={commitStepRef} /> : null}
         </>
     );
 

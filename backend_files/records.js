@@ -55,10 +55,13 @@ module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_
       trips: (r) => {
           if (!isStringOrMissing(r.name, 500)) return 'name must be text (max 500 characters)';
           if (!isValidDayOrEmpty(r.startDate) || !isValidDayOrEmpty(r.endDate)) return 'startDate/endDate must be YYYY-MM-DD dates';
-          for (const field of ['participants', 'transports', 'accommodations', 'activities', 'locations', 'packingList', 'expenses']) {
+          for (const field of ['participants', 'companions', 'transports', 'accommodations', 'activities', 'locations', 'packingList', 'expenses']) {
               if (!isArrayOrMissing(r[field])) return `${field} must be a list`;
           }
           if (Array.isArray(r.participants) && !r.participants.every(p => typeof p === 'string')) return 'participants must be user ids';
+          if (Array.isArray(r.companions) && !r.companions.every(c => c && typeof c === 'object' && typeof c.id === 'string' && typeof c.name === 'string')) return 'companions must have id and name';
+          if (r.classification !== undefined && r.classification !== null && !['Personal', 'Business', 'Family', 'Bleisure', 'Other'].includes(r.classification)) return 'classification must be Personal, Business, Family, Bleisure or Other';
+          if (r.excludeCostsFromAnalytics !== undefined && r.excludeCostsFromAnalytics !== null && typeof r.excludeCostsFromAnalytics !== 'boolean') return 'excludeCostsFromAnalytics must be true or false';
           if (r.privacy !== undefined && r.privacy !== null && !['Private', 'Public', 'Shared'].includes(r.privacy)) return 'privacy must be Private, Public or Shared';
           if (r.intent !== undefined && r.intent !== null && !['planned', 'confirmed', 'cancelled'].includes(r.intent)) return 'intent must be planned, confirmed or cancelled';
           return null;

@@ -299,7 +299,7 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
 
                 <FlightAlerts alerts={alerts.alerts} onDismiss={alerts.dismiss} notify={alerts.notify} canNotify={alerts.canNotify} onToggleNotify={() => void alerts.toggleNotify()} watching={alerts.watching} />
 
-                {log.loaded && log.flights.length > 0 && (!mobile || tab === 'stats') ? <JourneyHero items={shown} /> : null}
+                {log.loaded && log.flights.length > 0 && (!mobile || tab === 'stats') ? <JourneyHero items={shown} users={log.users} /> : null}
 
                 {!(mobile && tab === 'stats' && log.flights.length > 0) ? (
                 <section aria-label="Your flights" className="flex flex-col gap-4">
@@ -471,6 +471,7 @@ export const FlightsNew: React.FC<FlightsNewProps> = ({ onTripClick }) => {
             <JourneyEditor
                 target={editor}
                 trips={tripChoices}
+                users={log.users}
                 modes={['Flight']}
                 noun="flight"
                 settings={log.workspaceSettings}

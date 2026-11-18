@@ -1,5 +1,6 @@
 import type { Trip } from '../types';
 import { tripKind } from './tripKind';
+import { includedItemCost } from './tripPeople';
 
 /**
  * Pure trip logic for the New Trips page (UI_UX_DESIGN_REFERENCE.md §5.2 row 3): which column a
@@ -185,6 +186,6 @@ export const destinationLabel = (trip: Trip, max = 2): string => {
     return `${all.slice(0, max).join(' · ')} · +${all.length - max}`;
 };
 
-/** Everything booked on the trip (transport, stays, activities). */
+/** Everything booked on the trip that counts in personal cost analytics (excludes employer-paid or marked-excluded items). */
 export const tripCost = (trip: Trip): number =>
-    [...(trip.transports || []), ...(trip.accommodations || []), ...(trip.activities || [])].reduce((sum, i) => sum + (i.cost || 0), 0);
+    [...(trip.transports || []), ...(trip.accommodations || []), ...(trip.activities || [])].reduce((sum, i) => sum + includedItemCost(i, trip), 0);

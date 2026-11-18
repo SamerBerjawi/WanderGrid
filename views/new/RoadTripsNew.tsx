@@ -297,7 +297,7 @@ export const RoadTripsNew: React.FC<RoadTripsNewProps> = ({ onTripClick }) => {
                     </div>
                 ) : null}
 
-                {log.loaded && log.records.length > 0 && (!mobile || tab === 'stats') ? <JourneyHero items={shown} kind="land" /> : null}
+                {log.loaded && log.records.length > 0 && (!mobile || tab === 'stats') ? <JourneyHero items={shown} kind="land" users={log.users} /> : null}
 
                 {!(mobile && tab === 'stats' && log.records.length > 0) ? (
                 <section aria-label="Your journeys" className="flex flex-col gap-4">
@@ -461,6 +461,7 @@ export const RoadTripsNew: React.FC<RoadTripsNewProps> = ({ onTripClick }) => {
             <JourneyEditor
                 target={editor}
                 trips={tripChoices}
+                users={log.users}
                 modes={LAND_MODES}
                 noun="journey"
                 settings={log.workspaceSettings}

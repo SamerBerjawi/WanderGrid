@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { Expense, User } from '../../../types';
+import type { Expense, Trip, User } from '../../../types';
 import { CATEGORIES, COMMON_CURRENCIES, checkExpense, formatMoney } from '../../../utils/expenses';
+import { isCostExcluded } from '../../../utils/tripPeople';
 import { getRate } from '../../../services/fxRates';
 import { errorMessage } from '../../../services/toast';
 import { formatDate } from '../../../utils/formatters';
 import ParticleButton from '../../kokonutui/particle-button';
 import { Trash } from '../../ui/hugeicons';
-import { RpChip, RpSection, RpSheet } from '../ui';
+import { RpChip, RpSection, RpSheet, RpToggle } from '../ui';
 import { RpField, RP_FIELD } from '../fields';
 import { cn } from '../../../utils/cn';
 import { RpDatePicker } from '../DateFields';
@@ -21,11 +22,14 @@ const newId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? c
 const first = (name: string) => name.split(/\s+/)[0] || name;
 const today = () => new Date().toISOString().slice(0, 10);
 
+type LedgerMember = User & { isPayerOnly?: boolean; excludeFromAnalytics?: boolean; companionRole?: string };
+
 export const ExpenseSheet: React.FC<{
     open: boolean;
     /** The expense being edited, or null to add one. */
     expense: Expense | null;
-    members: User[];
+    members: LedgerMember[];
+    trip?: Pick<Trip, 'excludeCostsFromAnalytics' | 'companions'>;
     /** The currency the trip's ledger is totalled in. */
     ledger: string;
     /** Where a new expense starts: the day, the payer and the currency of the last one. */
@@ -33,14 +37,17 @@ export const ExpenseSheet: React.FC<{
     onClose: () => void;
     onSave: (expense: Expense) => Promise<void>;
     onDelete?: (expense: Expense) => void;
-}> = ({ open, expense, members, ledger, defaults, onClose, onSave, onDelete }) => {
+}> = ({ open, expense, members, trip, ledger, defaults, onClose, onSave, onDelete }) => {
     const ids = members.map(m => m.id);
+    const travellerIds = members.filter(m => !m.isPayerOnly).map(m => m.id);
+    const defaultAmong = travellerIds.length > 0 ? travellerIds : ids;
     const [title, setTitle] = useState('');
     const [amount, setAmount] = useState('');
     const [currency, setCurrency] = useState(ledger);
     const [date, setDate] = useState(today());
     const [category, setCategory] = useState<Expense['category']>('Food');
     const [paidBy, setPaidBy] = useState('');
+    const [excludeFromAnalytics, setExcludeFromAnalytics] = useState<boolean | undefined>(undefined);
     const [mode, setMode] = useState<'equal' | 'custom'>('equal');
     const [among, setAmong] = useState<string[]>([]);
     const [shares, setShares] = useState<Record<string, string>>({});
@@ -57,12 +64,12 @@ export const ExpenseSheet: React.FC<{
         manualRate.current = Boolean(expense);
         if (expense) {
             setTitle(expense.title); setAmount(String(expense.amount)); setCurrency(expense.currency); setDate(expense.date); setCategory(expense.category);
-            setPaidBy(expense.paidBy); setMode(expense.split.mode); setAmong(expense.split.among);
+            setPaidBy(expense.paidBy); setExcludeFromAnalytics(expense.excludeFromAnalytics); setMode(expense.split.mode); setAmong(expense.split.among);
             setShares(Object.fromEntries(Object.entries(expense.split.shares || {}).map(([k, v]) => [k, String(v)])));
             setRate(String(expense.rate)); setRateNote('The rate this expense was saved with.');
         } else {
             setTitle(''); setAmount(''); setCurrency(defaults.currency || ledger); setDate(defaults.date || today()); setCategory('Food');
-            setPaidBy(defaults.paidBy && ids.includes(defaults.paidBy) ? defaults.paidBy : ids[0] || ''); setMode('equal'); setAmong(ids); setShares({});
+            setPaidBy(defaults.paidBy && ids.includes(defaults.paidBy) ? defaults.paidBy : ids[0] || ''); setExcludeFromAnalytics(undefined); setMode('equal'); setAmong(defaultAmong); setShares({});
             setRate('1'); setRateNote('');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -95,12 +102,23 @@ export const ExpenseSheet: React.FC<{
 
     const toggle = (id: string) => setAmong(list => (list.includes(id) ? list.filter(x => x !== id) : ids.filter(x => list.includes(x) || x === id)));
 
+    const payerMember = members.find(m => m.id === paidBy);
+    const excluded = isCostExcluded({ paidBy, excludeFromAnalytics }, trip);
+    const excludeHint = excludeFromAnalytics === true
+        ? 'Excluded from personal cost totals.'
+        : payerMember?.excludeFromAnalytics
+            ? `Excluded automatically because ${first(payerMember.name)} pays.`
+            : trip?.excludeCostsFromAnalytics
+                ? "Excluded by this trip's analytics setting."
+                : 'Counts in personal cost totals.';
+
     const save = async () => {
         if (!check.ok) { setError(check.errors[0]); throw new Error(check.errors[0]); }
         try {
             await onSave({
                 id: expense?.id || newId(), date, title: title.trim() || category, category, amount: amountNum, currency: draft.currency, rate: rateNum,
                 paidBy, split: { mode, among, ...(mode === 'custom' ? { shares: draft.split.shares } : {}) },
+                ...(excludeFromAnalytics !== undefined ? { excludeFromAnalytics } : {}),
             });
             onClose();
         } catch (e) {
@@ -161,8 +179,18 @@ export const ExpenseSheet: React.FC<{
                 </RpSection>
                 <RpSection title="Paid by">
                     <div role="radiogroup" aria-label="Paid by" className="flex flex-wrap gap-2 py-1">
-                        {members.map(m => <RpChip key={m.id} selected={paidBy === m.id} onClick={() => setPaidBy(m.id)}>{first(m.name)}</RpChip>)}
+                        {members.map(m => (
+                            <RpChip key={m.id} selected={paidBy === m.id} onClick={() => { setPaidBy(m.id); setExcludeFromAnalytics(undefined); }}>
+                                {first(m.name)}{m.companionRole ? <span className="opacity-70">· {m.companionRole}</span> : null}
+                            </RpChip>
+                        ))}
                     </div>
+                    <RpToggle
+                        label="Exclude from personal analytics"
+                        hint={excludeHint}
+                        checked={excluded}
+                        onChange={v => setExcludeFromAnalytics(v)}
+                    />
                 </RpSection>
                 <RpSection title="Shared by">
                     <div className="flex flex-col gap-2 py-1">

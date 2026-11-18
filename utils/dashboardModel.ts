@@ -4,6 +4,7 @@ import { destinationsOf, isPastTrip, isTravelling } from './tripsModel';
 import { isRealTrip } from './tripKind';
 import { isFlightLeg } from './legMode';
 import { memberLeaveDays, yearOfISO, type LeaveContext } from './calendarModel';
+import { includedItemCost, type CostItem } from './tripPeople';
 
 /**
  * Pure logic for the New Dashboard (UI_UX_DESIGN_REFERENCE.md §5.2 rows 2 and 14): what was travelled
@@ -196,9 +197,10 @@ export const spendSeries = (trips: Trip[], axis: string[]): DailySeries => {
     };
     trips.forEach(t => {
         if (t.status === 'Cancelled') return;
-        (t.transports || []).forEach(x => add(x.departureDate || t.startDate, 0, x.cost));
-        (t.accommodations || []).forEach(x => add(x.checkInDate || t.startDate, 1, x.cost));
-        (t.activities || []).forEach(x => add(x.date || t.startDate, 2, x.cost));
+        const addItem = (date: string | undefined, s: number, item: CostItem) => add(date, s, includedItemCost(item, t));
+        (t.transports || []).forEach(x => addItem(x.departureDate || t.startDate, 0, x));
+        (t.accommodations || []).forEach(x => addItem(x.checkInDate || t.startDate, 1, x));
+        (t.activities || []).forEach(x => addItem(x.date || t.startDate, 2, x));
     });
     return finishSeries(axis, SPEND_NAMES, grid);
 };

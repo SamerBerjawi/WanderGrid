@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Drawer } from 'vaul';
 import type { Trip, User } from '../../../types';
-import { bucketOf, destinationsOf, isTravelling, timingOf, todayISO, tripDays, type TripBucket } from '../../../utils/tripsModel';
+import { bucketOf, destinationsOf, isTravelling, timingOf, todayISO, tripCost, tripDays, type TripBucket } from '../../../utils/tripsModel';
+import { tripClassification, tripTravellers } from '../../../utils/tripPeople';
 import { formatCurrency, formatDate, formatDateRange } from '../../../utils/formatters';
 import {
     Airplane, ArrowRight, ArrowUpRight, Bed, Boat, Bus, CalendarBlank, Car, CarProfile, FileText, MapPin, PencilSimple, Train, X, type Icon,
@@ -121,9 +122,9 @@ const Body: React.FC<{
         const transports = [...(trip.transports || [])].sort((a, b) => `${a.departureDate}${a.departureTime}`.localeCompare(`${b.departureDate}${b.departureTime}`));
         const stays = [...(trip.accommodations || [])].sort((a, b) => (a.checkInDate || '').localeCompare(b.checkInDate || ''));
         const activities = [...(trip.activities || [])].sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
-        const total = [...transports, ...stays, ...activities].reduce((sum, i) => sum + (i.cost || 0), 0);
-        const members = (trip.participants || []).map(id => users.find(u => u.id === id)).filter((u): u is User => Boolean(u));
-        return { transports, stays, activities, total, members, cities: destinationsOf(trip) };
+        const total = tripCost(trip);
+        const members = tripTravellers(trip, users);
+        return { transports, stays, activities, total, members, cities: destinationsOf(trip), classification: tripClassification(trip) };
     }, [trip, users]);
 
     const days = tripDays(trip);
@@ -148,7 +149,10 @@ const Body: React.FC<{
             </div>
 
             <div>
-                <h2 id={titleId} className="text-[2rem] leading-[1.1] font-medium tracking-tight">{trip.name}</h2>
+                <div className="flex flex-wrap items-center gap-2">
+                    <h2 id={titleId} className="text-[2rem] leading-[1.1] font-medium tracking-tight">{trip.name}</h2>
+                    {data.classification !== 'Personal' ? <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold', skin.panel)}>{data.classification}</span> : null}
+                </div>
                 {data.cities.length > 0 ? <p className={cn('mt-1 text-base', skin.muted)}>{data.cities.slice(0, SHOW).join(' · ')}{data.cities.length > SHOW ? ` · +${data.cities.length - SHOW}` : ''}</p> : null}
             </div>
 

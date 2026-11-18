@@ -125,6 +125,10 @@ export interface Transport {
   isExitRow?: boolean;
   /** New pages: which of the trip's members flew this leg. Absent means everyone on the trip. */
   passengers?: string[];
+  /** Who paid for this leg (account user id or trip companion id). */
+  paidBy?: string;
+  /** Exclude this leg's cost from personal cost analytics (for example employer-paid travel). */
+  excludeFromAnalytics?: boolean;
   /** New pages: overrides how the Flights page groups this leg. `alone` keeps it out of any journey; `j:<id>` joins every leg with the same key. */
   journeyKey?: string;
   /** New pages: the route actually flown, saved from the live transponder track: [longitude, latitude] pairs, about 80 points. */
@@ -189,6 +193,12 @@ export interface Accommodation {
   notes?: string;
   website?: string;
   cost?: number;
+  /** Which trip travellers stay here. Absent means everyone travelling on the trip. */
+  participants?: string[];
+  /** Who paid for this stay (account user id or trip companion id). */
+  paidBy?: string;
+  /** Exclude this stay's cost from personal cost analytics. */
+  excludeFromAnalytics?: boolean;
   logoUrl?: string; // URL to brand logo
   coordinates?: GeoCoordinates;
 }
@@ -213,6 +223,12 @@ export interface Activity {
   time: string;
   title: string;
   cost?: number;
+  /** Which trip travellers join this activity. Absent means everyone travelling on the trip. */
+  participants?: string[];
+  /** Who paid for this activity (account user id or trip companion id). */
+  paidBy?: string;
+  /** Exclude this activity's cost from personal cost analytics. */
+  excludeFromAnalytics?: boolean;
   location?: string;
   description?: string;
   type?: ActivityType;
@@ -254,10 +270,26 @@ export interface Expense {
   currency: string;
   /** Ledger currency per one unit of `currency`, as of `date`. */
   rate: number;
-  /** The traveller who paid (user id). */
+  /** The traveller who paid (account user id or trip companion id). */
   paidBy: string;
   split: ExpenseSplit;
+  /** Exclude this expense from personal cost analytics. */
+  excludeFromAnalytics?: boolean;
   note?: string;
+}
+
+export type TripClassification = 'Personal' | 'Business' | 'Family' | 'Bleisure' | 'Other';
+export type CompanionRole = 'Partner' | 'Family' | 'Friend' | 'Employer' | 'Colleague' | 'Other';
+
+/** A person or payer without a WanderGrid account, attached to a trip for planning, Paid by, and cost analytics. */
+export interface TripCompanion {
+  id: string;
+  name: string;
+  role: CompanionRole;
+  /** Non-travelling payer (such as an Employer): selectable in Paid by, omitted from traveller headcounts and passenger lists. */
+  isPayerOnly?: boolean;
+  /** Costs paid by this companion default to excluded from personal cost analytics. */
+  excludeFromAnalytics?: boolean;
 }
 
 export interface Trip {
@@ -275,7 +307,13 @@ export interface Trip {
   status: 'Planning' | 'Upcoming' | 'Past' | 'Cancelled';
   /** What was decided before the trip happened. `status` loses this once a trip is Past, so it is kept here. */
   intent?: 'planned' | 'confirmed' | 'cancelled';
+  /** Trip classification (Personal, Business, Family, Bleisure, Other). Defaults to Personal when unset. */
+  classification?: TripClassification;
+  /** When true, booked costs on this trip default to excluded from personal cost analytics unless overridden on an item. */
+  excludeCostsFromAnalytics?: boolean;
   participants: string[];
+  /** Non-account members and external payers (family, partner, friend, employer) on this trip. */
+  companions?: TripCompanion[];
   icon?: string;
   /** New pages: the name of a Hugeicons free icon (e.g. 'Airplane01Icon') chosen for this trip. Kept apart from `icon`, which older pages render as an emoji. */
   hugeicon?: string;

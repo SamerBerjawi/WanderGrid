@@ -3,6 +3,7 @@ import NumberFlow from '@number-flow/react';
 import type { Trip, User } from '../../../types';
 import { formatCurrency, formatDateRange } from '../../../utils/formatters';
 import { bucketOf, destinationLabel, intentNote, isTravelling, timingOf, tripCost, tripDays, tripNeeds, type TripBucket } from '../../../utils/tripsModel';
+import { tripClassification, tripTravellers } from '../../../utils/tripPeople';
 import { Airplane, ArrowUpRight, Bed } from '../../ui/hugeicons';
 import { RpIconButton } from '../ui';
 import { CappedTrips } from './CappedTrips';
@@ -37,7 +38,8 @@ const Row: React.FC<{ trip: Trip; users: User[]; today: string; actions: TripAct
     const stays = (trip.accommodations || []).length;
     const needs = tripNeeds(trip, today);
     const note = intentNote(trip, today);
-    const members = useMemo(() => (trip.participants || []).map(id => users.find(u => u.id === id)).filter((u): u is User => Boolean(u)), [trip.participants, users]);
+    const classification = tripClassification(trip);
+    const members = useMemo(() => tripTravellers(trip, users), [trip, users]);
     const dates = trip.startDate ? formatDateRange(trip.startDate, trip.endDate || trip.startDate) : '';
     const muted = now ? 'text-rp-on-ink/70' : 'text-rp-muted';
     const dayText = days > 0 ? `${days} ${days === 1 ? 'day' : 'days'}` : '';
@@ -53,7 +55,10 @@ const Row: React.FC<{ trip: Trip; users: User[]; today: string; actions: TripAct
                 onClick={e => actions.onDetails(trip, e.currentTarget.closest('li')?.getBoundingClientRect())}
                 className="min-h-11 min-w-0 rounded-rp-inset px-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-rp-muted"
             >
-                <span className="block truncate text-sm font-medium">{trip.name}</span>
+                <span className="flex items-center gap-2 truncate text-sm font-medium">
+                    <span className="truncate">{trip.name}</span>
+                    {classification !== 'Personal' ? <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-2xs font-semibold', now ? 'bg-rp-on-ink/15 text-rp-on-ink' : 'bg-rp-inset text-rp-muted')}>{classification}</span> : null}
+                </span>
                 <span className={cn('block truncate text-xs', muted)}>{destinationLabel(trip, 2) || 'No destination yet'}</span>
                 {facts ? <span className={cn('rp-tabular block truncate text-xs lg:hidden', muted)}>{facts}</span> : null}
             </button>

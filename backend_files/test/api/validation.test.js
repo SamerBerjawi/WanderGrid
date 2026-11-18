@@ -57,3 +57,16 @@ test('a trip intent must be planned, confirmed or cancelled (F-06)', async () =>
     assert.equal((await post('trips', { ...base, intent: 'maybe' })).status, 400);
     assert.equal((await post('trips', { ...base, intent: 'planned' })).status, 201);
 });
+
+test('trip classification, excludeCostsFromAnalytics and companions are validated', async () => {
+    const base = { id: 'cls-1', name: 'Summit', status: 'Planning', participants: ['admin@test.dev'] };
+    assert.equal((await post('trips', { ...base, classification: 'InvalidType' })).status, 400);
+    assert.equal((await post('trips', { ...base, excludeCostsFromAnalytics: 'yes' })).status, 400);
+    assert.equal((await post('trips', { ...base, companions: [{ name: 'No id' }] })).status, 400);
+    assert.equal((await post('trips', {
+        ...base,
+        classification: 'Business',
+        excludeCostsFromAnalytics: false,
+        companions: [{ id: 'c1', name: 'Acme Corp', role: 'Employer', isPayerOnly: true, excludeFromAnalytics: true }],
+    })).status, 201);
+});

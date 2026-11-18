@@ -4,6 +4,7 @@ import type { PackingItem, Trip, User } from '../../types';
 import { useTripsData, type TripDraft } from '../../hooks/useTripsData';
 import { bucketOf, canMoveTo, destinationsOf, isTravelling, timingOf, todayISO, tripDays, type TripBucket } from '../../utils/tripsModel';
 import { costSplit, shiftDate, tripStats } from '../../utils/tripItinerary';
+import { ledgerMembersFor, tripClassification, tripTravellers } from '../../utils/tripPeople';
 import { formatCurrency, formatDate, formatDateRange } from '../../utils/formatters';
 import { formatProperLocationName } from '../../services/geocoding';
 import { errorMessage, toast } from '../../services/toast';
@@ -138,6 +139,9 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
     const days = tripDays(trip);
     const stats = tripStats(trip);
     const members = (trip.participants || []).map(id => data.users.find(u => u.id === id)).filter((u): u is User => Boolean(u));
+    const travellers = tripTravellers(trip, data.users);
+    const ledgerMembers = useMemo(() => ledgerMembersFor(trip, data.users), [trip, data.users]);
+    const classification = tripClassification(trip);
     const docsChecks = checkTrip(trip, data.users);
     const docsSummary = summarise(docsChecks, trip);
     const hero = split.total > 0
@@ -269,7 +273,12 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                         </div>
 
                         <div className="mt-2 flex items-end justify-between gap-4">
-                            <h1 className="min-w-0 text-[1.75rem] leading-[1.1] font-medium tracking-tight sm:text-[2.25rem]">{trip.name}</h1>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h1 className="min-w-0 text-[1.75rem] leading-[1.1] font-medium tracking-tight sm:text-[2.25rem]">{trip.name}</h1>
+                                    {classification !== 'Personal' ? <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold', skin.panel)}>{classification}</span> : null}
+                                </div>
+                            </div>
                             {hero ? (
                                 <p className="shrink-0 text-right">
                                     <span className="rp-tabular block text-[1.75rem] leading-none font-semibold tracking-tight sm:text-[2.25rem]">{hero.text}</span>
@@ -350,13 +359,20 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
 
                         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                                {members.slice(0, 4).map(u => (
-                                    <button key={u.id} type="button" onClick={() => onOpenMember?.(u.id)} disabled={!onOpenMember} aria-label={`Open ${u.name}`} className="flex min-h-11 items-center gap-1.5 rounded-full pr-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-current enabled:hover:underline disabled:cursor-default">
-                                        <span className={cn('flex size-7 items-center justify-center rounded-full text-2xs font-semibold', skin.panel)}>{initials(u.name)}</span>
-                                        {u.name.split(' ')[0]}
-                                    </button>
+                                {travellers.slice(0, 4).map(p => (
+                                    p.kind === 'account' ? (
+                                        <button key={p.id} type="button" onClick={() => onOpenMember?.(p.id)} disabled={!onOpenMember} aria-label={`Open ${p.name}`} className="flex min-h-11 items-center gap-1.5 rounded-full pr-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-current enabled:hover:underline disabled:cursor-default">
+                                            <span className={cn('flex size-7 items-center justify-center rounded-full text-2xs font-semibold', skin.panel)}>{initials(p.name)}</span>
+                                            {p.name.split(' ')[0]}
+                                        </button>
+                                    ) : (
+                                        <span key={p.id} className="flex min-h-11 items-center gap-1.5 pr-2 text-sm">
+                                            <span className={cn('flex size-7 items-center justify-center rounded-full text-2xs font-semibold', skin.panel)}>{initials(p.name)}</span>
+                                            {p.name.split(' ')[0]}
+                                        </span>
+                                    )
                                 ))}
-                                {members.length > 4 ? <span className={cn('text-sm', skin.muted)}>+{members.length - 4}</span> : null}
+                                {travellers.length > 4 ? <span className={cn('text-sm', skin.muted)}>+{travellers.length - 4}</span> : null}
                             </div>
                             {move ? (
                                 <button type="button" onClick={() => void moveTo(move.to)} className={cn(pill, skin.primary, '!px-4')}>
@@ -429,8 +445,8 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                     {tab === 'bookings' ? <BookingsPanel trip={trip} brandfetchApiKey={data.brandfetchApiKey} members={members} onEdit={edit} /> : null}
                     {tab === 'costs' ? (
                         <>
-                            <CostsPanel trip={trip} members={members.length} onSaveBudget={target => attempt(async () => { await data.patch(trip.id, { targetBudget: target }); })} />
-                            <ExpensesPanel trip={trip} members={members} onSave={async patch => { await data.patch(trip.id, patch); }} />
+                            <CostsPanel trip={trip} members={travellers.length} users={data.users} onSaveBudget={target => attempt(async () => { await data.patch(trip.id, { targetBudget: target }); })} />
+                            <ExpensesPanel trip={trip} members={ledgerMembers} onSave={async patch => { await data.patch(trip.id, patch); }} />
                         </>
                     ) : null}
                     {tab === 'gear' ? <GearPanel items={trip.packingList || []} onChange={savePacking} /> : null}

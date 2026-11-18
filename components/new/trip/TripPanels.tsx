@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import type { Accommodation, PackingItem, Trip, Transport, User } from '../../../types';
 import { cardsForFlight, cardsForStay, walletText } from '../../../utils/loyalty';
-import { buildDays, costSplit, targetBudgetOf, type DayItem, type TripDay } from '../../../utils/tripItinerary';
+import { buildDays, targetBudgetOf, type DayItem, type TripDay } from '../../../utils/tripItinerary';
 import { tripDays } from '../../../utils/tripsModel';
+import { isCostExcluded, personName, tripCostSummary, tripTravellers } from '../../../utils/tripPeople';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
-import { Airplane, Bed, Backpack, CalendarBlank, Check, FileText, PencilSimple, Plus, Receipt, Square, CheckSquare, Trash, type Icon } from '../../ui/hugeicons';
+import { Airplane, Bed, Backpack, CalendarBlank, Check, FileText, PencilSimple, Plus, Receipt, Square, CheckSquare, Trash, Users, type Icon } from '../../ui/hugeicons';
 import { RP_FIELD } from '../fields';
 import { RpChip, RpEmpty, RpLogo } from '../ui';
 import ParticleButton from '../../kokonutui/particle-button';
@@ -135,36 +136,42 @@ export const ItineraryPanel: React.FC<{ trip: Trip; brandfetchApiKey?: string; o
 /* Bookings */
 /* ------------------------------------------------------------------ */
 
-const TransportRow: React.FC<{ t: Transport; brandfetchApiKey?: string; wallet?: string; onEdit: () => void }> = ({ t, brandfetchApiKey, wallet, onEdit }) => {
+const TransportRow: React.FC<{ t: Transport; trip: Trip; users?: User[]; brandfetchApiKey?: string; wallet?: string; onEdit: () => void }> = ({ t, trip, users = [], brandfetchApiKey, wallet, onEdit }) => {
     const Mode = MODE_ICON[t.mode] || Airplane;
+    const paid = t.paidBy ? `Paid by ${personName(t.paidBy, trip, users)}` : '';
+    const excl = (t.cost || 0) > 0 && isCostExcluded(t, trip) ? 'Excluded' : '';
     return (
         <li className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto_auto] items-center gap-3 border-t border-rp-line py-3 first:border-t-0">
             <RpCarrierLogo provider={t.provider} identifier={t.identifier} src={t.logoUrl} fallback={Mode} iconClassName={modeLook(t.mode).text} />
             <span className="min-w-0">
                 <span className="block truncate text-sm font-medium text-rp-ink">{t.origin} → {t.destination}</span>
                 <span className="block truncate text-xs text-rp-muted">
-                    {[t.provider, t.identifier, when(t.departureDate, t.departureTime), t.confirmationCode ? `Ref ${t.confirmationCode}` : '', wallet || ''].filter(Boolean).join(' · ')}
+                    {[t.provider, t.identifier, when(t.departureDate, t.departureTime), t.confirmationCode ? `Ref ${t.confirmationCode}` : '', paid, excl, wallet || ''].filter(Boolean).join(' · ')}
                 </span>
             </span>
-            <span className="rp-tabular text-right text-sm font-medium text-rp-ink">{money(t.cost) ?? ''}</span>
+            <span className={cn('rp-tabular text-right text-sm font-medium', excl ? 'text-rp-muted line-through' : 'text-rp-ink')}>{money(t.cost) ?? ''}</span>
             <EditButton label={`Edit ${t.origin} to ${t.destination}`} onClick={onEdit} />
         </li>
     );
 };
 
-const StayRow: React.FC<{ a: Accommodation; brandfetchApiKey?: string; wallet?: string; onEdit: () => void }> = ({ a, brandfetchApiKey, wallet, onEdit }) => (
-    <li className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto_auto] items-center gap-3 border-t border-rp-line py-3 first:border-t-0">
-        <RpLogo name={a.name} src={a.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={stayIcon(a.type)} iconClassName={STAY_ACCENT} />
-        <span className="min-w-0">
-            <span className="block truncate text-sm font-medium text-rp-ink">{a.name}</span>
-            <span className="block truncate text-xs text-rp-muted">
-                {[a.checkInDate && a.checkOutDate ? `${formatDate(a.checkInDate, 'short')} – ${formatDate(a.checkOutDate, 'short')}` : '', nights(a.checkInDate, a.checkOutDate), a.confirmationCode ? `Ref ${a.confirmationCode}` : '', wallet || ''].filter(Boolean).join(' · ')}
+const StayRow: React.FC<{ a: Accommodation; trip: Trip; users?: User[]; brandfetchApiKey?: string; wallet?: string; onEdit: () => void }> = ({ a, trip, users = [], brandfetchApiKey, wallet, onEdit }) => {
+    const paid = a.paidBy ? `Paid by ${personName(a.paidBy, trip, users)}` : '';
+    const excl = (a.cost || 0) > 0 && isCostExcluded(a, trip) ? 'Excluded' : '';
+    return (
+        <li className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto_auto] items-center gap-3 border-t border-rp-line py-3 first:border-t-0">
+            <RpLogo name={a.name} src={a.logoUrl} brandfetchApiKey={brandfetchApiKey} fallback={stayIcon(a.type)} iconClassName={STAY_ACCENT} />
+            <span className="min-w-0">
+                <span className="block truncate text-sm font-medium text-rp-ink">{a.name}</span>
+                <span className="block truncate text-xs text-rp-muted">
+                    {[a.checkInDate && a.checkOutDate ? `${formatDate(a.checkInDate, 'short')} – ${formatDate(a.checkOutDate, 'short')}` : '', nights(a.checkInDate, a.checkOutDate), a.confirmationCode ? `Ref ${a.confirmationCode}` : '', paid, excl, wallet || ''].filter(Boolean).join(' · ')}
+                </span>
             </span>
-        </span>
-        <span className="rp-tabular text-right text-sm font-medium text-rp-ink">{money(a.cost) ?? ''}</span>
-        <EditButton label={`Edit ${a.name}`} onClick={onEdit} />
-    </li>
-);
+            <span className={cn('rp-tabular text-right text-sm font-medium', excl ? 'text-rp-muted line-through' : 'text-rp-ink')}>{money(a.cost) ?? ''}</span>
+            <EditButton label={`Edit ${a.name}`} onClick={onEdit} />
+        </li>
+    );
+};
 
 export const BookingsPanel: React.FC<{ trip: Trip; brandfetchApiKey?: string; members?: User[]; onEdit: (step: EditStep) => void }> = ({ trip, brandfetchApiKey, members, onEdit }) => {
     // Loyalty numbers for the airline or hotel of each booking, when the wallet is on and a member has one.
@@ -177,13 +184,13 @@ export const BookingsPanel: React.FC<{ trip: Trip; brandfetchApiKey?: string; me
             <section className={CARD}>
                 <Heading icon={Airplane} accent={TRANSPORT_ACCENT} title="Transport" count={transports.length} action={<AddButton label="Add" onClick={() => onEdit(1)} />} />
                 {transports.length === 0 ? <RpEmpty title="No transport yet">Add flights, trains, ferries and rentals.</RpEmpty> : (
-                    <ul>{transports.map(t => <TransportRow key={t.id} t={t} brandfetchApiKey={brandfetchApiKey} wallet={flightWallet(t)} onEdit={() => onEdit(1)} />)}</ul>
+                    <ul>{transports.map(t => <TransportRow key={t.id} t={t} trip={trip} users={members} brandfetchApiKey={brandfetchApiKey} wallet={flightWallet(t)} onEdit={() => onEdit(1)} />)}</ul>
                 )}
             </section>
             <section className={CARD}>
                 <Heading icon={Bed} accent={STAY_ACCENT} title="Stays" count={stays.length} action={<AddButton label="Add" onClick={() => onEdit(2)} />} />
                 {stays.length === 0 ? <RpEmpty title="No stays yet">Add hotels, rentals and friends' places.</RpEmpty> : (
-                    <ul>{stays.map(a => <StayRow key={a.id} a={a} brandfetchApiKey={brandfetchApiKey} wallet={stayWallet(a)} onEdit={() => onEdit(2)} />)}</ul>
+                    <ul>{stays.map(a => <StayRow key={a.id} a={a} trip={trip} users={members} brandfetchApiKey={brandfetchApiKey} wallet={stayWallet(a)} onEdit={() => onEdit(2)} />)}</ul>
                 )}
             </section>
         </div>
@@ -235,17 +242,20 @@ const BudgetCard: React.FC<{ total: number; target?: number; onSave: (target: nu
     );
 };
 
-export const CostsPanel: React.FC<{ trip: Trip; members: number; onSaveBudget: (target: number | undefined) => Promise<void> | void }> = ({ trip, members, onSaveBudget }) => {
-    const split = costSplit(trip);
+export const CostsPanel: React.FC<{ trip: Trip; members: number; users?: User[]; onSaveBudget: (target: number | undefined) => Promise<void> | void }> = ({ trip, members, users = [], onSaveBudget }) => {
+    const summary = useMemo(() => tripCostSummary(trip, users), [trip, users]);
+    const split = summary.included;
     const target = targetBudgetOf(trip);
     const days = Math.max(1, tripDays(trip));
-    const people = Math.max(1, members);
+    const travellerCount = tripTravellers(trip, users).length;
+    const people = Math.max(1, travellerCount || members);
     const rows: { label: string; icon: Icon; value: number; bar: string; accent: string }[] = [
         { label: 'Transport', icon: Airplane, value: split.transport, bar: 'bg-rp-rust', accent: TRANSPORT_ACCENT },
         { label: 'Stays', icon: Bed, value: split.stays, bar: 'bg-rp-mustard', accent: STAY_ACCENT },
         { label: 'Activities', icon: CalendarBlank, value: split.activities, bar: 'bg-rp-green', accent: 'text-rp-green' },
     ];
-    if (split.total === 0) {
+    const hasPersonBreakdown = summary.byPerson.length > 1 || summary.byPerson.some(p => p.paidIncluded > 0 || p.paidExcluded > 0);
+    if (summary.gross.total === 0) {
         return (
             <div className={CARD}>
                 <RpEmpty title="No costs yet">Costs you add to transport, stays and activities are totalled here.</RpEmpty>
@@ -254,35 +264,73 @@ export const CostsPanel: React.FC<{ trip: Trip; members: number; onSaveBudget: (
         );
     }
     return (
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:gap-6">
-            <section className={CARD}>
-                <Heading icon={Receipt} title="Total" />
-                <p className="rp-tabular text-[2.5rem] leading-none font-semibold tracking-tight text-rp-ink">{formatCurrency(split.total)}</p>
-                <dl className="mt-5 grid grid-cols-2 gap-3">
-                    <div className="rounded-rp-inset bg-rp-inset p-3"><dt className="text-xs text-rp-muted">Per person</dt><dd className="rp-tabular text-base font-semibold text-rp-ink">{formatCurrency(split.total / people)}</dd></div>
-                    <div className="rounded-rp-inset bg-rp-inset p-3"><dt className="text-xs text-rp-muted">Per day</dt><dd className="rp-tabular text-base font-semibold text-rp-ink">{formatCurrency(split.total / days)}</dd></div>
-                </dl>
-                <BudgetCard total={split.total} target={target} onSave={onSaveBudget} />
-            </section>
-            <section className={CARD}>
-                <Heading icon={Receipt} title="Breakdown" />
-                <ul className="flex flex-col gap-4">
-                    {rows.map(r => {
-                        const pct = split.total > 0 ? (r.value / split.total) * 100 : 0;
-                        return (
-                            <li key={r.label}>
-                                <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
-                                    <span className="flex items-center gap-2 font-medium text-rp-ink"><r.icon size={16} className={r.accent} aria-hidden /> {r.label}</span>
-                                    <span className="rp-tabular text-rp-ink">{formatCurrency(r.value)} <span className="text-rp-muted">· {Math.round(pct)}%</span></span>
-                                </div>
-                                <div className="h-2 overflow-hidden rounded-full bg-rp-inset" role="img" aria-label={`${r.label} ${Math.round(pct)} percent`}>
-                                    <div className={cn('h-full rounded-full', r.bar)} style={{ width: `${pct}%` }} />
-                                </div>
-                            </li>
-                        );
-                    })}
-                </ul>
-            </section>
+        <div className="flex flex-col gap-3 lg:gap-6">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:gap-6">
+                <section className={CARD}>
+                    <Heading icon={Receipt} title={summary.excluded.total > 0 ? 'Personal total' : 'Total'} />
+                    <p className="rp-tabular text-[2.5rem] leading-none font-semibold tracking-tight text-rp-ink">{formatCurrency(split.total)}</p>
+                    {summary.excluded.total > 0 ? (
+                        <p className="rp-tabular mt-2 text-xs text-rp-muted">
+                            {formatCurrency(summary.excluded.total)} excluded from analytics · {formatCurrency(summary.gross.total)} total trip spend
+                        </p>
+                    ) : null}
+                    <dl className="mt-5 grid grid-cols-2 gap-3">
+                        <div className="rounded-rp-inset bg-rp-inset p-3"><dt className="text-xs text-rp-muted">Per person</dt><dd className="rp-tabular text-base font-semibold text-rp-ink">{formatCurrency(split.total / people)}</dd></div>
+                        <div className="rounded-rp-inset bg-rp-inset p-3"><dt className="text-xs text-rp-muted">Per day</dt><dd className="rp-tabular text-base font-semibold text-rp-ink">{formatCurrency(split.total / days)}</dd></div>
+                    </dl>
+                    <BudgetCard total={split.total} target={target} onSave={onSaveBudget} />
+                </section>
+                <section className={CARD}>
+                    <Heading icon={Receipt} title="Breakdown" />
+                    <ul className="flex flex-col gap-4">
+                        {rows.map(r => {
+                            const pct = split.total > 0 ? (r.value / split.total) * 100 : 0;
+                            return (
+                                <li key={r.label}>
+                                    <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
+                                        <span className="flex items-center gap-2 font-medium text-rp-ink"><r.icon size={16} className={r.accent} aria-hidden /> {r.label}</span>
+                                        <span className="rp-tabular text-rp-ink">{formatCurrency(r.value)} <span className="text-rp-muted">· {Math.round(pct)}%</span></span>
+                                    </div>
+                                    <div className="h-2 overflow-hidden rounded-full bg-rp-inset" role="img" aria-label={`${r.label} ${Math.round(pct)} percent`}>
+                                        <div className={cn('h-full rounded-full', r.bar)} style={{ width: `${pct}%` }} />
+                                    </div>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </section>
+            </div>
+            {hasPersonBreakdown ? (
+                <section className={CARD} aria-label="Cost by person">
+                    <Heading icon={Users} title="Cost by person" />
+                    <table className="w-full text-left text-xs">
+                        <caption className="sr-only">Booked cost share, personal paid and excluded paid for each person</caption>
+                        <thead>
+                            <tr className="text-rp-muted">
+                                <th className="py-1 font-medium">Person</th>
+                                <th className="py-1 text-right font-medium">Share</th>
+                                <th className="py-1 text-right font-medium">Paid</th>
+                                {summary.excluded.total > 0 ? <th className="py-1 text-right font-medium">Excluded</th> : null}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {summary.byPerson
+                                .filter(p => p.shareIncluded > 0 || p.paidIncluded > 0 || p.paidExcluded > 0 || !p.isPayerOnly)
+                                .map(p => (
+                                    <tr key={p.id} className="border-t border-rp-line">
+                                        <td className="py-2 text-rp-ink">
+                                            <span className="font-medium">{p.name}</span>
+                                            {p.kind === 'companion' ? <span className="ml-1.5 text-rp-muted">· {p.role}</span> : null}
+                                        </td>
+                                        <td className="rp-tabular py-2 text-right text-rp-ink">{p.isPayerOnly ? '–' : formatCurrency(p.shareIncluded)}</td>
+                                        <td className="rp-tabular py-2 text-right text-rp-ink">{formatCurrency(p.paidIncluded)}</td>
+                                        {summary.excluded.total > 0 ? <td className="rp-tabular py-2 text-right text-rp-muted">{p.paidExcluded > 0 ? formatCurrency(p.paidExcluded) : '–'}</td> : null}
+                                    </tr>
+                                ))}
+                        </tbody>
+                    </table>
+                </section>
+            ) : null}
         </div>
     );
 };

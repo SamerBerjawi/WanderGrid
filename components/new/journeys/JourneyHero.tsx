@@ -1,4 +1,5 @@
-import React, { useEffect, useId, useMemo, useState } from 'react';
+import React, { useId, useMemo, useState } from 'react';
+import type { User } from '../../../types';
 import { cn } from '../../../utils/cn';
 import NumberFlow from '@number-flow/react';
 import { BarChart } from '../../bklit/bar-chart';
@@ -7,6 +8,7 @@ import { RoutesMap } from './RoutesMap';
 import { Airplane, ArrowUpRight, Buildings, Clock, CurrencyDollar, Globe, Leaf, Seat, Tree, Users, type Icon } from '../../ui/hugeicons';
 import { getActiveCurrency, formatCurrency } from '../../../utils/formatters';
 import { aroundTheWorld, byAirport, byCarrier, byClass, byMode, byPassenger, journeyTotals, mostFlownRoute, routeLines, totalCo2, totalsByYear, yearChange, type JourneyRecord, type Tally } from '../../../utils/journeysModel';
+import { personName } from '../../../utils/tripPeople';
 import { footprintOf, formatKg, treeYears } from '../../../utils/footprint';
 
 /**
@@ -121,7 +123,7 @@ const Fact: React.FC<{ icon: Icon; label: string; value: string; note?: string }
 );
 
 /** `kind` = 'land' words and breakdowns it for land and sea journeys (Road trips); flights by default. */
-export const JourneyHero: React.FC<{ items: JourneyRecord[]; kind?: 'flight' | 'land' }> = ({ items, kind = 'flight' }) => {
+export const JourneyHero: React.FC<{ items: JourneyRecord[]; kind?: 'flight' | 'land'; users?: User[] }> = ({ items, kind = 'flight', users = [] }) => {
     const land = kind === 'land';
     const titles = land ? TITLE_LAND : TITLE;
     const [metric, setMetric] = useState<Metric>(() => read(land));
@@ -135,7 +137,7 @@ export const JourneyHero: React.FC<{ items: JourneyRecord[]; kind?: 'flight' | '
     const earth = aroundTheWorld(totals.km);
     const carriers = useMemo(() => byCarrier(items), [items]);
     const airports = useMemo(() => byAirport(items), [items]);
-    const people = useMemo(() => byPassenger(items), [items]);
+    const people = useMemo(() => byPassenger(items, (id, trip) => personName(id, trip, users)), [items, users]);
     const classes = useMemo(() => byClass(items).filter(c => c.key !== 'Unknown'), [items]);
     const modes = useMemo(() => byMode(items), [items]);
     const topRoute = useMemo(() => mostFlownRoute(items), [items]);

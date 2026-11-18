@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Accommodation, Activity, EntitlementType, GeoCoordinates, LeaveEntry, Transport, Trip, TripAllocation, User } from '../types';
+import type { Accommodation, Activity, EntitlementType, GeoCoordinates, LeaveEntry, Transport, Trip, TripAllocation, TripClassification, TripCompanion, User } from '../types';
 import { linkedEntryFor } from '../utils/leavePlan';
 import { errorMessage, toast } from '../services/toast';
 import { dataService } from '../services/mockDb';
@@ -15,7 +15,10 @@ export interface TripDraft {
     startDate: string;
     endDate: string;
     status: Trip['status'];
+    classification?: TripClassification;
+    excludeCostsFromAnalytics?: boolean;
     participants: string[];
+    companions?: TripCompanion[];
     notes?: string;
     /** A Hugeicons free icon name chosen for the trip. */
     icon?: string;
@@ -253,7 +256,10 @@ export const useTripsData = () => {
             startDate: start,
             endDate: end,
             status: draft.status,
+            classification: draft.classification || 'Personal',
+            excludeCostsFromAnalytics: draft.excludeCostsFromAnalytics || undefined,
             participants: draft.participants,
+            companions: draft.companions?.length ? draft.companions : undefined,
             notes: draft.notes?.trim() || undefined,
             hugeicon: draft.icon || undefined,
             hugeiconData: draft.icon ? draft.iconData : undefined,
@@ -291,7 +297,10 @@ export const useTripsData = () => {
             startDate: start,
             endDate: end,
             status: draft.status,
+            classification: draft.classification || 'Personal',
+            excludeCostsFromAnalytics: draft.excludeCostsFromAnalytics || undefined,
             participants: draft.participants,
+            companions: draft.companions?.length ? draft.companions : undefined,
             notes: draft.notes?.trim() || undefined,
             hugeicon: draft.icon || undefined,
             hugeiconData: draft.icon ? draft.iconData : undefined,

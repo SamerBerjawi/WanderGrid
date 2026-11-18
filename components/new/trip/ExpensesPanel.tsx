@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { Expense, Trip, User } from '../../../types';
-import { balances, baseCents, formatMoney, fromCents, settle, sharesOf, sortExpenses, totals } from '../../../utils/expenses';
+import { balances, baseCents, formatMoney, fromCents, includedExpenses, settle, sharesOf, sortExpenses, totals } from '../../../utils/expenses';
+import { isCostExcluded } from '../../../utils/tripPeople';
 import { getActiveCurrency, formatDate } from '../../../utils/formatters';
 import { toast } from '../../../services/toast';
 import { ArrowRight, CurrencyDollar, Plus, Receipt, Users } from '../../ui/hugeicons';
@@ -24,21 +25,30 @@ const Heading: React.FC<{ icon: typeof Receipt; title: string; action?: React.Re
     </div>
 );
 
+type LedgerMember = User & { isPayerOnly?: boolean; excludeFromAnalytics?: boolean; companionRole?: string };
+
 export const ExpensesPanel: React.FC<{
     trip: Trip;
-    members: User[];
+    members: LedgerMember[];
     onSave: (patch: Pick<Trip, 'expenses' | 'ledgerCurrency'>) => Promise<void> | void;
 }> = ({ trip, members, onSave }) => {
     const expenses = trip.expenses || [];
     const ledger = trip.ledgerCurrency || getActiveCurrency();
     const [editing, setEditing] = useState<Expense | 'new' | null>(null);
-    const nameOf = (id: string) => { const m = members.find(u => u.id === id); return m ? first(m.name) : 'Someone'; };
+    const nameOf = (id: string) => {
+        const m = members.find(u => u.id === id) || trip.companions?.find(c => c.id === id);
+        return m ? first(m.name) : 'Someone';
+    };
 
     const sorted = useMemo(() => sortExpenses(expenses), [expenses]);
-    const total = useMemo(() => totals(expenses), [expenses]);
-    const bal = useMemo(() => balances(expenses, members.map(m => m.id)), [expenses, members]);
+    const personalExpenses = useMemo(() => includedExpenses(expenses, trip), [expenses, trip]);
+    const total = useMemo(() => totals(personalExpenses), [personalExpenses]);
+    const allTotal = useMemo(() => totals(expenses), [expenses]);
+    const excludedCents = Math.max(0, allTotal.cents - total.cents);
+    const ledgerTravellers = useMemo(() => members.filter(m => !m.isPayerOnly), [members]);
+    const bal = useMemo(() => balances(expenses, ledgerTravellers.map(m => m.id)), [expenses, ledgerTravellers]);
     const transfers = useMemo(() => settle(bal), [bal]);
-    const people = Math.max(1, members.length);
+    const people = Math.max(1, ledgerTravellers.length);
     const target = Number(trip.targetBudget) > 0 && getActiveCurrency() === ledger ? Number(trip.targetBudget) : 0;
     const spent = fromCents(total.cents);
     const last = sorted[0];
@@ -67,10 +77,15 @@ export const ExpensesPanel: React.FC<{
                 ) : (
                     <>
                         <div className="grid gap-3 sm:grid-cols-3">
-                            <div className="rounded-rp-inset bg-rp-inset p-3"><p className="text-xs text-rp-muted">Spent</p><p className="rp-tabular text-xl font-semibold text-rp-ink">{formatMoney(spent, ledger)}</p></div>
+                            <div className="rounded-rp-inset bg-rp-inset p-3"><p className="text-xs text-rp-muted">{excludedCents > 0 ? 'Personal spent' : 'Spent'}</p><p className="rp-tabular text-xl font-semibold text-rp-ink">{formatMoney(spent, ledger)}</p></div>
                             <div className="rounded-rp-inset bg-rp-inset p-3"><p className="text-xs text-rp-muted">Per person</p><p className="rp-tabular text-xl font-semibold text-rp-ink">{formatMoney(spent / people, ledger)}</p></div>
-                            <div className="rounded-rp-inset bg-rp-inset p-3"><p className="text-xs text-rp-muted">Entries</p><p className="rp-tabular text-xl font-semibold text-rp-ink">{total.count}</p></div>
+                            <div className="rounded-rp-inset bg-rp-inset p-3"><p className="text-xs text-rp-muted">Entries</p><p className="rp-tabular text-xl font-semibold text-rp-ink">{allTotal.count}</p></div>
                         </div>
+                        {excludedCents > 0 ? (
+                            <p className="rp-tabular mt-2 text-xs text-rp-muted">
+                                {formatMoney(fromCents(excludedCents), ledger)} excluded from personal analytics · {formatMoney(fromCents(allTotal.cents), ledger)} total logged
+                            </p>
+                        ) : null}
                         {target > 0 ? (
                             <div className="mt-3">
                                 <div className="mb-1 flex items-center justify-between text-xs"><span className="text-rp-muted">Budget {formatMoney(target, ledger)}</span><span className={cn('rp-tabular font-medium', spent > target ? 'text-rp-rust' : 'text-rp-green')}>{spent > target ? `${formatMoney(spent - target, ledger)} over` : `${formatMoney(target - spent, ledger)} left`}</span></div>
@@ -120,15 +135,16 @@ export const ExpensesPanel: React.FC<{
                             {sorted.map(e => {
                                 const foreign = e.currency.toUpperCase() !== ledger.toUpperCase();
                                 const shared = Object.keys(sharesOf(e)).length;
+                                const excl = isCostExcluded({ paidBy: e.paidBy, excludeFromAnalytics: e.excludeFromAnalytics }, trip);
                                 return (
                                     <li key={e.id} className="border-t border-rp-line first:border-t-0">
                                         <button type="button" onClick={() => setEditing(e)} aria-label={`Edit ${e.title}, ${formatMoney(e.amount, e.currency)}`} className="flex min-h-14 w-full items-center justify-between gap-3 rounded-rp-inset py-2 text-left outline-none hover:bg-rp-inset/60 focus-visible:ring-2 focus-visible:ring-rp-muted">
                                             <span className="flex min-w-0 flex-col">
                                                 <span className="truncate text-sm font-medium text-rp-ink">{e.title}</span>
-                                                <span className="truncate text-xs text-rp-muted">{formatDate(e.date, 'short')} · {e.category} · {nameOf(e.paidBy)} paid · {shared === 1 ? 'not shared' : `shared by ${shared}`}</span>
+                                                <span className="truncate text-xs text-rp-muted">{formatDate(e.date, 'short')} · {e.category} · {nameOf(e.paidBy)} paid · {shared === 1 ? 'not shared' : `shared by ${shared}`}{excl ? ' · Excluded' : ''}</span>
                                             </span>
                                             <span className="rp-tabular flex shrink-0 flex-col items-end">
-                                                <span className="text-sm font-semibold text-rp-ink">{formatMoney(e.amount, e.currency)}</span>
+                                                <span className={cn('text-sm font-semibold', excl ? 'text-rp-muted line-through' : 'text-rp-ink')}>{formatMoney(e.amount, e.currency)}</span>
                                                 {foreign ? <span className="text-xs text-rp-muted">{formatMoney(fromCents(baseCents(e)), ledger)}</span> : null}
                                             </span>
                                         </button>
@@ -144,6 +160,7 @@ export const ExpensesPanel: React.FC<{
                 open={editing !== null}
                 expense={editing && editing !== 'new' ? editing : null}
                 members={members}
+                trip={trip}
                 ledger={ledger}
                 defaults={{ date: last?.date || trip.startDate || new Date().toISOString().slice(0, 10), currency: last?.currency || ledger, paidBy: last?.paidBy || '' }}
                 onClose={() => setEditing(null)}

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Trip } from '../../types';
 import { useTripsData, type TripDraft } from '../../hooks/useTripsData';
 import { canMoveTo, sortTrips, tripMatches, tripYears, type TripBucket, type TripSort } from '../../utils/tripsModel';
+import { TRIP_CLASSIFICATIONS, tripClassification } from '../../utils/tripPeople';
 import { errorMessage, toast } from '../../services/toast';
 import SwipeTabs from '../../components/kokonutui/swipe-tabs';
 import type { DockTool } from '../../components/kokonutui/tool-dock';
@@ -95,6 +96,7 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     const [stage, setStage] = useState<TripBucket>(readStage);
     const [query, setQuery] = useState('');
     const [year, setYear] = useState('all');
+    const [classification, setClassification] = useState<string>('all');
     const [scope, setScope] = useState<Scope>('active');
     const [sort, setSort] = useState<TripSort>(readSort);
     const changeSort = (next: TripSort) => {
@@ -156,8 +158,10 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     }, []);
 
     const filterTrips = useCallback(
-        (list: Trip[]) => list.filter(t => tripMatches(t, query) && (year === 'all' || tripYears(t).includes(year))),
-        [query, year]
+        (list: Trip[]) => list.filter(t => tripMatches(t, query)
+            && (year === 'all' || tripYears(t).includes(year))
+            && (classification === 'all' || tripClassification(t) === classification)),
+        [query, year, classification]
     );
     const columns = useMemo(() => ({
         planned: sortTrips(filterTrips(data.columns.planned), sort),
@@ -172,7 +176,11 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
         if ((scope === 'archived' && data.archived.length === 0) || (scope === 'cancelled' && data.cancelled.length === 0)) setScope('active');
     }, [scope, data.archived.length, data.cancelled.length]);
     const shown = columns.planned.length + columns.confirmed.length + columns.past.length;
-    const filtering = Boolean(query.trim()) || year !== 'all';
+    const filtering = Boolean(query.trim()) || year !== 'all' || classification !== 'all';
+    const classificationsUsed = useMemo(() => {
+        const set = new Set(data.active.map(t => tripClassification(t)));
+        return TRIP_CLASSIFICATIONS.filter(c => set.has(c));
+    }, [data.active]);
 
     const attempt = async (run: () => Promise<void>) => {
         try { await run(); } catch (e) { toast.error(errorMessage(e, "That didn't save. Try again.")); }
@@ -348,6 +356,12 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
                                     {years.map(y => <RpChip key={y} selected={year === y} onClick={() => setYear(year === y ? 'all' : y)} className="rp-tabular shrink-0">{y}</RpChip>)}
                                 </>
                             ) : null}
+                            {classificationsUsed.length > 1 ? (
+                                <>
+                                    <RpChip selected={classification === 'all'} onClick={() => setClassification('all')} className="shrink-0">All types</RpChip>
+                                    {classificationsUsed.map(c => <RpChip key={c} selected={classification === c} onClick={() => setClassification(classification === c ? 'all' : c)} className="shrink-0">{c}</RpChip>)}
+                                </>
+                            ) : null}
                             {data.archived.length > 0 ? (
                                 <RpChip selected={scope === 'archived'} onClick={() => setScope(sc => (sc === 'archived' ? 'active' : 'archived'))} className="shrink-0">
                                     <Archive size={16} aria-hidden /> Archived <Count n={data.archived.length} />
@@ -389,8 +403,8 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
                         </EmptyCard>
                     ) : shown === 0 ? (
                         <EmptyCard>
-                            <RpEmpty title="No trips match" action={<button type="button" onClick={() => { setQuery(''); setYear('all'); }} className={cn(PILL, 'bg-rp-inset text-rp-ink hover:bg-rp-line')}>Clear filters</button>}>
-                                Try another search or year.
+                            <RpEmpty title="No trips match" action={<button type="button" onClick={() => { setQuery(''); setYear('all'); setClassification('all'); }} className={cn(PILL, 'bg-rp-inset text-rp-ink hover:bg-rp-line')}>Clear filters</button>}>
+                                Try another search, year or classification.
                             </RpEmpty>
                         </EmptyCard>
                     ) : view === 'list' ? (

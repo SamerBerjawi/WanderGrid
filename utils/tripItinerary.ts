@@ -1,5 +1,6 @@
 import type { Accommodation, Activity, Transport, Trip } from '../types';
 import { calculateDistance } from '../services/geocoding';
+import { includedItemCost, type CostItem } from './tripPeople';
 
 /** One thing happening on one day of a trip. */
 export type DayItem =
@@ -64,7 +65,7 @@ export const buildDays = (trip: Trip): TripDay[] => {
 export interface CostSplit { transport: number; stays: number; activities: number; total: number }
 
 export const costSplit = (trip: Trip): CostSplit => {
-    const sum = (list: { cost?: number }[] | undefined) => (list || []).reduce((s, i) => s + (i.cost || 0), 0);
+    const sum = (list: CostItem[] | undefined) => (list || []).reduce((s, i) => s + includedItemCost(i, trip), 0);
     const transport = sum(trip.transports);
     const stays = sum(trip.accommodations);
     const activities = sum(trip.activities);

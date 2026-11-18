@@ -1,16 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import type { Transport, TransportMode, Trip, WorkspaceSettings } from '../../../types';
+import type { Transport, TransportMode, Trip, User, WorkspaceSettings } from '../../../types';
 import ParticleButton from '../../kokonutui/particle-button';
 import { useFlightLegAssist } from '../../../hooks/useFlightLegAssist';
 import { FlightLookupLead } from './FlightFinder';
 import { calculateDurationMinutes } from '../../../services/geocoding';
 import { Suitcase, Users, X } from '../../ui/hugeicons';
 import { RP_FIELD, RpField } from '../fields';
-import { RpChip, RpSection, RpSheet } from '../ui';
+import { RpSection, RpSheet } from '../ui';
 import { TripMenu } from '../trips/TripMenu';
 import { LEG_DATE, LegForm } from '../trips/LegForm';
+import { ItemSharingFields } from '../trips/ItemSharingFields';
 import { extractIata } from '../../../hooks/useFlightLog';
 import { MODE_SPEED_KMH, durationBetween, elapsedMinutes, isIndependent, journeyKm, localArrival, type JourneyRecord } from '../../../utils/journeysModel';
+import { tripAllPeople, tripTravellers } from '../../../utils/tripPeople';
 import { errorMessage, toast } from '../../../services/toast';
 import { cn } from '../../../utils/cn';
 
@@ -30,6 +32,7 @@ const num = (v: string): number | undefined => { const n = parseFloat(v); return
 export const JourneyEditor: React.FC<{
     target: JourneyEditorTarget | null;
     trips: Trip[];
+    users?: User[];
     modes: TransportMode[];
     noun: string;
     settings: WorkspaceSettings | null;
@@ -40,7 +43,7 @@ export const JourneyEditor: React.FC<{
     history?: JourneyRecord[];
     /** After "Save and add the next leg": the saved flight, so the page can open a connecting one. */
     onNextLeg?: (saved: Transport, tripId: string) => void;
-}> = ({ target, trips, modes, noun, settings, brandfetchApiKey, onClose, onSave, history = [], onNextLeg }) => {
+}> = ({ target, trips, users = [], modes, noun, settings, brandfetchApiKey, onClose, onSave, history = [], onNextLeg }) => {
     const open = Boolean(target);
     const editing = target?.kind === 'edit' ? target.record : null;
     const blank = (): Partial<Transport> => ({
@@ -130,7 +133,9 @@ export const JourneyEditor: React.FC<{
                 ...(flight ? {} : { distance: landKm }),
                 actualDepartureTime: leg.actualDepartureTime || undefined,
                 actualArrivalTime: leg.actualArrivalTime || undefined,
-                passengers: trip && trip.participants.length > 1 ? leg.passengers : undefined,
+                passengers: travellers.length > 1 ? leg.passengers : undefined,
+                paidBy: trip ? leg.paidBy : undefined,
+                excludeFromAnalytics: leg.excludeFromAnalytics,
             };
             await onSave(payload, tripId, editing ? { flight: editing.flight, tripId: isIndependent(editing.trip.id) ? 'unassigned' : editing.trip.id } : undefined);
             if (next && onNextLeg) onNextLeg(payload, tripId); else onClose();
@@ -189,13 +194,8 @@ export const JourneyEditor: React.FC<{
         setError(res.ok ? '' : res.error);
     };
 
-    // Several people on the trip: mark who flew this leg. Everyone ticked is stored as "no list" (everyone).
-    const people = trip?.participants ?? [];
-    const flew = leg.passengers ?? people;
-    const togglePerson = (name: string) => {
-        const next = flew.includes(name) ? flew.filter(n => n !== name) : people.filter(n => n === name || flew.includes(n));
-        patch({ passengers: next.length === people.length ? undefined : next });
-    };
+    const people = useMemo(() => tripAllPeople(trip, users), [trip, users]);
+    const travellers = useMemo(() => tripTravellers(trip, users), [trip, users]);
 
     const tripItems = useMemo(() => [
         { id: 'unassigned', label: 'No trip', icon: X, selected: tripId === 'unassigned', onSelect: () => setTripId('unassigned') },
@@ -272,16 +272,20 @@ export const JourneyEditor: React.FC<{
                     </div>
                 </RpSection>
 
-                {people.length > 1 ? (
-                    <RpSection title="Who flew" icon={Users}>
-                        <div role="group" aria-label="Who flew this leg" className="flex flex-wrap gap-2 py-2">
-                            {people.map(n => (
-                                <RpChip key={n} selected={flew.includes(n)} onClick={() => togglePerson(n)}>{n}</RpChip>
-                            ))}
-                        </div>
-                        <p className="text-xs text-rp-muted">Everyone on the trip by default. Untick whoever stayed behind.</p>
-                    </RpSection>
-                ) : null}
+                <RpSection title={travellers.length > 1 || people.length > 0 ? 'Cost & sharing' : 'Analytics'} icon={Users}>
+                    <ItemSharingFields
+                        travellers={travellers}
+                        people={people}
+                        selectedMembers={leg.passengers}
+                        onSelectedMembersChange={next => patch({ passengers: next })}
+                        membersLabel={flight ? "Who's flying" : "Who's travelling"}
+                        paidBy={leg.paidBy}
+                        onPaidByChange={next => patch({ paidBy: next })}
+                        excludeFromAnalytics={leg.excludeFromAnalytics}
+                        onExcludeChange={next => patch({ excludeFromAnalytics: next })}
+                        trip={trip}
+                    />
+                </RpSection>
 
                 {error ? <p role="alert" className="text-sm text-rp-rust">{error}</p> : null}
             </div>

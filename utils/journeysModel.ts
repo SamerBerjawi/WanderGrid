@@ -3,6 +3,7 @@ import { calculateDistance, getCoordinatesSync } from '../services/geocoding';
 import { knownZone } from '../services/timezone';
 import { footprintKg } from './footprint';
 import { getAirportTimezone, getCarrierName, getCityName, getFlightArrivalUtcDate, getFlightDepartureUtcDate, getFlightStatusTags, parseLocalDateInTimezone } from './flightData';
+import { includedItemCost } from './tripPeople';
 
 /**
  * What the Flights and Road trips pages (and their sheet, table and board) need to know about one
@@ -159,13 +160,13 @@ export const journeyTotals = (items: JourneyRecord[], now = Date.now()): Journey
     const carriers = new Set<string>();
     const countries = new Set<string>();
     let km = 0, minutes = 0, upcoming = 0, cost = 0;
-    for (const { flight: t } of items) {
+    for (const { flight: t, trip } of items) {
         const cancelled = journeyStatus(t, now).state === 'cancelled';
         if (depMs(t) >= now && !cancelled) upcoming += 1;
         if (cancelled) continue;
         km += journeyKm(t);
         minutes += journeyMinutes(t);
-        cost += t.cost || 0;
+        cost += includedItemCost(t, isIndependent(trip.id) ? undefined : trip);
         [t.origin, t.destination].forEach(p => { if (p?.trim()) places.add(placeCode(p, t.mode)); });
         if (t.provider?.trim()) carriers.add(carrierLabel(t).toLowerCase());
         const a = pointOf(t.origin, t.originLat, t.originLng);
@@ -231,7 +232,7 @@ export const totalsByYear = (items: JourneyRecord[]): YearTotals[] => {
         row.co2 += flightCo2(r.flight);
         row.km += journeyKm(r.flight);
         row.minutes += journeyMinutes(r.flight);
-        row.cost += r.flight.cost || 0;
+        row.cost += includedItemCost(r.flight, isIndependent(r.trip.id) ? undefined : r.trip);
         map.set(year, row);
     }
     const years = [...map.keys()].map(Number).sort((a, b) => a - b);
@@ -483,7 +484,7 @@ const tally = (items: JourneyRecord[], keysOf: (r: JourneyRecord) => { key: stri
             const row = map.get(key) ?? { key, label, count: 0, km: 0, cost: 0 };
             row.count += 1;
             row.km += journeyKm(r.flight);
-            row.cost += r.flight.cost || 0;
+            row.cost += includedItemCost(r.flight, isIndependent(r.trip.id) ? undefined : r.trip);
             map.set(key, row);
         }
     }
@@ -498,13 +499,20 @@ export const byCarrier = (items: JourneyRecord[]): Tally[] =>
 export const byAirport = (items: JourneyRecord[]): Tally[] =>
     tally(items, r => [r.flight.origin, r.flight.destination].filter(p => p?.trim()).map(p => ({ key: placeCode(p, r.flight.mode), label: r.flight.mode && r.flight.mode !== 'Flight' ? placeName(p) : `${placeCode(p)} ${placeName(p)}`.trim() })));
 
-/** Who flew a leg: the people marked on it, else everyone on its trip. */
-export const passengersOf = (r: JourneyRecord): string[] =>
-    r.flight.passengers ?? (isIndependent(r.trip.id) ? [] : r.trip.participants || []);
+/** Who flew a leg: the people marked on it, else everyone travelling on its trip. */
+export const passengersOf = (r: JourneyRecord): string[] => {
+    if (r.flight.passengers !== undefined) return r.flight.passengers;
+    if (isIndependent(r.trip.id)) return [];
+    const companionIds = (r.trip.companions || []).filter(c => !c.isPayerOnly).map(c => c.id);
+    return Array.from(new Set([...(r.trip.participants || []), ...companionIds]));
+};
 
 /** Flights per person, most flown first; empty when fewer than two people appear anywhere. */
-export const byPassenger = (items: JourneyRecord[]): Tally[] => {
-    const rows = tally(items, r => passengersOf(r).filter(n => n?.trim()).map(n => ({ key: n.trim().toLowerCase(), label: n.trim() })));
+export const byPassenger = (items: JourneyRecord[], resolveName?: (id: string, trip: Trip) => string): Tally[] => {
+    const rows = tally(items, r => passengersOf(r).filter(n => n?.trim()).map(n => {
+        const label = (resolveName ? resolveName(n, r.trip) : n).trim();
+        return { key: n.trim().toLowerCase(), label: label || n.trim() };
+    }));
     return rows.length >= 2 ? rows : [];
 };
 
