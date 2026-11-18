@@ -65,16 +65,49 @@ export const TripMenu: React.FC<{
             const at = els.indexOf(document.activeElement as HTMLElement);
             els[(at + (e.key === 'ArrowDown' ? 1 : -1) + els.length) % els.length]?.focus();
         };
-        const onMove = () => close(false);
+        const onMove = (e?: Event) => {
+            if (e && e.target instanceof Node && menuRef.current?.contains(e.target)) return;
+            close(false);
+        };
+        const el = menuRef.current;
+        const onWheel = (e: WheelEvent) => {
+            if (!el) return;
+            const { scrollTop, scrollHeight, clientHeight } = el;
+            const canScroll = scrollHeight > clientHeight;
+            const atTop = scrollTop <= 0 && e.deltaY < 0;
+            const atBottom = scrollTop + clientHeight >= scrollHeight - 1 && e.deltaY > 0;
+            if (!canScroll || atTop || atBottom) e.preventDefault();
+        };
+        let touchY = 0;
+        const onTouchStart = (e: TouchEvent) => {
+            touchY = e.touches[0]?.clientY ?? 0;
+        };
+        const onTouchMove = (e: TouchEvent) => {
+            if (!el) return;
+            const curY = e.touches[0]?.clientY ?? touchY;
+            const dy = touchY - curY;
+            touchY = curY;
+            const { scrollTop, scrollHeight, clientHeight } = el;
+            const canScroll = scrollHeight > clientHeight;
+            const atTop = scrollTop <= 0 && dy < 0;
+            const atBottom = scrollTop + clientHeight >= scrollHeight - 1 && dy > 0;
+            if (!canScroll || atTop || atBottom) e.preventDefault();
+        };
         document.addEventListener('pointerdown', onDown);
         window.addEventListener('keydown', onKey);
         window.addEventListener('resize', onMove);
         window.addEventListener('scroll', onMove, true);
+        el?.addEventListener('wheel', onWheel, { passive: false });
+        el?.addEventListener('touchstart', onTouchStart, { passive: true });
+        el?.addEventListener('touchmove', onTouchMove, { passive: false });
         return () => {
             document.removeEventListener('pointerdown', onDown);
             window.removeEventListener('keydown', onKey);
             window.removeEventListener('resize', onMove);
             window.removeEventListener('scroll', onMove, true);
+            el?.removeEventListener('wheel', onWheel);
+            el?.removeEventListener('touchstart', onTouchStart);
+            el?.removeEventListener('touchmove', onTouchMove);
         };
     }, [open, close]);
 
@@ -117,7 +150,7 @@ export const TripMenu: React.FC<{
                             exit={{ opacity: 0, scale: 0.96 }}
                             transition={{ duration: 0.14, ease: [0.23, 1, 0.32, 1] }}
                             style={{ position: 'fixed', left: pos?.left ?? 0, top: pos?.top ?? 0, width: WIDTH }}
-                            className="rp-root custom-scrollbar z-popover max-h-[min(26rem,calc(100dvh-1rem))] origin-top-right overflow-y-auto rounded-rp-tile bg-rp-surface p-2 font-rp text-rp-ink rp-shadow-float"
+                            className="rp-root custom-scrollbar z-popover max-h-[min(26rem,calc(100dvh-1rem))] origin-top-right touch-pan-y overscroll-contain overflow-y-auto rounded-rp-tile bg-rp-surface p-2 font-rp text-rp-ink rp-shadow-float"
                         >
                             {items.map(item => (
                                 <React.Fragment key={item.id}>
