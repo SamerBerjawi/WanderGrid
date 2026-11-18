@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { asStatusList, isLayoverOnly, markerRadius, markerSizes, scratchKindOf, scratchToggles } from '../../components/new/map/mapScratch';
+import { asStatusList, countScratchCountries, isLayoverOnly, markerRadius, markerSizes, scratchKindOf, scratchToggles } from '../../components/new/map/mapScratch';
+import { deriveScratchCountryData } from '../../hooks/useExpeditionMapData';
+import type { CountryResidenceStatus, Trip, VisitedItem } from '../../types';
+import { flight } from './helpers';
 
 const on = { showLived: true, showVisited: true, showLayover: true, showWishlist: true };
 
@@ -80,5 +83,88 @@ describe('isLayoverOnly', () => {
     it('reads a single status as a list', () => {
         expect(asStatusList('layover')).toEqual(['layover']);
         expect(asStatusList(undefined)).toEqual([]);
+    });
+});
+
+describe('countScratchCountries', () => {
+    const visited = ['FR', 'ES', 'DE']; // FR, ES visited by status/trip, DE also lived_past
+    const byCode: Record<string, CountryResidenceStatus[]> = {
+        FR: ['visited'],
+        DE: ['lived_past'],
+        QA: ['layover'],
+        JP: ['wishlist'],
+        TR: ['layover', 'wishlist'],
+    };
+
+    it('counts only categories enabled in map settings', () => {
+        expect(countScratchCountries(visited, byCode, { showVisited: true, showLived: false, showLayover: false, showWishlist: false })).toBe(3);
+        expect(countScratchCountries(visited, byCode, { showVisited: true, showLived: true, showLayover: false, showWishlist: false })).toBe(3);
+        expect(countScratchCountries(visited, byCode, { showVisited: false, showLived: true, showLayover: false, showWishlist: false })).toBe(1);
+        expect(countScratchCountries(visited, byCode, { showVisited: true, showLived: true, showLayover: true, showWishlist: false })).toBe(5);
+        expect(countScratchCountries(visited, byCode, { showVisited: false, showLived: false, showLayover: true, showWishlist: false })).toBe(2);
+        expect(countScratchCountries(visited, byCode, { showVisited: false, showLived: false, showLayover: false, showWishlist: true })).toBe(2);
+        expect(countScratchCountries(visited, byCode, on)).toBe(6);
+        expect(countScratchCountries(visited, byCode, { showVisited: false, showLived: false, showLayover: false, showWishlist: false })).toBe(0);
+    });
+
+    it('deduplicates repeated codes and ignores empty/XX codes', () => {
+        expect(countScratchCountries(['fr', 'FR', 'XX', ''], { FR: ['visited'], XX: ['visited'] }, on)).toBe(1);
+    });
+});
+
+describe('deriveScratchCountryData', () => {
+    const trip = (overrides: Partial<Trip>): Trip => ({
+        id: 't1',
+        name: 'Trip',
+        location: '',
+        startDate: '2025-05-01',
+        endDate: '2025-05-10',
+        status: 'Past',
+        participants: [],
+        privacy: 'Private',
+        ...overrides,
+    });
+
+    it('keeps layover countries (even with tracked cities or split independent flights) out of visitedCountryCodes', () => {
+        const visited: VisitedItem[] = [
+            { id: 'c-doh', type: 'city', code: 'DOH', name: 'Doha', countryCode: 'QA' },
+        ];
+        const trips: Trip[] = [
+            trip({
+                id: 'leg1',
+                transports: [
+                    flight('f1', 'CDG', 'DOH', '2025-05-01', '08:00', '2025-05-01', '15:00', { isLayover: true }),
+                ],
+            }),
+            trip({
+                id: 'leg2',
+                transports: [
+                    flight('f2', 'DOH', 'HND', '2025-05-01', '17:00', '2025-05-02', '04:00'),
+                ],
+            }),
+        ];
+
+        const data = deriveScratchCountryData(visited, trips, '2026-01-01');
+        expect(data.visitedCountryCodes.sort()).toEqual(['FR', 'JP']);
+        expect(data.countryStatusesByCode['QA']).toEqual(['layover']);
+        expect(countScratchCountries(data.visitedCountryCodes, data.countryStatusesByCode, { showVisited: true, showLived: true, showLayover: false, showWishlist: false })).toBe(2);
+        expect(countScratchCountries(data.visitedCountryCodes, data.countryStatusesByCode, { showVisited: true, showLived: true, showLayover: true, showWishlist: false })).toBe(3);
+    });
+
+    it('excludes cancelled, planning, and future trips from visited countries and deduplicates GB alongside GB-ENG', () => {
+        const visited: VisitedItem[] = [
+            { id: 'country_GB-ENG', type: 'country', code: 'GB-ENG', name: 'England', residenceStatus: 'lived_past' },
+            { id: 'city-london', type: 'city', code: 'LON', name: 'London', countryCode: 'GB' },
+            { id: 'city-unknown', type: 'city', code: 'UNK', name: 'Unknown', countryCode: 'XX' },
+        ];
+        const trips: Trip[] = [
+            trip({ id: 'cancelled', status: 'Cancelled', transports: [flight('c1', 'CDG', 'DXB', '2025-01-01', '10:00', '2025-01-02', '06:00')] }),
+            trip({ id: 'planning', status: 'Planning', transports: [flight('p1', 'CDG', 'JFK', '2025-02-01', '10:00', '2025-02-01', '13:00')] }),
+            trip({ id: 'future', status: 'Upcoming', startDate: '2027-06-01', endDate: '2027-06-10', transports: [flight('u1', 'CDG', 'HND', '2027-06-01', '10:00', '2027-06-02', '18:00')] }),
+        ];
+
+        const data = deriveScratchCountryData(visited, trips, '2026-01-01');
+        expect(data.visitedCountryCodes).toEqual(['GB-ENG']);
+        expect(countScratchCountries(data.visitedCountryCodes, data.countryStatusesByCode, { showVisited: true, showLived: true, showLayover: true, showWishlist: true })).toBe(1);
     });
 });

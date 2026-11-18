@@ -1,13 +1,232 @@
 import { useEffect, useState, useMemo } from 'react';
-import { resolveCountryCode, countryId, mergeCountryRecords, excludedCountryCodes, ukNationsFromCities } from '../services/countryRegistry';
+import { resolveCountryCode, countryId, mergeCountryRecords, excludedCountryCodes, ukNationsFromCities, isUKConstituent, normalizeCountryCode } from '../services/countryRegistry';
 import { affectsCollections } from './useWanderSync';
 import { dataService } from '../services/mockDb';
 import { runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
-import { Trip, CountryResidenceStatus, getResidenceStatuses } from '../types';
-import { isPastTrip } from '../utils/tripsModel';
+import { Trip, VisitedItem, CountryResidenceStatus, getResidenceStatuses } from '../types';
+import type { MapAppearanceSettings } from '../types/mapAppearance';
+import { isPastTrip, todayISO } from '../utils/tripsModel';
 import { getCoordinates, getCoordinatesSync, STATIC_GEO_DATA, calculateDistance, formatProperLocationName, refineUKCountry } from '../services/geocoding';
-import { asStatusList, isLayoverOnly } from '../components/new/map/mapScratch';
+import { countScratchCountries, isLayoverOnly, scratchToggles } from '../components/new/map/mapScratch';
 import { isFlightLeg } from '../utils/legMode';
+
+export type ScratchAppearanceFilters = Pick<
+    MapAppearanceSettings,
+    'showLivedCountries' | 'showVisitedCountries' | 'showLayoverCountries' | 'showWishlistCountries'
+>;
+
+const geoIsoOf = (raw?: string | null): string => {
+    const key = (raw || '').trim().toUpperCase();
+    if (!key) return '';
+    const entry = STATIC_GEO_DATA[key];
+    const iso = normalizeCountryCode(entry?.iso || entry?.countryCode);
+    return iso && iso !== 'XX' ? iso : '';
+};
+
+const isExplicitLayoverLeg = (tr: any): boolean => tr?.isLayover === true || tr?.layover === true;
+
+const isTripVisitedByToday = (trip: Trip, today: string): boolean => {
+    if (trip.status === 'Cancelled' || trip.status === 'Planning') return false;
+    if (isPastTrip(trip, today)) return true;
+    return Boolean(trip.startDate && trip.startDate <= today);
+};
+
+const sortTransportsChronologically = (transports: NonNullable<Trip['transports']>) =>
+    transports
+        .map((tr, idx) => ({ tr, idx, key: `${tr.departureDate || ''}|${tr.departureTime || ''}` }))
+        .sort((a, b) => (a.key !== b.key ? a.key.localeCompare(b.key) : a.idx - b.idx))
+        .map(entry => entry.tr);
+
+export interface ScratchCountryData {
+    visitedCountryCodes: string[];
+    countryStatusMap: Record<string, CountryResidenceStatus[] | CountryResidenceStatus>;
+    countryStatusesByCode: Record<string, CountryResidenceStatus[]>;
+    visitedPlaces: { lat: number; lng: number; name: string }[];
+}
+
+/**
+ * Pure computation of scratch map countries, residence/layover/wishlist status maps, and city pins.
+ * City records never override country statuses, layover-only countries are kept out of visitedCountryCodes,
+ * and cancelled, planning, or future trips do not mark countries as visited yet.
+ */
+export const deriveScratchCountryData = (
+    visited: VisitedItem[],
+    trips: Trip[],
+    today = todayISO(),
+): ScratchCountryData => {
+    const countrySet = new Set<string>();
+    const statusMap: Record<string, CountryResidenceStatus[] | CountryResidenceStatus> = {};
+    const statusByCode: Record<string, CountryResidenceStatus[]> = {};
+    const placeMap = new Map<string, { lat: number; lng: number; name: string }>();
+
+    const excludedCodes = excludedCountryCodes(visited);
+    const ukNations = ukNationsFromCities(visited, n => refineUKCountry(n, 'United Kingdom', 'GB').countryCode);
+    const countryRecords = mergeCountryRecords(visited, { ukConstituentsFor: () => ukNations });
+    const cityRecords = (visited || []).filter(i => i && i.type !== 'country');
+
+    countryRecords.forEach(item => {
+        const canonical = resolveCountryCode(item);
+        const name = item.name ? item.name.toUpperCase() : (item.countryName ? item.countryName.toUpperCase() : '');
+        const statuses = getResidenceStatuses(item);
+        const statusKey = canonical && canonical !== 'XX' ? canonical : (name ? `NAME:${name}` : '');
+
+        if (canonical && canonical !== 'XX') statusMap[canonical] = statuses;
+        if (name) statusMap[name] = statuses;
+        if (statusKey) statusByCode[statusKey] = statuses;
+
+        const hasVisited = statuses.some(s => s === 'visited' || s === 'lived_current' || s === 'lived_past');
+        if (hasVisited && canonical && canonical !== 'XX') {
+            countrySet.add(canonical);
+        }
+    });
+
+    cityRecords.forEach(item => {
+        const statuses = getResidenceStatuses(item);
+        const hasVisited = statuses.some(s => s === 'visited' || s === 'lived_current' || s === 'lived_past');
+        if (hasVisited && item.countryCode) {
+            let cityCountry = normalizeCountryCode(item.countryCode);
+            if (cityCountry === 'GB') {
+                const refined = normalizeCountryCode(refineUKCountry(item.name || '', 'United Kingdom', 'GB').countryCode);
+                if (refined) cityCountry = refined;
+            }
+            if (cityCountry && cityCountry !== 'XX' && !excludedCodes.has(cityCountry)) {
+                countrySet.add(cityCountry);
+            }
+        }
+        if (item.type === 'city' && item.lat && item.lng) {
+            placeMap.set(`${item.lat.toFixed(3)},${item.lng.toFixed(3)}`, {
+                lat: item.lat,
+                lng: item.lng,
+                name: formatProperLocationName(item.name),
+            });
+        }
+    });
+
+    const destinationCountries = new Set<string>();
+    const layoverCandidateCountries = new Set<string>();
+    const activeVisitedTrips = (trips || []).filter(trip => isTripVisitedByToday(trip, today));
+
+    // Track explicit layover flight landings so a connecting unassigned flight from that same airport isn't treated as a destination stay.
+    const explicitLayoverArrivals = new Set<string>();
+    activeVisitedTrips.forEach(trip => {
+        (trip.transports || []).forEach(tr => {
+            if (!isFlightLeg(tr) || !isExplicitLayoverLeg(tr)) return;
+            const destCode = (tr.destination || '').trim().toUpperCase();
+            const arrDate = tr.arrivalDate || tr.departureDate || trip.startDate || '';
+            if (destCode) explicitLayoverArrivals.add(`${destCode}|${arrDate}`);
+        });
+    });
+
+    activeVisitedTrips.forEach(trip => {
+        if (trip.location) {
+            const iso = geoIsoOf(trip.location);
+            if (iso) destinationCountries.add(iso);
+        }
+        trip.locations?.forEach(l => {
+            if (l.name) {
+                const iso = geoIsoOf(l.name);
+                if (iso) destinationCountries.add(iso);
+            }
+        });
+
+        const sortedTransports = sortTransportsChronologically(trip.transports || []);
+        sortedTransports.forEach((tr, idx) => {
+            const originCode = tr.origin?.trim().toUpperCase() || '';
+            const destCode = tr.destination?.trim().toUpperCase() || '';
+            const originIso = geoIsoOf(originCode);
+            const destIso = geoIsoOf(destCode);
+            const isFlight = isFlightLeg(tr);
+
+            const prev = idx > 0 ? sortedTransports[idx - 1] : null;
+            const prevIsFlight = Boolean(prev) && isFlightLeg(prev);
+            const prevDestCode = prev?.destination?.trim().toUpperCase() || '';
+            const prevDestIso = geoIsoOf(prevDestCode);
+            const prevIsLayover = Boolean(prev) && isExplicitLayoverLeg(prev);
+            const isSameAirportConnection = Boolean(prevDestCode) && prevDestCode === originCode;
+            const isSameCountryLayoverConnection = prevIsLayover && Boolean(prevDestIso) && prevDestIso === originIso;
+            const depDate = tr.departureDate || trip.startDate || '';
+            const isConnection = isFlight && (
+                (prevIsFlight && (isSameAirportConnection || isSameCountryLayoverConnection))
+                || (Boolean(originCode) && explicitLayoverArrivals.has(`${originCode}|${depDate}`))
+            );
+
+            if (originIso && !isConnection) {
+                destinationCountries.add(originIso);
+            }
+
+            if (isFlight) {
+                const next = idx < sortedTransports.length - 1 ? sortedTransports[idx + 1] : null;
+                const nextIsFlight = Boolean(next) && isFlightLeg(next);
+                const nextOriginCode = next?.origin?.trim().toUpperCase() || '';
+                const nextOriginIso = geoIsoOf(nextOriginCode);
+                const explicitLayover = isExplicitLayoverLeg(tr);
+                const isIntermediateFlight = nextIsFlight && (
+                    nextOriginCode === destCode
+                    || (explicitLayover && Boolean(nextOriginIso) && nextOriginIso === destIso)
+                );
+
+                if (destIso) {
+                    if (isIntermediateFlight || explicitLayover) {
+                        layoverCandidateCountries.add(destIso);
+                    } else {
+                        destinationCountries.add(destIso);
+                    }
+                }
+            } else if (destIso) {
+                destinationCountries.add(destIso);
+            }
+
+            if (tr.originLat && tr.originLng && tr.origin) {
+                placeMap.set(`${tr.originLat.toFixed(3)},${tr.originLng.toFixed(3)}`, {
+                    lat: tr.originLat,
+                    lng: tr.originLng,
+                    name: formatProperLocationName(tr.origin),
+                });
+            }
+            if (tr.destLat && tr.destLng && tr.destination) {
+                placeMap.set(`${tr.destLat.toFixed(3)},${tr.destLng.toFixed(3)}`, {
+                    lat: tr.destLat,
+                    lng: tr.destLng,
+                    name: formatProperLocationName(tr.destination),
+                });
+            }
+        });
+    });
+
+    excludedCodes.forEach(code => {
+        statusMap[code] = [];
+        statusByCode[code] = [];
+        countrySet.delete(code);
+    });
+    destinationCountries.forEach(code => {
+        if (!excludedCodes.has(code)) countrySet.add(code);
+    });
+
+    // Auto-detect layover-only countries: in layoverCandidateCountries, but NEVER stayed as a destination.
+    layoverCandidateCountries.forEach(code => {
+        if (!destinationCountries.has(code) && !excludedCodes.has(code) && !statusByCode[code]) {
+            statusMap[code] = 'layover';
+            statusByCode[code] = ['layover'];
+        }
+    });
+
+    // Run after layover auto-detection so a layover-only country (even with a tracked city in it) is never counted as visited.
+    Object.entries(statusByCode).forEach(([key, value]) => {
+        if (isLayoverOnly(value)) countrySet.delete(key);
+    });
+
+    if (Array.from(countrySet).some(isUKConstituent)) {
+        countrySet.delete('GB');
+    }
+    countrySet.delete('XX');
+
+    return {
+        visitedCountryCodes: Array.from(countrySet),
+        countryStatusMap: statusMap,
+        countryStatusesByCode: statusByCode,
+        visitedPlaces: Array.from(placeMap.values()),
+    };
+};
 
 /**
  * Data loading for the Expedition Map (trips + flights + road trips with resolved coordinates, visited
@@ -37,11 +256,12 @@ const saveCoordCache = (cache: Map<string, { lat: number, lng: number }>) => {
     }
 };
 
-export const useExpeditionMapData = () => {
+export const useExpeditionMapData = (scratchAppearance?: ScratchAppearanceFilters) => {
     const [trips, setTrips] = useState<Trip[]>([]);
     const [, setLoading] = useState(true);
     const [visitedCountryCodes, setVisitedCountryCodes] = useState<string[]>([]);
     const [countryStatusMap, setCountryStatusMap] = useState<Record<string, CountryResidenceStatus[] | CountryResidenceStatus>>({});
+    const [countryStatusesByCode, setCountryStatusesByCode] = useState<Record<string, CountryResidenceStatus[]>>({});
     const [visitedPlaces, setVisitedPlaces] = useState<{ lat: number; lng: number; name: string }[]>([]);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -189,7 +409,7 @@ export const useExpeditionMapData = () => {
                         location: `${formatProperLocationName(flight.origin)} ➔ ${formatProperLocationName(flight.destination)}`,
                         startDate: date,
                         endDate: flight.arrivalDate || date,
-                        status: (isPast ? 'Past' : 'Upcoming') as 'Past' | 'Upcoming',
+                        status: (flight.status === 'Cancelled' ? 'Cancelled' : (isPast ? 'Past' : 'Upcoming')) as Trip['status'],
                         participants: [],
                         transports: [{
                             ...flight,
@@ -312,135 +532,11 @@ export const useExpeditionMapData = () => {
         const processGeoData = async () => {
             try {
                 const visited = await dataService.getVisited();
-                const countrySet = new Set<string>();
-                const statusMap: Record<string, CountryResidenceStatus[] | CountryResidenceStatus> = {};
-                const placeMap = new Map<string, { lat: number; lng: number; name: string }>();
-
-                // 1. From database visited collection: one record per country, the UK as its nations,
-                //    and countries the user explicitly cleared are remembered so trips don't re-mark them.
-                const excludedCodes = excludedCountryCodes(visited);
-                const ukNations = ukNationsFromCities(visited, n => refineUKCountry(n, 'United Kingdom', 'GB').countryCode);
-                const records = [
-                    ...mergeCountryRecords(visited, { ukConstituentsFor: () => ukNations }),
-                    ...(visited || []).filter((i: any) => i.type !== 'country')
-                ];
-                if (records.length > 0) {
-                    records.forEach(item => {
-                        const code = item.code ? item.code.toUpperCase() : (item.countryCode ? item.countryCode.toUpperCase() : '');
-                        const name = item.name ? item.name.toUpperCase() : (item.countryName ? item.countryName.toUpperCase() : '');
-                        const statuses = getResidenceStatuses(item);
-
-                        // A city's own record says nothing about its country's status: it must not overwrite what the
-                        // country record says (a layover country stays a layover although a city in it is tracked).
-                        const own = item.type === 'country';
-                        if (code && (own || !statusMap[code])) statusMap[code] = statuses;
-                        if (name && (own || !statusMap[name])) statusMap[name] = statuses;
-
-                        const hasVisited = statuses.some(s => s === 'visited' || s === 'lived_current' || s === 'lived_past');
-                        if (hasVisited) {
-                            if (item.type === 'country' && code) {
-                                countrySet.add(code);
-                            } else if (item.countryCode) {
-                                countrySet.add(item.countryCode.toUpperCase());
-                            }
-                        }
-
-                        if (item.type === 'city' && item.lat && item.lng) {
-                            placeMap.set(`${item.lat.toFixed(3)},${item.lng.toFixed(3)}`, {
-                                lat: item.lat,
-                                lng: item.lng,
-                                name: formatProperLocationName(item.name)
-                            });
-                        }
-                    });
-                }
-
-                // 2. Automatic Trip Analysis: Differentiate Destination stays vs Layover connections
-                const destinationCountries = new Set<string>();
-                const layoverCandidateCountries = new Set<string>();
-
-                (trips || []).forEach(trip => {
-                    // Stays and Trip destination anchors
-                    if (trip.location) {
-                        const res = STATIC_GEO_DATA[trip.location.toUpperCase()];
-                        if (res?.iso) destinationCountries.add(res.iso.toUpperCase());
-                    }
-                    trip.locations?.forEach(l => {
-                        if (l.name) {
-                            const res = STATIC_GEO_DATA[l.name.toUpperCase()];
-                            if (res?.iso) destinationCountries.add(res.iso.toUpperCase());
-                        }
-                    });
-
-                    const transports = trip.transports || [];
-                    transports.forEach((tr, idx) => {
-                        const originCode = tr.origin?.toUpperCase() || '';
-                        const destCode = tr.destination?.toUpperCase() || '';
-                        const originGeo = originCode ? STATIC_GEO_DATA[originCode] : null;
-                        const destGeo = destCode ? STATIC_GEO_DATA[destCode] : null;
-
-                        const isFlight = isFlightLeg(tr);
-
-                        // The origin of a connecting flight is the previous leg's layover, not a stay.
-                        const prev = idx > 0 ? transports[idx - 1] : null;
-                        const prevIsFlight = Boolean(prev) && isFlightLeg(prev);
-                        const isConnection = isFlight && prevIsFlight && prev!.destination?.toUpperCase() === originCode;
-                        if (originGeo?.iso && !isConnection) {
-                            destinationCountries.add(originGeo.iso.toUpperCase());
-                        }
-
-                        if (isFlight) {
-                            // Check if this flight leg is an explicit layover or intermediate transfer
-                            const isIntermediateFlight = idx < transports.length - 1 && transports[idx + 1].origin?.toUpperCase() === destCode;
-                            const isExplicitLayover = tr.isLayover === true;
-
-                            if (destGeo?.iso) {
-                                const iso = destGeo.iso.toUpperCase();
-                                if (isIntermediateFlight || isExplicitLayover) {
-                                    layoverCandidateCountries.add(iso);
-                                } else {
-                                    destinationCountries.add(iso);
-                                }
-                            }
-                        } else {
-                            // Ground / Sea transit counts as visited destination
-                            if (destGeo?.iso) destinationCountries.add(destGeo.iso.toUpperCase());
-                        }
-
-                        // Collect place coordinates
-                        if (tr.originLat && tr.originLng && tr.origin) {
-                            placeMap.set(`${tr.originLat.toFixed(3)},${tr.originLng.toFixed(3)}`, {
-                                lat: tr.originLat,
-                                lng: tr.originLng,
-                                name: formatProperLocationName(tr.origin)
-                            });
-                        }
-                        if (tr.destLat && tr.destLng && tr.destination) {
-                            placeMap.set(`${tr.destLat.toFixed(3)},${tr.destLng.toFixed(3)}`, {
-                                lat: tr.destLat,
-                                lng: tr.destLng,
-                                name: formatProperLocationName(tr.destination)
-                            });
-                        }
-                    });
-                });
-
-                // Add all verified destination countries to countrySet (except ones the user cleared)
-                excludedCodes.forEach(code => { statusMap[code] = []; countrySet.delete(code); });
-                destinationCountries.forEach(code => { if (!excludedCodes.has(code)) countrySet.add(code); });
-                // A country marked as a layover and nothing else is not visited, whatever trips or tracked cities say.
-                Object.entries(statusMap).forEach(([key, value]) => { if (isLayoverOnly(asStatusList(value))) countrySet.delete(key); });
-
-                // Auto-detect layover-only countries: in layoverCandidateCountries, but NEVER stayed as a destination
-                layoverCandidateCountries.forEach(code => {
-                    if (!destinationCountries.has(code) && !statusMap[code]) {
-                        statusMap[code] = 'layover';
-                    }
-                });
-
-                setVisitedCountryCodes(Array.from(countrySet));
-                setCountryStatusMap(statusMap);
-                setVisitedPlaces(Array.from(placeMap.values()));
+                const derived = deriveScratchCountryData(visited || [], trips);
+                setVisitedCountryCodes(derived.visitedCountryCodes);
+                setCountryStatusMap(derived.countryStatusMap);
+                setCountryStatusesByCode(derived.countryStatusesByCode);
+                setVisitedPlaces(derived.visitedPlaces);
             } catch (err) {
                 console.warn("Could not query Visited collection:", err);
             }
@@ -541,6 +637,13 @@ export const useExpeditionMapData = () => {
             });
 
             const statuses: CountryResidenceStatus[] = !isNone ? (Array.isArray(status) ? status : [status]) : [];
+            const canonical = resolveCountryCode({ code: countryCode, name: countryName }) || (upperName ? `NAME:${upperName}` : '');
+            if (canonical) {
+                setCountryStatusesByCode(prev => ({
+                    ...prev,
+                    [canonical]: statuses,
+                }));
+            }
             const hasVisited = statuses.some(s => s === 'visited' || s === 'lived_current' || s === 'lived_past');
 
             if (hasVisited) {
@@ -664,6 +767,8 @@ export const useExpeditionMapData = () => {
 
         const allCount = flightsCount + landSeaCount;
         const allDist = flightsDist + landSeaDist;
+        const toggles = scratchToggles(scratchAppearance || {});
+        const scratchCount = countScratchCountries(visitedCountryCodes, countryStatusesByCode, toggles);
 
         return {
             flights: {
@@ -675,8 +780,8 @@ export const useExpeditionMapData = () => {
                 distanceStr: `${Math.round(landSeaDist).toLocaleString()} km`
             },
             scratch: {
-                count: visitedCountryCodes.length,
-                distanceStr: `${visitedCountryCodes.length} countries`
+                count: scratchCount,
+                distanceStr: `${scratchCount} countries`
             },
             all: {
                 count: allCount,
@@ -689,11 +794,19 @@ export const useExpeditionMapData = () => {
             activeSectorsCount: allCount,
             totalDistanceKm: Math.round(allDist)
         };
-    }, [filteredTrips, visitedCountryCodes]);
+    }, [
+        filteredTrips,
+        visitedCountryCodes,
+        countryStatusesByCode,
+        scratchAppearance?.showVisitedCountries,
+        scratchAppearance?.showLivedCountries,
+        scratchAppearance?.showLayoverCountries,
+        scratchAppearance?.showWishlistCountries,
+    ]);
 
     return {
         trips, filteredTrips, expeditionTypeMetrics, years, uniqueAirports,
-        visitedCountryCodes, countryStatusMap, visitedPlaces,
+        visitedCountryCodes, countryStatusMap, countryStatusesByCode, visitedPlaces,
         statusFilter, setStatusFilter, yearFilter, setYearFilter, depFilter, setDepFilter, arrFilter, setArrFilter,
         dateFrom, setDateFrom, dateTo, setDateTo, activeFilterCount,
         handleClearFilters, handleRefresh, handleUpdateCountryStatus,

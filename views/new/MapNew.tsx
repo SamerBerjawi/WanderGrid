@@ -77,12 +77,11 @@ const useIsDark = () => {
 };
 
 export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) => {
-    const data = useExpeditionMapData();
+    const [appearance, setAppearance] = useState<MapAppearanceSettings>(() => loadMapAppearanceSettings());
+    const data = useExpeditionMapData(appearance);
     const isDark = useIsDark();
     const mobile = useIsMobile();
     const mapRef = useRef<RpMapHandle>(null);
-
-    const [appearance, setAppearance] = useState<MapAppearanceSettings>(() => loadMapAppearanceSettings());
     const [settings, setSettings] = useState<WorkspaceSettings | null>(null);
     const [mode, setMode] = useState<Mode>(() => readLocal<Mode>(MODE_KEY, 'all', v => ['all', 'flights', 'land_sea', 'scratch'].includes(v)));
     const [groupAirports, setGroupAirports] = useState<boolean>(() => readLocal(GROUP_KEY, false, v => typeof v === 'boolean'));
@@ -444,7 +443,7 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                 <div className="pointer-events-none absolute left-4 z-float" style={{ top: HEADER + 8 }}>
                     <div className="rp-tabular flex items-center gap-4 rounded-full bg-rp-surface px-5 py-2.5 text-sm text-rp-ink rp-shadow-soft">
                         {mode === 'scratch' ? (
-                            <span className="flex items-center gap-1.5"><Maping size={16} className="text-rp-ochre" aria-hidden /><NumberFlow value={metrics.scratch.count} /> <span className="text-rp-muted">countries</span></span>
+                            <span className="flex items-center gap-1.5"><Maping size={16} className="text-rp-ochre" aria-hidden /><NumberFlow value={metrics.scratch.count} /> <span className="text-rp-muted">{metrics.scratch.count === 1 ? 'country' : 'countries'}</span></span>
                         ) : (
                             <>
                                 <span className="flex items-center gap-1.5"><Airplane size={16} className="text-rp-rust" aria-hidden /><NumberFlow value={model.totals.routes} /> <span className="text-rp-muted">{model.totals.routes === 1 ? 'journey' : 'journeys'}</span></span>

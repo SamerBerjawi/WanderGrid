@@ -53,6 +53,32 @@ export const asStatusList = (s?: CountryResidenceStatus[] | CountryResidenceStat
 export const isLayoverOnly = (statuses: CountryResidenceStatus[]): boolean =>
     statuses.includes('layover') && !statuses.some(s => s === 'visited' || s === 'lived_current' || s === 'lived_past');
 
+/** Number of unique countries currently shown on the scratch map under the given toggles. */
+export const countScratchCountries = (
+    visitedCountryCodes: string[],
+    countryStatusesByCode: Record<string, CountryResidenceStatus[] | CountryResidenceStatus>,
+    t: ScratchToggles,
+): number => {
+    const visited = new Set(
+        visitedCountryCodes
+            .map(c => c.trim().toUpperCase())
+            .filter(c => c && c !== 'XX'),
+    );
+    const statusByKey = new Map<string, CountryResidenceStatus[]>();
+    Object.entries(countryStatusesByCode).forEach(([rawKey, val]) => {
+        const key = rawKey.trim().toUpperCase();
+        if (!key || key === 'XX') return;
+        statusByKey.set(key, asStatusList(val));
+    });
+    const keys = new Set<string>([...visited, ...statusByKey.keys()]);
+    let count = 0;
+    keys.forEach(key => {
+        const statuses = statusByKey.get(key) ?? [];
+        if (scratchKindOf(statuses, visited.has(key), t) !== 'none') count++;
+    });
+    return count;
+};
+
 export const MARKER_SIZE = { off: 0, small: 3, medium: 4.5, large: 6.5 } as const;
 export type MarkerSizeName = keyof typeof MARKER_SIZE;
 
