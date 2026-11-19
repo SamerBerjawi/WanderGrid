@@ -299,6 +299,7 @@ class DataService {
             if (response && response.token) {
                 localStorage.setItem('wandergrid_session_token', response.token);
                 void import('./airportIndex').then(m => m.loadAirportIndex()).catch(() => {});
+                void import('./carrierIndex').then(m => m.loadCarrierIndex()).catch(() => {});
                 return response.user;
             }
             return response;
@@ -401,6 +402,7 @@ class DataService {
     if (response?.token) {
         localStorage.setItem('wandergrid_session_token', response.token);
         void import('./airportIndex').then(m => m.loadAirportIndex()).catch(() => {});
+        void import('./carrierIndex').then(m => m.loadCarrierIndex()).catch(() => {});
         return response.user;
     }
     return null;
@@ -458,6 +460,7 @@ class DataService {
             if (response && response.token) {
                 localStorage.setItem('wandergrid_session_token', response.token);
                 void import('./airportIndex').then(m => m.loadAirportIndex()).catch(() => {});
+                void import('./carrierIndex').then(m => m.loadCarrierIndex()).catch(() => {});
                 return response.user;
             }
             return response;

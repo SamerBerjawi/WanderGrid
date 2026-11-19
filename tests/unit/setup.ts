@@ -1,8 +1,9 @@
 import { beforeEach } from 'vitest';
 import fixture from '../fixtures/airports.json';
 import { __setAirportIndexForTest, type AirportRef } from '../../services/airportIndex';
+import { __setCarrierIndexForTest } from '../../services/carrierIndex';
 
-// The app preloads airline and airport data from the network when its modules load; unit tests stay offline.
+// The app loads the airport and airline tables from the server when its modules load; unit tests stay offline.
 globalThis.fetch = (async () => ({ ok: false, status: 503, json: async () => ({}), text: async () => '' })) as unknown as typeof fetch;
 
 // The live airport table (GET /api/airports/index) as a fixture: the airports these tests use, generated from the
@@ -14,3 +15,6 @@ export const FIXTURE_AIRPORTS: AirportRef[] = (fixture.rows as Array<[string, st
 
 __setAirportIndexForTest(FIXTURE_AIRPORTS);
 beforeEach(() => __setAirportIndexForTest(FIXTURE_AIRPORTS));
+
+// The carrier table starts empty in each test (tests/unit/carrierIndex.test.ts fills it).
+beforeEach(() => __setCarrierIndexForTest(null));

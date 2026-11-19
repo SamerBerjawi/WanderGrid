@@ -60,9 +60,16 @@ module.exports = function createInitDb({ pool, onReady }) {
                 id SERIAL PRIMARY KEY,
                 iata VARCHAR(10) CHECK (iata <> ''),
                 company_name TEXT,
-                country_or_territory TEXT
+                country_or_territory TEXT,
+                icao TEXT,
+                active BOOLEAN
               );
           `);
+          // Installs from before carriers carried ICAO codes (carrierData.js) gain the columns here; the table is
+          // reference data rebuilt by every refresh, so there is nothing to backfill.
+          for (const col of ['icao TEXT', 'active BOOLEAN']) {
+              await client.query(`ALTER TABLE global_carriers ADD COLUMN IF NOT EXISTS ${col}`);
+          }
 
           // Global geocoding cache table
           await client.query(`
