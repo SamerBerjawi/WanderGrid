@@ -6,10 +6,9 @@ import { runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
 import { Trip, VisitedItem, CountryResidenceStatus, getResidenceStatuses } from '../types';
 import type { MapAppearanceSettings } from '../types/mapAppearance';
 import { isPastTrip, todayISO } from '../utils/tripsModel';
-import { getCoordinates, getCoordinatesSync, STATIC_GEO_DATA, calculateDistance, formatProperLocationName, refineUKCountry } from '../services/geocoding';
+import { getCoordinates, getCoordinatesSync, airportRow, calculateDistance, formatProperLocationName, refineUKCountry } from '../services/geocoding';
 import { getPhysicalRunways } from '../services/airportRunwayDataset';
 import { resolveLegEnd } from '../utils/mapPoints';
-import { TOP_AIRPORTS_BY_IATA } from '../utils/topAviationData';
 import { countScratchCountries, isLayoverOnly, scratchToggles } from '../components/new/map/mapScratch';
 import { isFlightLeg } from '../utils/legMode';
 
@@ -21,7 +20,7 @@ export type ScratchAppearanceFilters = Pick<
 const geoIsoOf = (raw?: string | null): string => {
     const key = (raw || '').trim().toUpperCase();
     if (!key) return '';
-    const entry = STATIC_GEO_DATA[key];
+    const entry = airportRow(key);
     const iso = normalizeCountryCode(entry?.iso || entry?.countryCode);
     return iso && iso !== 'XX' ? iso : '';
 };
@@ -459,7 +458,7 @@ export const useExpeditionMapData = (scratchAppearance?: ScratchAppearanceFilter
                     if (!isFlightLeg(tr)) return false;
                     return [tr.origin, tr.destination].some(end => {
                         const code = (end || '').trim().toUpperCase();
-                        return /^[A-Z]{3}$/.test(code) && !STATIC_GEO_DATA[code] && !TOP_AIRPORTS_BY_IATA.has(code);
+                        return /^[A-Z]{3}$/.test(code) && !airportRow(code);
                     });
                 });
                 if (needsRunways) {

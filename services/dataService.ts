@@ -298,6 +298,7 @@ class DataService {
             });
             if (response && response.token) {
                 localStorage.setItem('wandergrid_session_token', response.token);
+                void import('./airportIndex').then(m => m.loadAirportIndex()).catch(() => {});
                 return response.user;
             }
             return response;
@@ -399,6 +400,7 @@ class DataService {
     const response = await this.fetch<any>('/auth/demo', { method: 'POST' });
     if (response?.token) {
         localStorage.setItem('wandergrid_session_token', response.token);
+        void import('./airportIndex').then(m => m.loadAirportIndex()).catch(() => {});
         return response.user;
     }
     return null;
@@ -455,6 +457,7 @@ class DataService {
             });
             if (response && response.token) {
                 localStorage.setItem('wandergrid_session_token', response.token);
+                void import('./airportIndex').then(m => m.loadAirportIndex()).catch(() => {});
                 return response.user;
             }
             return response;

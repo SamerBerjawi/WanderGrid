@@ -1,6 +1,6 @@
 import type { Accommodation, Activity, Transport, Trip } from '../types';
 import type { ParsedBooking } from './bookingParser';
-import { TOP_AIRPORTS_BY_IATA } from './topAviationData';
+import { getAirport } from '../services/airportIndex';
 
 /**
  * Where parsed bookings go: an existing trip whose dates they fall in, or a new trip named after the
@@ -48,7 +48,7 @@ export const matchTrip = (trips: Trip[], bookings: ParsedBooking[]): Trip | unde
 /** A place's display name: the city for a known airport code, otherwise the text as written. */
 export const placeLabel = (place: string): string => {
     const code = place.trim().toUpperCase();
-    return (/^[A-Z]{3}$/.test(code) && TOP_AIRPORTS_BY_IATA.get(code)?.city) || place.trim();
+    return (/^[A-Z]{3}$/.test(code) && getAirport(code)?.city) || place.trim();
 };
 
 /** The town in an address ("Rua X 7, 1100-348 Lisboa, PT" → "Lisboa"). */

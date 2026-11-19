@@ -30,6 +30,8 @@ const registerProxyRoutes = require('./proxy');
 const createInitDb = require('./dbSchema');
 const fxRates = require('./fxRates');
 const { getAirportCoordsMap } = require('./airportCoords');
+const airportData = require('./airportData');
+const { repairStoredAirportCoords, retryFailedRoutes } = require('./airportRepair');
 
 const pbkdf2Async = util.promisify(crypto.pbkdf2);
 
@@ -482,21 +484,32 @@ app.use('/api', authenticateToken);
 // Table and index creation, then migrations: see dbSchema.js
 const initDb = createInitDb({ pool, onReady: () => { dbReady = true; } });
 
-const isGenericAirportName = (name) => /^(metropolitan area|all airports)$/i.test(String(name || '').trim());
+const { isGenericAirportName } = airportData;
 
-const upsertMemoryAirport = (rawIata, cityName, airportName) => {
-  const iata = String(rawIata || '').trim().toUpperCase();
+const optionalNumber = (v) => (v === null || v === undefined || v === '' ? null : (Number.isFinite(Number(v)) ? Number(v) : null));
+
+/** Keeps one record per IATA code in RAM: the real airport name wins over "Metropolitan Area" / "All Airports" rows. */
+const upsertMemoryAirport = (row) => {
+  const iata = String(row?.iata || '').trim().toUpperCase();
   if (!iata) return false;
-  const nextName = airportName || '';
+  const nextName = row.airport_name || '';
   const existing = memoryAirports.get(iata);
-  // Some upstream datasets emit a "Metropolitan Area" / "All Airports" alias after or before the real airport; keep the real one.
   if (existing && existing.airport_name && !isGenericAirportName(existing.airport_name) && isGenericAirportName(nextName)) {
     return false;
   }
+  const lat = optionalNumber(row.latitude);
+  const lng = optionalNumber(row.longitude);
   memoryAirports.set(iata, {
     iata,
-    city_name: cityName || '',
+    city_name: row.city_name || '',
     airport_name: nextName,
+    icao: row.icao || existing?.icao || '',
+    latitude: lat ?? existing?.latitude ?? null,
+    longitude: lng ?? existing?.longitude ?? null,
+    country_code: row.country_code || existing?.country_code || '',
+    country: row.country || existing?.country || '',
+    timezone: row.timezone || existing?.timezone || '',
+    kind: row.kind || existing?.kind || '',
   });
   return true;
 };
@@ -516,14 +529,15 @@ const loadGlobalData = async () => {
         console.warn('System cleanup query failed:', cleanErr.message);
     }
     
-    const airportsRes = await pool.query('SELECT iata, city_name, airport_name FROM global_airports');
+    const airportsRes = await pool.query('SELECT iata, city_name, airport_name, icao, latitude, longitude, country_code, country, timezone, kind FROM global_airports');
     if (airportsRes.rows.length > 0) memoryAirports.clear();
     let apCount = 0;
     airportsRes.rows.forEach(row => {
-        if (upsertMemoryAirport(row.iata, row.city_name, row.airport_name)) {
+        if (upsertMemoryAirport(row)) {
             apCount++;
         }
     });
+    memoryAirports.__stamp = Date.now(); // invalidates the /api/airports/index ETag
     console.log(`Successfully preloaded ${apCount} airports from PostgreSQL database into fast RAM cache.`);
 
     const carriersRes = await pool.query('SELECT iata, company_name, country_or_territory FROM global_carriers');
@@ -580,17 +594,10 @@ const loadGlobalData = async () => {
           }
         }
         
-        console.log('Fetching & parsing global airports from GitHub (fail-safe recovery)...');
-        const airResponse = await fetch(GLOBAL_DATASETS.airports.url, { signal: AbortSignal.timeout(DATASET_FETCH_TIMEOUT_MS) });
-        if (airResponse.ok) {
-          const text = await airResponse.text();
-          const lines = text.split('\n').filter(Boolean);
-          for (const line of lines) {
-            try {
-              const item = JSON.parse(line);
-              upsertMemoryAirport(item.iata, item.city_name, item.airport_name);
-            } catch (e) {}
-          }
+        console.log('Fetching & parsing global airports (fail-safe recovery)...');
+        const { rows: airportRows } = await airportData.downloadAirportRows({ timeoutMs: DATASET_FETCH_TIMEOUT_MS });
+        for (const r of airportRows) {
+          upsertMemoryAirport(Object.fromEntries(airportData.COLUMNS.map((c, i) => [c, r[i]])));
         }
     } catch (fallbackErr) {
         console.error('Unified preloading failed entirely:', fallbackErr);
@@ -605,10 +612,12 @@ const loadGlobalData = async () => {
 const DATASET_FETCH_TIMEOUT_MS = process.env.DATASET_FETCH_TIMEOUT_MS ? parseInt(process.env.DATASET_FETCH_TIMEOUT_MS, 10) : 60000;
 const GLOBAL_DATASETS = {
     airports: {
-        url: 'https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/airport_data_full_processed.jsonl',
+        // Names (dlubom), coordinates/country (OurAirports) and timezones (mwgg), joined in airportData.js
         table: 'global_airports',
-        columns: ['iata', 'city_name', 'airport_name'],
-        toRow: (item) => [String(item.iata || '').trim().toUpperCase(), item.city_name || '', item.airport_name || ''],
+        columns: airportData.COLUMNS,
+        download: () => airportData.downloadAirportRows({ timeoutMs: DATASET_FETCH_TIMEOUT_MS }),
+        // An install upgraded from the names-only table refreshes once so airports get coordinates
+        needsRefresh: async () => Number((await pool.query('SELECT COUNT(latitude) AS count FROM global_airports')).rows[0].count) === 0,
         minRows: () => parseInt(process.env.DATASET_MIN_AIRPORTS || '5000', 10),
     },
     carriers: {
@@ -636,6 +645,7 @@ function parseDatasetLines(dataset, text) {
 }
 
 async function downloadDataset(dataset) {
+    if (dataset.download) return dataset.download();
     const response = await fetch(dataset.url, { signal: AbortSignal.timeout(DATASET_FETCH_TIMEOUT_MS) });
     if (!response.ok) throw new Error(`${dataset.table} download failed with HTTP ${response.status}`);
     return parseDatasetLines(dataset, await response.text());
@@ -664,13 +674,14 @@ async function refreshGlobalDataset(name, { onlyIfEmpty = false } = {}) {
     const dataset = GLOBAL_DATASETS[name];
     if (onlyIfEmpty) {
         const { rows } = await pool.query(`SELECT COUNT(*) AS count FROM ${dataset.table}`);
-        if (Number(rows[0].count) > 0) return { name, skippedRefresh: true };
+        const stale = Number(rows[0].count) > 0 && dataset.needsRefresh ? await dataset.needsRefresh() : false;
+        if (Number(rows[0].count) > 0 && !stale) return { name, skippedRefresh: true };
     }
-    const { rows, skipped } = await downloadDataset(dataset);
+    const { rows, skipped, enriched } = await downloadDataset(dataset);
     if (skipped > 0) console.warn(`[DATASETS] ${dataset.table}: skipped ${skipped} malformed or empty lines`);
     await replaceDataset(dataset, rows);
     console.log(`[DATASETS] ${dataset.table} replaced with ${rows.length} rows.`);
-    return { name, rows: rows.length, skipped };
+    return enriched ? { name, rows: rows.length, skipped, enriched } : { name, rows: rows.length, skipped };
 }
 
 async function refreshAllGlobalDatasets(options) {
@@ -679,6 +690,17 @@ async function refreshAllGlobalDatasets(options) {
         results.push(await refreshGlobalDataset(name, options));
     }
     return results;
+}
+
+/**
+ * After airport data changes: fix saved flight positions that are missing or clearly wrong and forget failed
+ * road/rail traces so they are tried again (airportRepair.js). Never throws; the refresh itself already succeeded.
+ */
+async function repairAfterRefresh() {
+    const out = { repaired: { flights: 0, trips: 0, legs: 0 }, routes: 0 };
+    try { out.repaired = await repairStoredAirportCoords(pool, memoryAirports); } catch (err) { console.error('[AIRPORTS] Repair after refresh failed:', err.message); }
+    try { out.routes = (await retryFailedRoutes(pool, routeService)).routes; } catch (err) { console.error('[ROUTES] Clearing failed routes failed:', err.message); }
+    return out;
 }
 
 // Scheduled weekly background dataset synchronization task
@@ -700,6 +722,7 @@ const startBackgroundScheduler = () => {
       await refreshAllGlobalDatasets();
       // Reload updated records back into RAM memory caches safely
       await loadGlobalData();
+      await repairAfterRefresh();
       console.log('[SCHEDULER] Background dataset synchronization complete and RAM caches reloaded.');
     } catch (err) {
       console.error('[SCHEDULER] Failed scheduled synchronization run (existing data kept):', err.message);
@@ -708,11 +731,13 @@ const startBackgroundScheduler = () => {
   if (schedulerInterval.unref) schedulerInterval.unref();
 };
 
+let refreshedAtBoot = false;
 const prepopulateDatabases = async () => {
-  // First run: fill empty dataset tables (existing data is left alone).
+  // First run: fill empty dataset tables (existing data is left alone, except an airport table without coordinates).
   for (const name of Object.keys(GLOBAL_DATASETS)) {
     try {
-      await refreshGlobalDataset(name, { onlyIfEmpty: true });
+      const result = await refreshGlobalDataset(name, { onlyIfEmpty: true });
+      if (name === 'airports' && !result.skippedRefresh) refreshedAtBoot = true;
     } catch (err) {
       console.error(`Error pre-populating ${GLOBAL_DATASETS[name].table}:`, err);
     }
@@ -723,7 +748,8 @@ const ready = initDb().then(() => {
   prepopulateDatabases()
     .then(() => {
       loadGlobalData()
-        .then(() => {
+        .then(async () => {
+            if (refreshedAtBoot) await repairAfterRefresh();
             // Start background weekly datasets synchronization task once server caches are loaded
             startBackgroundScheduler();
         })
@@ -750,7 +776,7 @@ const { SECRET_MASK, dropObsoleteSettings, invalidateSecretsCache, workspaceSecr
 });
 
 // External-service proxies and the airport/carrier lookups: see proxy.js
-registerProxyRoutes(app, {
+const { routeService } = registerProxyRoutes(app, {
     pool, logger, sendError, requireAdmin, readWorkspaceSettings, workspaceSecret, SECRET_MASK,
   FLIGHT_CACHE_TTL_MS, CACHE_MAX_ENTRIES, FLIGHT_FETCH_TIMEOUT_MS, GEOCODE_CACHE_TTL_MS,
   flightCache, memoryAirports, memoryCarriers, memoryGeocoding, openSkyCache, BoundedMap, HttpError, EXTERNAL_FETCH_TIMEOUT_MS,
@@ -765,7 +791,6 @@ const newCalendarToken = () => crypto.randomBytes(24).toString('hex');
 // The feed is built by icsFeed.mjs, the same module the app uses for its own .ics files. It is an ES module,
 // so a CommonJS server loads it with import(); the promise is awaited on first use.
 const icsFeedModule = import('./icsFeed.mjs');
-const AIRPORT_TIMEZONES = require('./airportTimezones.json');
 
 // Returns (creating on first use) the signed-in user's feed token.
 app.get('/api/calendar/token', async (req, res) => {
@@ -881,7 +906,7 @@ app.get('/api/calendar/:token/feed.ics', async (req, res) => {
             const generatedAt = newest || FEED_PLACEHOLDER_TIME;
             const body = buildFeed(trips, options, {
                 now: generatedAt, baseUrl,
-                airportTz: (iata) => AIRPORT_TIMEZONES[iata],
+                airportTz: (iata) => memoryAirports.get(String(iata || '').toUpperCase())?.timezone || undefined,
                 airportName: (iata) => memoryAirports.get(iata)?.airport_name || '',
                 entitlementName: (id) => entitlements.get(id) || '',
                 holidayCalendars,
@@ -929,7 +954,7 @@ registerRecordRoutes(app, { store, requireAdmin, sharedTrip, sendError, pool, Ht
 
 // Background jobs, backup, restore and wipe: see jobs.js
 const { activeJobs } = registerJobRoutes(app, {
-    pool, sendError, requireAdmin, withTransaction, bulkUpsert, loadGlobalData, refreshAllGlobalDatasets, tripKind,
+    pool, sendError, requireAdmin, withTransaction, bulkUpsert, loadGlobalData, refreshAllGlobalDatasets, repairAfterRefresh, tripKind,
   isStoredPasswordHash, hashPassword, removeSensitiveData, SECRET_MASK, dropObsoleteSettings, invalidateSecretsCache, HttpError, BoundedMap,
 });
 
@@ -1012,4 +1037,4 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 module.exports.gracefulShutdown = gracefulShutdown;
 // Internals exercised directly by the API test-suite.
-module.exports.__test = { BoundedMap, GLOBAL_DATASETS, parseDatasetLines, refreshGlobalDataset, activeJobs, loadGlobalData };
+module.exports.__test = { BoundedMap, GLOBAL_DATASETS, parseDatasetLines, refreshGlobalDataset, activeJobs, loadGlobalData, repairAfterRefresh, memoryAirports };

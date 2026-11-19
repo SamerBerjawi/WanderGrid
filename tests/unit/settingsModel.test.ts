@@ -36,3 +36,12 @@ describe('countKeys', () => {
         expect(countKeys(s)).toEqual({ set: 3, fromHost: 1, total: 4 });
     });
 });
+
+import { refreshSummary } from '../../components/new/settings/DataPane';
+describe('airport data refresh summary', () => {
+    it('says what the refresh fixed', () => {
+        expect(refreshSummary({})).toBe('Airports and carriers are up to date.');
+        expect(refreshSummary({ repaired: { legs: 1 }, routes: 0 })).toBe('Airports and carriers are up to date. Fixed the airport position of 1 flight.');
+        expect(refreshSummary({ repaired: { legs: 3 }, routes: 2 })).toBe('Airports and carriers are up to date. Fixed 3 airport positions on saved flights. 2 routes that could not be traced will be tried again.');
+    });
+});

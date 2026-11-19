@@ -1,5 +1,5 @@
 import { COUNTRY_REGION_MAP } from './geoData';
-import { TOP_AIRPORTS_BY_IATA, getTopAirportCountryCode, type TopAirport } from '../utils/topAviationData';
+import { getAirport, hasPosition } from './airportIndex';
 import { getAirportRunwayCentroidSync } from './airportRunwayDataset';
 import { searchPlaces, resolveBestPlace, resolveAirportByIata, lookupPlaceByLabel, cleanLabel, norm as normText, distanceKm, Place, SearchMode, PlaceKind } from './placeSearch';
 
@@ -231,88 +231,11 @@ const persistCacheToIndexedDb = async () => {
     db.close();
 };
 
+/**
+ * A few city and country labels with fixed positions (geocoders used to get them wrong). Airports are not listed
+ * here: they come from the server's live airport table (services/airportIndex.ts); see airportRow().
+ */
 export const STATIC_GEO_DATA: Record<string, any> = {
-    // Top Airports
-    "AMS": { "lat": "52.3086", "lon": "4.7639", "name": "Schiphol", "city": "Amsterdam", "country": "Netherlands", "tz": "Europe/Amsterdam", "iso": "NL" },
-    "LHR": { "lat": "51.4706", "lon": "-0.4619", "name": "Heathrow", "city": "London", "country": "England", "tz": "Europe/London", "iso": "GB-ENG" },
-    "LGW": { "lat": "51.1537", "lon": "-0.1821", "name": "Gatwick Airport", "city": "London", "country": "England", "tz": "Europe/London", "iso": "GB-ENG" },
-    "STN": { "lat": "51.8860", "lon": "0.2389", "name": "Stansted Airport", "city": "London", "country": "England", "tz": "Europe/London", "iso": "GB-ENG" },
-    "LTN": { "lat": "51.8747", "lon": "-0.3683", "name": "Luton Airport", "city": "London", "country": "England", "tz": "Europe/London", "iso": "GB-ENG" },
-    "BHX": { "lat": "52.4539", "lon": "-1.7480", "name": "Birmingham Airport", "city": "Birmingham", "country": "England", "tz": "Europe/London", "iso": "GB-ENG" },
-    "EDI": { "lat": "55.9508", "lon": "-3.3725", "name": "Edinburgh Airport", "city": "Edinburgh", "country": "Scotland", "tz": "Europe/London", "iso": "GB-SCT" },
-    "GLA": { "lat": "55.8719", "lon": "-4.4331", "name": "Glasgow Airport", "city": "Glasgow", "country": "Scotland", "tz": "Europe/London", "iso": "GB-SCT" },
-    "CWL": { "lat": "51.3967", "lon": "-3.3433", "name": "Cardiff Airport", "city": "Cardiff", "country": "Wales", "tz": "Europe/London", "iso": "GB-WLS" },
-    "BFS": { "lat": "54.6575", "lon": "-6.2158", "name": "Belfast Intl Airport", "city": "Belfast", "country": "Northern Ireland", "tz": "Europe/London", "iso": "GB-NIR" },
-    "BHD": { "lat": "54.6181", "lon": "-5.8725", "name": "George Best Belfast City", "city": "Belfast", "country": "Northern Ireland", "tz": "Europe/London", "iso": "GB-NIR" },
-    "JFK": { "lat": "40.6398", "lon": "-73.7789", "name": "John F Kennedy Intl", "city": "New York, NY", "country": "United States", "tz": "America/New_York", "iso": "US" },
-    "DXB": { "lat": "25.2528", "lon": "55.3644", "name": "Dubai Intl", "city": "Dubai", "country": "United Arab Emirates", "tz": "Asia/Dubai", "iso": "AE" },
-    "CDG": { "lat": "49.0097", "lon": "2.5478", "name": "Charles De Gaulle", "city": "Paris", "country": "France", "tz": "Europe/Paris", "iso": "FR" },
-    "FRA": { "lat": "50.0333", "lon": "8.5706", "name": "Frankfurt am Main", "city": "Frankfurt", "country": "Germany", "tz": "Europe/Berlin", "iso": "DE" },
-    "BER": { "lat": "52.3667", "lon": "13.5033", "name": "Berlin Brandenburg", "city": "Berlin", "country": "Germany", "tz": "Europe/Berlin", "iso": "DE" },
-    "VIE": { "lat": "48.1103", "lon": "16.5697", "name": "Vienna Intl", "city": "Vienna", "country": "Austria", "tz": "Europe/Vienna", "iso": "AT" },
-    "SIN": { "lat": "1.3502", "lon": "103.994", "name": "Changi Intl", "city": "Singapore", "country": "Singapore", "tz": "Asia/Singapore", "iso": "SG" },
-    "HKG": { "lat": "22.3089", "lon": "113.915", "name": "Hong Kong Intl", "city": "Hong Kong", "country": "Hong Kong", "tz": "Asia/Hong_Kong", "iso": "HK" },
-    "HND": { "lat": "35.5523", "lon": "139.78", "name": "Haneda", "city": "Tokyo", "country": "Japan", "tz": "Asia/Tokyo", "iso": "JP" },
-    "SYD": { "lat": "-33.9461", "lon": "151.177", "name": "Kingsford Smith", "city": "Sydney, NSW", "country": "Australia", "tz": "Australia/Sydney", "iso": "AU" },
-    
-    // Requested Missing Airports
-    "MAN": { "lat": "53.3588", "lon": "-2.2728", "name": "Manchester Airport", "city": "Manchester", "country": "England", "tz": "Europe/London", "iso": "GB-ENG" },
-    "BEY": { "lat": "33.82", "lon": "35.49", "name": "Beirut Airport", "city": "Beirut", "country": "Lebanon", "iso": "LB" },
-    "PRG": { "lat": "50.10", "lon": "14.26", "name": "Prague Airport", "city": "Prague", "country": "Czechia", "iso": "CZ" },
-    "BCN": { "lat": "41.29", "lon": "2.07", "name": "Barcelona Airport", "city": "Barcelona", "country": "Spain", "iso": "ES" },
-    "ORD": { "lat": "41.97", "lon": "-87.90", "name": "O'Hare Airport", "city": "Chicago, IL", "country": "United States", "iso": "US" },
-    "DTW": { "lat": "42.21", "lon": "-83.35", "name": "Detroit Airport", "city": "Detroit, MI", "country": "United States", "iso": "US" },
-    "IAD": { "lat": "38.95", "lon": "-77.45", "name": "Dulles Airport", "city": "Washington, DC", "country": "United States", "iso": "US" },
-    "GRR": { "lat": "42.88", "lon": "-85.52", "name": "Grand Rapids Airport", "city": "Grand Rapids, MI", "country": "United States", "iso": "US" },
-    "ATL": { "lat": "33.64", "lon": "-84.42", "name": "Atlanta Airport", "city": "Atlanta, GA", "country": "United States", "iso": "US" },
-    "AMM": { "lat": "31.72", "lon": "35.99", "name": "Queen Alia Airport", "city": "Amman", "country": "Jordan", "iso": "JO" },
-    "TUN": { "lat": "36.85", "lon": "10.22", "name": "Tunis Airport", "city": "Tunis", "country": "Tunisia", "iso": "TN" },
-    "DJE": { "lat": "33.86", "lon": "10.77", "name": "Djerba Airport", "city": "Djerba", "country": "Tunisia", "iso": "TN" },
-    "SAW": { "lat": "40.89", "lon": "29.30", "name": "Sabiha Gökçen Airport", "city": "Istanbul", "country": "Turkey", "iso": "TR" },
-    "IST": { "lat": "41.27", "lon": "28.74", "name": "Istanbul Airport", "city": "Istanbul", "country": "Turkey", "iso": "TR" },
-    "ISL": { "lat": "41.27", "lon": "28.74", "name": "Atatürk Airport", "city": "Istanbul", "country": "Turkey", "iso": "TR" },
-    "CPH": { "lat": "55.61", "lon": "12.65", "name": "Copenhagen Airport", "city": "Copenhagen", "country": "Denmark", "iso": "DK" },
-    "LIS": { "lat": "38.77", "lon": "-9.13", "name": "Lisbon Airport", "city": "Lisbon", "country": "Portugal", "iso": "PT" },
-    "ATH": { "lat": "37.93", "lon": "23.94", "name": "Athens Airport", "city": "Athens", "country": "Greece", "iso": "GR" },
-    "MCT": { "lat": "23.59", "lon": "58.28", "name": "Muscat Airport", "city": "Muscat", "country": "Oman", "iso": "OM" },
-    "AUH": { "lat": "24.43", "lon": "54.65", "name": "Abu Dhabi Airport", "city": "Abu Dhabi", "country": "United Arab Emirates", "iso": "AE" },
-    "PSA": { "lat": "43.68", "lon": "10.39", "name": "Pisa Airport", "city": "Pisa", "country": "Italy", "iso": "IT" },
-    "SXF": { "lat": "52.38", "lon": "13.52", "name": "Schönefeld Airport", "city": "Berlin", "country": "Germany", "iso": "DE" },
-    "FLR": { "lat": "43.81", "lon": "11.20", "name": "Florence Airport", "city": "Florence", "country": "Italy", "iso": "IT" },
-    "OTP": { "lat": "44.57", "lon": "26.10", "name": "Otopeni Airport", "city": "Bucharest", "country": "Romania", "iso": "RO" },
-    "BRU": { "lat": "50.90", "lon": "4.48", "name": "Brussels Airport", "city": "Brussels", "country": "Belgium", "iso": "BE" },
-    "LCA": { "lat": "34.87", "lon": "33.62", "name": "Larnaca Airport", "city": "Larnaca", "country": "Cyprus", "iso": "CY" },
-    "CRL": { "lat": "50.45", "lon": "4.45", "name": "Charleroi Airport", "city": "Brussels", "country": "Belgium", "iso": "BE" },
-    "ZRH": { "lat": "47.46", "lon": "8.54", "name": "Zurich Airport", "city": "Zurich", "country": "Switzerland", "iso": "CH" },
-    "NCE": { "lat": "43.66", "lon": "7.21", "name": "Nice Airport", "city": "Nice", "country": "France", "iso": "FR" },
-    "WAW": { "lat": "52.16", "lon": "20.96", "name": "Chopin Airport", "city": "Warsaw", "country": "Poland", "iso": "PL" },
-    "KUL": { "lat": "2.74", "lon": "101.70", "name": "Kuala Lumpur Airport", "city": "Kuala Lumpur", "country": "Malaysia", "iso": "MY" },
-    "LGK": { "lat": "6.32", "lon": "99.73", "name": "Langkawi Airport", "city": "Langkawi", "country": "Malaysia", "iso": "MY" },
-    "DPS": { "lat": "-8.74", "lon": "115.16", "name": "Ngurah Rai Airport", "city": "Bali", "country": "Indonesia", "iso": "ID" },
-    "FCO": { "lat": "41.80", "lon": "12.24", "name": "Fiumicino Airport", "city": "Rome", "country": "Italy", "iso": "IT" },
-    "NAP": { "lat": "40.88", "lon": "14.29", "name": "Naples Airport", "city": "Naples", "country": "Italy", "iso": "IT" },
-    "OPO": { "lat": "41.24", "lon": "-8.67", "name": "Porto Airport", "city": "Porto", "country": "Portugal", "iso": "PT" },
-    "BUD": { "lat": "47.43", "lon": "19.26", "name": "Ferenc Liszt Airport", "city": "Budapest", "country": "Hungary", "iso": "HU" },
-    "TFS": { "lat": "28.04", "lon": "-16.57", "name": "Tenerife South Airport", "city": "Tenerife", "country": "Spain", "iso": "ES" },
-    "LAX": { "lat": "33.94", "lon": "-118.40", "name": "Los Angeles Airport", "city": "Los Angeles, CA", "country": "United States", "iso": "US" },
-    "SFO": { "lat": "37.62", "lon": "-122.37", "name": "San Francisco Airport", "city": "San Francisco, CA", "country": "United States", "iso": "US" },
-    "ORY": { "lat": "48.72", "lon": "2.36", "name": "Orly Airport", "city": "Paris", "country": "France", "iso": "FR" },
-    "SOF": { "lat": "42.69", "lon": "23.41", "name": "Sofia Airport", "city": "Sofia", "country": "Bulgaria", "iso": "BG" },
-    "AGP": { "lat": "36.67", "lon": "-4.49", "name": "Málaga Airport", "city": "Málaga", "country": "Spain", "iso": "ES" },
-    "TLL": { "lat": "59.41", "lon": "24.83", "name": "Tallinn Airport", "city": "Tallinn", "country": "Estonia", "iso": "EE" },
-    "DUB": { "lat": "53.42", "lon": "-6.24", "name": "Dublin Airport", "city": "Dublin", "country": "Ireland", "iso": "IE" },
-    "CLE": { "lat": "41.41", "lon": "-81.85", "name": "Cleveland Airport", "city": "Cleveland, OH", "country": "United States", "iso": "US" },
-    "BRI": { "lat": "41.13", "lon": "16.76", "name": "Bari Airport", "city": "Bari", "country": "Italy", "iso": "IT" },
-    "CAI": { "lat": "30.12", "lon": "31.40", "name": "Cairo Airport", "city": "Cairo", "country": "Egypt", "iso": "EG" },
-    "ASW": { "lat": "23.96", "lon": "32.81", "name": "Aswan Airport", "city": "Aswan", "country": "Egypt", "iso": "EG" },
-    "LXR": { "lat": "25.67", "lon": "32.70", "name": "Luxor Airport", "city": "Luxor", "country": "Egypt", "iso": "EG" },
-    "PDL": { "lat": "37.74", "lon": "-25.69", "name": "Ponta Delgada Airport", "city": "Azores", "country": "Portugal", "iso": "PT" },
-    "MAD": { "lat": "40.4839", "lon": "-3.5679", "name": "Adolfo Suárez Madrid-Barajas", "city": "Madrid", "country": "Spain", "tz": "Europe/Madrid", "iso": "ES" },
-    "DOH": { "lat": "25.2611", "lon": "51.5650", "name": "Hamad Intl", "city": "Doha", "country": "Qatar", "tz": "Asia/Qatar", "iso": "QA" },
-    "CMB": { "lat": "7.1807", "lon": "79.8837", "name": "Bandaranaike Intl", "city": "Colombo", "country": "Sri Lanka", "tz": "Asia/Colombo", "iso": "LK" },
-    "PNH": { "lat": "11.5466", "lon": "104.8460", "name": "Phnom Penh Intl", "city": "Phnom Penh", "country": "Cambodia", "tz": "Asia/Phnom_Penh", "iso": "KH" },
-    "ARN": { "lat": "59.6519", "lon": "17.9186", "name": "Stockholm Arlanda", "city": "Stockholm", "country": "Sweden", "tz": "Europe/Stockholm", "iso": "SE" },
-
     // Popular Cities and Requested Locations
     "Paris": { "lat": "48.8566", "lon": "2.3522", "city": "Paris", "country": "France", "countryCode": "FR" },
     "Nice": { "lat": "43.7031", "lon": "7.2626", "city": "Nice", "country": "France", "countryCode": "FR" },
@@ -355,10 +278,8 @@ export const STATIC_GEO_DATA: Record<string, any> = {
     "Sweden": { "lat": "60.1282", "lon": "18.6435", "city": "Sweden", "country": "Sweden", "countryCode": "SE" },
     "Malmö": { "lat": "55.6059", "lon": "13.0007", "city": "Malmö", "country": "Sweden", "countryCode": "SE", "tz": "Europe/Stockholm" },
     "Malmo": { "lat": "55.6059", "lon": "13.0007", "city": "Malmö", "country": "Sweden", "countryCode": "SE", "tz": "Europe/Stockholm" },
-    "MMX": { "lat": "55.5362", "lon": "13.3697", "name": "Malmö Airport", "city": "Malmö", "country": "Sweden", "tz": "Europe/Stockholm", "iso": "SE" },
     "Gothenburg": { "lat": "57.7089", "lon": "11.9746", "city": "Gothenburg", "country": "Sweden", "countryCode": "SE", "tz": "Europe/Stockholm" },
     "Göteborg": { "lat": "57.7089", "lon": "11.9746", "city": "Gothenburg", "country": "Sweden", "countryCode": "SE", "tz": "Europe/Stockholm" },
-    "GOT": { "lat": "57.6628", "lon": "12.2798", "name": "Göteborg Landvetter", "city": "Gothenburg", "country": "Sweden", "tz": "Europe/Stockholm", "iso": "SE" },
     "Tunis": { "lat": "36.8065", "lon": "10.1815", "city": "Tunis", "country": "Tunisia", "countryCode": "TN" },
     "Tunisia": { "lat": "33.8869", "lon": "9.5375", "city": "Tunis", "country": "Tunisia", "countryCode": "TN" },
 };
@@ -916,14 +837,15 @@ const staticToCoords = (ap: any): CoordResult => ({
     countryCode: ap.countryCode || ap.iso
 });
 
-const topAirportToCoords = (ap: TopAirport): CoordResult => ({
-    lat: ap.lat,
-    lng: ap.lng,
-    tz: ap.timezone,
-    city: ap.city || ap.name,
-    country: ap.country,
-    countryCode: getTopAirportCountryCode(ap)
-});
+/**
+ * An airport in the row shape STATIC_GEO_DATA used ({ lat, lon, name, city, country, tz, iso }), from the live
+ * airport table. Undefined for unknown codes, codes without a position and while the table is loading.
+ */
+export function airportRow(code: string | undefined | null): { lat: number; lon: number; name: string; city: string; country: string; tz?: string; iso: string; countryCode: string } | undefined {
+    const ap = getAirport(code);
+    if (!hasPosition(ap)) return undefined;
+    return { lat: ap.lat, lon: ap.lng, name: ap.name, city: ap.city || ap.name, country: ap.country, tz: ap.tz || undefined, iso: ap.countryCode, countryCode: ap.countryCode };
+}
 
 const cachedEntryToCoords = (cached: any): CoordResult | undefined => {
     if (cached?.lat == null) return undefined;
@@ -980,9 +902,8 @@ function resolveOffline(cleanLocation: string): CoordResult | undefined {
     const iataMatch = cleanLocation.match(/^([A-Z]{3})\s*-\s*/);
     if (iataMatch) {
         const code = iataMatch[1];
-        if (STATIC_GEO_DATA[code]) return staticToCoords(STATIC_GEO_DATA[code]);
-        const top = TOP_AIRPORTS_BY_IATA.get(code);
-        if (top) return topAirportToCoords(top);
+        const ap = airportRow(code);
+        if (ap) return staticToCoords(ap);
         const rw = resolveRunwayAirportOffline(code, cleanLocation);
         if (rw) return rw;
     }
@@ -990,11 +911,10 @@ function resolveOffline(cleanLocation: string): CoordResult | undefined {
     // B. Bare IATA code
     const upper = cleanLocation.toUpperCase();
     if (upper.length === 3 && /^[A-Z]{3}$/.test(upper)) {
-        if (STATIC_GEO_DATA[upper]) return staticToCoords(STATIC_GEO_DATA[upper]);
-        const top = TOP_AIRPORTS_BY_IATA.get(upper);
-        if (top) return topAirportToCoords(top);
-        // Only match the full runway dataset for strict uppercase codes so Title-Case 3-letter cities ("Ulm", "Spa", "Rio") stay cities
+        // Only strict uppercase codes are airports, so Title-Case 3-letter cities ("Ulm", "Spa", "Rio") stay cities
         if (/^[A-Z]{3}$/.test(cleanLocation)) {
+            const ap = airportRow(cleanLocation);
+            if (ap) return staticToCoords(ap);
             const rw = resolveRunwayAirportOffline(cleanLocation, cleanLocation);
             if (rw) return rw;
         }
@@ -1182,52 +1102,30 @@ async function resolvePlaceNameRaw(query: string): Promise<{ city: string, count
     const iataMatch = cleanQuery.match(/^([A-Z]{3})\s*-\s*/);
     if (iataMatch) {
         const code = iataMatch[1].toUpperCase();
-        if (STATIC_GEO_DATA[code]) {
-            const ap = STATIC_GEO_DATA[code];
+        const ap = airportRow(code);
+        if (ap) {
             const cleanCity = cleanCityName(ap.city, ap.iso);
             return {
                 city: cleanCity,
                 country: ap.country,
                 countryCode: ap.iso,
-                displayName: `${cleanCity}, ${ap.country}`
-            };
-        }
-        const top = TOP_AIRPORTS_BY_IATA.get(code);
-        if (top) {
-            const iso = getTopAirportCountryCode(top);
-            const cleanCity = cleanCityName(top.city, iso);
-            return {
-                city: cleanCity,
-                country: top.country,
-                countryCode: iso,
-                displayName: `${cleanCity}, ${top.country}`
+                displayName: ap.country ? `${cleanCity}, ${ap.country}` : cleanCity
             };
         }
     }
 
     const uppercaseQuery = cleanQuery.toUpperCase();
 
-    // Direct match against IATA airports
-    if (STATIC_GEO_DATA[uppercaseQuery]) {
-        const ap = STATIC_GEO_DATA[uppercaseQuery];
-        const cleanCity = cleanCityName(ap.city, ap.iso);
-        return {
-            city: cleanCity,
-            country: ap.country,
-            countryCode: ap.iso,
-            displayName: `${cleanCity}, ${ap.country}`
-        };
-    }
-    if (/^[A-Z]{3}$/.test(uppercaseQuery)) {
-        const top = TOP_AIRPORTS_BY_IATA.get(uppercaseQuery);
-        if (top) {
-            const iso = getTopAirportCountryCode(top);
-            const cleanCity = cleanCityName(top.city, iso);
+    // Direct match against IATA airports (strict uppercase codes only, like getCoordinates)
+    if (/^[A-Z]{3}$/.test(cleanQuery)) {
+        const ap = airportRow(cleanQuery);
+        if (ap) {
+            const cleanCity = cleanCityName(ap.city, ap.iso);
             return {
                 city: cleanCity,
-                country: top.country,
-                countryCode: iso,
-                displayName: `${cleanCity}, ${top.country}`
+                country: ap.country,
+                countryCode: ap.iso,
+                displayName: ap.country ? `${cleanCity}, ${ap.country}` : cleanCity
             };
         }
     }

@@ -52,7 +52,14 @@ CREATE TABLE IF NOT EXISTS global_airports (
   id SERIAL PRIMARY KEY,
   iata VARCHAR(10) CHECK (iata <> ''),
   city_name TEXT,
-  airport_name TEXT
+  airport_name TEXT,
+  icao TEXT,
+  latitude DOUBLE PRECISION,
+  longitude DOUBLE PRECISION,
+  country_code TEXT,
+  country TEXT,
+  timezone TEXT,
+  kind TEXT
 );
 
 CREATE TABLE IF NOT EXISTS global_carriers (

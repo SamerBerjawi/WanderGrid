@@ -65,7 +65,7 @@ per collection, so two hooks that use different keys for the same collection bot
 datasets, and the wiring of the modules below. Moved out so far (decision D-07, no behaviour change):
 `records.js` (validation, ownership `OWNERSHIP`, optimistic concurrency, transactions, generic CRUD handlers),
 `recordRoutes.js` (the collection routes and `/api/batch`), `auth.js` (sign-in, sign-up, demo, password reset,
-sessions, member roster), `settings.js` (workspace settings and stored secrets), `jobs.js` (background jobs, backup, restore, wipe), `proxy.js` (every `/api/proxy/*` route, the flight, geocoding and route lookups, and the airport and carrier search), `dbSchema.js` (missing tables and indexes, then migrations), `migrations/` (numbered data migrations, D-06) and `tripKind.js` (D-04). Helpers that were
+sessions, member roster), `settings.js` (workspace settings and stored secrets), `jobs.js` (background jobs, backup, restore, wipe), `proxy.js` (every `/api/proxy/*` route, the flight, geocoding and route lookups, and the airport and carrier search and `/api/airports/index`), `airportData.js` (downloads and joins the airport datasets), `airportRepair.js` (post-refresh repair of saved flight positions and failed routes), `dbSchema.js` (missing tables and indexes, then migrations), `migrations/` (numbered data migrations, D-06) and `tripKind.js` (D-04). Helpers that were
 already split out: `upstream.js` (fetch with timeout/cache/rate gate), `geocodingChain.js`, `routeProxy.js`,
 `routeStore.js` (persistent route resolver), `flightLookup.js`, `aviationStack.js`, `holidays.js`, `fxRates.js`,
 `ferryLines.js`, `sharedTrip.js`, `icsFeed.mjs`, `keyTester.js`, `integrationsTester.js`.

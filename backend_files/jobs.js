@@ -6,7 +6,7 @@ const { convertTripLeave } = require('./leaveEntries');
 const { convertLegacyAllowances } = require('./legacyLeave');
 
 module.exports = function registerJobRoutes(app, {
-  pool, sendError, requireAdmin, withTransaction, bulkUpsert, loadGlobalData, refreshAllGlobalDatasets, tripKind,
+  pool, sendError, requireAdmin, withTransaction, bulkUpsert, loadGlobalData, refreshAllGlobalDatasets, repairAfterRefresh, tripKind,
   isStoredPasswordHash, hashPassword, removeSensitiveData, SECRET_MASK, dropObsoleteSettings, invalidateSecretsCache, HttpError, BoundedMap,
 }) {
   // --- Background Job Manager & Supervisor Engine ---
@@ -125,10 +125,12 @@ module.exports = function registerJobRoutes(app, {
       const jobId = runBackgroundJob('GLOBAL_DATA_REFRESH', async (progress) => {
           progress(20);
           const datasets = await refreshAllGlobalDatasets();
-          progress(90);
+          progress(70);
           await loadGlobalData();
+          progress(85);
+          const { repaired, routes } = await repairAfterRefresh();
           progress(100);
-          return { message: 'Database global datasets successfully refreshed and memory maps synced.', datasets };
+          return { message: 'Airports and carriers refreshed, saved flights checked and failed routes queued again.', datasets, repaired, routes };
       });
       
       res.status(202).json({

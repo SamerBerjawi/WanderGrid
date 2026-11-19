@@ -1,6 +1,6 @@
 import { CountryResidenceStatus, Trip, VisitedItem, getResidenceStatuses } from '../types';
 import { getRegion } from '../services/geoData';
-import { cleanCityName, formatPlaceName, resolvePlaceName, getCoordinates, STATIC_GEO_DATA } from '../services/geocoding';
+import { cleanCityName, formatPlaceName, resolvePlaceName, getCoordinates, airportRow } from '../services/geocoding';
 import { isUnknownPlaceName, mergeCityRecords, splitCombinedPlaces, type AirportInfo } from '../services/cityRegistry';
 import {
     canonicalCountryName, countryId, excludedCountryCodes, findCountryRecord, normalizeCountryCode, type MergedCountry,
@@ -23,9 +23,9 @@ export interface ScanResult { countries: ScanCountry[]; cities: ScanCity[] }
 const today = () => new Date().toISOString().split('T')[0];
 
 export const resolveAirportCity = (code: string): AirportInfo | undefined => {
-    const ap = (STATIC_GEO_DATA as Record<string, any>)[code];
+    const ap = airportRow(code);
     if (!ap?.city) return undefined;
-    return { city: ap.city as string, countryCode: ap.iso as string, lat: parseFloat(ap.lat), lng: parseFloat(ap.lon) };
+    return { city: ap.city, countryCode: ap.iso, lat: ap.lat, lng: ap.lon };
 };
 
 const statuses = (item: VisitedItem) => getResidenceStatuses(item);
@@ -345,8 +345,7 @@ export interface CountryActivity {
 /** Country a flight lands in: its stored code, or the destination airport's country. */
 const flightArrivalCountry = (f: any): string | undefined => {
     if (f.destCountryCode) return f.destCountryCode;
-    const ap = (STATIC_GEO_DATA as Record<string, any>)[String(f.destination || '').toUpperCase()];
-    return ap?.iso;
+    return airportRow(String(f.destination || '').trim().toUpperCase())?.iso || undefined;
 };
 
 /**

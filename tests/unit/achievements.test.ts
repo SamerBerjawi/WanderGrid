@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Trip } from '../../types';
 import type { Leg } from '../../utils/dashboardModel';
-import { buildStamps, equatorCrossings, levelName, singular, monthStreak, nextUp, polarPlaces, totalsOf } from '../../utils/achievements';
-import { TOP_100_AIRPORTS } from '../../utils/topAviationData';
+import { BIG_HUBS, buildStamps, equatorCrossings, levelName, singular, monthStreak, nextUp, polarPlaces, totalsOf } from '../../utils/achievements';
 import { flight } from './helpers';
 
 // The offline place lookup knows airports like LHR and SYD but not every city: two places are added for the polar and equator cases.
@@ -62,7 +61,7 @@ describe('the stamps', () => {
     });
 
     it('counts the busiest airports you have been through', () => {
-        const [first, second, third] = TOP_100_AIRPORTS.slice(0, 3).map(a => a.iata);
+        const [first, second, third] = BIG_HUBS.slice(0, 3);
         const flights = [flight('1', first, second, '2026-03-03', '10:00', '2026-03-03', '12:00'), flight('2', second, 'XYZ', '2026-03-04', '10:00', '2026-03-04', '12:00')];
         expect(stampOf(buildStamps(input({ flights })), 'hubs').value).toBe(2);
         expect(third).toBeTruthy();

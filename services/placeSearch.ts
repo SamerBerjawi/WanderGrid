@@ -11,7 +11,7 @@
  *    user picked returns the very same coordinates instead of re-geocoding free text.
  */
 import { STATIC_GEO_DATA, cleanCityName } from './geocoding';
-import { TOP_100_AIRPORTS, getTopAirportCountryCode } from '../utils/topAviationData';
+import { allAirports, airportIndexGeneration, getAirport, hasPosition } from './airportIndex';
 import { getPhysicalRunways, getAirportRunwayCentroid, runwayCentroid } from './airportRunwayDataset';
 
 export type PlaceKind = 'city' | 'country' | 'street' | 'building' | 'business' | 'station' | 'port' | 'airport' | 'region' | 'poi';
@@ -204,9 +204,11 @@ interface LocalEntry {
 }
 
 let localIndex: LocalEntry[] | null = null;
+let localIndexGeneration = -1;
 
 function getLocalIndex(): LocalEntry[] {
-    if (localIndex) return localIndex;
+    if (localIndex && localIndexGeneration === airportIndexGeneration()) return localIndex;
+    localIndexGeneration = airportIndexGeneration();
     const entries: LocalEntry[] = [];
     const seenIatas = new Set<string>();
     for (const [key, ap] of Object.entries(STATIC_GEO_DATA as Record<string, any>)) {
@@ -233,21 +235,23 @@ function getLocalIndex(): LocalEntry[] {
             nCity: norm(city)
         });
     }
-    for (const a of TOP_100_AIRPORTS) {
-        const code = a.iata.toUpperCase();
-        if (seenIatas.has(code)) continue;
-        seenIatas.add(code);
+    // The instant tier offers the large airports of the live airport table; every other airport is found by its
+    // exact code (resolveAirportByIata) or through the server's airport search.
+    for (const a of allAirports()) {
+        if (a.kind !== 'large_airport' || !hasPosition(a) || seenIatas.has(a.iata)) continue;
+        seenIatas.add(a.iata);
+        const name = a.name || `${a.city} Airport`;
         entries.push({
             kind: 'airport',
-            iata: code,
-            name: a.name,
+            iata: a.iata,
+            name,
             city: a.city,
             country: a.country,
-            countryCode: getTopAirportCountryCode(a),
+            countryCode: a.countryCode,
             lat: a.lat,
             lng: a.lng,
-            tz: a.timezone,
-            nName: norm(a.name),
+            tz: a.tz || undefined,
+            nName: norm(name),
             nCity: norm(a.city),
         });
     }
@@ -1119,8 +1123,11 @@ export async function resolveAirportByIata(rawCode: string, bias?: { lat?: numbe
     const code = rawCode.trim().toUpperCase();
     if (!/^[A-Z]{3}$/.test(code)) return undefined;
 
-    // 1. Instant local index (STATIC_GEO_DATA + TOP_100_AIRPORTS)
-    const localEntry = getLocalIndex().find(e => e.kind === 'airport' && e.iata === code);
+    // 1. The live airport table (services/airportIndex.ts), already in memory
+    const known = getAirport(code);
+    const localEntry: LocalEntry | undefined = hasPosition(known)
+        ? { kind: 'airport', iata: code, name: known.name || `${known.city || code} Airport`, city: known.city, country: known.country, countryCode: known.countryCode, lat: known.lat, lng: known.lng, tz: known.tz || undefined, nName: norm(known.name), nCity: norm(known.city) }
+        : undefined;
     if (localEntry) {
         const place = buildPlaceFromLocal(localEntry);
         rememberPlaces([place]);

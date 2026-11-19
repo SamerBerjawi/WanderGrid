@@ -124,3 +124,57 @@ test('airports API: lookup/search/geocode resolve MLA and other airports from RA
     assert.equal(lookupMucReversed.status, 200);
     assert.equal(lookupMucReversed.json.airport_name, 'Munich Intl.');
 });
+
+test('a refresh joins the live sources, serves /api/airports/index and repairs saved flights and failed routes', async () => {
+    const names = [
+        { iata: 'MLA', city_name: 'Malta', airport_name: 'Luqa International' },
+        { iata: 'TUN', city_name: 'Tunis', airport_name: 'Carthage' },
+        { iata: 'LHR', city_name: 'London', airport_name: 'Heathrow' },
+        { iata: 'MUC', city_name: 'Munich', airport_name: 'Munich Intl.' },
+        { iata: 'ALC', city_name: 'Alicante', airport_name: 'Alicante Airport' },
+    ].map((r) => JSON.stringify(r)).join('\n');
+    const csv = [
+        '"id","ident","type","name","latitude_deg","longitude_deg","elevation_ft","continent","iso_country","iso_region","municipality","scheduled_service","icao_code","iata_code"',
+        '1,"LMML","large_airport","Malta International Airport",35.845932,14.491546,300,"EU","MT","MT-25","Valletta","yes","LMML","MLA"',
+        '2,"DTTA","large_airport","Tunis Carthage",36.851002,10.2272,22,"AF","TN","TN-11","Tunis","yes","DTTA","TUN"',
+    ].join('\n');
+    const tz = JSON.stringify({ LMML: { icao: 'LMML', iata: 'MLA', tz: 'Europe/Malta' } });
+
+    // A saved flight with the old wrong position (Mladá Boleslav) and a road leg the router could not trace
+    await srv.api('POST', '/api/flights', { token: admin.token, body: { id: 'f-mla', mode: 'Flight', origin: 'TUN', destination: 'MLA', departureDate: '2026-11-01', originLat: 36.85, originLng: 10.22, destLat: 50.3983, destLng: 14.8983, destGeoKey: 'MLA' } });
+    await srv.pool.query("INSERT INTO cached_routes (route_key, payload) VALUES ('road:none', $1), ('road:ok', $2), ('road:long', $3)", [
+        JSON.stringify({ status: 'none', reason: 'no_route' }), JSON.stringify({ status: 'ok', geometry: 'x' }), JSON.stringify({ status: 'none', reason: 'too_long' }),
+    ]);
+
+    await withFetch(
+        async (url) => new Response(/ourairports/.test(url) ? csv : /mwgg/.test(url) ? tz : names),
+        async () => {
+            await srv.__test.refreshGlobalDataset('airports');
+            await srv.__test.loadGlobalData();
+        }
+    );
+    const out = await srv.__test.repairAfterRefresh();
+    assert.equal(out.repaired.legs, 1);
+    assert.equal(out.routes, 1);
+
+    const flight = (await srv.api('GET', '/api/flights', { token: admin.token })).json.find((f) => f.id === 'f-mla');
+    assert.ok(Math.abs(flight.destLat - 35.8459) < 0.01, `MLA repaired to Malta, got ${flight.destLat}`);
+    assert.equal(flight.originLat, 36.85, 'the Tunis position was close enough and is kept');
+
+    const keys = (await srv.pool.query('SELECT route_key FROM cached_routes')).rows.map((r) => r.route_key).sort();
+    assert.deepEqual(keys, ['road:long', 'road:ok']);
+
+    const lookup = await srv.api('GET', '/api/airports/lookup/MLA', { token: admin.token });
+    assert.equal(lookup.json.timezone, 'Europe/Malta');
+    assert.equal(lookup.json.country_code, 'MT');
+
+    const index = await srv.api('GET', '/api/airports/index', { token: admin.token });
+    assert.equal(index.status, 200);
+    const mla = index.json.rows.find((r) => r[0] === 'MLA');
+    assert.deepEqual(mla.slice(0, 4), ['MLA', 'LMML', 'Luqa International', 'Malta']);
+    assert.ok(Math.abs(mla[4] - 35.8459) < 0.001);
+    const etag = index.headers.get('etag');
+    assert.ok(etag);
+    const again = await srv.api('GET', '/api/airports/index', { token: admin.token, headers: { 'If-None-Match': etag } });
+    assert.equal(again.status, 304);
+});

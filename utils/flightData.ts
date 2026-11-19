@@ -1,31 +1,22 @@
 import { Transport } from '../types';
-import { STATIC_GEO_DATA } from '../services/geocoding';
+import { allAirports, getAirport, searchAirports as searchAirportIndex } from '../services/airportIndex';
 import {
-  TOP_100_AIRPORTS,
   TOP_50_AIRLINES,
-  TOP_AIRPORTS_BY_IATA,
   TOP_AIRLINES_BY_IATA,
-  AIRPORT_CODES as TOP_AIRPORT_CODES,
   AIRLINE_CODES as TOP_AIRLINE_CODES,
-  DEFAULT_AIRPORT_TIMEZONES as TOP_DEFAULT_TIMEZONES,
   TOP_AIRLINE_DOMAINS,
-  searchTopAirports,
   searchTopAirlines,
-  TopAirport,
   TopAirline
 } from './topAviationData';
 
-// Re-export top aviation datasets and lookup helpers
+// Re-export top airline datasets and lookup helpers
 export {
-  TOP_100_AIRPORTS,
   TOP_50_AIRLINES,
-  TOP_AIRPORTS_BY_IATA,
   TOP_AIRLINES_BY_IATA,
   TOP_AIRLINE_DOMAINS,
-  searchTopAirports,
   searchTopAirlines
 };
-export type { TopAirport, TopAirline };
+export type { TopAirline };
 
 /**
  * Normalizes full legal corporate registrations (e.g. from GitHub datasets or external APIs)
@@ -86,9 +77,8 @@ export function formatCommercialAirlineName(rawName: string, iataCode?: string):
 }
 
 // Dynamic, backwards-compatible dictionaries seeded with Top 100/50 and enriched dynamically
-export const AIRPORT_CODES: Record<string, string> = { ...TOP_AIRPORT_CODES };
+export const AIRPORT_CODES: Record<string, string> = {};
 export const AIRLINE_CODES: Record<string, string> = { ...TOP_AIRLINE_CODES };
-export const DEFAULT_AIRPORT_TIMEZONES: Record<string, string> = { ...TOP_DEFAULT_TIMEZONES };
 
 // Full online datasets loaded from GitHub to guarantee global worldwide coverage
 export const onlineAirports = new Map<string, { city: string; name: string; country?: string }>();
@@ -98,16 +88,6 @@ export const onlineCarrierIcaoToIata = new Map<string, string>();
 // -------------------------------------------------------------
 // STEP 1: PREPOPULATE IN-MEMORY DATASETS FROM TOP 100/50 (0ms)
 // -------------------------------------------------------------
-TOP_100_AIRPORTS.forEach(a => {
-  const upper = a.iata.toUpperCase();
-  onlineAirports.set(upper, {
-    city: a.city,
-    name: a.name,
-    country: a.country
-  });
-  AIRPORT_CODES[upper] = a.city;
-});
-
 TOP_50_AIRLINES.forEach(c => {
   const upper = c.iata.toUpperCase();
   onlineCarriers.set(upper, {
@@ -118,25 +98,18 @@ TOP_50_AIRLINES.forEach(c => {
   AIRLINE_CODES[upper] = c.name;
 });
 
-// Seed from STATIC_GEO_DATA if available
-try {
-  if (typeof STATIC_GEO_DATA === 'object' && STATIC_GEO_DATA !== null) {
-    Object.entries(STATIC_GEO_DATA).forEach(([code, data]) => {
-      const upper = (code || '').toUpperCase();
-      if (upper && upper.length === 3 && !onlineAirports.has(upper)) {
-        onlineAirports.set(upper, {
-          city: (data as any).city || '',
-          name: (data as any).name || '',
-          country: (data as any).country || ''
-        });
-        if (!AIRPORT_CODES[upper]) {
-          AIRPORT_CODES[upper] = (data as any).city || (data as any).name || '';
-        }
-      }
-    });
+// Airports: the live airport table (services/airportIndex.ts) fills the maps below whenever a copy arrives.
+const seedFromAirportIndex = () => {
+  for (const ap of allAirports()) {
+    onlineAirports.set(ap.iata, { city: ap.city, name: ap.name, country: ap.country });
+    AIRPORT_CODES[ap.iata] = ap.city || ap.name || ap.iata;
+    if (ap.tz) airportTimezones.set(ap.iata, ap.tz);
   }
-} catch (e) {
-  console.warn("Failed to seed onlineAirports from STATIC_GEO_DATA", e);
+};
+if (typeof window !== 'undefined') {
+  window.addEventListener('wandergrid_metadata_resolved', (e: Event) => {
+    if ((e as CustomEvent).detail?.type === 'airports') seedFromAirportIndex();
+  });
 }
 
 // Seed from localStorage persistent client cache if in browser
@@ -183,11 +156,14 @@ try {
   }
 } catch (e) {}
 
-export const airportTimezones = new Map<string, string>(Object.entries(DEFAULT_AIRPORT_TIMEZONES));
+export const airportTimezones = new Map<string, string>();
+seedFromAirportIndex();
 
 export function getAirportTimezone(iataCode: string): string | undefined {
   const code = (iataCode || "").trim().toUpperCase();
   if (!code) return undefined;
+  const live = getAirport(code)?.tz;
+  if (live) return live;
   if (airportTimezones.has(code)) return airportTimezones.get(code);
   const match = code.match(/\b([A-Z]{3})\b/);
   if (match && airportTimezones.has(match[1])) {
@@ -259,7 +235,7 @@ let isOnlineDataLoaded = false;
 export async function preloadStaticDatasets() {
   if (isOnlineLoadingStarted) return;
   isOnlineLoadingStarted = true;
-  console.log("Preloading full airline, airport, and timezone data from GitHub...");
+  console.log("Preloading airline data...");
   
   try {
     // 1. Fetch carriers
@@ -319,57 +295,8 @@ export async function preloadStaticDatasets() {
       })
       .catch((err) => console.warn("Failed preloading OpenFlights carriers mapping:", err));
 
-    // 3. Fetch airports
-    const airportsPromise = fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/airport_data_full_processed.jsonl')
-      .then(async (res) => {
-        if (!res.ok) throw new Error();
-        const text = await res.text();
-        const lines = text.split('\n');
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const item = JSON.parse(line);
-            const iata = (item.iata || '').trim().toUpperCase();
-            if (iata) {
-              const cityName = item.city_name || '';
-              const airportName = item.airport_name || '';
-              onlineAirports.set(iata, {
-                city: cityName,
-                name: airportName,
-                country: item.country_name || ''
-              });
-              if (!AIRPORT_CODES[iata]) {
-                AIRPORT_CODES[iata] = cityName || airportName;
-              }
-            }
-          } catch (e) {}
-        }
-        console.log(`Preloaded ${onlineAirports.size} airports from GitHub.`);
-      })
-      .catch((err) => console.warn("Failed preloading airports from GitHub:", err));
-
-    // 4. Fetch OpenFlights airports database to enrich airportTimezones
-    const openflightsAirportsPromise = fetch('https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat')
-      .then(async (res) => {
-        if (!res.ok) throw new Error();
-        const text = await res.text();
-        const lines = text.split('\n');
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          const parts = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-          if (parts.length >= 12) {
-            const iata = parts[4].replace(/\"/g, '').trim().toUpperCase();
-            const tzName = parts[11].replace(/\"/g, '').trim();
-            if (iata && iata.length === 3 && tzName && tzName !== '\\N' && tzName !== '-') {
-              airportTimezones.set(iata, tzName);
-            }
-          }
-        }
-        console.log(`Preloaded ${airportTimezones.size} airport timezones from OpenFlights.`);
-      })
-      .catch((err) => console.warn("Failed preloading OpenFlights timezone data:", err));
-
-    await Promise.allSettled([carriersPromise, openflightsPromise, airportsPromise, openflightsAirportsPromise]);
+    // Airports and their timezones come from the server's airport table (services/airportIndex.ts).
+    await Promise.allSettled([carriersPromise, openflightsPromise]);
     isOnlineDataLoaded = true;
     
     // Dispatch master reload event to cause views to refresh
@@ -660,10 +587,10 @@ export function getCityName(iataCode: string): string {
   const code = (iataCode || "").trim().toUpperCase();
   if (!code || code.length < 2) return code;
 
-  // 1. Tier 1: Check instant curated Top 100 Airports (0ms latency)
-  const topAirport = TOP_AIRPORTS_BY_IATA.get(code);
-  if (topAirport) {
-    return topAirport.city || topAirport.name || code;
+  // 1. The live airport table
+  const live = getAirport(code);
+  if (live && (live.city || live.name)) {
+    return live.city || live.name;
   }
 
   // 2. Tier 2: Check full in-memory online dataset (preloaded from GitHub)
@@ -693,10 +620,10 @@ export function getAirportName(iataCode: string): string {
   const code = (iataCode || "").trim().toUpperCase();
   if (!code || code.length < 2) return code;
 
-  // 1. Tier 1: Check instant curated Top 100 Airports (0ms latency)
-  const topAirport = TOP_AIRPORTS_BY_IATA.get(code);
-  if (topAirport) {
-    return topAirport.name;
+  // 1. The live airport table
+  const live = getAirport(code);
+  if (live?.name) {
+    return live.name;
   }
 
   // 2. Tier 2: Check in-memory online dataset
@@ -762,8 +689,8 @@ export function getAirportsByQueryLocally(query: string, limit: number = 15): Ar
   const q = query.trim().toLowerCase();
   if (!q) return [];
 
-  // Step 1: Instant search in Top 100 airports (Tier 1)
-  const topMatches = searchTopAirports(q, limit);
+  // Step 1: the live airport table
+  const topMatches = searchAirportIndex(q, limit);
   const seenIatas = new Set<string>();
   const results: Array<{
     iata: string;
@@ -782,8 +709,8 @@ export function getAirportsByQueryLocally(query: string, limit: number = 15): Ar
       code: a.iata,
       city_name: a.city,
       city: a.city,
-      airport_name: a.name,
-      name: a.name,
+      airport_name: a.name || a.city,
+      name: a.name || a.city,
       country: a.country
     });
   }

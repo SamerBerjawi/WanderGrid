@@ -409,7 +409,8 @@ function createRouteService({ pool, fetchUpstream, now = Date.now, log = console
     return res.json({ results });
   }
 
-  return { handleResolve, parseSpec, _internals: { enqueue, inFlight, queue } };
+  const clearBackoff = () => backoff.clear();
+  return { handleResolve, parseSpec, clearBackoff, _internals: { enqueue, inFlight, queue } };
 }
 
 module.exports = {

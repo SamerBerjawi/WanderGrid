@@ -18,6 +18,7 @@ import {
     getCoordinatesSync,
 } from '../../services/geocoding';
 import { journeyEnds, journeyKm } from '../../utils/journeysModel';
+import { __setAirportIndexForTest } from '../../services/airportIndex';
 import { buildMapModel } from '../../components/new/map/mapModel';
 import { flight, tripOf } from './helpers';
 
@@ -138,35 +139,37 @@ describe('airport IATA geocoding and ranking', () => {
         expect(scorePlace(ulmAirport, profileQuery('ulm', 'airport'))).toBeGreaterThan(scorePlace(ulmCity, profileQuery('ulm', 'airport')));
     });
 
-    it('resolves TOP_100_AIRPORTS synchronously without runways and guards Title-Case cities in getCoordinatesSync', () => {
+    it('resolves codes from the live airport table synchronously without runways and guards Title-Case cities in getCoordinatesSync', () => {
         __setPhysicalRunwaysForTest(null);
         const fetchMock = vi.fn();
         vi.stubGlobal('fetch', fetchMock);
 
         const muc = getCoordinatesSync('MUC');
         expect(muc).toBeDefined();
-        expect(muc!.lat).toBeCloseTo(48.3537, 3);
-        expect(muc!.lng).toBeCloseTo(11.775, 3);
+        expect(muc!.lat).toBeCloseTo(48.3538, 2);
+        expect(muc!.lng).toBeCloseTo(11.7861, 2);
         expect(muc!.countryCode).toBe('DE');
 
         const gva = getCoordinatesSync('GVA');
         expect(gva).toBeDefined();
-        expect(gva!.lat).toBeCloseTo(46.237, 3);
-        expect(gva!.lng).toBeCloseTo(6.1092, 3);
+        expect(gva!.lat).toBeCloseTo(46.238, 2);
+        expect(gva!.lng).toBeCloseTo(6.109, 2);
         expect(gva!.countryCode).toBe('CH');
         expect(fetchMock).not.toHaveBeenCalled();
 
         __setPhysicalRunwaysForTest(RUNWAY_FIXTURES);
         const mla = getCoordinatesSync('MLA');
         expect(mla).toBeDefined();
-        expect(mla!.lat).toBeCloseTo(35.8537, 3);
-        expect(mla!.lng).toBeCloseTo(14.4708, 3);
+        expect(mla!.lat).toBeCloseTo(35.8459, 3); // Malta International (LMML), from the airport table
+        expect(mla!.lng).toBeCloseTo(14.4915, 3);
+        expect(mla!.countryCode).toBe('MT');
 
         // Title-Case city "Ulm" must not snap to New Ulm Municipal Airport
         expect(getCoordinatesSync('Ulm')).toBeUndefined();
     });
 
     it('resolves MLA to Malta International Airport even when Photon returns Mladá Boleslav', async () => {
+        __setAirportIndexForTest([]); // the fallback chain, as before the airport table has loaded
         const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
             const url = String(input);
             if (url.includes('/api/airports/lookup/MLA')) {
@@ -222,6 +225,7 @@ describe('airport IATA geocoding and ranking', () => {
     });
 
     it('resolves MLA offline from physical runways when backend and Open-Meteo fail', async () => {
+        __setAirportIndexForTest([]); // the fallback chain, as before the airport table has loaded
         const fetchMock = vi.fn(async () => new Response('Server Error', { status: 500 }));
         vi.stubGlobal('fetch', fetchMock);
 
@@ -233,6 +237,7 @@ describe('airport IATA geocoding and ranking', () => {
     });
 
     it('resolves non-runway airports like DUR using airport name + city instead of bare IATA code', async () => {
+        __setAirportIndexForTest([]); // the fallback chain, as before the airport table has loaded
         const seenUrls: string[] = [];
         const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
             const url = String(input);
@@ -293,6 +298,7 @@ describe('airport IATA geocoding and ranking', () => {
     });
 
     it('self-heals stored Mladá Boleslav coordinates on MLA legs in journeysModel and buildMapModel', () => {
+        __setAirportIndexForTest([]); // the fallback chain, as before the airport table has loaded
         const corruptedFlight = flight('f-mla', 'AMS', 'MLA', '2026-06-01', '09:00', '2026-06-01', '12:00', {
             originLat: 52.3086,
             originLng: 4.7639,
