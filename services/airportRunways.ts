@@ -1,44 +1,17 @@
 // Airport Detailed Runway & Markings Geometry Generator for WanderGrid
 import type { PhysicalRunway } from './airportRunwayDataset';
-import { RUNWAY_DATASET_URL } from './airportRunwayDataset';
+import {
+    getPhysicalRunways,
+    getPhysicalRunwaysSync,
+    getAirportRunwayCentroid,
+    getAirportRunwayCentroidSync,
+} from './airportRunwayDataset';
 import { STATIC_GEO_DATA, formatProperLocationName } from './geocoding';
 import type { AirportCategory } from '../types/mapAppearance';
 import { TOP_AIRPORTS_BY_IATA } from '../utils/topAviationData';
 
 export type { PhysicalRunway, AirportCategory };
-
-let runwayDatasetCache: Record<string, PhysicalRunway[]> | null = null;
-let runwayLoadingPromise: Promise<Record<string, PhysicalRunway[]>> | null = null;
-
-/**
- * Asynchronously loads the physical runway dataset on demand, caching it in memory.
- */
-export async function getPhysicalRunways(): Promise<Record<string, PhysicalRunway[]>> {
-    if (runwayDatasetCache) return runwayDatasetCache;
-    if (!runwayLoadingPromise) {
-        runwayLoadingPromise = fetch(RUNWAY_DATASET_URL)
-            .then(res => {
-                if (!res.ok) throw new Error(`Runway dataset unavailable (HTTP ${res.status})`);
-                return res.json() as Promise<Record<string, PhysicalRunway[]>>;
-            })
-            .then(data => {
-                runwayDatasetCache = data;
-                return data;
-            })
-            .catch(err => {
-                runwayLoadingPromise = null; // allow a retry later
-                throw err;
-            });
-    }
-    return runwayLoadingPromise;
-}
-
-/**
- * Returns the currently cached physical runway dataset synchronously, or null if not yet loaded.
- */
-export function getPhysicalRunwaysSync(): Record<string, PhysicalRunway[]> | null {
-    return runwayDatasetCache;
-}
+export { getPhysicalRunways, getPhysicalRunwaysSync, getAirportRunwayCentroid, getAirportRunwayCentroidSync };
 
 const DEDICATED_CARGO_CODES = new Set([
     'MEM', 'SDF', 'ANC', 'LEJ', 'CVG', 'ONT', 'RFD', 'EMA', 'HHN', 'PIK', 
@@ -185,7 +158,7 @@ let globalAirportNodesCache: GlobalAirportNode[] | null = null;
 
 export function getAllGlobalAirports(dataset?: Record<string, PhysicalRunway[]> | null): GlobalAirportNode[] {
     if (globalAirportNodesCache) return globalAirportNodesCache;
-    const source = dataset || runwayDatasetCache;
+    const source = dataset || getPhysicalRunwaysSync();
     if (!source) return [];
     const nodes: GlobalAirportNode[] = [];
     for (const [code, rws] of Object.entries(source)) {
@@ -234,7 +207,7 @@ export interface RunwayGeometry {
 export function isKnownAirport(code: string): boolean {
     if (!code) return false;
     const clean = code.toUpperCase().trim();
-    const dataset = runwayDatasetCache;
+    const dataset = getPhysicalRunwaysSync();
     return dataset ? !!dataset[clean] : false;
 }
 
@@ -249,7 +222,7 @@ export function generateAirportRunway(
     lng: number
 ): RunwayGeometry | null {
     const cleanCode = (code || '').toUpperCase().trim();
-    const dataset = runwayDatasetCache;
+    const dataset = getPhysicalRunwaysSync();
     if (!dataset) return null;
     let realRunways = dataset[cleanCode];
     if (!realRunways) {

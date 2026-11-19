@@ -629,12 +629,14 @@ export const useFlightLog = () => {
     const withPlaces: Transport = { ...leg };
     try {
       const { getCoordinates } = await import('../services/geocoding');
+      const isFlight = isFlightLeg(withPlaces);
+      const normEnd = (val: string) => (isFlight && /^[A-Za-z]{3}$/.test(val.trim()) ? val.trim().toUpperCase() : val);
       if (withPlaces.origin?.trim() && (withPlaces.originLat == null || withPlaces.originGeoKey !== withPlaces.origin)) {
-        const c = await getCoordinates(withPlaces.origin);
+        const c = await getCoordinates(normEnd(withPlaces.origin));
         if (c) { withPlaces.originLat = c.lat; withPlaces.originLng = c.lng; withPlaces.originGeoKey = withPlaces.origin; }
       }
       if (withPlaces.destination?.trim() && (withPlaces.destLat == null || withPlaces.destGeoKey !== withPlaces.destination)) {
-        const c = await getCoordinates(withPlaces.destination);
+        const c = await getCoordinates(normEnd(withPlaces.destination));
         if (c) { withPlaces.destLat = c.lat; withPlaces.destLng = c.lng; withPlaces.destGeoKey = withPlaces.destination; }
       }
     } catch { /* positions are optional: the flight is saved without them */ }

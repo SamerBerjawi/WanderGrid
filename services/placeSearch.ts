@@ -11,6 +11,8 @@
  *    user picked returns the very same coordinates instead of re-geocoding free text.
  */
 import { STATIC_GEO_DATA, cleanCityName } from './geocoding';
+import { TOP_100_AIRPORTS, getTopAirportCountryCode } from '../utils/topAviationData';
+import { getPhysicalRunways, getAirportRunwayCentroid, runwayCentroid } from './airportRunwayDataset';
 
 export type PlaceKind = 'city' | 'country' | 'street' | 'building' | 'business' | 'station' | 'port' | 'airport' | 'region' | 'poi';
 export type SearchMode = 'auto' | 'airport' | 'station' | 'bus' | 'address';
@@ -116,7 +118,8 @@ const UK_NATIONS: Record<string, string> = {
 // Picked-place registry (label -> exact place)
 // ---------------------------------------------------------------------------------------------------------------
 
-const REGISTRY_KEY = 'wandergrid_place_registry_v1';
+const REGISTRY_KEY = 'wandergrid_place_registry_v2';
+const LEGACY_REGISTRY_KEY = 'wandergrid_place_registry_v1';
 const REGISTRY_MAX = 800;
 const registry = new Map<string, Place>();
 let registryLoaded = false;
@@ -131,6 +134,7 @@ function loadRegistry() {
     registryLoaded = true;
     try {
         if (typeof localStorage === 'undefined') return;
+        localStorage.removeItem(LEGACY_REGISTRY_KEY);
         const raw = localStorage.getItem(REGISTRY_KEY);
         if (!raw) return;
         const entries: Array<[string, Place]> = JSON.parse(raw);
@@ -159,7 +163,7 @@ export function rememberPlaces(places: Place[]) {
         registry.set(key, p);
         if (p.iata) {
             // Allow resolving the bare IATA code to the airport itself
-            registry.set(`iata:${p.iata}`, p);
+            registry.set(`iata:${p.iata.toUpperCase()}`, p);
         }
     }
     while (registry.size > REGISTRY_MAX) {
@@ -172,8 +176,13 @@ export function rememberPlaces(places: Place[]) {
 
 export function lookupPlaceByLabel(label: string): Place | undefined {
     loadRegistry();
-    const key = norm(cleanLabel(label));
-    return key ? registry.get(key) : undefined;
+    const cleaned = cleanLabel(label);
+    const key = norm(cleaned);
+    const direct = key ? registry.get(key) : undefined;
+    if (direct) return direct;
+    const iataPrefix = cleaned.match(/^([A-Z]{3})\s*-\s*/);
+    const iataCode = /^[A-Z]{3}$/.test(cleaned) ? cleaned : iataPrefix?.[1];
+    return iataCode ? registry.get(`iata:${iataCode}`) : undefined;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -199,6 +208,7 @@ let localIndex: LocalEntry[] | null = null;
 function getLocalIndex(): LocalEntry[] {
     if (localIndex) return localIndex;
     const entries: LocalEntry[] = [];
+    const seenIatas = new Set<string>();
     for (const [key, ap] of Object.entries(STATIC_GEO_DATA as Record<string, any>)) {
         const lat = parseFloat(ap.lat);
         const lng = parseFloat(ap.lon ?? ap.lng);
@@ -208,6 +218,7 @@ function getLocalIndex(): LocalEntry[] {
         // Country-level placeholder rows ("Sweden") carry an arbitrary representative point: never offer them as places.
         if (!isIata && norm(key) === norm(country)) continue;
         const city = ap.city || key;
+        if (isIata) seenIatas.add(key);
         entries.push({
             kind: isIata ? 'airport' : 'city',
             iata: isIata ? key : undefined,
@@ -220,6 +231,24 @@ function getLocalIndex(): LocalEntry[] {
             tz: ap.tz,
             nName: norm(isIata ? (ap.name || '') : city),
             nCity: norm(city)
+        });
+    }
+    for (const a of TOP_100_AIRPORTS) {
+        const code = a.iata.toUpperCase();
+        if (seenIatas.has(code)) continue;
+        seenIatas.add(code);
+        entries.push({
+            kind: 'airport',
+            iata: code,
+            name: a.name,
+            city: a.city,
+            country: a.country,
+            countryCode: getTopAirportCountryCode(a),
+            lat: a.lat,
+            lng: a.lng,
+            tz: a.timezone,
+            nName: norm(a.name),
+            nCity: norm(a.city),
         });
     }
     localIndex = entries;
@@ -240,14 +269,15 @@ function findNearbyIata(lat: number, lng: number, countryCode?: string): LocalEn
     return best;
 }
 
-function localMatches(nq: string, queryUpper: string): RawPlaceLike[] {
+function localMatches(nq: string, queryUpper: string, iataCandidate?: string): RawPlaceLike[] {
     const out: RawPlaceLike[] = [];
     if (nq.length < 2) return out;
     const isIataQuery = /^[A-Z]{3}$/.test(queryUpper);
     for (const e of getLocalIndex()) {
         let hit = false;
-        if (e.kind === 'airport' && isIataQuery && e.iata === queryUpper) hit = true;
-        else if (nq.length >= 3) {
+        if (e.kind === 'airport' && ((isIataQuery && e.iata === queryUpper) || (iataCandidate && e.iata === iataCandidate))) {
+            hit = true;
+        } else if (nq.length >= 3) {
             const words = (e.nName + ' ' + e.nCity).split(' ');
             hit = e.nName.startsWith(nq) || e.nCity.startsWith(nq) || words.some(w => w.length > 2 && w.startsWith(nq));
         }
@@ -489,6 +519,8 @@ interface QueryProfile {
     mode: SearchMode;
     airportIntent: boolean;
     stationIntent: boolean;
+    iataCandidate?: string;
+    strictIataIntent: boolean;
     bias?: { lat: number; lon: number };
 }
 
@@ -504,6 +536,14 @@ export function profileQuery(query: string, mode: SearchMode, bias?: { lat?: num
     const airportIntent = mode === 'airport' || AIRPORT_TEST.test(nMain);
     const stationIntent = mode === 'station' || mode === 'bus' || STATION_TEST.test(nMain);
     const tokens = nMain.replace(GENERIC_WORDS, ' ').split(' ').filter(t => t.length > 0);
+    const prefix = cleaned.match(/^([A-Za-z]{3})\s*-\s*/);
+    const iataCandidate = prefix
+        ? prefix[1].toUpperCase()
+        : (tokens.length === 1 && /^[a-z]{3}$/.test(tokens[0]) ? tokens[0].toUpperCase() : undefined);
+    const strictIataIntent = Boolean(
+        iataCandidate &&
+        (mode === 'airport' || airportIntent || /^[A-Z]{3}$/.test(cleaned) || /^[A-Z]{3}\s*-\s*/.test(cleaned))
+    );
     return {
         raw: cleaned,
         nMain,
@@ -513,6 +553,8 @@ export function profileQuery(query: string, mode: SearchMode, bias?: { lat?: num
         mode,
         airportIntent,
         stationIntent,
+        iataCandidate,
+        strictIataIntent,
         bias: bias && Number.isFinite(bias.lat) && Number.isFinite(bias.lon) ? { lat: bias.lat as number, lon: bias.lon as number } : undefined
     };
 }
@@ -520,6 +562,7 @@ export function profileQuery(query: string, mode: SearchMode, bias?: { lat?: num
 export function scorePlace(p: Place, q: QueryProfile): number {
     const nName = norm(p.name);
     const nLabelName = norm(p.label.replace(/^[A-Z]{3}\s*-\s*/, '').split(',')[0]);
+    const exactIata = Boolean(p.iata && q.iataCandidate && p.iata.toUpperCase() === q.iataCandidate);
     let s = 0;
 
     // 1. Name relevance (compared with generic words like "airport"/"station" removed on both sides)
@@ -540,7 +583,7 @@ export function scorePlace(p: Place, q: QueryProfile): number {
         const isLast = i === q.tokens.length - 1;
         if ((' ' + haystack).includes(' ' + t) || (isLast && haystack.includes(t))) covered++;
     });
-    const coverage = q.tokens.length ? covered / q.tokens.length : 1;
+    const coverage = exactIata ? 1 : (q.tokens.length ? covered / q.tokens.length : 1);
     s += coverage * 30;
     if (coverage === 0) s -= 90;
 
@@ -579,8 +622,10 @@ export function scorePlace(p: Place, q: QueryProfile): number {
 
     // 5. Verified airports (known IATA code) are what travellers mean; unverified airstrips rank below
     if (p.kind === 'airport' && p.iata) s += 45;
-    // Exact IATA
-    if (p.iata && q.raw.length === 3 && p.iata === q.upper) s += 250;
+    // Exact IATA (strong bonus under airport intent or uppercase IATA code; modest under lowercase auto search so city names like "ulm" stay ahead)
+    if (exactIata) {
+        s += q.strictIataIntent ? 250 : 25;
+    }
 
     // 6. Country / region hint from "City, Country"
     if (q.nHint) {
@@ -629,12 +674,23 @@ function mergeAndRank(candidates: Place[], q: QueryProfile, limit: number): Plac
             distanceKm(k.lat, k.lng, p.lat, p.lng) < SAME_PLACE_KM[p.kind]
         );
         if (dup) {
-            // Keep the richer record (IATA / timezone / population) but the better-ranked position
+            // Keep the richer record (IATA / timezone / population / country) at the better-ranked position
             if (!dup.iata && p.iata) { dup.iata = p.iata; dup.label = p.label; }
             if (!dup.tz && p.tz) dup.tz = p.tz;
             if (!dup.population && p.population) dup.population = p.population;
             if (dup.rank === undefined && p.rank !== undefined) dup.rank = p.rank;
             if (!dup.viewport && p.viewport) dup.viewport = p.viewport;
+            if (!dup.admin1 && p.admin1) dup.admin1 = p.admin1;
+            if (!dup.countryCode && p.countryCode) dup.countryCode = p.countryCode;
+            if (!dup.country && p.country) {
+                dup.country = p.country;
+                if (!norm(dup.subtitle).includes(norm(p.country))) {
+                    dup.subtitle = [dup.subtitle, p.country].filter(Boolean).join(', ');
+                }
+                if (!norm(dup.label).includes(norm(p.country))) {
+                    dup.label = `${dup.label}, ${p.country}`;
+                }
+            }
             continue;
         }
         kept.push({ ...p });
@@ -785,35 +841,123 @@ async function directNominatim(q: string): Promise<RawPlace[]> {
     });
 }
 
+const isGenericAirportName = (name?: string): boolean => /^(metropolitan area|all airports)$/i.test(String(name || '').trim());
+
+function airportExpectedTokens(apName: string, cityName: string): string[] {
+    return norm(`${cityName} ${apName}`)
+        .replace(AIRPORT_WORDS, ' ')
+        .replace(/\b(intl|international|regional|municipal|memorial|field|area)\b/g, ' ')
+        .split(' ')
+        .filter(t => t.length >= 3);
+}
+
+function pickMatchingAirportRaw(hits: RawPlace[], apName: string, cityName: string): RawPlace | undefined {
+    const validHits = hits.filter(h => validCoord(Number(h.latitude), Number(h.longitude)));
+    if (!validHits.length) return undefined;
+    const expected = airportExpectedTokens(apName, cityName);
+    if (!expected.length) return validHits[0];
+    return validHits.find(h => {
+        const hay = norm(`${h.name} ${h.locality || ''} ${h.admin1 || ''} ${h.country || ''}`);
+        return expected.some(t => hay.includes(t));
+    });
+}
+
+function pickMatchingAirportPlace(candidates: Place[], apName: string, cityName: string): Place | undefined {
+    if (!candidates.length) return undefined;
+    const expected = airportExpectedTokens(apName, cityName);
+    const matchesTokens = (c: Place) => {
+        if (!expected.length) return true;
+        const hay = norm(`${c.name} ${c.subtitle} ${c.label} ${c.country}`);
+        return expected.some(t => hay.includes(t));
+    };
+    return candidates.find(c => c.kind === 'airport' && matchesTokens(c))
+        || candidates.find(matchesTokens);
+}
+
 /** Backend airport database (names + IATA) joined with runway-derived coordinates: broad airport-name coverage. */
-async function searchAirportDb(q: string): Promise<RawPlace[]> {
-    if (Date.now() < backendDownUntil) return [];
-    try {
-        const rows = await fetchJson(`/api/airports/search?q=${encodeURIComponent(q)}`, PROVIDER_TIMEOUT_MS, true);
-        if (!Array.isArray(rows) || rows.length === 0) return [];
-        const { getPhysicalRunways } = await import('./airportRunways');
-        const runways = await getPhysicalRunways();
-        const out: RawPlace[] = [];
-        for (const r of rows) {
-            const code = String(r.iata || '').toUpperCase();
-            const first = runways[code]?.[0];
-            if (!first) continue;
+async function searchAirportDb(q: string, bias?: QueryProfile['bias']): Promise<RawPlace[]> {
+    const trimmed = q.trim();
+    const exactCode = /^[a-z]{3}$/i.test(trimmed) ? trimmed.toUpperCase() : null;
+    const out: RawPlace[] = [];
+
+    if (Date.now() >= backendDownUntil) {
+        try {
+            const rows = await fetchJson(`/api/airports/search?q=${encodeURIComponent(trimmed)}`, PROVIDER_TIMEOUT_MS, true);
+            if (Array.isArray(rows) && rows.length > 0) {
+                const needRunways = rows.some(r => !validCoord(Number(r.latitude), Number(r.longitude)));
+                const runways = needRunways ? await getPhysicalRunways().catch(() => null) : null;
+                for (const r of rows) {
+                    const code = String(r.iata || '').toUpperCase();
+                    if (!code) continue;
+                    const rawApName = isGenericAirportName(r.airport_name) ? '' : String(r.airport_name || '').trim();
+                    const cityName = String(r.city_name || '').trim();
+                    let lat = Number(r.latitude);
+                    let lng = Number(r.longitude);
+                    let country = String(r.country || '').trim();
+                    let countryCode = String(r.country_code || '').trim().toUpperCase();
+                    let tz = String(r.timezone || '').trim();
+
+                    if (!validCoord(lat, lng)) {
+                        const centroid = runwayCentroid(runways?.[code]);
+                        if (centroid) {
+                            lat = centroid.lat;
+                            lng = centroid.lng;
+                        }
+                    }
+
+                    // For exact IATA codes absent from airport-runways.json, resolve using the airport's real name + city, never bare IATA text.
+                    if (!validCoord(lat, lng) && exactCode && code === exactCode) {
+                        const textQuery = [rawApName, cityName].filter(Boolean).join(' ');
+                        if (textQuery) {
+                            const hits = await runProvider('photon', textQuery, bias, 'aeroway:aerodrome');
+                            const picked = pickMatchingAirportRaw(hits, rawApName, cityName)
+                                || (cityName.length >= 2 ? pickMatchingAirportRaw(await runProvider('open-meteo', cityName), rawApName, cityName) : undefined);
+                            if (picked && validCoord(picked.latitude, picked.longitude)) {
+                                lat = picked.latitude;
+                                lng = picked.longitude;
+                                country = country || picked.country || '';
+                                countryCode = countryCode || (picked.country_code || '').toUpperCase();
+                                tz = tz || picked.timezone || '';
+                            }
+                        }
+                    }
+
+                    if (!validCoord(lat, lng)) continue;
+                    out.push({
+                        name: rawApName || (cityName ? `${cityName} Airport` : `${code} Airport`),
+                        latitude: lat,
+                        longitude: lng,
+                        country,
+                        country_code: countryCode,
+                        timezone: tz || undefined,
+                        locality: cityName && (!country || norm(cityName) !== norm(country)) ? cityName : '',
+                        osm_key: 'aeroway',
+                        osm_value: 'aerodrome',
+                        provider: 'airport-db',
+                        iata: code,
+                    });
+                }
+            }
+        } catch (e: any) {
+            if (!e || e.status === undefined || e.status >= 500) backendDownUntil = Date.now() + 60_000;
+        }
+    }
+
+    if (exactCode && !out.some(r => r.iata === exactCode)) {
+        const rw = await getAirportRunwayCentroid(exactCode);
+        if (rw) {
             out.push({
-                name: r.airport_name || `${r.city_name} Airport`,
-                latitude: (first.start[1] + first.end[1]) / 2,
-                longitude: (first.start[0] + first.end[0]) / 2,
-                locality: r.city_name || '',
+                name: `${exactCode} Airport`,
+                latitude: rw.lat,
+                longitude: rw.lng,
                 osm_key: 'aeroway',
                 osm_value: 'aerodrome',
                 provider: 'airport-db',
-                iata: code
+                iata: exactCode,
             });
         }
-        return out;
-    } catch (e: any) {
-        if (!e || e.status === undefined || e.status >= 500) backendDownUntil = Date.now() + 60_000;
-        return [];
     }
+    return out;
 }
 
 async function runProvider(provider: ProviderName, q: string, bias?: QueryProfile['bias'], tag?: string): Promise<RawPlace[]> {
@@ -845,7 +989,7 @@ function cacheKeyFor(q: QueryProfile): string {
 export function searchPlacesLocal(query: string, opts: Pick<SearchOptions, 'mode' | 'bias' | 'limit'> = {}): Place[] {
     const q = profileQuery(query, opts.mode || 'auto', opts.bias);
     if (q.nMain.length < 2) return [];
-    const base = localMatches(norm(q.raw.split(',')[0]), q.upper.split(',')[0].trim()).map(m => buildPlaceFromLocal(m.entry));
+    const base = localMatches(norm(q.raw.split(',')[0]), q.upper.split(',')[0].trim(), q.iataCandidate).map(m => buildPlaceFromLocal(m.entry));
     return mergeAndRank(base, q, opts.limit || 8);
 }
 
@@ -871,7 +1015,7 @@ export async function searchPlaces(query: string, opts: SearchOptions = {}): Pro
     };
 
     // Tier 0: instant local results
-    const local = localMatches(norm(q.raw.split(',')[0]), q.upper.split(',')[0].trim()).map(m => buildPlaceFromLocal(m.entry));
+    const local = localMatches(norm(q.raw.split(',')[0]), q.upper.split(',')[0].trim(), q.iataCandidate).map(m => buildPlaceFromLocal(m.entry));
     arrived.push(...local);
     let latest = local.length ? emit() : [];
 
@@ -880,12 +1024,20 @@ export async function searchPlaces(query: string, opts: SearchOptions = {}): Pro
     const tasks: Array<{ name: string; promise: Promise<RawPlace[]>; critical: boolean }> = [];
 
     const photonQuery = q.raw;
-    tasks.push({ name: 'meteo', critical: mode === 'auto' || mode === 'airport', promise: runProvider('open-meteo', q.raw, q.bias) });
+    const meteoQuery = q.iataCandidate && (mode === 'airport' || q.airportIntent) ? q.iataCandidate : q.raw;
+    tasks.push({ name: 'meteo', critical: mode === 'auto' || mode === 'airport', promise: runProvider('open-meteo', meteoQuery, q.bias) });
 
     if (mode === 'airport' || q.airportIntent) {
         const stripped = stripWords(norm(main), AIRPORT_WORDS);
         tasks.push({ name: 'photon-airport', critical: mode === 'airport', promise: runProvider('photon', stripped, q.bias, 'aeroway:aerodrome') });
-        tasks.push({ name: 'airport-db', critical: false, promise: searchAirportDb(stripped) });
+    }
+    if (mode === 'airport' || q.airportIntent || q.iataCandidate) {
+        const dbQuery = q.iataCandidate || stripWords(norm(main), AIRPORT_WORDS);
+        tasks.push({
+            name: 'airport-db',
+            critical: Boolean(mode === 'airport' || q.airportIntent || q.strictIataIntent),
+            promise: searchAirportDb(dbQuery, q.bias),
+        });
     }
     if (mode === 'station' || mode === 'bus' || q.stationIntent) {
         const stripped = stripWords(norm(main), STATION_WORDS);
@@ -959,6 +1111,122 @@ export async function searchPlaces(query: string, opts: SearchOptions = {}): Pro
     return final.length ? final : latest;
 }
 
+/**
+ * Resolves an authoritative Place for a 3-letter IATA airport code without letting ambiguous free-text
+ * Photon matches (e.g. "MLA" -> Mladá Boleslav LKMB) hijack ground-truth runway/database coordinates.
+ */
+export async function resolveAirportByIata(rawCode: string, bias?: { lat?: number; lon?: number }): Promise<Place | undefined> {
+    const code = rawCode.trim().toUpperCase();
+    if (!/^[A-Z]{3}$/.test(code)) return undefined;
+
+    // 1. Instant local index (STATIC_GEO_DATA + TOP_100_AIRPORTS)
+    const localEntry = getLocalIndex().find(e => e.kind === 'airport' && e.iata === code);
+    if (localEntry) {
+        const place = buildPlaceFromLocal(localEntry);
+        rememberPlaces([place]);
+        return place;
+    }
+
+    // 2. Backend airport lookup + local runway centroid fallback
+    let apiRow: any = null;
+    if (Date.now() >= backendDownUntil) {
+        try {
+            apiRow = await fetchJson(`/api/airports/lookup/${code}`, PROVIDER_TIMEOUT_MS, true);
+        } catch (e: any) {
+            if (!e || e.status === undefined || e.status >= 500) backendDownUntil = Date.now() + 60_000;
+        }
+    }
+
+    let lat = Number(apiRow?.latitude);
+    let lng = Number(apiRow?.longitude);
+    if (!validCoord(lat, lng)) {
+        const rw = await getAirportRunwayCentroid(code);
+        if (rw) {
+            lat = rw.lat;
+            lng = rw.lng;
+        }
+    }
+
+    const apName = apiRow?.airport_name && !isGenericAirportName(apiRow.airport_name) ? String(apiRow.airport_name).trim() : '';
+    let cityName = String(apiRow?.city_name || '').trim();
+
+    if (validCoord(lat, lng)) {
+        let country = String(apiRow?.country || '').trim();
+        let countryCode = String(apiRow?.country_code || '').trim().toUpperCase();
+        let tz = String(apiRow?.timezone || '').trim() || undefined;
+
+        if (!country || !countryCode || !tz) {
+            const meteoQuery = cityName.length >= 2 ? cityName : code;
+            const normBias = bias && Number.isFinite(bias.lat) && Number.isFinite(bias.lon) ? { lat: bias.lat as number, lon: bias.lon as number } : undefined;
+            const hits = await runProvider('open-meteo', meteoQuery, normBias).catch(() => [] as RawPlace[]);
+            let bestNear: { hit: RawPlace; dist: number } | null = null;
+            for (const hit of hits) {
+                const hLat = Number(hit.latitude);
+                const hLng = Number(hit.longitude);
+                if (!validCoord(hLat, hLng)) continue;
+                const dist = distanceKm(lat, lng, hLat, hLng);
+                if (dist <= 120 && (!bestNear || dist < bestNear.dist)) {
+                    bestNear = { hit, dist };
+                }
+            }
+            if (bestNear) {
+                if (!country && bestNear.hit.country) country = bestNear.hit.country;
+                if (!countryCode && bestNear.hit.country_code) countryCode = bestNear.hit.country_code.toUpperCase();
+                if (!tz && bestNear.hit.timezone) tz = bestNear.hit.timezone;
+                if (!cityName && bestNear.hit.name) cityName = bestNear.hit.name;
+            }
+        }
+
+        const place = buildPlaceFromRaw({
+            name: apName || (cityName ? `${cityName} Airport` : `${code} Airport`),
+            latitude: lat,
+            longitude: lng,
+            country,
+            country_code: countryCode,
+            timezone: tz,
+            locality: cityName && (!country || norm(cityName) !== norm(country)) ? cityName : '',
+            osm_key: 'aeroway',
+            osm_value: 'aerodrome',
+            provider: 'airport-db',
+            iata: code,
+        });
+        if (place) {
+            rememberPlaces([place]);
+            return place;
+        }
+    }
+
+    // 3. No runway coordinates available: resolve via the backend's airport/city name instead of bare IATA code
+    if (apName || cityName) {
+        const queryText = [apName, cityName].filter(Boolean).join(' ');
+        let candidates = queryText ? await searchPlaces(queryText, { mode: 'airport', bias, limit: 5 }) : [];
+        let matched = pickMatchingAirportPlace(candidates, apName, cityName);
+        if (!matched && cityName && norm(cityName) !== norm(queryText)) {
+            candidates = await searchPlaces(cityName, { mode: 'airport', bias, limit: 5 });
+            matched = pickMatchingAirportPlace(candidates, apName, cityName);
+        }
+        if (matched && validCoord(matched.lat, matched.lng)) {
+            const name = apName || matched.name;
+            const locality = cityName && (!matched.country || norm(cityName) !== norm(matched.country)) ? cityName : '';
+            const labelParts = [name, locality, matched.country].filter(Boolean);
+            const resolved: Place = {
+                ...matched,
+                id: `${matched.lat.toFixed(5)}:${matched.lng.toFixed(5)}:${norm(`${code} - ${labelParts.join(', ')}`)}`,
+                label: `${code} - ${labelParts.join(', ')}`,
+                name,
+                subtitle: [locality, matched.admin1, matched.country].filter(Boolean).join(', ') || matched.subtitle,
+                kind: 'airport',
+                category: 'airport',
+                iata: code,
+            };
+            rememberPlaces([resolved]);
+            return resolved;
+        }
+    }
+
+    return undefined;
+}
+
 /** The single best place for a free-text query (used when a typed, never-picked string must be resolved). */
 export async function resolveBestPlace(query: string, opts: Omit<SearchOptions, 'onUpdate'> = {}): Promise<Place | undefined> {
     const key = cleanLabel(query);
@@ -972,4 +1240,16 @@ export async function resolveBestPlace(query: string, opts: Omit<SearchOptions, 
     } finally {
         INFLIGHT.delete(key);
     }
+}
+
+/**
+ * Test helper to reset in-memory place search caches and registry state between tests.
+ */
+export function __resetPlaceSearchCacheForTest(): void {
+    RESULT_CACHE.clear();
+    INFLIGHT.clear();
+    registry.clear();
+    registryLoaded = false;
+    localIndex = null;
+    backendDownUntil = 0;
 }

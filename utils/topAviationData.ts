@@ -179,6 +179,69 @@ export const TOP_50_AIRLINES: TopAirline[] = [
   { iata: "AV", name: "Avianca", country: "Colombia", domain: "avianca.com" }
 ];
 
+export const TOP_COUNTRY_ISO: Record<string, string> = {
+  "Argentina": "AR",
+  "Australia": "AU",
+  "Austria": "AT",
+  "Belgium": "BE",
+  "Brazil": "BR",
+  "Canada": "CA",
+  "Chile": "CL",
+  "China": "CN",
+  "Colombia": "CO",
+  "Czechia": "CZ",
+  "Denmark": "DK",
+  "Egypt": "EG",
+  "Ethiopia": "ET",
+  "Finland": "FI",
+  "France": "FR",
+  "Germany": "DE",
+  "Greece": "GR",
+  "Hong Kong": "HK",
+  "Hungary": "HU",
+  "India": "IN",
+  "Indonesia": "ID",
+  "Ireland": "IE",
+  "Italy": "IT",
+  "Japan": "JP",
+  "Jordan": "JO",
+  "Lebanon": "LB",
+  "Malaysia": "MY",
+  "Mexico": "MX",
+  "Netherlands": "NL",
+  "New Zealand": "NZ",
+  "Norway": "NO",
+  "Peru": "PE",
+  "Philippines": "PH",
+  "Poland": "PL",
+  "Portugal": "PT",
+  "Qatar": "QA",
+  "Saudi Arabia": "SA",
+  "Singapore": "SG",
+  "South Africa": "ZA",
+  "South Korea": "KR",
+  "Spain": "ES",
+  "Sweden": "SE",
+  "Switzerland": "CH",
+  "Taiwan": "TW",
+  "Thailand": "TH",
+  "Turkey": "TR",
+  "United Arab Emirates": "AE",
+  "United Kingdom": "GB",
+  "United States": "US",
+};
+
+export function getTopAirportCountryCode(ap: TopAirport): string {
+  if (ap.country === "United Kingdom") {
+    const city = (ap.city || "").toLowerCase();
+    if (city.includes("edinburgh") || city.includes("glasgow")) return "GB-SCT";
+    if (city.includes("cardiff")) return "GB-WLS";
+    if (city.includes("belfast")) return "GB-NIR";
+    return "GB-ENG";
+  }
+  return TOP_COUNTRY_ISO[ap.country] || "";
+}
+
 // Pre-indexed lookups
 export const TOP_AIRPORTS_BY_IATA = new Map<string, TopAirport>(
   TOP_100_AIRPORTS.map(a => [a.iata.toUpperCase(), a])

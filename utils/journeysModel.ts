@@ -1,6 +1,8 @@
 import type { Transport, Trip } from '../types';
 import { calculateDistance, getCoordinatesSync } from '../services/geocoding';
+import { getPhysicalRunwaysSync } from '../services/airportRunwayDataset';
 import { knownZone } from '../services/timezone';
+import { resolveLegEnd } from './mapPoints';
 import { footprintKg } from './footprint';
 import { getAirportTimezone, getCarrierName, getCityName, getFlightArrivalUtcDate, getFlightDepartureUtcDate, getFlightStatusTags, parseLocalDateInTimezone } from './flightData';
 import { includedItemCost } from './tripPeople';
@@ -62,8 +64,9 @@ export const formatMinutes = (minutes: number): string => {
 type Point = { lat: number; lng: number; countryCode?: string };
 const pointOf = (text: string, lat?: number, lng?: number): Point | undefined => {
     const known = getCoordinatesSync(text);
-    if (lat != null && lng != null) return { lat, lng, countryCode: known?.countryCode };
-    return known ? { lat: known.lat, lng: known.lng, countryCode: known.countryCode } : undefined;
+    const resolved = resolveLegEnd(text, lat, lng, () => known);
+    if (!resolved) return undefined;
+    return { lat: resolved[1], lng: resolved[0], countryCode: known?.countryCode };
 };
 
 /** Great-circle distance in km from the two places (saved distance first); 0 when a place can't be found. */
@@ -74,7 +77,7 @@ export const CIRCUITY: Record<string, number> = { Train: 1.2, Bus: 1.3, 'Car Ren
 export const journeyKm = (t: Transport): number => {
     if (t.distance && t.distance > 0) return t.distance;
     // Looking two places up for every row on every render is slow for a long log: remember the answer.
-    const key = `${t.origin}|${t.destination}|${t.originLat}|${t.originLng}|${t.destLat}|${t.destLng}`;
+    const key = `${getPhysicalRunwaysSync() ? '1' : '0'}|${t.origin}|${t.destination}|${t.originLat}|${t.originLng}|${t.destLat}|${t.destLng}`;
     const hit = kmCache.get(key);
     if (hit !== undefined) return hit;
     const a = pointOf(t.origin, t.originLat, t.originLng);

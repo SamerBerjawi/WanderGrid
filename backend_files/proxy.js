@@ -14,6 +14,7 @@ const { testProvider } = require('./integrationsTester');
 const { SERVICE_KEYS, testKey } = require('./keyTester');
 const holidays = require('./holidays');
 const fxRates = require('./fxRates');
+const { getAirportCoords } = require('./airportCoords');
 
 module.exports = function registerProxyRoutes(app, {
   pool, logger, sendError, requireAdmin, readWorkspaceSettings, workspaceSecret, SECRET_MASK,
@@ -821,14 +822,40 @@ module.exports = function registerProxyRoutes(app, {
       "Tunisia": { "lat": "33.8869", "lon": "9.5375", "city": "Tunis", "country": "Tunisia", "iso": "TN", "tz": "Africa/Tunis" }
   };
 
+  const isGenericAirportName = (name) => /^(metropolitan area|all airports)$/i.test(String(name || '').trim());
+
+  function enrichAirportRecord(record) {
+      if (!record) return record;
+      const iata = String(record.iata || '').trim().toUpperCase();
+      const gps = STATIC_GEO_COORDS[iata];
+      const rw = gps ? null : getAirportCoords(iata);
+      const out = {
+          iata,
+          city_name: record.city_name || '',
+          airport_name: record.airport_name || '',
+      };
+      if (gps) {
+          out.latitude = parseFloat(gps.lat);
+          out.longitude = parseFloat(gps.lon);
+          if (gps.country) out.country = gps.country;
+          if (gps.iso) out.country_code = gps.iso;
+          if (gps.tz) out.timezone = gps.tz;
+      } else if (rw) {
+          out.latitude = rw.lat;
+          out.longitude = rw.lng;
+      }
+      return out;
+  }
+
   // Search local static and prepopulated airport/city data offline-first before triggering external network calls
   function searchLocalAirportData(q) {
       if (!q) return null;
       const queryLower = q.trim().toLowerCase();
       
-      // A. Direct IATA exact 3-letter code lookup
-      if (queryLower.length === 3) {
-          const iataUpper = queryLower.toUpperCase();
+      // A. Direct IATA exact 3-letter code lookup (including "MLA" and "MLA airport")
+      const iataQueryMatch = queryLower.match(/^([a-z]{3})(?:\s+airport)?$/);
+      if (iataQueryMatch) {
+          const iataUpper = iataQueryMatch[1].toUpperCase();
           const gps = STATIC_GEO_COORDS[iataUpper];
           if (gps) {
               const details = memoryAirports.get(iataUpper);
@@ -839,20 +866,23 @@ module.exports = function registerProxyRoutes(app, {
                   country: gps.country || details?.country || '',
                   country_code: gps.iso || '',
                   timezone: gps.tz || 'UTC',
-                  admin1: details?.city_name || gps.city || ''
+                  admin1: details?.city_name || gps.city || '',
+                  iata: iataUpper,
               }];
           }
-          
-          const details = memoryAirports.get(iataUpper);
-          if (details) {
+
+          const rw = getAirportCoords(iataUpper);
+          if (rw) {
+              const details = memoryAirports.get(iataUpper);
               return [{
-                  name: details.airport_name || details.city_name,
-                  latitude: 0,
-                  longitude: 0,
-                  country: details.country || '',
+                  name: details?.airport_name || `${iataUpper} Airport`,
+                  latitude: rw.lat,
+                  longitude: rw.lng,
+                  country: '',
                   country_code: '',
-                  timezone: 'UTC',
-                  admin1: details.city_name
+                  timezone: '',
+                  admin1: details?.city_name || '',
+                  iata: iataUpper,
               }];
           }
       }
@@ -875,13 +905,14 @@ module.exports = function registerProxyRoutes(app, {
                       country: gps.country || details?.country || '',
                       country_code: gps.iso || '',
                       timezone: gps.tz || 'UTC',
-                      admin1: details?.city_name || gps.city || ''
+                      admin1: details?.city_name || gps.city || '',
+                      iata,
                   });
               }
           }
       }
 
-      // Secondary check of other in-memory database airports to ensure complete coverage
+      // Secondary check of other in-memory database airports (only when ground-truth coordinates exist)
       for (const [iata, details] of memoryAirports.entries()) {
           const iataLower = iata.toLowerCase();
           const cityLower = (details.city_name || '').toLowerCase();
@@ -891,14 +922,17 @@ module.exports = function registerProxyRoutes(app, {
               // Only add if not already matched from static coords to avoid duplicates
               if (!results.some(r => r.name.includes(`(${iata})`))) {
                   const gps = STATIC_GEO_COORDS[iata];
+                  const rw = gps ? null : getAirportCoords(iata);
+                  if (!gps && !rw) continue;
                   results.push({
                       name: `${details.airport_name} (${iata})`,
-                      latitude: gps ? parseFloat(gps.lat) : 0,
-                      longitude: gps ? parseFloat(gps.lon) : 0,
+                      latitude: gps ? parseFloat(gps.lat) : rw.lat,
+                      longitude: gps ? parseFloat(gps.lon) : rw.lng,
                       country: gps?.country || '',
                       country_code: gps?.iso || '',
-                      timezone: gps?.tz || 'UTC',
-                      admin1: details.city_name
+                      timezone: gps?.tz || '',
+                      admin1: details.city_name,
+                      iata,
                   });
               }
           }
@@ -1033,7 +1067,21 @@ module.exports = function registerProxyRoutes(app, {
 
       // 4. Multi-provider geocoding chain: Open-Meteo -> Photon -> Nominatim (P-03)
       try {
-          const chainRes = await searchGeocodingChain(trimmedQ, { lat: biasLat, lon: biasLon });
+          let chainQuery = trimmedQ;
+          let iataHint = null;
+          const iataLegacyMatch = trimmedQ.match(/^([a-z]{3})(?:\s+airport)?$/i);
+          if (iataLegacyMatch) {
+              const code = iataLegacyMatch[1].toUpperCase();
+              const details = memoryAirports.get(code);
+              if (details) {
+                  iataHint = code;
+                  const apName = isGenericAirportName(details.airport_name) ? '' : (details.airport_name || '').trim();
+                  const rewritten = [apName, (details.city_name || '').trim()].filter(Boolean).join(' ');
+                  if (rewritten) chainQuery = rewritten;
+              }
+          }
+
+          const chainRes = await searchGeocodingChain(chainQuery, { lat: biasLat, lon: biasLon });
 
           if (!chainRes.ok || !chainRes.answered) {
               res.set('X-Answered', 'false');
@@ -1045,7 +1093,14 @@ module.exports = function registerProxyRoutes(app, {
               });
           }
 
-          const results = chainRes.results || [];
+          const rawResults = chainRes.results || [];
+          const results = iataHint
+              ? rawResults.map(r => (
+                  r && (r.types?.[0] === 'airport' || /airport|aerodrome/i.test(r.name || ''))
+                      ? { ...r, iata: r.iata || iataHint }
+                      : r
+              ))
+              : rawResults;
 
           // 5. Keep results cached in both RAM and DB for subsequent instantaneous requests (0ms latency)
           memoryGeocoding.set(cacheKey, results);
@@ -1107,26 +1162,45 @@ module.exports = function registerProxyRoutes(app, {
       const { iata } = req.params;
       if (!iata) return res.status(400).json({ error: 'Missing IATA code' });
       const lookupCode = iata.trim().toUpperCase();
-      
-      // 1. Try DB first
-      try {
-          const { rows } = await pool.query(
-              `SELECT iata, city_name, airport_name FROM global_airports WHERE UPPER(iata) = $1 LIMIT 1`,
-              [lookupCode]
-          );
-          if (rows.length > 0) {
-              res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
-              return res.json(rows[0]);
-          }
-      } catch (err) {
-          console.warn('Database lookup failed, falling back to in-memory store:', err.message);
-      }
 
-      // 2. Try In-Memory Fallback Map
+      // 1. RAM first (AGENTS.md §1; deduplicated generic "Metropolitan Area" aliases)
       const cached = memoryAirports.get(lookupCode);
       if (cached) {
           res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
-          return res.json(cached);
+          return res.json(enrichAirportRecord(cached));
+      }
+
+      // 2. DB fallback only when RAM cache has not loaded yet
+      if (memoryAirports.size === 0) {
+          try {
+              const { rows } = await pool.query(
+                  `SELECT iata, city_name, airport_name FROM global_airports WHERE UPPER(iata) = $1 LIMIT 10`,
+                  [lookupCode]
+              );
+              if (rows.length > 0) {
+                  const preferred = rows.find(r => r.airport_name && !isGenericAirportName(r.airport_name)) || rows[0];
+                  res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+                  return res.json(enrichAirportRecord({
+                      iata: (preferred.iata || lookupCode).trim().toUpperCase(),
+                      city_name: preferred.city_name || '',
+                      airport_name: preferred.airport_name || '',
+                  }));
+              }
+          } catch (err) {
+              console.warn('Database lookup failed, falling back to static/runway stores:', err.message);
+          }
+      }
+
+      // 3. Static / ground-truth runway fallback
+      const gps = STATIC_GEO_COORDS[lookupCode];
+      const rw = getAirportCoords(lookupCode);
+      if (gps || rw) {
+          res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+          return res.json(enrichAirportRecord({
+              iata: lookupCode,
+              city_name: gps?.city || '',
+              airport_name: gps?.name || `${lookupCode} Airport`,
+          }));
       }
 
       res.status(404).json({ error: 'Airport code not found in database or memory cache' });
@@ -1168,22 +1242,31 @@ module.exports = function registerProxyRoutes(app, {
       const lowerQuery = q.toLowerCase();
       const results = [];
       for (const [iata, details] of memoryAirports.entries()) {
-          const isIataMatch = iata.toLowerCase() === lowerQuery;
-          const isIataPartial = iata.toLowerCase().includes(lowerQuery);
-          const isCityMatch = (details.city_name || '').toLowerCase().includes(lowerQuery);
-          const isAirportMatch = (details.airport_name || '').toLowerCase().includes(lowerQuery);
+          const iataLower = iata.toLowerCase();
+          const cityLower = (details.city_name || '').toLowerCase();
+          const airportLower = (details.airport_name || '').toLowerCase();
 
-          if (isIataMatch || isIataPartial || isCityMatch || isAirportMatch) {
+          const isIataMatch = iataLower === lowerQuery;
+          const isIataPrefix = iataLower.startsWith(lowerQuery);
+          const isIataPartial = iataLower.includes(lowerQuery);
+          const isCityExactOrPrefix = cityLower === lowerQuery || cityLower.startsWith(lowerQuery);
+          const isCityPartial = cityLower.includes(lowerQuery);
+          const isAirportMatch = airportLower.includes(lowerQuery);
+
+          if (isIataMatch || isIataPartial || isCityPartial || isAirportMatch) {
+              const score = isIataMatch ? 1
+                  : isIataPrefix ? 2
+                  : isCityExactOrPrefix ? 3
+                  : isAirportMatch ? 4
+                  : 5;
               results.push({
-                  iata: details.iata,
-                  city_name: details.city_name,
-                  airport_name: details.airport_name,
-                  score: isIataMatch ? 1 : isIataPartial ? 2 : isCityMatch ? 3 : 4
+                  ...enrichAirportRecord(details),
+                  score,
               });
           }
       }
-      results.sort((a,b) => a.score - b.score);
-      return results.slice(0, 15).map(({score, ...rest}) => rest);
+      results.sort((a, b) => a.score - b.score || (a.city_name || '').localeCompare(b.city_name || ''));
+      return results.slice(0, 15).map(({ score, ...rest }) => rest);
   }
 
   app.get('/api/airports/search', async (req, res) => {
@@ -1214,7 +1297,7 @@ module.exports = function registerProxyRoutes(app, {
                LIMIT 15`,
               [q, searchPattern]
           );
-          return res.json(rows);
+          return res.json(rows.map(enrichAirportRecord));
       } catch (err) {
           console.warn('Database airport search failed, searching in-memory cache:', err.message);
       }

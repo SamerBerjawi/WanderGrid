@@ -1,12 +1,14 @@
 import { COUNTRY_REGION_MAP } from './geoData';
-import { searchPlaces, resolveBestPlace, lookupPlaceByLabel, cleanLabel, norm as normText, Place, SearchMode, PlaceKind } from './placeSearch';
+import { TOP_AIRPORTS_BY_IATA, getTopAirportCountryCode, type TopAirport } from '../utils/topAviationData';
+import { getAirportRunwayCentroidSync } from './airportRunwayDataset';
+import { searchPlaces, resolveBestPlace, resolveAirportByIata, lookupPlaceByLabel, cleanLabel, norm as normText, distanceKm, Place, SearchMode, PlaceKind } from './placeSearch';
 
-const CACHE_KEY = 'wandergrid_geo_cache_v4';
-const GEO_DB_NAME = 'wandergrid_geo_db_v4';
-// v3 caches were filled by the old "first provider result / keyword map" resolver and contain wrong coordinates
-// (e.g. Malmö -> Stockholm, Nice -> Paris). They are discarded once and rebuilt from ranked, verified results.
-const LEGACY_CACHE_KEYS = ['wandergrid_geo_cache_v3', 'wandergrid_coord_cache'];
-const LEGACY_GEO_DBS = ['wandergrid_geo_db_v3'];
+const CACHE_KEY = 'wandergrid_geo_cache_v5';
+const GEO_DB_NAME = 'wandergrid_geo_db_v5';
+// v3/v4 caches could hold mis-resolved coordinates (e.g. Malmö -> Stockholm, MLA -> Mladá Boleslav).
+// They are discarded once and rebuilt from ranked, verified results.
+const LEGACY_CACHE_KEYS = ['wandergrid_geo_cache_v4', 'wandergrid_geo_cache_v3', 'wandergrid_coord_cache'];
+const LEGACY_GEO_DBS = ['wandergrid_geo_db_v4', 'wandergrid_geo_db_v3'];
 const GEO_STORE_NAME = 'geo_entries';
 
 let internalCache: Map<string, any> = new Map();
@@ -914,6 +916,46 @@ const staticToCoords = (ap: any): CoordResult => ({
     countryCode: ap.countryCode || ap.iso
 });
 
+const topAirportToCoords = (ap: TopAirport): CoordResult => ({
+    lat: ap.lat,
+    lng: ap.lng,
+    tz: ap.timezone,
+    city: ap.city || ap.name,
+    country: ap.country,
+    countryCode: getTopAirportCountryCode(ap)
+});
+
+const cachedEntryToCoords = (cached: any): CoordResult | undefined => {
+    if (cached?.lat == null) return undefined;
+    const lat = parseFloat(cached.lat);
+    const lng = parseFloat(cached.lon ?? cached.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) return undefined;
+    return {
+        lat,
+        lng,
+        tz: cached.tz,
+        city: cached.city,
+        country: cached.country,
+        countryCode: cached.countryCode || cached.iso,
+        viewport: cached.viewport,
+        types: cached.types
+    };
+};
+
+function resolveRunwayAirportOffline(code: string, cleanLocation: string): CoordResult | undefined {
+    const rw = getAirportRunwayCentroidSync(code);
+    if (!rw) return undefined;
+    const cached = cachedEntryToCoords(internalCache.get(cleanLocation)) || cachedEntryToCoords(internalCache.get(code));
+    if (cached && distanceKm(rw.lat, rw.lng, cached.lat, cached.lng) <= 150) {
+        return { ...cached, lat: rw.lat, lng: rw.lng };
+    }
+    const picked = lookupPlaceByLabel(cleanLocation) || lookupPlaceByLabel(code);
+    if (picked && distanceKm(rw.lat, rw.lng, picked.lat, picked.lng) <= 150) {
+        return { ...placeToCoords(picked), lat: rw.lat, lng: rw.lng };
+    }
+    return { lat: rw.lat, lng: rw.lng };
+}
+
 const UK_ALIASES = new Set(['united kingdom', 'uk', 'great britain', 'gb', 'britain']);
 
 /** Does a "City, Country" query's country part agree with a static row? (no country part => compatible) */
@@ -934,34 +976,39 @@ function countryCompatible(countryPart: string, row: any): boolean {
  * "snapped" to a bigger, unrelated city.
  */
 function resolveOffline(cleanLocation: string): CoordResult | undefined {
-    // 0. A label the user picked from the suggestions resolves to its exact coordinates
-    const picked = lookupPlaceByLabel(cleanLocation);
-    if (picked) return placeToCoords(picked);
-
-    // A. "ARN - Arlanda ..." style IATA prefix
+    // A. "ARN - Arlanda ..." style IATA prefix (checked before caches so stale entries cannot override IATA ground truth)
     const iataMatch = cleanLocation.match(/^([A-Z]{3})\s*-\s*/);
-    if (iataMatch && STATIC_GEO_DATA[iataMatch[1]]) return staticToCoords(STATIC_GEO_DATA[iataMatch[1]]);
+    if (iataMatch) {
+        const code = iataMatch[1];
+        if (STATIC_GEO_DATA[code]) return staticToCoords(STATIC_GEO_DATA[code]);
+        const top = TOP_AIRPORTS_BY_IATA.get(code);
+        if (top) return topAirportToCoords(top);
+        const rw = resolveRunwayAirportOffline(code, cleanLocation);
+        if (rw) return rw;
+    }
 
     // B. Bare IATA code
     const upper = cleanLocation.toUpperCase();
-    if (upper.length === 3 && /^[A-Z]{3}$/.test(upper) && STATIC_GEO_DATA[upper]) return staticToCoords(STATIC_GEO_DATA[upper]);
-
-    // C. Exact entry in the (versioned) cache: labels we resolved or suggested earlier
-    const cached = internalCache.get(cleanLocation);
-    if (cached?.lat && !isNaN(parseFloat(cached.lat))) {
-        return {
-            lat: parseFloat(cached.lat),
-            lng: parseFloat(cached.lon || cached.lng),
-            tz: cached.tz,
-            city: cached.city,
-            country: cached.country,
-            countryCode: cached.countryCode || cached.iso,
-            viewport: cached.viewport,
-            types: cached.types
-        };
+    if (upper.length === 3 && /^[A-Z]{3}$/.test(upper)) {
+        if (STATIC_GEO_DATA[upper]) return staticToCoords(STATIC_GEO_DATA[upper]);
+        const top = TOP_AIRPORTS_BY_IATA.get(upper);
+        if (top) return topAirportToCoords(top);
+        // Only match the full runway dataset for strict uppercase codes so Title-Case 3-letter cities ("Ulm", "Spa", "Rio") stay cities
+        if (/^[A-Z]{3}$/.test(cleanLocation)) {
+            const rw = resolveRunwayAirportOffline(cleanLocation, cleanLocation);
+            if (rw) return rw;
+        }
     }
 
-    // D. Exact city name (optionally with a country that must agree)
+    // C. A label the user picked from the suggestions resolves to its exact coordinates
+    const picked = lookupPlaceByLabel(cleanLocation);
+    if (picked) return placeToCoords(picked);
+
+    // D. Exact entry in the (versioned) cache: labels we resolved or suggested earlier
+    const cached = cachedEntryToCoords(internalCache.get(cleanLocation));
+    if (cached) return cached;
+
+    // E. Exact city name (optionally with a country that must agree)
     const parts = cleanLocation.split(',').map(p => p.trim()).filter(Boolean);
     const nCity = normText(parts[0]);
     const countryPart = parts.slice(1).join(' ');
@@ -995,9 +1042,10 @@ export async function getCoordinates(location: string, bias?: { lat?: number; lo
 
     // Ranked live lookup (instant local tier + parallel providers). Never "first provider result wins".
     try {
-        const isIataLike = /^[A-Za-z]{3}$/.test(cleanLocation);
-        const best = isIataLike
-            ? await resolveBestPlace(`${cleanLocation} airport`, { mode: 'airport', bias })
+        const iataPrefix = cleanLocation.match(/^([A-Za-z]{3})\s*-\s*/);
+        const strictIata = /^[A-Z]{3}$/.test(cleanLocation) ? cleanLocation : iataPrefix?.[1].toUpperCase();
+        const best = strictIata
+            ? await resolveAirportByIata(strictIata, bias)
             : await resolveBestPlace(cleanLocation, { bias });
         if (best && !isNaN(best.lat) && !isNaN(best.lng)) {
             const entry = { ...placeToCoords(best), lon: best.lng, provider: best.provider };
@@ -1144,6 +1192,17 @@ async function resolvePlaceNameRaw(query: string): Promise<{ city: string, count
                 displayName: `${cleanCity}, ${ap.country}`
             };
         }
+        const top = TOP_AIRPORTS_BY_IATA.get(code);
+        if (top) {
+            const iso = getTopAirportCountryCode(top);
+            const cleanCity = cleanCityName(top.city, iso);
+            return {
+                city: cleanCity,
+                country: top.country,
+                countryCode: iso,
+                displayName: `${cleanCity}, ${top.country}`
+            };
+        }
     }
 
     const uppercaseQuery = cleanQuery.toUpperCase();
@@ -1158,6 +1217,19 @@ async function resolvePlaceNameRaw(query: string): Promise<{ city: string, count
             countryCode: ap.iso,
             displayName: `${cleanCity}, ${ap.country}`
         };
+    }
+    if (/^[A-Z]{3}$/.test(uppercaseQuery)) {
+        const top = TOP_AIRPORTS_BY_IATA.get(uppercaseQuery);
+        if (top) {
+            const iso = getTopAirportCountryCode(top);
+            const cleanCity = cleanCityName(top.city, iso);
+            return {
+                city: cleanCity,
+                country: top.country,
+                countryCode: iso,
+                displayName: `${cleanCity}, ${top.country}`
+            };
+        }
     }
 
     // 2. Check exact cache match
@@ -1197,10 +1269,11 @@ async function resolvePlaceNameRaw(query: string): Promise<{ city: string, count
 
     // 4. Ranked live lookup (same engine as autocomplete) - never snap to an unrelated bigger city
     try {
+        const iataPrefix = cleanQuery.match(/^([A-Za-z]{3})\s*-\s*/);
+        const strictIata = /^[A-Z]{3}$/.test(cleanQuery) ? cleanQuery : iataPrefix?.[1].toUpperCase();
         const picked = lookupPlaceByLabel(cleanQuery);
-        const isIataLike = /^[A-Za-z]{3}$/.test(cleanQuery);
-        const best = picked || (isIataLike
-            ? await resolveBestPlace(`${cleanQuery} airport`, { mode: 'airport' })
+        const best = picked || (strictIata
+            ? await resolveAirportByIata(strictIata)
             : await resolveBestPlace(cleanQuery));
         if (best) {
             const cleanCity = best.kind === 'city' ? best.name : cleanCityName(best.subtitle.split(',')[0] || best.name, best.countryCode);
@@ -1221,6 +1294,16 @@ async function resolvePlaceNameRaw(query: string): Promise<{ city: string, count
 
     const fallbackCity = cleanCityName(cleanQuery);
     return { city: fallbackCity, country: 'Unknown', displayName: fallbackCity };
+}
+
+export function __resetGeocodingCacheForTest(): void {
+    if (saveTimer) {
+        clearTimeout(saveTimer);
+        saveTimer = null;
+    }
+    internalCache.clear();
+    isCacheLoaded = false;
+    loadCache();
 }
 
 export const getRegion = (code: string) => COUNTRY_REGION_MAP[code] || 'Unknown';

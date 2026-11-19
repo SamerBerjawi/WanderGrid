@@ -177,3 +177,80 @@ test('0005 turns the old yearly allowance into an Annual leave allowance, once',
     assert.deepEqual(await convertLegacyAllowances(client, 2026), { converted: 0, typeCreated: false });
     client.release();
 });
+
+test('0006 repairs mis-geocoded flight and trip airport coords and clears contaminated geocoding_cache', async () => {
+    const pool = makePool();
+    await pool.query('CREATE TABLE flights (id TEXT PRIMARY KEY, data JSONB NOT NULL)');
+    await pool.query('CREATE TABLE trips (id TEXT PRIMARY KEY, data JSONB NOT NULL)');
+    await pool.query('CREATE TABLE geocoding_cache (query TEXT PRIMARY KEY, results JSONB NOT NULL)');
+
+    const put = (t, id, data) => pool.query(`INSERT INTO ${t} (id, data) VALUES ($1, $2)`, [id, JSON.stringify(data)]);
+    await put('flights', 'f-mla', {
+        id: 'f-mla',
+        mode: 'Flight',
+        origin: 'MLA',
+        originLat: 50.3981403,
+        originLng: 14.8948651,
+        originGeoKey: 'MLA',
+        destination: 'AMS',
+        destLat: 52.31,
+        destLng: 4.76,
+    });
+    await put('trips', 't-alc', {
+        id: 't-alc',
+        name: 'Spain & Rail',
+        transports: [
+            {
+                id: 'leg-flight',
+                mode: 'Flight',
+                origin: 'AMS',
+                originLat: 52.31,
+                originLng: 4.76,
+                destination: 'ALC',
+                destLat: -19.24,
+                destLng: -65.15,
+            },
+            {
+                id: 'leg-train',
+                mode: 'Train',
+                origin: 'MLA',
+                originLat: 50.3981,
+                originLng: 14.8949,
+                destination: 'PRG',
+                destLat: 50.08,
+                destLng: 14.43,
+            },
+        ],
+    });
+
+    await pool.query(
+        'INSERT INTO geocoding_cache (query, results) VALUES ($1, $2), ($3, $4), ($5, $6), ($7, $8), ($9, $10)',
+        [
+            'mla', JSON.stringify([{ name: 'Mladá Boleslav', latitude: 50.3981, longitude: 14.8949 }]),
+            'mla airport', JSON.stringify([{ name: 'Mladá Boleslav', latitude: 50.3981, longitude: 14.8949 }]),
+            'photon|aeroway:aerodrome|mla', JSON.stringify([{ name: 'Mladá Boleslav', latitude: 50.3981, longitude: 14.8949 }]),
+            'broken zero', JSON.stringify([{ name: 'Nowhere', latitude: 0, longitude: 0 }]),
+            'paris', JSON.stringify([{ name: 'Paris', latitude: 48.8566, longitude: 2.3522 }]),
+        ]
+    );
+
+    const m = loadMigrations().filter(x => x.id === '0006_repair_airport_coords');
+    assert.equal(m.length, 1);
+    await runMigrations(pool, m, quiet);
+
+    const fMla = (await pool.query('SELECT data FROM flights WHERE id = $1', ['f-mla'])).rows[0].data;
+    assert.ok(Math.abs(fMla.originLat - 35.8537) < 0.02, `expected Malta lat, got ${fMla.originLat}`);
+    assert.ok(Math.abs(fMla.originLng - 14.4708) < 0.02, `expected Malta lng, got ${fMla.originLng}`);
+    assert.equal(fMla.destLat, 52.31);
+    assert.equal(fMla.destLng, 4.76);
+
+    const tAlc = (await pool.query('SELECT data FROM trips WHERE id = $1', ['t-alc'])).rows[0].data;
+    assert.ok(Math.abs(tAlc.transports[0].destLat - 38.2822) < 0.02, `expected Alicante lat, got ${tAlc.transports[0].destLat}`);
+    assert.ok(Math.abs(tAlc.transports[0].destLng - (-0.5582)) < 0.02, `expected Alicante lng, got ${tAlc.transports[0].destLng}`);
+    assert.equal(tAlc.transports[0].originLat, 52.31);
+    assert.equal(tAlc.transports[1].originLat, 50.3981, 'non-flight Train leg left untouched');
+    assert.equal(tAlc.transports[1].originLng, 14.8949);
+
+    const remainingCache = (await pool.query('SELECT query FROM geocoding_cache')).rows.map(r => r.query);
+    assert.deepEqual(remainingCache, ['paris']);
+});

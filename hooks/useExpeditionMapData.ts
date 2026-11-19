@@ -7,6 +7,9 @@ import { Trip, VisitedItem, CountryResidenceStatus, getResidenceStatuses } from 
 import type { MapAppearanceSettings } from '../types/mapAppearance';
 import { isPastTrip, todayISO } from '../utils/tripsModel';
 import { getCoordinates, getCoordinatesSync, STATIC_GEO_DATA, calculateDistance, formatProperLocationName, refineUKCountry } from '../services/geocoding';
+import { getPhysicalRunways } from '../services/airportRunwayDataset';
+import { resolveLegEnd } from '../utils/mapPoints';
+import { TOP_AIRPORTS_BY_IATA } from '../utils/topAviationData';
 import { countScratchCountries, isLayoverOnly, scratchToggles } from '../components/new/map/mapScratch';
 import { isFlightLeg } from '../utils/legMode';
 
@@ -238,12 +241,14 @@ export const deriveScratchCountryData = (
  */
 
 const GEO_CONCURRENCY_LIMIT = 6;
-const COORD_CACHE_KEY = 'wandergrid_coord_cache';
+const COORD_CACHE_KEY = 'wandergrid_coord_cache_v2';
+const LEGACY_COORD_CACHE_KEY = 'wandergrid_coord_cache';
 let coordCache: Map<string, { lat: number, lng: number }> | null = null;
 
 const getCoordCache = () => {
     if (coordCache) return coordCache;
     try {
+        localStorage.removeItem(LEGACY_COORD_CACHE_KEY);
         const stored = localStorage.getItem(COORD_CACHE_KEY);
         coordCache = stored ? new Map(JSON.parse(stored)) : new Map();
     } catch {
@@ -295,10 +300,14 @@ export const useExpeditionMapData = (scratchAppearance?: ScratchAppearanceFilter
     const handleRefresh = () => {
         setLoading(true);
         try {
+            localStorage.removeItem('wandergrid_coord_cache_v2');
             localStorage.removeItem('wandergrid_coord_cache');
+            localStorage.removeItem('wandergrid_geo_cache_v5');
+            localStorage.removeItem('wandergrid_geo_cache_v4');
             localStorage.removeItem('wandergrid_geo_cache_v3');
             localStorage.removeItem('wandergrid_geo_cache_v2');
             localStorage.removeItem('wandergrid_geo_cache_v1');
+            localStorage.removeItem('wandergrid_place_registry_v2');
             if (coordCache) {
                 coordCache.clear();
             }
@@ -331,6 +340,13 @@ export const useExpeditionMapData = (scratchAppearance?: ScratchAppearanceFilter
                 if (!place) return null;
                 const clean = place.trim();
                 const uppercaseLoc = clean.toUpperCase();
+                if (/^[A-Z]{3}$/.test(clean)) {
+                    const syncRes = getCoordinatesSync(clean);
+                    if (syncRes) {
+                        coordCache.set(clean, { lat: syncRes.lat, lng: syncRes.lng });
+                        return { lat: syncRes.lat, lng: syncRes.lng };
+                    }
+                }
                 const cached = coordCache.get(clean) || coordCache.get(uppercaseLoc);
                 if (cached) return { lat: cached.lat, lng: cached.lng };
 
@@ -345,18 +361,25 @@ export const useExpeditionMapData = (scratchAppearance?: ScratchAppearanceFilter
             const processTransportsSync = (transports: any[]) => {
                 return (transports || []).map(tr => {
                     const enriched = { ...tr };
-                    if (enriched.origin && (!enriched.originLat || !enriched.originLng)) {
-                        const c = getLocalCoordsSync(enriched.origin);
+                    const isFlight = isFlightLeg(enriched);
+                    if (enriched.origin) {
+                        const key = isFlight && /^[A-Za-z]{3}$/.test(enriched.origin.trim()) ? enriched.origin.trim().toUpperCase() : enriched.origin;
+                        const c = enriched.originLat && enriched.originLng
+                            ? resolveLegEnd(key, enriched.originLat, enriched.originLng, getCoordinatesSync)
+                            : (() => { const hit = getLocalCoordsSync(key); return hit ? [hit.lng, hit.lat] as [number, number] : null; })();
                         if (c) {
-                            enriched.originLat = c.lat;
-                            enriched.originLng = c.lng;
+                            enriched.originLng = c[0];
+                            enriched.originLat = c[1];
                         }
                     }
-                    if (enriched.destination && (!enriched.destLat || !enriched.destLng)) {
-                        const c = getLocalCoordsSync(enriched.destination);
+                    if (enriched.destination) {
+                        const key = isFlight && /^[A-Za-z]{3}$/.test(enriched.destination.trim()) ? enriched.destination.trim().toUpperCase() : enriched.destination;
+                        const c = enriched.destLat && enriched.destLng
+                            ? resolveLegEnd(key, enriched.destLat, enriched.destLng, getCoordinatesSync)
+                            : (() => { const hit = getLocalCoordsSync(key); return hit ? [hit.lng, hit.lat] as [number, number] : null; })();
                         if (c) {
-                            enriched.destLat = c.lat;
-                            enriched.destLng = c.lng;
+                            enriched.destLng = c[0];
+                            enriched.destLat = c[1];
                         }
                     }
                     return enriched;
@@ -428,11 +451,26 @@ export const useExpeditionMapData = (scratchAppearance?: ScratchAppearanceFilter
             setLoading(false);
 
             runAfterFirstPaint(async () => {
+                const allLegs = [
+                    ...(loadedFlightsCombined || []),
+                    ...(loadedTrips || []).flatMap(t => t.transports || []),
+                ];
+                const needsRunways = allLegs.some(tr => {
+                    if (!isFlightLeg(tr)) return false;
+                    return [tr.origin, tr.destination].some(end => {
+                        const code = (end || '').trim().toUpperCase();
+                        return /^[A-Z]{3}$/.test(code) && !STATIC_GEO_DATA[code] && !TOP_AIRPORTS_BY_IATA.has(code);
+                    });
+                });
+                if (needsRunways) {
+                    await getPhysicalRunways().catch(() => null);
+                }
+
                 let coordsDirty = false;
 
                 const resolveCoordsAsync = async (locName: string) => {
                     if (!locName) return null;
-                    let c = coordCache.get(locName);
+                    let c = /^[A-Z]{3}$/.test(locName) ? undefined : coordCache.get(locName);
                     if (!c) {
                         const res = await getCoordinates(locName);
                         if (res) {
@@ -444,45 +482,36 @@ export const useExpeditionMapData = (scratchAppearance?: ScratchAppearanceFilter
                     return c;
                 };
 
-                const asyncEnrichedFlights = await mapWithConcurrency(loadedFlightsCombined || [], async (f) => {
-                    const enriched = { ...f };
-                    if (enriched.origin && (!enriched.originLat || !enriched.originLng)) {
-                        const c = await resolveCoordsAsync(enriched.origin);
-                        if (c) {
-                            enriched.originLat = c.lat;
-                            enriched.originLng = c.lng;
-                        }
+                const resolveEndpoint = async (rawName: string | undefined, storedLat: unknown, storedLng: unknown, isFlight: boolean) => {
+                    if (!rawName) return null;
+                    const trimmed = rawName.trim();
+                    const lookupKey = isFlight && /^[A-Za-z]{3}$/.test(trimmed) ? trimmed.toUpperCase() : trimmed;
+                    const repaired = resolveLegEnd(lookupKey, storedLat, storedLng, getCoordinatesSync);
+                    if (repaired) return { lat: repaired[1], lng: repaired[0] };
+                    return resolveCoordsAsync(lookupKey);
+                };
+
+                const enrichTransportAsync = async (tr: any) => {
+                    const enriched = { ...tr };
+                    const isFlight = isFlightLeg(enriched);
+                    const o = await resolveEndpoint(enriched.origin, enriched.originLat, enriched.originLng, isFlight);
+                    if (o) {
+                        enriched.originLat = o.lat;
+                        enriched.originLng = o.lng;
                     }
-                    if (enriched.destination && (!enriched.destLat || !enriched.destLng)) {
-                        const c = await resolveCoordsAsync(enriched.destination);
-                        if (c) {
-                            enriched.destLat = c.lat;
-                            enriched.destLng = c.lng;
-                        }
+                    const d = await resolveEndpoint(enriched.destination, enriched.destLat, enriched.destLng, isFlight);
+                    if (d) {
+                        enriched.destLat = d.lat;
+                        enriched.destLng = d.lng;
                     }
                     return enriched;
-                }, GEO_CONCURRENCY_LIMIT);
+                };
+
+                const asyncEnrichedFlights = await mapWithConcurrency(loadedFlightsCombined || [], enrichTransportAsync, GEO_CONCURRENCY_LIMIT);
 
                 const asyncEnrichedTrips = await mapWithConcurrency(loadedTrips || [], async (t) => {
                     if (!t.transports) return t;
-                    const enrichedTransports = await mapWithConcurrency(t.transports, async (tr) => {
-                        const enriched = { ...tr };
-                        if (enriched.origin && (!enriched.originLat || !enriched.originLng)) {
-                            const c = await resolveCoordsAsync(enriched.origin);
-                            if (c) {
-                                enriched.originLat = c.lat;
-                                enriched.originLng = c.lng;
-                            }
-                        }
-                        if (enriched.destination && (!enriched.destLat || !enriched.destLng)) {
-                            const c = await resolveCoordsAsync(enriched.destination);
-                            if (c) {
-                                enriched.destLat = c.lat;
-                                enriched.destLng = c.lng;
-                            }
-                        }
-                        return enriched;
-                    }, GEO_CONCURRENCY_LIMIT);
+                    const enrichedTransports = await mapWithConcurrency(t.transports, enrichTransportAsync, GEO_CONCURRENCY_LIMIT);
                     return { ...t, transports: enrichedTransports };
                 }, GEO_CONCURRENCY_LIMIT);
 

@@ -29,6 +29,7 @@ const registerJobRoutes = require('./jobs');
 const registerProxyRoutes = require('./proxy');
 const createInitDb = require('./dbSchema');
 const fxRates = require('./fxRates');
+const { getAirportCoordsMap } = require('./airportCoords');
 
 const pbkdf2Async = util.promisify(crypto.pbkdf2);
 
@@ -481,7 +482,29 @@ app.use('/api', authenticateToken);
 // Table and index creation, then migrations: see dbSchema.js
 const initDb = createInitDb({ pool, onReady: () => { dbReady = true; } });
 
+const isGenericAirportName = (name) => /^(metropolitan area|all airports)$/i.test(String(name || '').trim());
+
+const upsertMemoryAirport = (rawIata, cityName, airportName) => {
+  const iata = String(rawIata || '').trim().toUpperCase();
+  if (!iata) return false;
+  const nextName = airportName || '';
+  const existing = memoryAirports.get(iata);
+  // Some upstream datasets emit a "Metropolitan Area" / "All Airports" alias after or before the real airport; keep the real one.
+  if (existing && existing.airport_name && !isGenericAirportName(existing.airport_name) && isGenericAirportName(nextName)) {
+    return false;
+  }
+  memoryAirports.set(iata, {
+    iata,
+    city_name: cityName || '',
+    airport_name: nextName,
+  });
+  return true;
+};
+
 const loadGlobalData = async () => {
+  const coordsMap = getAirportCoordsMap();
+  console.log(`Preloaded ${coordsMap.size} airport runway coordinates from local dataset.`);
+
   try {
     console.log('Loading global memory caches from PostgreSQL database... (eliminating raw GitHub web requests on startup)');
     
@@ -494,15 +517,10 @@ const loadGlobalData = async () => {
     }
     
     const airportsRes = await pool.query('SELECT iata, city_name, airport_name FROM global_airports');
+    if (airportsRes.rows.length > 0) memoryAirports.clear();
     let apCount = 0;
     airportsRes.rows.forEach(row => {
-        const iata = (row.iata || '').trim().toUpperCase();
-        if (iata) {
-            memoryAirports.set(iata, {
-                iata,
-                city_name: row.city_name || '',
-                airport_name: row.airport_name || ''
-            });
+        if (upsertMemoryAirport(row.iata, row.city_name, row.airport_name)) {
             apCount++;
         }
     });
@@ -570,14 +588,7 @@ const loadGlobalData = async () => {
           for (const line of lines) {
             try {
               const item = JSON.parse(line);
-              const iata = (item.iata || '').trim().toUpperCase();
-              if (iata) {
-                memoryAirports.set(iata, {
-                  iata,
-                  city_name: item.city_name || '',
-                  airport_name: item.airport_name || ''
-                });
-              }
+              upsertMemoryAirport(item.iata, item.city_name, item.airport_name);
             } catch (e) {}
           }
         }
