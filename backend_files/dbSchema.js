@@ -38,9 +38,21 @@ module.exports = function createInitDb({ pool, onReady }) {
                 id SERIAL PRIMARY KEY,
                 iata VARCHAR(10) CHECK (iata <> ''),
                 city_name TEXT,
-                airport_name TEXT
+                airport_name TEXT,
+                icao TEXT,
+                latitude DOUBLE PRECISION,
+                longitude DOUBLE PRECISION,
+                country_code TEXT,
+                country TEXT,
+                timezone TEXT,
+                kind TEXT
               );
           `);
+          // Installs from before the airport table carried positions (airportData.js) gain the columns here; the
+          // table is reference data rebuilt by every refresh, so there is nothing to backfill.
+          for (const col of ['icao TEXT', 'latitude DOUBLE PRECISION', 'longitude DOUBLE PRECISION', 'country_code TEXT', 'country TEXT', 'timezone TEXT', 'kind TEXT']) {
+              await client.query(`ALTER TABLE global_airports ADD COLUMN IF NOT EXISTS ${col}`);
+          }
           
           // Global carriers database table
           await client.query(`

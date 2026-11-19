@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { BackupSelectionOptions } from '../../../types';
 import type { SettingsData } from '../../../hooks/useSettingsData';
 import { dataService } from '../../../services/mockDb';
+import { loadAirportIndex } from '../../../services/airportIndex';
 import { ALL_OFF, ALL_ON, BACKUP_CATEGORIES, availableCategories, countBackup, parseBackupText, type BackupCategory, type BackupCounts } from '../../../utils/backupModel';
 import { errorMessage, toast } from '../../../services/toast';
 import { formatDate } from '../../../utils/formatters';
@@ -200,7 +201,20 @@ const RestoreSheet: React.FC<{ file: { name: string; state: any } | null; onClos
     );
 };
 
-/** Reloads the airport and carrier lists on the server (a background job with progress). */
+/** What a refresh did, in one sentence per change (the job result from POST /api/jobs/refresh). */
+export const refreshSummary = (result: any): string => {
+    const parts = ['Airports and carriers are up to date.'];
+    const legs = Number(result?.repaired?.legs) || 0;
+    const routes = Number(result?.routes) || 0;
+    if (legs) parts.push(`Fixed ${legs === 1 ? 'the airport position of 1 flight' : `${legs} airport positions on saved flights`}.`);
+    if (routes) parts.push(`${routes === 1 ? '1 route that could not be traced' : `${routes} routes that could not be traced`} will be tried again.`);
+    return parts.join(' ');
+};
+
+/**
+ * Reloads the airport and carrier lists on the server (a background job with progress), then fixes saved flights
+ * whose airport position is missing or clearly wrong and queues failed road and rail routes again.
+ */
 const RefreshSheet: React.FC<{ open: boolean; onClose: () => void; onDone: (message: string) => void }> = ({ open, onClose, onDone }) => {
     const [percent, setPercent] = useState<number | null>(null);
     const [message, setMessage] = useState('');
@@ -212,7 +226,10 @@ const RefreshSheet: React.FC<{ open: boolean; onClose: () => void; onDone: (mess
         setError(''); setMessage(''); setPercent(2);
         try {
             const result = await dataService.runServerJob('/jobs/refresh', p => setPercent(p));
-            const text = result?.message || 'Airports and carriers are up to date.';
+            const text = refreshSummary(result);
+            // Pick up the new airport table and any flights the server repaired
+            await loadAirportIndex(true);
+            window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
             setPercent(100); setMessage(text); onDone(text);
         } catch (e) {
             setPercent(null);
@@ -226,7 +243,7 @@ const RefreshSheet: React.FC<{ open: boolean; onClose: () => void; onDone: (mess
             open={open}
             onClose={onClose}
             title="Refresh airports and carriers"
-            subtitle="Downloads the latest lists. This also runs weekly."
+            subtitle="Downloads the latest lists, fixes airport positions that are clearly wrong and retries routes that could not be traced. This also runs weekly."
             footer={
                 <>
                     <button type="button" onClick={onClose} className={CANCEL_BTN}>Close</button>

@@ -8,6 +8,7 @@ const { resolveFlight } = require('./flightLookup.js');
 const { fetchUpstream } = require('./upstream');
 const { resolveIcaoCallsign } = require('./carrierMapping');
 const { handleRouteProxy, handleRailRouteProxy } = require('./routeProxy');
+const crypto = require('crypto');
 const { createRouteService } = require('./routeStore');
 const { searchGeocodingChain, searchOpenMeteo, searchPhoton, searchNominatim, reverseGeocode } = require('./geocodingChain');
 const { testProvider } = require('./integrationsTester');
@@ -700,85 +701,9 @@ module.exports = function registerProxyRoutes(app, {
       }
   });
 
-  // Local Airport Database coordinates mapping for ultra-fast, zero-dependency geocoding
-  const STATIC_GEO_COORDS = {
-      "AMS": { "lat": "52.3086", "lon": "4.7639", "name": "Schiphol", "city": "Amsterdam", "country": "Netherlands", "tz": "Europe/Amsterdam", "iso": "NL" },
-      "LHR": { "lat": "51.4706", "lon": "-0.4619", "name": "Heathrow", "city": "London", "country": "England", "tz": "Europe/London", "iso": "GB-ENG" },
-      "LGW": { "lat": "51.1537", "lon": "-0.1821", "name": "Gatwick Airport", "city": "London", "country": "England", "tz": "Europe/London", "iso": "GB-ENG" },
-      "MAN": { "lat": "53.3588", "lon": "-2.2728", "name": "Manchester Airport", "city": "Manchester", "country": "England", "tz": "Europe/London", "iso": "GB-ENG" },
-      "BHX": { "lat": "52.4539", "lon": "-1.7480", "name": "Birmingham Airport", "city": "Birmingham", "country": "England", "tz": "Europe/London", "iso": "GB-ENG" },
-      "EDI": { "lat": "55.9508", "lon": "-3.3725", "name": "Edinburgh Airport", "city": "Edinburgh", "country": "Scotland", "tz": "Europe/London", "iso": "GB-SCT" },
-      "GLA": { "lat": "55.8719", "lon": "-4.4331", "name": "Glasgow Airport", "city": "Glasgow", "country": "Scotland", "tz": "Europe/London", "iso": "GB-SCT" },
-      "CWL": { "lat": "51.3967", "lon": "-3.3433", "name": "Cardiff Airport", "city": "Cardiff", "country": "Wales", "tz": "Europe/London", "iso": "GB-WLS" },
-      "BFS": { "lat": "54.6575", "lon": "-6.2158", "name": "Belfast Intl Airport", "city": "Belfast", "country": "Northern Ireland", "tz": "Europe/London", "iso": "GB-NIR" },
-      "BHD": { "lat": "54.6181", "lon": "-5.8725", "name": "George Best Belfast City", "city": "Belfast", "country": "Northern Ireland", "tz": "Europe/London", "iso": "GB-NIR" },
-      "JFK": { "lat": "40.6398", "lon": "-73.7789", "name": "John F Kennedy Intl", "city": "New York", "country": "United States", "tz": "America/New_York", "iso": "US" },
-      "DXB": { "lat": "25.2528", "lon": "55.3644", "name": "Dubai Intl", "city": "Dubai", "country": "United Arab Emirates", "tz": "Asia/Dubai", "iso": "AE" },
-      "CDG": { "lat": "49.0097", "lon": "2.5478", "name": "Charles De Gaulle", "city": "Paris", "country": "France", "tz": "Europe/Paris", "iso": "FR" },
-      "FRA": { "lat": "50.0333", "lon": "8.5706", "name": "Frankfurt am Main", "city": "Frankfurt", "country": "Germany", "tz": "Europe/Berlin", "iso": "DE" },
-      "BER": { "lat": "52.3667", "lon": "13.5033", "name": "Berlin Brandenburg", "city": "Berlin", "country": "Germany", "tz": "Europe/Berlin", "iso": "DE" },
-      "VIE": { "lat": "48.1103", "lon": "16.5697", "name": "Vienna Intl", "city": "Vienna", "country": "Austria", "tz": "Europe/Vienna", "iso": "AT" },
-      "SIN": { "lat": "1.3502", "lon": "103.994", "name": "Changi Intl", "city": "Singapore", "country": "Singapore", "tz": "Asia/Singapore", "iso": "SG" },
-      "HKG": { "lat": "22.3089", "lon": "113.915", "name": "Hong Kong Intl", "city": "Hong Kong", "country": "Hong Kong", "tz": "Asia/Hong_Kong", "iso": "HK" },
-      "HND": { "lat": "35.5523", "lon": "139.78", "name": "Haneda", "city": "Tokyo", "country": "Japan", "tz": "Asia/Tokyo", "iso": "JP" },
-      "SYD": { "lat": "-33.9461", "lon": "151.177", "name": "Kingsford Smith", "city": "Sydney", "country": "Australia", "tz": "Australia/Sydney", "iso": "AU" },
-      "BEY": { "lat": "33.82", "lon": "35.49", "name": "Beirut Airport", "city": "Beirut", "country": "Lebanon", "tz": "Asia/Beirut", "iso": "LB" },
-      "PRG": { "lat": "50.10", "lon": "14.26", "name": "Prague Airport", "city": "Prague", "country": "Czechia", "tz": "Europe/Prague", "iso": "CZ" },
-      "BCN": { "lat": "41.29", "lon": "2.07", "name": "Barcelona Airport", "city": "Barcelona", "country": "Spain", "tz": "Europe/Madrid", "iso": "ES" },
-      "ORD": { "lat": "41.97", "lon": "-87.90", "name": "O'Hare Airport", "city": "Chicago", "country": "United States", "tz": "America/Chicago", "iso": "US" },
-      "DTW": { "lat": "42.21", "lon": "-83.35", "name": "Detroit Airport", "city": "Detroit", "country": "United States", "tz": "America/Detroit", "iso": "US" },
-      "IAD": { "lat": "38.95", "lon": "-77.45", "name": "Dulles Airport", "city": "Washington D.C.", "country": "United States", "tz": "America/New_York", "iso": "US" },
-      "GRR": { "lat": "42.88", "lon": "-85.52", "name": "Grand Rapids Airport", "city": "Grand Rapids", "country": "United States", "tz": "America/New_York", "iso": "US" },
-      "ATL": { "lat": "33.64", "lon": "-84.42", "name": "Atlanta Airport", "city": "Atlanta", "country": "United States", "tz": "America/New_York", "iso": "US" },
-      "AMM": { "lat": "31.72", "lon": "35.99", "name": "Queen Alia Airport", "city": "Amman", "country": "Jordan", "tz": "Asia/Amman", "iso": "JO" },
-      "TUN": { "lat": "36.85", "lon": "10.22", "name": "Tunis Airport", "city": "Tunis", "country": "Tunisia", "tz": "Africa/Tunis", "iso": "TN" },
-      "DJE": { "lat": "33.86", "lon": "10.77", "name": "Djerba Airport", "city": "Djerba", "country": "Tunisia", "tz": "Africa/Tunis", "iso": "TN" },
-      "SAW": { "lat": "40.89", "lon": "29.30", "name": "Sabiha Gökçen Airport", "city": "Istanbul", "country": "Turkey", "tz": "Europe/Istanbul", "iso": "TR" },
-      "IST": { "lat": "41.27", "lon": "28.74", "name": "Istanbul Airport", "city": "Istanbul", "country": "Turkey", "tz": "Europe/Istanbul", "iso": "TR" },
-      "ISL": { "lat": "41.27", "lon": "28.74", "name": "Atatürk Airport", "city": "Istanbul", "country": "Turkey", "tz": "Europe/Istanbul", "iso": "TR" },
-      "CPH": { "lat": "55.61", "lon": "12.65", "name": "Copenhagen Airport", "city": "Copenhagen", "country": "Denmark", "tz": "Europe/Copenhagen", "iso": "DK" },
-      "LIS": { "lat": "38.77", "lon": "-9.13", "name": "Lisbon Airport", "city": "Lisbon", "country": "Portugal", "tz": "Europe/Lisbon", "iso": "PT" },
-      "ATH": { "lat": "37.93", "lon": "23.94", "name": "Athens Airport", "city": "Athens", "country": "Greece", "tz": "Europe/Athens", "iso": "GR" },
-      "MCT": { "lat": "23.59", "lon": "58.28", "name": "Muscat Airport", "city": "Muscat", "country": "Oman", "tz": "Asia/Muscat", "iso": "OM" },
-      "AUH": { "lat": "24.43", "lon": "54.65", "name": "Abu Dhabi Airport", "city": "Abu Dhabi", "country": "United Arab Emirates", "tz": "Asia/Dubai", "iso": "AE" },
-      "PSA": { "lat": "43.68", "lon": "10.39", "name": "Pisa Airport", "city": "Pisa", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
-      "SXF": { "lat": "52.38", "lon": "13.52", "name": "Schönefeld Airport", "city": "Berlin", "country": "Germany", "tz": "Europe/Berlin", "iso": "DE" },
-      "FLR": { "lat": "43.81", "lon": "11.20", "name": "Florence Airport", "city": "Florence", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
-      "OTP": { "lat": "44.57", "lon": "26.10", "name": "Otopeni Airport", "city": "Bucharest", "country": "Romania", "tz": "Europe/Bucharest", "iso": "RO" },
-      "BRU": { "lat": "50.90", "lon": "4.48", "name": "Brussels Airport", "city": "Brussels", "country": "Belgium", "tz": "Europe/Brussels", "iso": "BE" },
-      "LCA": { "lat": "34.87", "lon": "33.62", "name": "Larnaca Airport", "city": "Larnaca", "country": "Cyprus", "tz": "Asia/Nicosia", "iso": "CY" },
-      "CRL": { "lat": "50.45", "lon": "4.45", "name": "Charleroi Airport", "city": "Brussels", "country": "Belgium", "tz": "Europe/Brussels", "iso": "BE" },
-      "ZRH": { "lat": "47.46", "lon": "8.54", "name": "Zurich Airport", "city": "Zurich", "country": "Switzerland", "tz": "Europe/Zurich", "iso": "CH" },
-      "NCE": { "lat": "43.66", "lon": "7.21", "name": "Nice Airport", "city": "Nice", "country": "France", "tz": "Europe/Paris", "iso": "FR" },
-      "WAW": { "lat": "52.16", "lon": "20.96", "name": "Chopin Airport", "city": "Warsaw", "country": "Poland", "tz": "Europe/Warsaw", "iso": "PL" },
-      "KUL": { "lat": "2.74", "lon": "101.70", "name": "Kuala Lumpur Airport", "city": "Kuala Lumpur", "country": "Malaysia", "tz": "Asia/Kuala_Lumpur", "iso": "MY" },
-      "LGK": { "lat": "6.32", "lon": "99.73", "name": "Langkawi Airport", "city": "Langkawi", "country": "Malaysia", "tz": "Asia/Kuala_Lumpur", "iso": "MY" },
-      "DPS": { "lat": "-8.74", "lon": "115.16", "name": "Ngurah Rai Airport", "city": "Bali", "country": "Indonesia", "tz": "Asia/Makassar", "iso": "ID" },
-      "FCO": { "lat": "41.80", "lon": "12.24", "name": "Fiumicino Airport", "city": "Rome", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
-      "NAP": { "lat": "40.88", "lon": "14.29", "name": "Naples Airport", "city": "Naples", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
-      "OPO": { "lat": "41.24", "lon": "-8.67", "name": "Porto Airport", "city": "Porto", "country": "Portugal", "tz": "Europe/Lisbon", "iso": "PT" },
-      "BUD": { "lat": "47.43", "lon": "19.26", "name": "Ferenc Liszt Airport", "city": "Budapest", "country": "Hungary", "tz": "Europe/Budapest", "iso": "HU" },
-      "TFS": { "lat": "28.04", "lon": "-16.57", "name": "Tenerife South Airport", "city": "Tenerife", "country": "Spain", "tz": "Atlantic/Canary", "iso": "ES" },
-      "LAX": { "lat": "33.94", "lon": "-118.40", "name": "Los Angeles Airport", "city": "Los Angeles", "country": "United States", "tz": "America/Los_Angeles", "iso": "US" },
-      "SFO": { "lat": "37.62", "lon": "-122.37", "name": "San Francisco Airport", "city": "San Francisco", "country": "United States", "tz": "America/Los_Angeles", "iso": "US" },
-      "ORY": { "lat": "48.72", "lon": "2.36", "name": "Orly Airport", "city": "Paris", "country": "France", "tz": "Europe/Paris", "iso": "FR" },
-      "SOF": { "lat": "42.69", "lon": "23.41", "name": "Sofia Airport", "city": "Sofia", "country": "Bulgaria", "tz": "Europe/Sofia", "iso": "BG" },
-      "AGP": { "lat": "36.67", "lon": "-4.49", "name": "Málaga Airport", "city": "Málaga", "country": "Spain", "tz": "Europe/Madrid", "iso": "ES" },
-      "TLL": { "lat": "59.41", "lon": "24.83", "name": "Tallinn Airport", "city": "Tallinn", "country": "Estonia", "tz": "Europe/Tallinn", "iso": "EE" },
-      "DUB": { "lat": "53.42", "lon": "-6.24", "name": "Dublin Airport", "city": "Dublin", "country": "Ireland", "tz": "Europe/Dublin", "iso": "IE" },
-      "CLE": { "lat": "41.41", "lon": "-81.85", "name": "Cleveland Airport", "city": "Cleveland", "country": "United States", "tz": "America/New_York", "iso": "US" },
-      "BRI": { "lat": "41.13", "lon": "16.76", "name": "Bari Airport", "city": "Bari", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
-      "CAI": { "lat": "30.12", "lon": "31.40", "name": "Cairo Airport", "city": "Cairo", "country": "Egypt", "tz": "Africa/Cairo", "iso": "EG" },
-      "ASW": { "lat": "23.96", "lon": "32.81", "name": "Aswan Airport", "city": "Aswan", "country": "Egypt", "tz": "Africa/Cairo", "iso": "EG" },
-      "LXR": { "lat": "25.67", "lon": "32.70", "name": "Luxor Airport", "city": "Luxor", "country": "Egypt", "tz": "Africa/Cairo", "iso": "EG" },
-      "PDL": { "lat": "37.74", "lon": "-25.69", "name": "Ponta Delgada Airport", "city": "Azores", "country": "Portugal", "tz": "Atlantic/Azores", "iso": "PT" },
-      "MAD": { "lat": "40.4839", "lon": "-3.5679", "name": "Adolfo Suárez Madrid-Barajas", "city": "Madrid", "country": "Spain", "tz": "Europe/Madrid", "iso": "ES" },
-      "DOH": { "lat": "25.2611", "lon": "51.5650", "name": "Hamad Intl", "city": "Doha", "country": "Qatar", "tz": "Asia/Qatar", "iso": "QA" },
-      "CMB": { "lat": "7.1807", "lon": "79.8837", "name": "Bandaranaike Intl", "city": "Colombo", "country": "Sri Lanka", "tz": "Asia/Colombo", "iso": "LK" },
-      "PNH": { "lat": "11.5466", "lon": "104.8460", "name": "Phnom Penh Intl", "city": "Phnom Penh", "country": "Cambodia", "tz": "Asia/Phnom_Penh", "iso": "KH" },
-      "ARN": { "lat": "59.6519", "lon": "17.9186", "name": "Stockholm Arlanda", "city": "Stockholm", "country": "Sweden", "tz": "Europe/Stockholm", "iso": "SE" },
-      "MMX": { "lat": "55.5362", "lon": "13.3697", "name": "Malmö Airport", "city": "Malmö", "country": "Sweden", "tz": "Europe/Stockholm", "iso": "SE" },
-      "GOT": { "lat": "57.6628", "lon": "12.2798", "name": "Göteborg Landvetter", "city": "Gothenburg", "country": "Sweden", "tz": "Europe/Stockholm", "iso": "SE" },
+  // A few city labels the geocoders used to get wrong (Malmö -> Stockholm, Tunis -> Tunisia). Airports are not
+  // listed here: they come from the live airport table (airportData.js), loaded into memoryAirports.
+  const STATIC_CITY_COORDS = {
       "Paris": { "lat": "48.8566", "lon": "2.3522", "city": "Paris", "country": "France", "iso": "FR" },
       "London": { "lat": "51.5074", "lon": "-0.1278", "city": "London", "country": "England", "iso": "GB-ENG" },
       "Manchester": { "lat": "53.4808", "lon": "-2.2426", "city": "Manchester", "country": "England", "iso": "GB-ENG" },
@@ -824,124 +749,80 @@ module.exports = function registerProxyRoutes(app, {
 
   const isGenericAirportName = (name) => /^(metropolitan area|all airports)$/i.test(String(name || '').trim());
 
+  const finiteOrNull = (v) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+
+  /** The public shape of an airport: the stored record, with the runway dataset filling a missing position. */
   function enrichAirportRecord(record) {
       if (!record) return record;
       const iata = String(record.iata || '').trim().toUpperCase();
-      const gps = STATIC_GEO_COORDS[iata];
-      const rw = gps ? null : getAirportCoords(iata);
       const out = {
           iata,
           city_name: record.city_name || '',
           airport_name: record.airport_name || '',
       };
-      if (gps) {
-          out.latitude = parseFloat(gps.lat);
-          out.longitude = parseFloat(gps.lon);
-          if (gps.country) out.country = gps.country;
-          if (gps.iso) out.country_code = gps.iso;
-          if (gps.tz) out.timezone = gps.tz;
-      } else if (rw) {
-          out.latitude = rw.lat;
-          out.longitude = rw.lng;
+      let lat = finiteOrNull(record.latitude);
+      let lng = finiteOrNull(record.longitude);
+      if (lat === null || lng === null || (lat === 0 && lng === 0)) {
+          const rw = getAirportCoords(iata);
+          lat = rw ? rw.lat : null;
+          lng = rw ? rw.lng : null;
       }
+      if (lat !== null && lng !== null) {
+          out.latitude = lat;
+          out.longitude = lng;
+      }
+      if (record.icao) out.icao = record.icao;
+      if (record.country) out.country = record.country;
+      if (record.country_code) out.country_code = record.country_code;
+      if (record.timezone) out.timezone = record.timezone;
       return out;
   }
 
-  // Search local static and prepopulated airport/city data offline-first before triggering external network calls
+  const toGeocodeResult = (ap, label) => ({
+      name: label,
+      latitude: ap.latitude,
+      longitude: ap.longitude,
+      country: ap.country || '',
+      country_code: ap.country_code || '',
+      timezone: ap.timezone || '',
+      admin1: ap.city_name || '',
+      iata: ap.iata,
+  });
+
+  // Search the airport table (and a few fixed city labels) offline-first before triggering external network calls
   function searchLocalAirportData(q) {
       if (!q) return null;
       const queryLower = q.trim().toLowerCase();
-      
+
       // A. Direct IATA exact 3-letter code lookup (including "MLA" and "MLA airport")
       const iataQueryMatch = queryLower.match(/^([a-z]{3})(?:\s+airport)?$/);
       if (iataQueryMatch) {
           const iataUpper = iataQueryMatch[1].toUpperCase();
-          const gps = STATIC_GEO_COORDS[iataUpper];
-          if (gps) {
-              const details = memoryAirports.get(iataUpper);
-              return [{
-                  name: details?.airport_name || gps.name || gps.city || iataUpper,
-                  latitude: parseFloat(gps.lat),
-                  longitude: parseFloat(gps.lon),
-                  country: gps.country || details?.country || '',
-                  country_code: gps.iso || '',
-                  timezone: gps.tz || 'UTC',
-                  admin1: details?.city_name || gps.city || '',
-                  iata: iataUpper,
-              }];
-          }
-
-          const rw = getAirportCoords(iataUpper);
-          if (rw) {
-              const details = memoryAirports.get(iataUpper);
-              return [{
-                  name: details?.airport_name || `${iataUpper} Airport`,
-                  latitude: rw.lat,
-                  longitude: rw.lng,
-                  country: '',
-                  country_code: '',
-                  timezone: '',
-                  admin1: details?.city_name || '',
-                  iata: iataUpper,
-              }];
+          const ap = enrichAirportRecord(memoryAirports.get(iataUpper) || { iata: iataUpper });
+          if (ap.latitude !== undefined) {
+              const name = ap.airport_name && !isGenericAirportName(ap.airport_name) ? ap.airport_name : `${iataUpper} Airport`;
+              return [toGeocodeResult(ap, name)];
           }
       }
-      
+
       const results = [];
 
-      // B. Search high-fidelity static airport coordinates first to be extremely fast and robust
-      for (const [iata, gps] of Object.entries(STATIC_GEO_COORDS)) {
-          if (iata.length === 3) {
-              const iataLower = iata.toLowerCase();
-              const cityLower = (gps.city || '').toLowerCase();
-              const airportLower = (gps.name || '').toLowerCase();
-              
-              if (iataLower === queryLower || (cityLower && queryLower.length >= 3 && cityLower.startsWith(queryLower)) || (airportLower && queryLower.length >= 3 && airportLower.startsWith(queryLower)) || (cityLower && queryLower === cityLower)) {
-                  const details = memoryAirports.get(iata);
-                  results.push({
-                      name: details?.airport_name || gps.name || gps.city ? `${details?.airport_name || gps.name} (${iata})` : iata,
-                      latitude: parseFloat(gps.lat),
-                      longitude: parseFloat(gps.lon),
-                      country: gps.country || details?.country || '',
-                      country_code: gps.iso || '',
-                      timezone: gps.tz || 'UTC',
-                      admin1: details?.city_name || gps.city || '',
-                      iata,
-                  });
-              }
+      // B. Airports whose code, city or name matches (only those with a known position)
+      if (queryLower.length >= 3) {
+          for (const [iata, details] of memoryAirports.entries()) {
+              const cityLower = (details.city_name || '').toLowerCase();
+              const airportLower = (details.airport_name || '').toLowerCase();
+              if (iata.toLowerCase() !== queryLower && !cityLower.startsWith(queryLower) && !airportLower.startsWith(queryLower)) continue;
+              const ap = enrichAirportRecord(details);
+              if (ap.latitude === undefined) continue;
+              results.push(toGeocodeResult(ap, `${ap.airport_name} (${iata})`));
+              if (results.length >= 15) break;
           }
       }
 
-      // Secondary check of other in-memory database airports (only when ground-truth coordinates exist)
-      for (const [iata, details] of memoryAirports.entries()) {
-          const iataLower = iata.toLowerCase();
-          const cityLower = (details.city_name || '').toLowerCase();
-          const airportLower = (details.airport_name || '').toLowerCase();
-          
-          if (iataLower === queryLower || (queryLower.length >= 3 && (cityLower.startsWith(queryLower) || airportLower.startsWith(queryLower)))) {
-              // Only add if not already matched from static coords to avoid duplicates
-              if (!results.some(r => r.name.includes(`(${iata})`))) {
-                  const gps = STATIC_GEO_COORDS[iata];
-                  const rw = gps ? null : getAirportCoords(iata);
-                  if (!gps && !rw) continue;
-                  results.push({
-                      name: `${details.airport_name} (${iata})`,
-                      latitude: gps ? parseFloat(gps.lat) : rw.lat,
-                      longitude: gps ? parseFloat(gps.lon) : rw.lng,
-                      country: gps?.country || '',
-                      country_code: gps?.iso || '',
-                      timezone: gps?.tz || '',
-                      admin1: details.city_name,
-                      iata,
-                  });
-              }
-          }
-      }
-      
       // C. Search static city labels directly
       const queryCityPart = queryLower.split(',')[0].trim();
-      for (const [key, details] of Object.entries(STATIC_GEO_COORDS)) {
-          if (key.length <= 3) continue;
+      for (const [key, details] of Object.entries(STATIC_CITY_COORDS)) {
           const keyLower = key.toLowerCase();
           const isCountryEntry = (details.country || '').toLowerCase() === keyLower;
 
@@ -1157,6 +1038,33 @@ module.exports = function registerProxyRoutes(app, {
 
   // --- Global Search & Lookup Endpoints (External DB / PostgreSQL) ---
 
+  // The whole airport table in one compact response, for the browser's offline copy (services/airportIndex.ts).
+  // Rows: [iata, icao, name, city, lat, lng, countryCode, country, timezone, kind]. The ETag changes with the data.
+  let airportIndexCache = { size: -1, stamp: null, body: null, etag: null };
+  const airportIndexBody = () => {
+      const stamp = memoryAirports.__stamp || 0;
+      if (airportIndexCache.size === memoryAirports.size && airportIndexCache.stamp === stamp && airportIndexCache.body) return airportIndexCache;
+      const rows = [];
+      for (const details of memoryAirports.values()) {
+          const ap = enrichAirportRecord(details);
+          rows.push([ap.iata, ap.icao || '', isGenericAirportName(ap.airport_name) ? '' : ap.airport_name, ap.city_name, ap.latitude ?? null, ap.longitude ?? null, ap.country_code || '', ap.country || '', ap.timezone || '', details.kind || '']);
+      }
+      rows.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+      const body = JSON.stringify({ v: 1, rows });
+      const etag = `"airports-${crypto.createHash('sha1').update(body).digest('hex').slice(0, 16)}"`;
+      airportIndexCache = { size: memoryAirports.size, stamp, body, etag };
+      return airportIndexCache;
+  };
+  app.get('/api/airports/index', (req, res) => {
+      if (memoryAirports.size === 0) return res.status(503).json({ error: 'Airport data is still loading' });
+      const { body, etag } = airportIndexBody();
+      res.setHeader('ETag', etag);
+      res.setHeader('Cache-Control', 'private, no-cache');
+      if (req.headers['if-none-match'] === etag) return res.status(304).end();
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return res.send(body);
+  });
+
   // Lookup single airport by IATA code
   app.get('/api/airports/lookup/:iata', async (req, res) => {
       const { iata } = req.params;
@@ -1174,33 +1082,23 @@ module.exports = function registerProxyRoutes(app, {
       if (memoryAirports.size === 0) {
           try {
               const { rows } = await pool.query(
-                  `SELECT iata, city_name, airport_name FROM global_airports WHERE UPPER(iata) = $1 LIMIT 10`,
+                  `SELECT iata, city_name, airport_name, icao, latitude, longitude, country_code, country, timezone FROM global_airports WHERE UPPER(iata) = $1 LIMIT 10`,
                   [lookupCode]
               );
               if (rows.length > 0) {
                   const preferred = rows.find(r => r.airport_name && !isGenericAirportName(r.airport_name)) || rows[0];
                   res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
-                  return res.json(enrichAirportRecord({
-                      iata: (preferred.iata || lookupCode).trim().toUpperCase(),
-                      city_name: preferred.city_name || '',
-                      airport_name: preferred.airport_name || '',
-                  }));
+                  return res.json(enrichAirportRecord({ ...preferred, iata: (preferred.iata || lookupCode).trim().toUpperCase() }));
               }
           } catch (err) {
               console.warn('Database lookup failed, falling back to static/runway stores:', err.message);
           }
       }
 
-      // 3. Static / ground-truth runway fallback
-      const gps = STATIC_GEO_COORDS[lookupCode];
-      const rw = getAirportCoords(lookupCode);
-      if (gps || rw) {
+      // 3. Runway dataset fallback (a position, no names) while the airport table is unavailable
+      if (getAirportCoords(lookupCode)) {
           res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
-          return res.json(enrichAirportRecord({
-              iata: lookupCode,
-              city_name: gps?.city || '',
-              airport_name: gps?.name || `${lookupCode} Airport`,
-          }));
+          return res.json(enrichAirportRecord({ iata: lookupCode, city_name: '', airport_name: `${lookupCode} Airport` }));
       }
 
       res.status(404).json({ error: 'Airport code not found in database or memory cache' });
@@ -1282,7 +1180,7 @@ module.exports = function registerProxyRoutes(app, {
       try {
           const searchPattern = `%${q.toLowerCase()}%`;
           const { rows } = await pool.query(
-              `SELECT iata, city_name, airport_name 
+              `SELECT iata, city_name, airport_name, icao, latitude, longitude, country_code, country, timezone
                FROM global_airports 
                WHERE LOWER(iata) = LOWER($1)
                   OR LOWER(iata) LIKE $2
@@ -1364,5 +1262,5 @@ module.exports = function registerProxyRoutes(app, {
       res.json(searchCarriersInMemory(q));
   });
 
-  // Calendar Sync Endpoint (iCal Feed)
+  return { routeService };
 };

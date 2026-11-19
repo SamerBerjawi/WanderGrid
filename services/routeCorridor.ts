@@ -1,5 +1,5 @@
 // Route Corridor Intelligence & Airport Geodesy Service for WanderGrid
-import { STATIC_GEO_DATA, formatProperLocationName } from './geocoding';
+import { STATIC_GEO_DATA, airportRow, formatProperLocationName } from './geocoding';
 import { getPhysicalRunwaysSync } from './airportRunways';
 import { Trip } from '../types';
 
@@ -103,7 +103,7 @@ export function resolveLocationMetadata(code: string, fallbackLat?: number, fall
     const cleanCode = rawTrimmed.toUpperCase();
 
     // Check static geo data (case-insensitive for both uppercase IATA and TitleCase city names)
-    let staticEntry = STATIC_GEO_DATA[cleanCode];
+    let staticEntry: any = airportRow(cleanCode) || STATIC_GEO_DATA[cleanCode];
     if (!staticEntry) {
         const firstSegment = rawTrimmed.split(',')[0].trim().toUpperCase();
         const found = Object.entries(STATIC_GEO_DATA).find(([k]) => {

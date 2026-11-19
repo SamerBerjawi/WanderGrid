@@ -74,6 +74,7 @@ docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT
 - **Dev vs prod persistence:** `dataService` uses the API unless the dev-only `VITE_LOCAL_MODE=true` is set (the default under `npm run dev`, via `.env.development`), in which case it uses localStorage for the whole session. Production builds always use the API. It never switches mid-session; API failures surface as errors.
 - Heavy jobs (backup, refresh, global data refresh) return 202 + `jobId`. Clients poll `/api/jobs/status/:jobId` (AGENTS.md §3).
 - Airports and carriers are served from in-memory maps loaded from the `global_airports` and `global_carriers` tables. A weekly `setInterval` refreshes them (`GLOBAL_DATA_REFRESH_MS`). Do not fetch them live per request (AGENTS.md §1).
+- **Airport data is live, not hardcoded.** `backend_files/airportData.js` joins dlubom names, OurAirports positions/country/UK nation and mwgg timezones into `global_airports`; after each refresh `airportRepair.js` fixes saved flight positions that are missing or >100 km off and clears "no route" traces. The browser keeps a copy of `GET /api/airports/index` in IndexedDB (`services/airportIndex.ts`); `getAirport()` / `airportRow()` are the lookups. Do not add airport tables to the frontend. Unit tests load `tests/fixtures/airports.json`.
 - Production: the Dockerfile builds the SPA, copies it to `client_build/`, and Express serves it statically along with the `*` SPA fallback. CI (`.github/workflows/build-and-publish.yml`) pushes the image to GHCR on main, master and `v*` tags.
 
 ### Auth

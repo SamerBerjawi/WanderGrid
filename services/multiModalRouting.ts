@@ -1,5 +1,4 @@
 // Multi-Modal Route Intelligence for WanderGrid: Rail (OSM Tracks) & Highways (OSRM) & Maritime (Marnet)
-import { STATIC_GEO_DATA } from './geocoding';
 
 // Global In-Memory RAM Cache for Multi-Modal Geometries
 const multiModalCache = new Map<string, [number, number, number][]>();

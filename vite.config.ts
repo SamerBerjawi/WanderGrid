@@ -4,7 +4,7 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-function viteDevApiPlugin() {
+function viteDevApiPlugin(localMode: boolean) {
   return {
     name: 'vite-dev-api-plugin',
     configureServer(server: any) {
@@ -43,6 +43,29 @@ function viteDevApiPlugin() {
           await (road ? handleRouteProxy : handleRailRouteProxy)({ query, headers: req.headers, method: req.method, url }, expressRes);
         } catch (err: any) {
           if (!res.writableEnded) expressRes.status(502).json({ ok: false, error: err?.message || 'Routing error' });
+        }
+      });
+      // Local mode has no backend: answer the airport table (services/airportIndex.ts) with the backend's own
+      // download-and-join (backend_files/airportData.js), kept in memory for the dev session.
+      let airportIndexBody: Promise<string> | null = null;
+      server.middlewares.use(async (req: any, res: any, next: any) => {
+        if (!localMode || !req.url || !req.url.startsWith('/api/airports/index')) return next();
+        const req2 = createRequire(import.meta.url);
+        airportIndexBody ??= (async () => {
+          const { downloadAirportRows, indexRowsFromTableRows } = req2('./backend_files/airportData.js');
+          const { getAirportCoords } = req2('./backend_files/airportCoords.js');
+          const { rows } = await downloadAirportRows();
+          return JSON.stringify({ v: 1, rows: indexRowsFromTableRows(rows, getAirportCoords) });
+        })();
+        try {
+          const body = await airportIndexBody;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.end(body);
+        } catch (err: any) {
+          airportIndexBody = null;
+          res.statusCode = 503;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: err?.message || 'Airport data unavailable' }));
         }
       });
       // Integrations status check: the backend's own tester, so there is no second list of providers.
@@ -103,7 +126,7 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [
         react(),
-        viteDevApiPlugin(),
+        viteDevApiPlugin(env.VITE_LOCAL_MODE === 'true'),
         VitePWA({
           registerType: 'autoUpdate',
           includeAssets: [

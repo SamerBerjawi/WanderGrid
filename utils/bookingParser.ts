@@ -448,8 +448,11 @@ export const findReference = (text: string): string | undefined => {
     return undefined;
 };
 
-/** Words that look like airport codes in capitals but are ordinary English (and very common in emails). */
-const NOT_AIRPORTS = new Set(['THE', 'AND', 'FOR', 'YOU', 'ARE', 'NOT', 'ALL', 'ANY', 'CAN', 'HAS', 'HER', 'HIS', 'ONE', 'OUR', 'OUT', 'NEW', 'NOW', 'WAY', 'WHO', 'GET', 'SEE', 'USD', 'EUR', 'GBP', 'CHF', 'PNR', 'REF', 'VAT', 'TAX', 'FEE', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN', 'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'FLT', 'ETA', 'ETD', 'UTC', 'GMT', 'PDF', 'APP', 'FAQ', 'SMS', 'ATM', 'VIA', 'BAG', 'ROW', 'SEAT']);
+/**
+ * Words that look like airport codes in capitals but are ordinary English or itinerary abbreviations (and very
+ * common in emails). The airport table knows every IATA code, including small fields such as DEP and ARR.
+ */
+const NOT_AIRPORTS = new Set(['DEP', 'ARR', 'STD', 'STA', 'TBA', 'TBC', 'PAX', 'HRS', 'MIN', 'ADT', 'CHD', 'INF', 'NON', 'TKT', 'BKG', 'CLS', 'OPR', 'TTL', 'ECO', 'THE', 'AND', 'FOR', 'YOU', 'ARE', 'NOT', 'ALL', 'ANY', 'CAN', 'HAS', 'HER', 'HIS', 'ONE', 'OUR', 'OUT', 'NEW', 'NOW', 'WAY', 'WHO', 'GET', 'SEE', 'USD', 'EUR', 'GBP', 'CHF', 'PNR', 'REF', 'VAT', 'TAX', 'FEE', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN', 'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'FLT', 'ETA', 'ETD', 'UTC', 'GMT', 'PDF', 'APP', 'FAQ', 'SMS', 'ATM', 'VIA', 'BAG', 'ROW', 'SEAT']);
 
 const isAirportCode = (code: string, bracketed: boolean): boolean =>
     /^[A-Z]{3}$/.test(code) && !NOT_AIRPORTS.has(code) && (bracketed || code in AIRPORT_CODES);

@@ -6,9 +6,8 @@ import {
     getAirportRunwayCentroid,
     getAirportRunwayCentroidSync,
 } from './airportRunwayDataset';
-import { STATIC_GEO_DATA, formatProperLocationName } from './geocoding';
+import { airportRow, formatProperLocationName } from './geocoding';
 import type { AirportCategory } from '../types/mapAppearance';
-import { TOP_AIRPORTS_BY_IATA } from '../utils/topAviationData';
 
 export type { PhysicalRunway, AirportCategory };
 export { getPhysicalRunways, getPhysicalRunwaysSync, getAirportRunwayCentroid, getAirportRunwayCentroidSync };
@@ -31,8 +30,7 @@ export function classifyAirportCategory(
     staticEntry?: any
 ): AirportCategory {
     const upper = (code || '').toUpperCase().trim();
-    const top = TOP_AIRPORTS_BY_IATA[upper];
-    const name = (top?.name || staticEntry?.name || '').toUpperCase();
+    const name = (staticEntry?.name || airportRow(upper)?.name || '').toUpperCase();
 
     // 1. Cargo
     if (
@@ -166,7 +164,7 @@ export function getAllGlobalAirports(dataset?: Record<string, PhysicalRunway[]> 
         const first = rws[0];
         const lng = (first.start[0] + first.end[0]) / 2;
         const lat = (first.start[1] + first.end[1]) / 2;
-        const staticEntry = STATIC_GEO_DATA[code.toUpperCase()];
+        const staticEntry = airportRow(code);
         const name = staticEntry?.name ? formatProperLocationName(staticEntry.name) : `${code} Airport`;
         const city = staticEntry?.city ? formatProperLocationName(staticEntry.city) : undefined;
         const country = staticEntry?.country || undefined;

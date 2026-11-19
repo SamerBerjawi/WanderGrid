@@ -2,7 +2,6 @@ import type { Transport, Trip } from '../types';
 import { getCoordinatesSync } from '../services/geocoding';
 import { addDays, realTrips, type Leg } from './dashboardModel';
 import { carrierLabel, journeyKm, journeyStatus, placeCode } from './journeysModel';
-import { TOP_100_AIRPORTS } from './topAviationData';
 import { isFlightLeg } from './legMode';
 
 /**
@@ -48,8 +47,8 @@ export interface AchievementInput {
 export const ORBIT_KM = 40_075;
 const CONTINENTS = new Set(['Africa', 'Asia', 'Europe', 'North America', 'South America', 'Oceania']);
 
-/** The airports ranked by traffic, busiest first: the "big hubs". */
-const BIG_HUBS = TOP_100_AIRPORTS.slice(0, 25).map(a => a.iata);
+/** The 25 busiest airports by passenger traffic, busiest first: the "big hubs" achievement. */
+export const BIG_HUBS = ['ATL', 'DXB', 'DFW', 'LHR', 'HND', 'DEN', 'IST', 'ORD', 'LAX', 'DEL', 'CDG', 'CAN', 'JFK', 'AMS', 'MAD', 'FRA', 'SIN', 'ICN', 'BKK', 'SFO', 'BCN', 'SEA', 'LAS', 'MCO', 'YYZ'];
 
 const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 

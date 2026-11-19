@@ -4,7 +4,12 @@ const assert = require('node:assert/strict');
 const { startTestServer } = require('../helpers/testServer');
 
 let srv, admin;
-before(async () => { srv = await startTestServer(); });
+before(async () => {
+    srv = await startTestServer();
+    // Airport timezones come from the live airport table (airportData.js); seed the two this file uses.
+    srv.__test.memoryAirports.set('AMS', { iata: 'AMS', city_name: 'Amsterdam', airport_name: 'Schiphol', timezone: 'Europe/Amsterdam' });
+    srv.__test.memoryAirports.set('LIS', { iata: 'LIS', city_name: 'Lisbon', airport_name: 'Lisbon', timezone: 'Europe/Lisbon' });
+});
 after(async () => { await srv.close(); });
 beforeEach(async () => {
     await srv.reset();
