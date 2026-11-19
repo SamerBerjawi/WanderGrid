@@ -31,6 +31,7 @@ const createInitDb = require('./dbSchema');
 const fxRates = require('./fxRates');
 const { getAirportCoordsMap } = require('./airportCoords');
 const airportData = require('./airportData');
+const carrierData = require('./carrierData');
 const { repairStoredAirportCoords, retryFailedRoutes } = require('./airportRepair');
 
 const pbkdf2Async = util.promisify(crypto.pbkdf2);
@@ -514,6 +515,20 @@ const upsertMemoryAirport = (row) => {
   return true;
 };
 
+/** One record per IATA code in RAM (the joined table already has one row per code; older tables repeat codes). */
+const upsertMemoryCarrier = (row) => {
+  const iata = String(row?.iata || '').trim().toUpperCase();
+  if (!iata) return false;
+  memoryCarriers.set(iata, {
+    iata,
+    company_name: row.company_name || '',
+    country_or_territory: row.country_or_territory || '',
+    icao: String(row.icao || '').trim().toUpperCase(),
+    active: row.active === true || row.active === false ? row.active : null,
+  });
+  return true;
+};
+
 const loadGlobalData = async () => {
   const coordsMap = getAirportCoordsMap();
   console.log(`Preloaded ${coordsMap.size} airport runway coordinates from local dataset.`);
@@ -540,19 +555,13 @@ const loadGlobalData = async () => {
     memoryAirports.__stamp = Date.now(); // invalidates the /api/airports/index ETag
     console.log(`Successfully preloaded ${apCount} airports from PostgreSQL database into fast RAM cache.`);
 
-    const carriersRes = await pool.query('SELECT iata, company_name, country_or_territory FROM global_carriers');
+    const carriersRes = await pool.query('SELECT iata, company_name, country_or_territory, icao, active FROM global_carriers');
+    if (carriersRes.rows.length > 0) memoryCarriers.clear();
     let crCount = 0;
     carriersRes.rows.forEach(row => {
-        const iata = (row.iata || '').trim().toUpperCase();
-        if (iata) {
-            memoryCarriers.set(iata, {
-                iata,
-                company_name: row.company_name || '',
-                country_or_territory: row.country_or_territory || ''
-            });
-            crCount++;
-        }
+        if (upsertMemoryCarrier(row)) crCount++;
     });
+    memoryCarriers.__stamp = Date.now(); // invalidates the /api/carriers/index ETag
     console.log(`Successfully preloaded ${crCount} carriers from PostgreSQL database into fast RAM cache.`);
 
     // Preload top hot geocoding queries into RAM cache for instantaneous 0ms responses
@@ -574,25 +583,10 @@ const loadGlobalData = async () => {
     console.warn('Failed to load global datasets from PG database to memory cache; making lazy network fallback fetch...', err.message);
     // If table is empty or query fails, run the Raw GitHub fetch in the background as a fail-safe fallback
     try {
-        console.log('Fetching & parsing global carriers from GitHub (fail-safe recovery)...');
-        const carrierResponse = await fetch(GLOBAL_DATASETS.carriers.url, { signal: AbortSignal.timeout(DATASET_FETCH_TIMEOUT_MS) });
-        if (carrierResponse.ok) {
-          const text = await carrierResponse.text();
-          const lines = text.split('\n').filter(Boolean);
-          for (const line of lines) {
-            try {
-              const item = JSON.parse(line);
-              const iata = (item.iata || '').trim().toUpperCase();
-              if (iata) {
-                memoryCarriers.set(iata, {
-                  iata,
-                  company_name: item.company_name || '',
-                  country_or_territory: item.country_or_territory || ''
-                });
-              }
-            } catch (e) {}
-          }
-        }
+        console.log('Fetching & parsing global carriers (fail-safe recovery)...');
+        const { rows: carrierRows } = await carrierData.downloadCarrierRows({ timeoutMs: DATASET_FETCH_TIMEOUT_MS });
+        for (const r of carrierRows) upsertMemoryCarrier(carrierData.recordFromRow(r));
+        memoryCarriers.__stamp = Date.now();
         
         console.log('Fetching & parsing global airports (fail-safe recovery)...');
         const { rows: airportRows } = await airportData.downloadAirportRows({ timeoutMs: DATASET_FETCH_TIMEOUT_MS });
@@ -621,10 +615,14 @@ const GLOBAL_DATASETS = {
         minRows: () => parseInt(process.env.DATASET_MIN_AIRPORTS || '5000', 10),
     },
     carriers: {
-        url: 'https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/carrier_data_full_processed.jsonl',
+        // IATA's register (dlubom) joined with OpenFlights ICAO codes and active flags in carrierData.js
         table: 'global_carriers',
-        columns: ['iata', 'company_name', 'country_or_territory'],
-        toRow: (item) => [String(item.iata || '').trim().toUpperCase(), item.company_name || '', item.country_or_territory || ''],
+        columns: carrierData.COLUMNS,
+        download: () => carrierData.downloadCarrierRows({ timeoutMs: DATASET_FETCH_TIMEOUT_MS }),
+        // The joined table has one row per code; the old one repeated codes, so the shrink guard counts codes
+        countSql: 'SELECT COUNT(DISTINCT iata) AS count FROM global_carriers',
+        // An install upgraded from the table without ICAO codes refreshes once so carriers get them
+        needsRefresh: async () => Number((await pool.query('SELECT COUNT(icao) AS count FROM global_carriers')).rows[0].count) === 0,
         minRows: () => parseInt(process.env.DATASET_MIN_CARRIERS || '500', 10),
     },
 };
@@ -652,7 +650,7 @@ async function downloadDataset(dataset) {
 }
 
 async function replaceDataset(dataset, rows) {
-    const { rows: countRows } = await pool.query(`SELECT COUNT(*) AS count FROM ${dataset.table}`);
+    const { rows: countRows } = await pool.query(dataset.countSql || `SELECT COUNT(*) AS count FROM ${dataset.table}`);
     const current = Number(countRows[0].count);
     const floor = Math.max(dataset.minRows(), Math.floor(current * 0.9));
     if (rows.length < floor) {

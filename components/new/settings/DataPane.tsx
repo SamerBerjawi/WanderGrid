@@ -3,6 +3,7 @@ import type { BackupSelectionOptions } from '../../../types';
 import type { SettingsData } from '../../../hooks/useSettingsData';
 import { dataService } from '../../../services/mockDb';
 import { loadAirportIndex } from '../../../services/airportIndex';
+import { loadCarrierIndex } from '../../../services/carrierIndex';
 import { ALL_OFF, ALL_ON, BACKUP_CATEGORIES, availableCategories, countBackup, parseBackupText, type BackupCategory, type BackupCounts } from '../../../utils/backupModel';
 import { errorMessage, toast } from '../../../services/toast';
 import { formatDate } from '../../../utils/formatters';
@@ -227,8 +228,8 @@ const RefreshSheet: React.FC<{ open: boolean; onClose: () => void; onDone: (mess
         try {
             const result = await dataService.runServerJob('/jobs/refresh', p => setPercent(p));
             const text = refreshSummary(result);
-            // Pick up the new airport table and any flights the server repaired
-            await loadAirportIndex(true);
+            // Pick up the new airport and airline tables and any flights the server repaired
+            await Promise.all([loadAirportIndex(true), loadCarrierIndex(true)]);
             window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
             setPercent(100); setMessage(text); onDone(text);
         } catch (e) {

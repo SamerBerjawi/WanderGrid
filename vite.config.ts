@@ -68,6 +68,26 @@ function viteDevApiPlugin(localMode: boolean) {
           res.end(JSON.stringify({ error: err?.message || 'Airport data unavailable' }));
         }
       });
+      // The same for the carrier table (services/carrierIndex.ts, backend_files/carrierData.js).
+      let carrierIndexBody: Promise<string> | null = null;
+      server.middlewares.use(async (req: any, res: any, next: any) => {
+        if (!localMode || !req.url || !req.url.startsWith('/api/carriers/index')) return next();
+        carrierIndexBody ??= (async () => {
+          const { downloadCarrierRows, indexRows, recordFromRow } = createRequire(import.meta.url)('./backend_files/carrierData.js');
+          const { rows } = await downloadCarrierRows();
+          return JSON.stringify({ v: 1, rows: indexRows(rows.map(recordFromRow)) });
+        })();
+        try {
+          const body = await carrierIndexBody;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.end(body);
+        } catch (err: any) {
+          carrierIndexBody = null;
+          res.statusCode = 503;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: err?.message || 'Carrier data unavailable' }));
+        }
+      });
       // Integrations status check: the backend's own tester, so there is no second list of providers.
       server.middlewares.use(async (req: any, res: any, next: any) => {
         if (!req.url || !req.url.startsWith('/api/proxy/test/')) return next();

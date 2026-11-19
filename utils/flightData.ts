@@ -1,22 +1,9 @@
 import { Transport } from '../types';
 import { allAirports, getAirport, searchAirports as searchAirportIndex } from '../services/airportIndex';
-import {
-  TOP_50_AIRLINES,
-  TOP_AIRLINES_BY_IATA,
-  AIRLINE_CODES as TOP_AIRLINE_CODES,
-  TOP_AIRLINE_DOMAINS,
-  searchTopAirlines,
-  TopAirline
-} from './topAviationData';
+import { carrierIataForIcao, getCarrier, searchCarriers } from '../services/carrierIndex';
 
-// Re-export top airline datasets and lookup helpers
-export {
-  TOP_50_AIRLINES,
-  TOP_AIRLINES_BY_IATA,
-  TOP_AIRLINE_DOMAINS,
-  searchTopAirlines
-};
-export type { TopAirline };
+// Airlines come from the server's carrier table (services/carrierIndex.ts, built by backend_files/carrierData.js).
+export { carrierIataForIcao };
 
 /**
  * Normalizes full legal corporate registrations (e.g. from GitHub datasets or external APIs)
@@ -78,25 +65,11 @@ export function formatCommercialAirlineName(rawName: string, iataCode?: string):
 
 // Dynamic, backwards-compatible dictionaries seeded with Top 100/50 and enriched dynamically
 export const AIRPORT_CODES: Record<string, string> = {};
-export const AIRLINE_CODES: Record<string, string> = { ...TOP_AIRLINE_CODES };
+export const AIRLINE_CODES: Record<string, string> = {};
 
-// Full online datasets loaded from GitHub to guarantee global worldwide coverage
+// Names resolved so far: the live tables fill these, per-code lookups add to them
 export const onlineAirports = new Map<string, { city: string; name: string; country?: string }>();
 export const onlineCarriers = new Map<string, { name: string; country?: string; domain?: string }>();
-export const onlineCarrierIcaoToIata = new Map<string, string>();
-
-// -------------------------------------------------------------
-// STEP 1: PREPOPULATE IN-MEMORY DATASETS FROM TOP 100/50 (0ms)
-// -------------------------------------------------------------
-TOP_50_AIRLINES.forEach(c => {
-  const upper = c.iata.toUpperCase();
-  onlineCarriers.set(upper, {
-    name: c.name,
-    country: c.country,
-    domain: c.domain
-  });
-  AIRLINE_CODES[upper] = c.name;
-});
 
 // Airports: the live airport table (services/airportIndex.ts) fills the maps below whenever a copy arrives.
 const seedFromAirportIndex = () => {
@@ -229,94 +202,6 @@ export function getFlightArrivalUtcDate(flight: Transport): Date {
   return parseLocalDateInTimezone(arrDate, arrTime, tz);
 }
 
-let isOnlineLoadingStarted = false;
-let isOnlineDataLoaded = false;
-
-export async function preloadStaticDatasets() {
-  if (isOnlineLoadingStarted) return;
-  isOnlineLoadingStarted = true;
-  console.log("Preloading airline data...");
-  
-  try {
-    // 1. Fetch carriers
-    const carriersPromise = fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/carrier_data_full_processed.jsonl')
-      .then(async (res) => {
-        if (!res.ok) throw new Error();
-        const text = await res.text();
-        const lines = text.split('\n');
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const item = JSON.parse(line);
-            const iata = (item.iata || '').trim().toUpperCase();
-            if (iata) {
-              const rawName = item.company_name || item.name || '';
-              // Format commercial airline brand name for non-hardcoded entities
-              const cleanName = formatCommercialAirlineName(rawName, iata);
-              onlineCarriers.set(iata, {
-                name: cleanName,
-                country: item.country_or_territory || ''
-              });
-              if (!AIRLINE_CODES[iata] && cleanName) {
-                AIRLINE_CODES[iata] = cleanName;
-              }
-            }
-          } catch (e) {}
-        }
-        console.log(`Preloaded ${onlineCarriers.size} carriers from GitHub.`);
-      })
-      .catch((err) => console.warn("Failed preloading carriers from GitHub:", err));
-
-    // 2. Fetch OpenFlights airlines for robust ICAO -> IATA mapping & commercial brand names
-    const openflightsPromise = fetch('https://raw.githubusercontent.com/jpatokal/openflights/master/data/airlines.dat')
-      .then(async (res) => {
-        if (!res.ok) throw new Error();
-        const text = await res.text();
-        const lines = text.split('\n');
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          const parts = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-          if (parts.length >= 5) {
-            const iata = parts[3].replace(/\"/g, '').trim().toUpperCase();
-            const icao = parts[4].replace(/\"/g, '').trim().toUpperCase();
-            const companyName = parts[1].replace(/\"/g, '').trim();
-            if (iata && iata !== '\\N' && iata !== '-' && iata.length === 2 && icao && icao !== '\\N' && icao !== '-' && icao.length === 3) {
-              const cleanName = formatCommercialAirlineName(companyName, iata);
-              onlineCarrierIcaoToIata.set(icao, iata);
-              // Prefer OpenFlights clean commercial name or shorter brand name
-              if (!onlineCarriers.has(iata) || (onlineCarriers.get(iata)?.name?.length || 999) > cleanName.length) {
-                onlineCarriers.set(iata, { name: cleanName });
-                AIRLINE_CODES[iata] = cleanName;
-              }
-            }
-          }
-        }
-        console.log(`Preloaded ${onlineCarrierIcaoToIata.size} ICAO -> IATA carrier mappings.`);
-      })
-      .catch((err) => console.warn("Failed preloading OpenFlights carriers mapping:", err));
-
-    // Airports and their timezones come from the server's airport table (services/airportIndex.ts).
-    await Promise.allSettled([carriersPromise, openflightsPromise]);
-    isOnlineDataLoaded = true;
-    
-    // Dispatch master reload event to cause views to refresh
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('wandergrid_metadata_resolved', {
-        detail: { type: 'batch_refresh' }
-      }));
-    }
-  } catch (e) {
-    console.error("Failed to preload full online datasets:", e);
-  }
-}
-
-// Automatically initiate background preload in browser environment without blocking page interaction
-if (typeof window !== 'undefined') {
-  setTimeout(() => {
-    preloadStaticDatasets();
-  }, 1000);
-}
-
 // Background fetch handlers and tracking sets to avoid redundant API queries
 const pendingAirportFetches = new Set<string>();
 const failedAirportFetches = new Set<string>();
@@ -421,12 +306,7 @@ async function triggerBackgroundAirportFetch(code: string) {
       // Backend lookup failed, proceed to fallback
     }
 
-    // 2. Ensure GitHub dataset preload is started in background
-    if (!isOnlineLoadingStarted) {
-      preloadStaticDatasets();
-    }
-
-    // 3. Fallback to AviationStack if apiKey exists
+    // 2. Fallback to AviationStack if apiKey exists
     const apiKey = getAviationStackApiKey();
     if (apiKey) {
       try {
@@ -538,12 +418,7 @@ async function triggerBackgroundCarrierFetch(code: string) {
       // Backend unavailable, fallback
     }
 
-    // 2. Ensure GitHub dataset preload is started in background
-    if (!isOnlineLoadingStarted) {
-      preloadStaticDatasets();
-    }
-
-    // 3. Fallback to AviationStack if apiKey exists
+    // 2. Fallback to AviationStack if apiKey exists
     const apiKey = getAviationStackApiKey();
     if (apiKey) {
       try {
@@ -580,7 +455,7 @@ async function triggerBackgroundCarrierFetch(code: string) {
 }
 
 // -------------------------------------------------------------
-// TWO-TIER RETRIEVAL: Top Datasets (Tier 1) -> GitHub / Cache (Tier 2)
+// RETRIEVAL: live table -> names resolved so far -> saved per-code cache -> per-code lookup
 // -------------------------------------------------------------
 
 export function getCityName(iataCode: string): string {
@@ -593,7 +468,7 @@ export function getCityName(iataCode: string): string {
     return live.city || live.name;
   }
 
-  // 2. Tier 2: Check full in-memory online dataset (preloaded from GitHub)
+  // 2. Names resolved by per-code lookups
   const onlineItem = onlineAirports.get(code);
   if (onlineItem) {
     return onlineItem.city || onlineItem.name || code;
@@ -610,7 +485,7 @@ export function getCityName(iataCode: string): string {
     return AIRPORT_CODES[code];
   }
   
-  // 5. Trigger non-blocking fallback fetch (Local DB -> GitHub fallback)
+  // 5. Trigger non-blocking fallback fetch (server lookup, then AviationStack)
   triggerBackgroundAirportFetch(code);
 
   return code;
@@ -648,13 +523,13 @@ export function getCarrierName(carrierCode: string): string {
   const code = (carrierCode || "").trim().toUpperCase();
   if (!code || code.length < 2) return code;
 
-  // 1. Tier 1: Check instant curated Top 50 Airlines (0ms latency, already verified commercial name)
-  const topAirline = TOP_AIRLINES_BY_IATA.get(code);
-  if (topAirline) {
-    return topAirline.name;
+  // 1. The live carrier table (names already cleaned on the server)
+  const live = getCarrier(code);
+  if (live?.name) {
+    return live.name;
   }
 
-  // 2. Tier 2: Check in-memory online dataset (preloaded from GitHub, formatted for non-hardcoded)
+  // 2. Names resolved by per-code lookups
   const onlineItem = onlineCarriers.get(code);
   if (onlineItem && onlineItem.name) {
     return formatCommercialAirlineName(onlineItem.name, code);
@@ -671,7 +546,7 @@ export function getCarrierName(carrierCode: string): string {
     return formatCommercialAirlineName(AIRLINE_CODES[code], code);
   }
   
-  // 5. Trigger non-blocking fallback fetch (Local DB -> GitHub fallback)
+  // 5. Trigger non-blocking fallback fetch (server lookup, then AviationStack)
   triggerBackgroundCarrierFetch(code);
 
   return carrierCode;
@@ -715,7 +590,7 @@ export function getAirportsByQueryLocally(query: string, limit: number = 15): Ar
     });
   }
 
-  // Step 2: Fallback / search additional airports from full GitHub online dataset
+  // Step 2: airports resolved by per-code lookups that the table does not have (or while it loads)
   if (results.length < limit) {
     const additionalMatches: Array<{
       iata: string;
@@ -761,11 +636,6 @@ export function getAirportsByQueryLocally(query: string, limit: number = 15): Ar
     }
   }
 
-  // If online data hasn't been preloaded yet, trigger it now in the background
-  if (!isOnlineLoadingStarted) {
-    preloadStaticDatasets();
-  }
-
   return results.slice(0, limit);
 }
 
@@ -778,8 +648,8 @@ export function getCarriersByQueryLocally(query: string, limit: number = 15): Ar
   const q = query.trim().toLowerCase();
   if (!q) return [];
 
-  // Step 1: Instant search in Top 50 airlines (Tier 1)
-  const topMatches = searchTopAirlines(q, limit);
+  // Step 1: the live carrier table
+  const topMatches = searchCarriers(q, limit);
   const seenIatas = new Set<string>();
   const results: Array<{
     iata: string;
@@ -798,7 +668,7 @@ export function getCarriersByQueryLocally(query: string, limit: number = 15): Ar
     });
   }
 
-  // Step 2: Fallback / search additional carriers from full GitHub online dataset
+  // Step 2: airlines resolved by per-code lookups that the table does not have (or while it loads)
   if (results.length < limit) {
     const additionalMatches: Array<{
       iata: string;
@@ -834,11 +704,6 @@ export function getCarriersByQueryLocally(query: string, limit: number = 15): Ar
       const { score, ...item } = m;
       results.push(item);
     }
-  }
-
-  // If online data hasn't been preloaded yet, trigger it now in the background
-  if (!isOnlineLoadingStarted) {
-    preloadStaticDatasets();
   }
 
   return results.slice(0, limit);

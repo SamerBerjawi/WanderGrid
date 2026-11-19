@@ -66,7 +66,9 @@ CREATE TABLE IF NOT EXISTS global_carriers (
   id SERIAL PRIMARY KEY,
   iata VARCHAR(10) CHECK (iata <> ''),
   company_name TEXT,
-  country_or_territory TEXT
+  country_or_territory TEXT,
+  icao TEXT,
+  active BOOLEAN
 );
 
 CREATE TABLE IF NOT EXISTS geocoding_cache (

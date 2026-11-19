@@ -7,6 +7,7 @@ const { AviationStackError, normalizeFutureFlight, requestAviationStack } = requ
 const { resolveFlight } = require('./flightLookup.js');
 const { fetchUpstream } = require('./upstream');
 const { resolveIcaoCallsign } = require('./carrierMapping');
+const { indexRows: carrierIndexRows } = require('./carrierData');
 const { handleRouteProxy, handleRailRouteProxy } = require('./routeProxy');
 const crypto = require('crypto');
 const { createRouteService } = require('./routeStore');
@@ -1058,6 +1059,27 @@ module.exports = function registerProxyRoutes(app, {
   app.get('/api/airports/index', (req, res) => {
       if (memoryAirports.size === 0) return res.status(503).json({ error: 'Airport data is still loading' });
       const { body, etag } = airportIndexBody();
+      res.setHeader('ETag', etag);
+      res.setHeader('Cache-Control', 'private, no-cache');
+      if (req.headers['if-none-match'] === etag) return res.status(304).end();
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return res.send(body);
+  });
+
+  // The whole carrier table in one compact response, for the browser's offline copy (services/carrierIndex.ts).
+  // Rows: [iata, icao, name, country, active (1, 0 or null)]. The ETag changes with the data.
+  let carrierIndexCache = { size: -1, stamp: null, body: null, etag: null };
+  const carrierIndexBody = () => {
+      const stamp = memoryCarriers.__stamp || 0;
+      if (carrierIndexCache.size === memoryCarriers.size && carrierIndexCache.stamp === stamp && carrierIndexCache.body) return carrierIndexCache;
+      const body = JSON.stringify({ v: 1, rows: carrierIndexRows(memoryCarriers.values()) });
+      const etag = `"carriers-${crypto.createHash('sha1').update(body).digest('hex').slice(0, 16)}"`;
+      carrierIndexCache = { size: memoryCarriers.size, stamp, body, etag };
+      return carrierIndexCache;
+  };
+  app.get('/api/carriers/index', (req, res) => {
+      if (memoryCarriers.size === 0) return res.status(503).json({ error: 'Carrier data is still loading' });
+      const { body, etag } = carrierIndexBody();
       res.setHeader('ETag', etag);
       res.setHeader('Cache-Control', 'private, no-cache');
       if (req.headers['if-none-match'] === etag) return res.status(304).end();
