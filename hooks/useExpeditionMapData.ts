@@ -11,6 +11,8 @@ import { getPhysicalRunways } from '../services/airportRunwayDataset';
 import { resolveLegEnd } from '../utils/mapPoints';
 import { countScratchCountries, isLayoverOnly, scratchToggles } from '../components/new/map/mapScratch';
 import { isFlightLeg } from '../utils/legMode';
+import { useCountryIndex } from './useReplaySettings';
+import { collectTripCountries, filterTripsForMap } from '../utils/mapFilters';
 
 export type ScratchAppearanceFilters = Pick<
     MapAppearanceSettings,
@@ -276,6 +278,7 @@ export const useExpeditionMapData = (scratchAppearance?: ScratchAppearanceFilter
     // Filters
     const [statusFilter, setStatusFilter] = useState<'all' | 'Past' | 'Upcoming' | 'Planning'>('all');
     const [yearFilter, setYearFilter] = useState<string>('all');
+    const [countryFilter, setCountryFilter] = useState<string[]>([]);
     const [depFilter, setDepFilter] = useState<string[]>([]);
     const [arrFilter, setArrFilter] = useState<string[]>([]);
     const [dateFrom, setDateFrom] = useState<string>('');
@@ -283,6 +286,7 @@ export const useExpeditionMapData = (scratchAppearance?: ScratchAppearanceFilter
     const handleClearFilters = () => {
         setStatusFilter('all');
         setYearFilter('all');
+        setCountryFilter([]);
         setDepFilter([]);
         setArrFilter([]);
         setDateFrom('');
@@ -292,9 +296,12 @@ export const useExpeditionMapData = (scratchAppearance?: ScratchAppearanceFilter
     const activeFilterCount =
         (statusFilter !== 'all' ? 1 : 0) +
         (yearFilter !== 'all' ? 1 : 0) +
+        (countryFilter.length > 0 ? 1 : 0) +
         (depFilter.length > 0 ? 1 : 0) +
         (arrFilter.length > 0 ? 1 : 0) +
         (dateFrom || dateTo ? 1 : 0);
+
+    const countryIndex = useCountryIndex(trips.length > 0);
 
     const handleRefresh = () => {
         setLoading(true);
@@ -710,6 +717,11 @@ export const useExpeditionMapData = (scratchAppearance?: ScratchAppearanceFilter
         };
     }, [trips]);
 
+    const uniqueCountries = useMemo(
+        () => collectTripCountries(trips, countryIndex, getCoordinatesSync),
+        [trips, countryIndex]
+    );
+
     const years = useMemo(() => {
         const yearSet = new Set<string>();
         trips.forEach(t => {
@@ -722,46 +734,15 @@ export const useExpeditionMapData = (scratchAppearance?: ScratchAppearanceFilter
     }, [trips]);
 
     // Filter Trips
-    const filteredTrips = useMemo(() => {
-        const today = new Date().toISOString().split('T')[0];
-
-        return trips.filter(trip => {
-            if (statusFilter !== 'all') {
-                const isPast = isPastTrip(trip, today);
-
-                if (statusFilter === 'Past') {
-                    // Past should show previous trips
-                    if (!isPast) return false;
-                } else if (statusFilter === 'Upcoming') {
-                    // Upcoming should show future trips that are active/upcoming
-                    if (isPast || trip.status !== 'Upcoming') return false;
-                } else if (statusFilter === 'Planning') {
-                    // Planning should show future trips in planning stage
-                    if (isPast || trip.status !== 'Planning') return false;
-                }
-            }
-
-            if (yearFilter !== 'all') {
-                const tripYear = trip.startDate ? new Date(trip.startDate).getFullYear().toString() : '';
-                if (tripYear !== yearFilter) return false;
-            }
-
-            if (dateFrom && trip.startDate && trip.startDate < dateFrom) return false;
-            if (dateTo && trip.endDate && trip.endDate > dateTo) return false;
-
-            if (depFilter.length > 0) {
-                const hasMatchingOrigin = trip.transports?.some(t => t.origin && depFilter.includes(t.origin));
-                if (!hasMatchingOrigin) return false;
-            }
-
-            if (arrFilter.length > 0) {
-                const hasMatchingDest = trip.transports?.some(t => t.destination && arrFilter.includes(t.destination));
-                if (!hasMatchingDest) return false;
-            }
-
-            return true;
-        });
-    }, [trips, statusFilter, yearFilter, depFilter, arrFilter, dateFrom, dateTo]);
+    const filteredTrips = useMemo(
+        () => filterTripsForMap(
+            trips,
+            { statusFilter, yearFilter, countryFilter, depFilter, arrFilter, dateFrom, dateTo },
+            countryIndex,
+            getCoordinatesSync
+        ),
+        [trips, statusFilter, yearFilter, countryFilter, depFilter, arrFilter, dateFrom, dateTo, countryIndex]
+    );
 
     // Summary Metrics & Accurate Expedition Type Tallies (Counts & Distance)
     const expeditionTypeMetrics = useMemo(() => {
@@ -837,9 +818,9 @@ export const useExpeditionMapData = (scratchAppearance?: ScratchAppearanceFilter
     ]);
 
     return {
-        trips, filteredTrips, expeditionTypeMetrics, years, uniqueAirports,
+        trips, filteredTrips, expeditionTypeMetrics, years, uniqueAirports, uniqueCountries,
         visitedCountryCodes, countryStatusMap, countryStatusesByCode, visitedPlaces,
-        statusFilter, setStatusFilter, yearFilter, setYearFilter, depFilter, setDepFilter, arrFilter, setArrFilter,
+        statusFilter, setStatusFilter, yearFilter, setYearFilter, countryFilter, setCountryFilter, depFilter, setDepFilter, arrFilter, setArrFilter,
         dateFrom, setDateFrom, dateTo, setDateTo, activeFilterCount,
         handleClearFilters, handleRefresh, handleUpdateCountryStatus,
     };

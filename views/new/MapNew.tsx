@@ -511,6 +511,9 @@ export const MapNew: React.FC<MapNewProps> = ({ onTripClick, onThemeChange }) =>
                 yearFilter={data.yearFilter}
                 setYearFilter={data.setYearFilter}
                 years={data.years}
+                countries={data.uniqueCountries}
+                countryFilter={data.countryFilter}
+                setCountryFilter={data.setCountryFilter}
                 origins={data.uniqueAirports.origins}
                 destinations={data.uniqueAirports.destinations}
                 depFilter={data.depFilter}
