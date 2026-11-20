@@ -15,7 +15,7 @@ import { useTracedPaths } from '../../../hooks/useTracedPaths';
  */
 
 const EMPTY: { lng: number; lat: number }[] = [];
-const GEOJSON_URL = '/data/ne_110m_admin_0_countries.geojson';
+const GEOJSON_URL = '/data/ne_110m_admin_0_countries.geojson?v=2';
 let landCache: Promise<FeatureCollection<Geometry>> | null = null;
 const loadLand = () => {
     if (!landCache) {

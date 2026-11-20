@@ -18,7 +18,7 @@ import { cn } from '../../../utils/cn';
  * where a tap opens the country. The country lists below are the accessible equivalent.
  */
 
-const GEOJSON_URL = '/data/ne_110m_admin_0_countries.geojson';
+const GEOJSON_URL = '/data/ne_110m_admin_0_countries.geojson?v=2';
 let geoCache: Promise<FeatureCollection<Geometry, ChoroplethFeatureProperties>> | null = null;
 export const loadWorld = () => {
     if (!geoCache) {

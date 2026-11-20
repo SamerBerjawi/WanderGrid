@@ -86,8 +86,8 @@ export const getBasemapTileConfig = (
 /** Overlay tile sources used by the Layers settings. */
 export const TERRARIUM_DEM_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 export const RAILROADS_GEOJSON_URL = '/data/ne_railroads.geojson';
-export const COUNTRIES_GEOJSON_URL = '/data/ne_50m_admin_0_countries.geojson';
+export const COUNTRIES_GEOJSON_URL = '/data/ne_50m_admin_0_countries.geojson?v=2';
 /** Natural Earth 10m borders, simplified topologically (shared borders stay shared: no gaps or slivers). Loaded only when the scratch map is zoomed in. */
-export const COUNTRIES_FINE_GEOJSON_URL = '/data/ne_10m_admin_0_countries.geojson';
+export const COUNTRIES_FINE_GEOJSON_URL = '/data/ne_10m_admin_0_countries.geojson?v=2';
 /** From this zoom the scratch map swaps the 50m borders for the 10m ones. */
 export const COUNTRIES_FINE_MIN_ZOOM = 3.2;
