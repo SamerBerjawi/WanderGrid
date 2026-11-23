@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { DndContext, DragOverlay, KeyboardSensor, MouseSensor, TouchSensor, pointerWithin, useDraggable, useDroppable, useSensor, useSensors, type CollisionDetection, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
 import type { Accommodation, Activity, Transport, Trip } from '../../../types';
 import { buildDays, type DayItem, type TripDay } from '../../../utils/tripItinerary';
+import { isProposed, planBadges } from '../../../utils/tripPlan';
+import { PlanBadge, PlanBadges } from './PlanBadge';
 import { formatDate } from '../../../utils/formatters';
 import { Airplane, Bed, CalendarBlank, Moon, Plus } from '../../ui/hugeicons';
 import { RpEmpty, RpLogo, useIsMobile } from '../ui';
@@ -112,7 +114,8 @@ const TransportChip: React.FC<{ item: Extract<DayItem, { kind: 'transport' }>; b
             <RpCarrierLogo size="sm" provider={t.provider} identifier={t.identifier} src={t.logoUrl} fallback={Mode} iconClassName={modeLook(t.mode).text} />
             <span className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-medium text-rp-ink">{arrive ? `Arrive ${t.destination}` : `${t.origin} → ${t.destination}`}</span>
-                <span className="block truncate text-2xs text-rp-muted">{[item.time, t.provider, t.identifier].filter(Boolean).join(' · ')}</span>
+                <span className="block truncate text-2xs text-rp-muted">{[item.time, t.plan?.modeLabel, t.provider, t.identifier].filter(Boolean).join(' · ')}</span>
+                {!arrive && isProposed(t) ? <PlanBadge tone="unbooked" className="mt-0.5">Not booked</PlanBadge> : null}
             </span>
             {!arrive && money(t.cost) ? <span className="rp-tabular text-xs text-rp-ink">{money(t.cost)}</span> : null}
         </button>
@@ -127,6 +130,7 @@ const ActivityChip: React.FC<{ item: Extract<DayItem, { kind: 'activity' }>; onC
             <span className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-medium text-rp-ink">{a.title}</span>
                 <span className="block truncate text-2xs text-rp-muted">{[a.time, a.location].filter(Boolean).join(' · ')}</span>
+                <PlanBadges badges={planBadges(a).filter(b => b.tone !== 'recommended')} className="mt-0.5" />
             </span>
             {money(a.cost) ? <span className="rp-tabular text-xs text-rp-ink">{money(a.cost)}</span> : null}
         </button>

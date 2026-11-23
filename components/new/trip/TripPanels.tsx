@@ -15,6 +15,9 @@ import { STAY_ACCENT, TRANSPORT_ACCENT } from '../trips/accents';
 import { modeLook } from '../trips/transportModes';
 import { cn } from '../../../utils/cn';
 import { RpCarrierLogo } from '../CarrierLogos';
+import { planBadges, type PlanBadge as Badge } from '../../../utils/tripPlan';
+import { PlanBadge, PlanBadges } from './PlanBadge';
+import { StayShortlist } from './StayShortlist';
 
 /**
  * The panels under a trip's header on TripNew (UI_UX_DESIGN_REFERENCE.md §5.2): Itinerary (day by
@@ -62,8 +65,9 @@ const itemRow = (d: DayItem, brandfetchApiKey?: string) => {
         return {
             logo: <RpCarrierLogo provider={t.provider} identifier={t.identifier} src={t.logoUrl} fallback={Mode} iconClassName={modeLook(t.mode).text} />,
             title: arrive ? `Arrive in ${t.destination}` : `${t.origin} → ${t.destination}`,
-            meta: [t.provider, t.identifier, arrive ? '' : t.arrivalTime ? `arrives ${t.arrivalTime}` : ''].filter(Boolean).join(' · '),
+            meta: [t.plan?.modeLabel, t.provider, t.identifier, arrive ? '' : t.arrivalTime ? `arrives ${t.arrivalTime}` : ''].filter(Boolean).join(' · '),
             cost: arrive ? undefined : money(t.cost),
+            badges: arrive ? [] : planBadges(t, { showUnbooked: true }),
         };
     }
     if (d.kind === 'stay') {
@@ -74,6 +78,7 @@ const itemRow = (d: DayItem, brandfetchApiKey?: string) => {
             title: `${out ? 'Check out' : 'Check in'} · ${a.name}`,
             meta: [a.address, out ? '' : nights(a.checkInDate, a.checkOutDate)].filter(Boolean).join(' · '),
             cost: out ? undefined : money(a.cost),
+            badges: [] as Badge[],
         };
     }
     const a = d.item;
@@ -82,8 +87,33 @@ const itemRow = (d: DayItem, brandfetchApiKey?: string) => {
         title: a.title,
         meta: [a.type && a.type !== 'Activity' ? a.type : '', a.location].filter(Boolean).join(' · '),
         cost: money(a.cost),
+        badges: planBadges(a),
     };
 };
+
+/** A day's heading from the trip's plan (imported itineraries): what the day is about, and its day trip. */
+const DayHeading: React.FC<{ trip: Trip; date: string }> = ({ trip, date }) => {
+    const plan = trip.plan?.days?.find(d => d.date === date);
+    const dayTrip = trip.plan?.dayTrips?.find(d => d.date === date);
+    if (!plan && !dayTrip) return null;
+    const notes = Array.from(new Set(plan?.notes || []));
+    return (
+        <div className="mb-2 flex flex-col gap-1">
+            {plan?.title ? <p className="text-base font-medium text-rp-ink">{plan.title}</p> : null}
+            {plan?.summary ? <p className="text-sm text-rp-muted">{plan.summary}</p> : null}
+            {dayTrip ? (
+                <p className="flex flex-wrap items-center gap-1.5 text-xs text-rp-muted">
+                    <PlanBadge tone={dayTrip.priority === 'optional' ? 'optional' : 'recommended'}>{dayTrip.priority === 'optional' ? 'Optional day trip' : 'Day trip'}</PlanBadge>
+                    <span>{[dayTrip.origin ? `${dayTrip.origin} → ${dayTrip.destination}` : dayTrip.destination, dayTrip.hours ? `${dayTrip.hours} h` : '', dayTrip.notes].filter(Boolean).join(' · ')}</span>
+                </p>
+            ) : null}
+            {notes.map(n => <p key={n} className="text-xs text-rp-muted">{n}</p>)}
+        </div>
+    );
+};
+
+/** An item with no time: unscheduled in a plan, or all day. */
+const timeLabel = (it: DayItem) => it.time || (it.item.plan?.timeStatus === 'unscheduled' ? 'Any time' : 'All day');
 
 export const ItineraryPanel: React.FC<{ trip: Trip; brandfetchApiKey?: string; onEdit: (step: EditStep) => void }> = ({ trip, brandfetchApiKey, onEdit }) => {
     const days = useMemo(() => buildDays(trip), [trip]);
@@ -106,6 +136,7 @@ export const ItineraryPanel: React.FC<{ trip: Trip; brandfetchApiKey?: string; o
                             <Plus size={14} aria-hidden /> Add activity
                         </button>
                     </div>
+                    <DayHeading trip={trip} date={day.date} />
                     {day.items.length === 0 ? (
                         <p className="rounded-rp-inset bg-rp-inset px-3 py-3 text-sm text-rp-muted">Nothing planned yet.</p>
                     ) : (
@@ -114,11 +145,12 @@ export const ItineraryPanel: React.FC<{ trip: Trip; brandfetchApiKey?: string; o
                                 const row = itemRow(it, brandfetchApiKey);
                                 return (
                                     <li key={it.id} className="grid grid-cols-[3rem_2.25rem_minmax(0,1fr)_auto] items-center gap-3 border-t border-rp-line py-2.5 first:border-t-0">
-                                        <span className="rp-tabular text-xs text-rp-muted">{it.time || 'All day'}</span>
+                                        <span className="rp-tabular text-xs text-rp-muted">{timeLabel(it)}</span>
                                         {row.logo}
                                         <span className="min-w-0">
                                             <span className="block truncate text-sm font-medium text-rp-ink">{row.title}</span>
                                             {row.meta ? <span className="block truncate text-xs text-rp-muted">{row.meta}</span> : null}
+                                            <PlanBadges badges={row.badges} className="mt-1" />
                                         </span>
                                         <span className="rp-tabular text-right text-sm font-medium text-rp-ink">{row.cost ?? ''}</span>
                                     </li>
@@ -146,8 +178,9 @@ const TransportRow: React.FC<{ t: Transport; trip: Trip; users?: User[]; brandfe
             <span className="min-w-0">
                 <span className="block truncate text-sm font-medium text-rp-ink">{t.origin} → {t.destination}</span>
                 <span className="block truncate text-xs text-rp-muted">
-                    {[t.provider, t.identifier, when(t.departureDate, t.departureTime), t.confirmationCode ? `Ref ${t.confirmationCode}` : '', paid, excl, wallet || ''].filter(Boolean).join(' · ')}
+                    {[t.plan?.modeLabel, t.provider, t.identifier, when(t.departureDate, t.departureTime), t.confirmationCode ? `Ref ${t.confirmationCode}` : '', paid, excl, wallet || ''].filter(Boolean).join(' · ')}
                 </span>
+                <PlanBadges badges={planBadges(t, { showUnbooked: true })} className="mt-1" />
             </span>
             <span className={cn('rp-tabular text-right text-sm font-medium', excl ? 'text-rp-muted line-through' : 'text-rp-ink')}>{money(t.cost) ?? ''}</span>
             <EditButton label={`Edit ${t.origin} to ${t.destination}`} onClick={onEdit} />
@@ -173,7 +206,14 @@ const StayRow: React.FC<{ a: Accommodation; trip: Trip; users?: User[]; brandfet
     );
 };
 
-export const BookingsPanel: React.FC<{ trip: Trip; brandfetchApiKey?: string; members?: User[]; onEdit: (step: EditStep) => void }> = ({ trip, brandfetchApiKey, members, onEdit }) => {
+export const BookingsPanel: React.FC<{
+    trip: Trip;
+    brandfetchApiKey?: string;
+    members?: User[];
+    onEdit: (step: EditStep) => void;
+    /** Book a shortlisted hotel: adds it as a stay (index of the stay plan and of the candidate). */
+    onBookCandidate?: (stayIndex: number, candidateIndex: number) => void;
+}> = ({ trip, brandfetchApiKey, members, onEdit, onBookCandidate }) => {
     // Loyalty numbers for the airline or hotel of each booking, when the wallet is on and a member has one.
     const flightWallet = (t: Transport) => (members ? walletText(cardsForFlight({ flight: t, trip }, members)) : '');
     const stayWallet = (a: Accommodation) => (members ? walletText(cardsForStay(a, members)) : '');
@@ -193,6 +233,7 @@ export const BookingsPanel: React.FC<{ trip: Trip; brandfetchApiKey?: string; me
                     <ul>{stays.map(a => <StayRow key={a.id} a={a} trip={trip} users={members} brandfetchApiKey={brandfetchApiKey} wallet={stayWallet(a)} onEdit={() => onEdit(2)} />)}</ul>
                 )}
             </section>
+            {trip.plan?.stays?.length ? <StayShortlist trip={trip} onBook={onBookCandidate} className="lg:col-span-2" /> : null}
         </div>
     );
 };

@@ -19,6 +19,10 @@ import { NextFlight } from '../../components/new/journeys/NextFlight';
 import { RpHugeicon } from '../../components/new/RpHugeicon';
 import { useUndoToast } from '../../components/new/UndoToast';
 import { BookingImportSheet, type BookingImportResult } from '../../components/new/trips/BookingImportSheet';
+import type { TripImportResult } from '../../components/new/trips/TripImportSheet';
+import { ItineraryAiGuide } from '../../components/new/trips/ItineraryAiGuide';
+import { BudgetEstimate } from '../../components/new/trip/StayShortlist';
+import { isProposed } from '../../utils/tripPlan';
 import { dataService } from '../../services/mockDb';
 import { TripMenu } from '../../components/new/trips/TripMenu';
 import { BUCKET_LABEL, tripMenuItems, type TripActions } from '../../components/new/trips/TripCard';
@@ -30,11 +34,14 @@ import { DocumentsSheet } from '../../components/new/trip/DocumentsSheet';
 import { checkTrip, summarise, tripCountries } from '../../utils/entryCheck';
 import { TripCanvas } from '../../components/new/trip/TripCanvas';
 const TripHeroMap = lazy(() => import('../../components/new/trip/TripMapPanel'));
+// The importer and exporter carry the file checks (zod); they load when first opened.
+const TripImportSheet = lazy(() => import('../../components/new/trips/TripImportSheet'));
+const TripExportSheet = lazy(() => import('../../components/new/trips/TripExportSheet'));
 import { RoutePlanner } from '../../components/new/trip/RoutePlanner';
 import { WeatherChip } from '../../components/new/WeatherChip';
 import { ExpensesPanel } from '../../components/new/trip/ExpensesPanel';
 import { BookingsPanel, CostsPanel, GearPanel, ItineraryPanel, NotesPanel, type EditStep } from '../../components/new/trip/TripPanels';
-import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, CalendarCheck, DownloadSimple, Envelope, FileText, IdentificationCard, Kanban, LinkSquare, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket, Warning, type Icon } from '../../components/ui/hugeicons';
+import { Airplane, ArrowLeft, ArrowRight, Backpack, Bed, CalendarBlank, CalendarCheck, DownloadSimple, Envelope, FileText, IdentificationCard, Kanban, LinkSquare, MapTrifold, Moon, Path, MapPin, PencilSimple, Receipt, Suitcase, Ticket, UploadSimple, Warning, type Icon } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -85,6 +92,9 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
     const [deleting, setDeleting] = useState<Trip | null>(null);
     const [sharing, setSharing] = useState(false);
     const [importing, setImporting] = useState(false);
+    const [planImport, setPlanImport] = useState<'closed' | 'open' | 'mounted'>('closed');
+    const [aiGuide, setAiGuide] = useState(false);
+    const [exporting, setExporting] = useState(false);
     const offline = useOfflinePacks();
     const planner = useLeavePlanner(data.trips, data.users, data.entitlements);
     const [leaveOpen, setLeaveOpen] = useState(false);
@@ -193,7 +203,29 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
     const menu = tripMenuItems(trip, bucket, actions).filter(i => i.id !== 'open');
     const shareAt = menu.findIndex(i => i.id === 'calendar');
     menu.splice(shareAt + 1, 0, { id: 'share', label: 'Share link', icon: LinkSquare, onSelect: () => setSharing(true) });
+    menu.splice(shareAt + 1, 0, { id: 'export-json', label: 'Export as JSON', icon: DownloadSimple, onSelect: () => setExporting(true) });
+    menu.splice(shareAt + 1, 0, { id: 'import-plan', label: 'Import itinerary', icon: UploadSimple, onSelect: () => setPlanImport('open') });
     menu.splice(shareAt + 1, 0, { id: 'import', label: 'Import a booking', icon: Envelope, onSelect: () => setImporting(true) });
+    const planImported = ({ trip: updated, previous }: TripImportResult) => {
+        void data.reload();
+        undo.show(previous ? `Imported the itinerary into ${updated.name}` : `Created ${updated.name}`, () => attempt(async () => {
+            if (previous) await dataService.applyBatch({ upsertTrips: [previous] }, { skipGeocoding: true });
+            else await dataService.applyBatch({ deleteTrips: [updated.id] });
+            await data.reload();
+        }), { duration: 10000 });
+    };
+    // Booking a shortlisted hotel adds it as a stay for the planned nights; the rest of the shortlist stays as it was.
+    const bookCandidate = (stayIndex: number, candidateIndex: number) => attempt(async () => {
+        const stays = trip.plan?.stays || [];
+        const stay = stays[stayIndex];
+        const cand = stay?.candidates[candidateIndex];
+        if (!stay || !cand) return;
+        const acc = { id: crypto.randomUUID(), name: cand.name, address: '', type: 'Hotel' as const, checkInDate: stay.checkIn, checkInTime: '', checkOutDate: stay.checkOut, checkOutTime: '', plan: { bookingStatus: 'booked' as const } };
+        const nextStays = stays.map((st, i) => (i !== stayIndex ? st : { ...st, status: 'booked' as const, candidates: st.candidates.map((c, j) => (j === candidateIndex ? { ...c, status: 'booked' as const, accommodationId: acc.id } : c)) }));
+        const before = { accommodations: trip.accommodations, plan: trip.plan };
+        await data.patch(trip.id, { accommodations: [...(trip.accommodations || []), acc], plan: { ...trip.plan, stays: nextStays } });
+        undo.show(`Booked ${cand.name}: add the reference and times in Stays`, () => attempt(async () => { await data.patch(trip.id, before); }), { duration: 8000 });
+    });
     const bookingImported = ({ trip: updated, previous, adopted, added }: BookingImportResult) => {
         void data.reload();
         undo.show(`Added ${added} ${added === 1 ? 'booking' : 'bookings'} to ${updated.name}`, () => attempt(async () => {
@@ -389,7 +421,7 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                     </div>
                 </header>
 
-                <NextFlight records={(trip.transports || []).filter(t => t.mode === 'Flight').map(f => ({ flight: f, trip }))} brandfetchApiKey={data.brandfetchApiKey} showTrip={false} onOpen={() => openPage('/flights')} />
+                <NextFlight records={(trip.transports || []).filter(t => t.mode === 'Flight' && !isProposed(t)).map(f => ({ flight: f, trip }))} brandfetchApiKey={data.brandfetchApiKey} showTrip={false} onOpen={() => openPage('/flights')} />
 
                 <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
                     <StatTile
@@ -443,10 +475,11 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                             }}
                         />
                     ) : null}
-                    {tab === 'bookings' ? <BookingsPanel trip={trip} brandfetchApiKey={data.brandfetchApiKey} members={members} onEdit={edit} /> : null}
+                    {tab === 'bookings' ? <BookingsPanel trip={trip} brandfetchApiKey={data.brandfetchApiKey} members={members} onEdit={edit} onBookCandidate={bookCandidate} /> : null}
                     {tab === 'costs' ? (
                         <>
                             <CostsPanel trip={trip} members={travellers.length} users={data.users} onSaveBudget={target => attempt(async () => { await data.patch(trip.id, { targetBudget: target }); })} />
+                            {trip.plan?.budget ? <div className="mt-3 lg:mt-6"><BudgetEstimate trip={trip} /></div> : null}
                             <ExpensesPanel trip={trip} members={ledgerMembers} onSave={async patch => { await data.patch(trip.id, patch); }} />
                         </>
                     ) : null}
@@ -491,6 +524,13 @@ export const TripNew: React.FC<TripNewProps> = ({ tripId, onBack, onOpenMember }
                 onConfirm={t => attempt(async () => { await data.remove(t.id); setDeleting(null); setSheet(null); onBack(); })}
             />
             <BookingImportSheet open={importing} trips={data.trips} tripId={trip.id} brandfetchApiKey={data.brandfetchApiKey} onClose={() => setImporting(false)} onImported={bookingImported} />
+            {planImport !== 'closed' ? (
+                <Suspense fallback={null}>
+                    <TripImportSheet open={planImport === 'open'} trips={data.trips} tripId={trip.id} onClose={() => setPlanImport('mounted')} onImported={planImported} onOpenTrip={id => openPage(`/trip/${id}`)} onShowGuide={() => { setPlanImport('mounted'); setAiGuide(true); }} />
+                </Suspense>
+            ) : null}
+            <ItineraryAiGuide open={aiGuide} onClose={() => setAiGuide(false)} onImport={() => { setAiGuide(false); setPlanImport('open'); }} />
+            {exporting ? <Suspense fallback={null}><TripExportSheet trip={trip} onClose={() => setExporting(false)} /></Suspense> : null}
             <ShareLinkSheet open={sharing} tripId={trip.id} tripName={trip.name} onClose={() => setSharing(false)} />
             {undo.host}
         </div>

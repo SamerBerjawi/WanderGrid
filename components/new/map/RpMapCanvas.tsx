@@ -488,10 +488,9 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
     const maxCount = useMemo(() => Math.max(1, ...model.routes.map(r => r.count)), [model.routes]);
 
     // Land and sea legs keep one colour each; flights take the regional gradient (or frequency).
-    // Past / upcoming / planning is no longer a colour: it shows in the opacity.
-    // "Static" colours every route the same, picked for the basemap underneath (see staticRouteColor).
-    const fixedColor = useCallback((m: MapRoute['mode']): RGB | null => (
-        appearance.routeColorMode === 'static' ? staticRouteColor(lightBasemap)
+    // "Static" colours each route by its status (past / upcoming / planning), picked for the basemap underneath (see staticRouteColor).
+    const fixedColor = useCallback((m: MapRoute['mode'], status: MapRoute['status']): RGB | null => (
+        appearance.routeColorMode === 'static' ? staticRouteColor(lightBasemap, status)
             : m === 'sea' ? mix(palette.green, palette.ink, 0.3) : m === 'flight' ? null : palette.ink
     ), [palette, appearance.routeColorMode, lightBasemap]);
 
@@ -515,7 +514,7 @@ export const RpMapCanvas = forwardRef<RpMapHandle, RpMapCanvasProps>(function Rp
                 properties: { id: r.id, mode: r.mode, color: hex(color), width, opacity },
                 geometry: { type: 'LineString' as const, coordinates },
             });
-            const fixed = fixedColor(r.mode);
+            const fixed = fixedColor(r.mode, r.status);
             if (fixed) features.push(feature(fixed, path));
             else if (colorMode === 'frequency') features.push(feature(mix(palette.mustard, palette.rust, (r.count - 1) / Math.max(1, maxCount - 1)), path));
             else {

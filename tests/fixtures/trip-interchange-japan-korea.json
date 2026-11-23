@@ -1,0 +1,1576 @@
+{
+  "schema_version": "1.0.0",
+  "format": "wandergrid-trip-interchange",
+  "trip": {
+    "external_id": "japan-korea-family-2027",
+    "name": "Japan & South Korea — Autumn 2027",
+    "start_date": "2027-10-16",
+    "end_date": "2027-11-06",
+    "status": "planning",
+    "classification": "Family",
+    "currency": "EUR",
+    "origin": "Brussels, Belgium",
+    "travelers": [
+      {
+        "label": "Adult 1",
+        "type": "adult"
+      },
+      {
+        "label": "Adult 2",
+        "type": "adult"
+      },
+      {
+        "label": "Zoé",
+        "type": "infant",
+        "age_at_trip": "1 year"
+      }
+    ],
+    "notes": [
+      "Family-paced trip, mostly rail, 13 hotel nights Japan and 7 South Korea",
+      "All prices and times are estimates, not reservations",
+      "No dog included in travel party; pet travel not planned",
+      "Avoid assigning actual expense ledger entries for estimates"
+    ]
+  },
+  "destinations": [
+    {
+      "id": "tokyo",
+      "name": "Tokyo",
+      "country_code": "JP",
+      "arrival_date": "2027-10-17",
+      "departure_date": "2027-10-22",
+      "recommended_area": "Shinjuku-sanchome or quieter Sendagaya"
+    },
+    {
+      "id": "kawaguchiko",
+      "name": "Kawaguchiko",
+      "country_code": "JP",
+      "arrival_date": "2027-10-22",
+      "departure_date": "2027-10-23",
+      "recommended_area": "South/east Lake Kawaguchiko shore, shuttle access"
+    },
+    {
+      "id": "kyoto",
+      "name": "Kyoto",
+      "country_code": "JP",
+      "arrival_date": "2027-10-23",
+      "departure_date": "2027-10-27",
+      "recommended_area": "Sanjo-Kawaramachi"
+    },
+    {
+      "id": "osaka",
+      "name": "Osaka",
+      "country_code": "JP",
+      "arrival_date": "2027-10-27",
+      "departure_date": "2027-10-30",
+      "recommended_area": "Namba or Honmachi"
+    },
+    {
+      "id": "busan",
+      "name": "Busan",
+      "country_code": "KR",
+      "arrival_date": "2027-10-30",
+      "departure_date": "2027-11-02",
+      "recommended_area": "Haeundae near beach and metro"
+    },
+    {
+      "id": "seoul",
+      "name": "Seoul",
+      "country_code": "KR",
+      "arrival_date": "2027-11-02",
+      "departure_date": "2027-11-06",
+      "recommended_area": "Insadong / Jongno near Anguk"
+    }
+  ],
+  "days": [
+    {
+      "id": "day-2027-10-16",
+      "date": "2027-10-16",
+      "day_number": 1,
+      "destination_id": null,
+      "title": "Brussels to Tokyo",
+      "summary": "International flight departure; exact routing and time TBD",
+      "schedule_status": "suggested",
+      "activities": [],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-10-17",
+      "date": "2027-10-17",
+      "day_number": 2,
+      "destination_id": "tokyo",
+      "title": "Arrival and recovery",
+      "summary": "Airport transfer; check-in; short neighborhood walk; optional Omoide Yokocho",
+      "schedule_status": "suggested",
+      "activities": [],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-10-18",
+      "date": "2027-10-18",
+      "day_number": 3,
+      "destination_id": "tokyo",
+      "title": "Old Tokyo",
+      "summary": "Sensō-ji; Nakamise; Asakusa lanes; Ueno Park; Yanaka Ginza",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-10-18-01",
+          "title": "Sensō-ji",
+          "location_name": "Sensō-ji",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-18-02",
+          "title": "Nakamise Street",
+          "location_name": "Nakamise Street",
+          "order": 2,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-18-03",
+          "title": "Ueno Park",
+          "location_name": "Ueno Park",
+          "order": 3,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-18-04",
+          "title": "Yanaka Ginza",
+          "location_name": "Yanaka Ginza",
+          "order": 4,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-10-19",
+      "date": "2027-10-19",
+      "day_number": 4,
+      "destination_id": "tokyo",
+      "title": "Modern Tokyo",
+      "summary": "Meiji Jingu; Harajuku; Omotesando; Shibuya Crossing; Shibuya Sky near sunset",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-10-19-01",
+          "title": "Meiji Jingu",
+          "location_name": "Meiji Jingu",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-19-02",
+          "title": "Takeshita Street",
+          "location_name": "Takeshita Street",
+          "order": 2,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-19-03",
+          "title": "Omotesando",
+          "location_name": "Omotesando",
+          "order": 3,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-19-04",
+          "title": "Shibuya Crossing",
+          "location_name": "Shibuya Crossing",
+          "order": 4,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-19-05",
+          "title": "Shibuya Sky",
+          "location_name": "Shibuya Sky",
+          "order": 5,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-10-20",
+      "date": "2027-10-20",
+      "day_number": 5,
+      "destination_id": "tokyo",
+      "title": "Nikko OR garden",
+      "summary": "Optional Nikko day trip: Shinkyo Bridge; Toshogu; Taiyuinbyo. Alternative Koishikawa Korakuen",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-10-20-01",
+          "title": "Nikko",
+          "location_name": "Nikko",
+          "order": 1,
+          "priority": "optional",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-20-02",
+          "title": "Shinkyo Bridge",
+          "location_name": "Shinkyo Bridge",
+          "order": 2,
+          "priority": "optional",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-20-03",
+          "title": "Toshogu Shrine",
+          "location_name": "Toshogu Shrine",
+          "order": 3,
+          "priority": "optional",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-20-04",
+          "title": "Taiyuinbyo",
+          "location_name": "Taiyuinbyo",
+          "order": 4,
+          "priority": "optional",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-20-05",
+          "title": "Koishikawa Korakuen",
+          "location_name": "Koishikawa Korakuen",
+          "order": 5,
+          "priority": "optional",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-10-21",
+      "date": "2027-10-21",
+      "day_number": 6,
+      "destination_id": "tokyo",
+      "title": "Slow Tokyo and tea",
+      "summary": "Shimokitazawa; Sakurai Japanese Tea Experience; optional Koishikawa Korakuen",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-10-21-01",
+          "title": "Shimokitazawa",
+          "location_name": "Shimokitazawa",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-21-02",
+          "title": "Sakurai Japanese Tea Experience",
+          "location_name": "Sakurai Japanese Tea Experience",
+          "order": 2,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-21-03",
+          "title": "Koishikawa Korakuen",
+          "location_name": "Koishikawa Korakuen",
+          "order": 3,
+          "priority": "optional",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-10-22",
+      "date": "2027-10-22",
+      "day_number": 7,
+      "destination_id": "kawaguchiko",
+      "title": "Mount Fuji overnight",
+      "summary": "Tokyo to Kawaguchiko; lake promenade; Oishi Park; ryokan and family bath",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-10-22-01",
+          "title": "Lake Kawaguchiko",
+          "location_name": "Lake Kawaguchiko",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-22-02",
+          "title": "Oishi Park",
+          "location_name": "Oishi Park",
+          "order": 2,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-10-23",
+      "date": "2027-10-23",
+      "day_number": 8,
+      "destination_id": "kyoto",
+      "title": "Fuji to Kyoto",
+      "summary": "Fuji-view breakfast; optional Oshino Hakkai only if transport/time allow; bus to Mishima and Shinkansen to Kyoto; Gion",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-10-23-01",
+          "title": "Oshino Hakkai",
+          "location_name": "Oshino Hakkai",
+          "order": 1,
+          "priority": "optional",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-23-02",
+          "title": "Gion",
+          "location_name": "Gion",
+          "order": 2,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-23-03",
+          "title": "Yasaka Shrine",
+          "location_name": "Yasaka Shrine",
+          "order": 3,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-10-24",
+      "date": "2027-10-24",
+      "day_number": 9,
+      "destination_id": "kyoto",
+      "title": "Fushimi Inari and Higashiyama",
+      "summary": "Fushimi Inari lower paths; optional Tea Ceremony Ju-An; Higashiyama; Yasaka Shrine",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-10-24-01",
+          "title": "Fushimi Inari Taisha",
+          "location_name": "Fushimi Inari Taisha",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-24-02",
+          "title": "Tea Ceremony Ju-An at Jotokuji",
+          "location_name": "Tea Ceremony Ju-An at Jotokuji",
+          "order": 2,
+          "priority": "optional",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-24-03",
+          "title": "Higashiyama",
+          "location_name": "Higashiyama",
+          "order": 3,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-24-04",
+          "title": "Yasaka Shrine",
+          "location_name": "Yasaka Shrine",
+          "order": 4,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-10-25",
+      "date": "2027-10-25",
+      "day_number": 10,
+      "destination_id": "kyoto",
+      "title": "Arashiyama and hidden temple",
+      "summary": "Bamboo Grove; Tenryu-ji; Saga-Toriimoto; Otagi Nenbutsuji",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-10-25-01",
+          "title": "Arashiyama Bamboo Grove",
+          "location_name": "Arashiyama Bamboo Grove",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-25-02",
+          "title": "Tenryu-ji",
+          "location_name": "Tenryu-ji",
+          "order": 2,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-25-03",
+          "title": "Saga-Toriimoto",
+          "location_name": "Saga-Toriimoto",
+          "order": 3,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-25-04",
+          "title": "Otagi Nenbutsuji",
+          "location_name": "Otagi Nenbutsuji",
+          "order": 4,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-10-26",
+      "date": "2027-10-26",
+      "day_number": 11,
+      "destination_id": "kyoto",
+      "title": "Nara day trip",
+      "summary": "Nara Park; Todai-ji; Naramachi; optional Kasuga Taisha",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-10-26-01",
+          "title": "Nara Park",
+          "location_name": "Nara Park",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-26-02",
+          "title": "Todai-ji",
+          "location_name": "Todai-ji",
+          "order": 2,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-26-03",
+          "title": "Naramachi",
+          "location_name": "Naramachi",
+          "order": 3,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-26-04",
+          "title": "Kasuga Taisha",
+          "location_name": "Kasuga Taisha",
+          "order": 4,
+          "priority": "optional",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-10-27",
+      "date": "2027-10-27",
+      "day_number": 12,
+      "destination_id": "osaka",
+      "title": "Quiet Kyoto to Osaka",
+      "summary": "Murin-an Garden; optional short Philosopher’s Path; Kyoto to Osaka; Namba and Dotonbori",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-10-27-01",
+          "title": "Murin-an Garden",
+          "location_name": "Murin-an Garden",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-27-02",
+          "title": "Philosopher’s Path",
+          "location_name": "Philosopher’s Path",
+          "order": 2,
+          "priority": "optional",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-27-03",
+          "title": "Dotonbori",
+          "location_name": "Dotonbori",
+          "order": 3,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-10-28",
+      "date": "2027-10-28",
+      "day_number": 13,
+      "destination_id": "osaka",
+      "title": "Hiroshima day trip",
+      "summary": "Shinkansen return from Shin-Osaka; Peace Memorial Park; Atomic Bomb Dome; museum; optional Shukkeien Garden; skip Miyajima",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-10-28-01",
+          "title": "Hiroshima Peace Memorial Park",
+          "location_name": "Hiroshima Peace Memorial Park",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-28-02",
+          "title": "Atomic Bomb Dome",
+          "location_name": "Atomic Bomb Dome",
+          "order": 2,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-28-03",
+          "title": "Hiroshima Peace Memorial Museum",
+          "location_name": "Hiroshima Peace Memorial Museum",
+          "order": 3,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-28-04",
+          "title": "Shukkeien Garden",
+          "location_name": "Shukkeien Garden",
+          "order": 4,
+          "priority": "optional",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-10-29",
+      "date": "2027-10-29",
+      "day_number": 14,
+      "destination_id": "osaka",
+      "title": "Osaka or waterfall",
+      "summary": "Osaka Castle Park; Shinsekai; shopping. Optional Minoh Falls half-day instead; skip Koyasan",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-10-29-01",
+          "title": "Osaka Castle Park",
+          "location_name": "Osaka Castle Park",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-29-02",
+          "title": "Shinsekai",
+          "location_name": "Shinsekai",
+          "order": 2,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-29-03",
+          "title": "Minoh Falls",
+          "location_name": "Minoh Falls",
+          "order": 3,
+          "priority": "optional",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-10-30",
+      "date": "2027-10-30",
+      "day_number": 15,
+      "destination_id": "busan",
+      "title": "Osaka to Busan",
+      "summary": "Fly Osaka to Busan; airport transfer; Haeundae Beach walk",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-10-30-01",
+          "title": "Haeundae Beach",
+          "location_name": "Haeundae Beach",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-10-31",
+      "date": "2027-10-31",
+      "day_number": 16,
+      "destination_id": "busan",
+      "title": "Busan coastline",
+      "summary": "Haeundae; Blueline Park Sky Capsule; optional Huinnyeoul Culture Village; alternative Ahopsan Forest",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-10-31-01",
+          "title": "Haeundae Beach",
+          "location_name": "Haeundae Beach",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-31-02",
+          "title": "Haeundae Blueline Park Sky Capsule",
+          "location_name": "Haeundae Blueline Park Sky Capsule",
+          "order": 2,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-31-03",
+          "title": "Huinnyeoul Culture Village",
+          "location_name": "Huinnyeoul Culture Village",
+          "order": 3,
+          "priority": "optional",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-10-31-04",
+          "title": "Ahopsan Forest",
+          "location_name": "Ahopsan Forest",
+          "order": 4,
+          "priority": "optional",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-11-01",
+      "date": "2027-11-01",
+      "day_number": 17,
+      "destination_id": "busan",
+      "title": "Gyeongju day trip",
+      "summary": "KTX to Gyeongju and transfer; Daereungwon; Hwangnidan-gil; Gyochon Hanok Village; Woljeonggyo; Cheomseongdae",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-11-01-01",
+          "title": "Daereungwon",
+          "location_name": "Daereungwon",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-11-01-02",
+          "title": "Hwangnidan-gil",
+          "location_name": "Hwangnidan-gil",
+          "order": 2,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-11-01-03",
+          "title": "Gyochon Hanok Village",
+          "location_name": "Gyochon Hanok Village",
+          "order": 3,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-11-01-04",
+          "title": "Woljeonggyo Bridge",
+          "location_name": "Woljeonggyo Bridge",
+          "order": 4,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-11-01-05",
+          "title": "Cheomseongdae",
+          "location_name": "Cheomseongdae",
+          "order": 5,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-11-02",
+      "date": "2027-11-02",
+      "day_number": 18,
+      "destination_id": "seoul",
+      "title": "Busan to Seoul",
+      "summary": "KTX; check-in; Cheonggyecheon Stream; easy dinner",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-11-02-01",
+          "title": "Cheonggyecheon Stream",
+          "location_name": "Cheonggyecheon Stream",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-11-03",
+      "date": "2027-11-03",
+      "day_number": 19,
+      "destination_id": "seoul",
+      "title": "Historic Seoul",
+      "summary": "Gyeongbokgung Palace; Seochon; Insadong",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-11-03-01",
+          "title": "Gyeongbokgung Palace",
+          "location_name": "Gyeongbokgung Palace",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-11-03-02",
+          "title": "Seochon",
+          "location_name": "Seochon",
+          "order": 2,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-11-03-03",
+          "title": "Insadong",
+          "location_name": "Insadong",
+          "order": 3,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-11-04",
+      "date": "2027-11-04",
+      "day_number": 20,
+      "destination_id": "seoul",
+      "title": "Hanok village and mountain backdrop",
+      "summary": "Eunpyeong Hanok Village; cafés; Myeongdong optional",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-11-04-01",
+          "title": "Eunpyeong Hanok Village",
+          "location_name": "Eunpyeong Hanok Village",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-11-04-02",
+          "title": "Myeongdong",
+          "location_name": "Myeongdong",
+          "order": 2,
+          "priority": "optional",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-11-05",
+      "date": "2027-11-05",
+      "day_number": 21,
+      "destination_id": "seoul",
+      "title": "Parks and design",
+      "summary": "Olympic Park; Seongsu cafés; optional Seoul Forest; packing",
+      "schedule_status": "suggested",
+      "activities": [
+        {
+          "id": "activity-2027-11-05-01",
+          "title": "Olympic Park",
+          "location_name": "Olympic Park",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-11-05-02",
+          "title": "Seongsu",
+          "location_name": "Seongsu",
+          "order": 2,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        },
+        {
+          "id": "activity-2027-11-05-03",
+          "title": "Seoul Forest",
+          "location_name": "Seoul Forest",
+          "order": 3,
+          "priority": "optional",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": "Verify opening times, infant policies, and local transit before booking."
+        }
+      ],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    },
+    {
+      "id": "day-2027-11-06",
+      "date": "2027-11-06",
+      "day_number": 22,
+      "destination_id": null,
+      "title": "Return to Brussels",
+      "summary": "Seoul Incheon airport transfer; flight to Brussels",
+      "schedule_status": "suggested",
+      "activities": [],
+      "notes": [
+        "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+      ]
+    }
+  ],
+  "accommodation_stays": [
+    {
+      "id": "stay-tokyo",
+      "destination_id": "tokyo",
+      "check_in": "2027-10-17",
+      "check_out": "2027-10-22",
+      "nights": 5,
+      "status": "unbooked",
+      "preferred_area": "Shinjuku-sanchome or quieter Sendagaya",
+      "hotel_options": [
+        {
+          "id": "hotel-tokyo-1",
+          "name": "Mitsui Garden Hotel Jingugaien Tokyo Premier",
+          "rank": 1,
+          "status": "candidate"
+        },
+        {
+          "id": "hotel-tokyo-2",
+          "name": "HOTEL GROOVE SHINJUKU",
+          "rank": 2,
+          "status": "candidate"
+        },
+        {
+          "id": "hotel-tokyo-3",
+          "name": "Hotel Metropolitan Tokyo Marunouchi",
+          "rank": 3,
+          "status": "candidate"
+        }
+      ],
+      "target_per_night_eur": 200,
+      "family_requirements": [
+        "2 adults + infant occupancy confirmed",
+        "cot availability confirmed",
+        "sufficient room space",
+        "elevator access"
+      ],
+      "notes": "Verify luggage storage and forwarding if applicable."
+    },
+    {
+      "id": "stay-kawaguchiko",
+      "destination_id": "kawaguchiko",
+      "check_in": "2027-10-22",
+      "check_out": "2027-10-23",
+      "nights": 1,
+      "status": "unbooked",
+      "preferred_area": "South/east Lake Kawaguchiko shore, shuttle access",
+      "hotel_options": [
+        {
+          "id": "hotel-kawaguchiko-1",
+          "name": "Konansou",
+          "rank": 1,
+          "status": "candidate"
+        },
+        {
+          "id": "hotel-kawaguchiko-2",
+          "name": "Fuji View Hotel",
+          "rank": 2,
+          "status": "candidate"
+        },
+        {
+          "id": "hotel-kawaguchiko-3",
+          "name": "La Vista Fuji Kawaguchiko",
+          "rank": 3,
+          "status": "candidate"
+        }
+      ],
+      "target_per_night_eur": 400,
+      "family_requirements": [
+        "2 adults + infant occupancy confirmed",
+        "cot availability confirmed",
+        "sufficient room space",
+        "elevator access"
+      ],
+      "notes": "Kawaguchiko: consider private family bath, ryokan meal timing and shuttle."
+    },
+    {
+      "id": "stay-kyoto",
+      "destination_id": "kyoto",
+      "check_in": "2027-10-23",
+      "check_out": "2027-10-27",
+      "nights": 4,
+      "status": "unbooked",
+      "preferred_area": "Sanjo-Kawaramachi",
+      "hotel_options": [
+        {
+          "id": "hotel-kyoto-1",
+          "name": "Cross Hotel Kyoto",
+          "rank": 1,
+          "status": "candidate"
+        },
+        {
+          "id": "hotel-kyoto-2",
+          "name": "The Royal Park Hotel Iconic Kyoto",
+          "rank": 2,
+          "status": "candidate"
+        },
+        {
+          "id": "hotel-kyoto-3",
+          "name": "Hotel Resol Trinity Kyoto",
+          "rank": 3,
+          "status": "candidate"
+        }
+      ],
+      "target_per_night_eur": 190,
+      "family_requirements": [
+        "2 adults + infant occupancy confirmed",
+        "cot availability confirmed",
+        "sufficient room space",
+        "elevator access"
+      ],
+      "notes": "Verify luggage storage and forwarding if applicable."
+    },
+    {
+      "id": "stay-osaka",
+      "destination_id": "osaka",
+      "check_in": "2027-10-27",
+      "check_out": "2027-10-30",
+      "nights": 3,
+      "status": "unbooked",
+      "preferred_area": "Namba or Honmachi",
+      "hotel_options": [
+        {
+          "id": "hotel-osaka-1",
+          "name": "Citadines Namba Osaka",
+          "rank": 1,
+          "status": "candidate"
+        },
+        {
+          "id": "hotel-osaka-2",
+          "name": "Hotel The Flag Shinsaibashi",
+          "rank": 2,
+          "status": "candidate"
+        },
+        {
+          "id": "hotel-osaka-3",
+          "name": "Miyako City Osaka Hommachi",
+          "rank": 3,
+          "status": "candidate"
+        }
+      ],
+      "target_per_night_eur": 170,
+      "family_requirements": [
+        "2 adults + infant occupancy confirmed",
+        "cot availability confirmed",
+        "sufficient room space",
+        "elevator access"
+      ],
+      "notes": "Verify luggage storage and forwarding if applicable."
+    },
+    {
+      "id": "stay-busan",
+      "destination_id": "busan",
+      "check_in": "2027-10-30",
+      "check_out": "2027-11-02",
+      "nights": 3,
+      "status": "unbooked",
+      "preferred_area": "Haeundae near beach and metro",
+      "hotel_options": [
+        {
+          "id": "hotel-busan-1",
+          "name": "L7 Haeundae by LOTTE",
+          "rank": 1,
+          "status": "candidate"
+        },
+        {
+          "id": "hotel-busan-2",
+          "name": "Shilla Stay Haeundae",
+          "rank": 2,
+          "status": "candidate"
+        },
+        {
+          "id": "hotel-busan-3",
+          "name": "Ramada Encore by Wyndham Busan Haeundae",
+          "rank": 3,
+          "status": "candidate"
+        }
+      ],
+      "target_per_night_eur": 140,
+      "family_requirements": [
+        "2 adults + infant occupancy confirmed",
+        "cot availability confirmed",
+        "sufficient room space",
+        "elevator access"
+      ],
+      "notes": "Verify luggage storage and forwarding if applicable."
+    },
+    {
+      "id": "stay-seoul",
+      "destination_id": "seoul",
+      "check_in": "2027-11-02",
+      "check_out": "2027-11-06",
+      "nights": 4,
+      "status": "unbooked",
+      "preferred_area": "Insadong / Jongno near Anguk",
+      "hotel_options": [
+        {
+          "id": "hotel-seoul-1",
+          "name": "Orakai Insadong Suites",
+          "rank": 1,
+          "status": "candidate"
+        },
+        {
+          "id": "hotel-seoul-2",
+          "name": "Nine Tree Premier Hotel Insadong",
+          "rank": 2,
+          "status": "candidate"
+        },
+        {
+          "id": "hotel-seoul-3",
+          "name": "Somerset Palace Seoul",
+          "rank": 3,
+          "status": "candidate"
+        }
+      ],
+      "target_per_night_eur": 190,
+      "family_requirements": [
+        "2 adults + infant occupancy confirmed",
+        "cot availability confirmed",
+        "sufficient room space",
+        "elevator access"
+      ],
+      "notes": "Verify luggage storage and forwarding if applicable."
+    }
+  ],
+  "transport": [
+    {
+      "id": "transport-01",
+      "date": "2027-10-16",
+      "mode": "Flight",
+      "origin": "Brussels",
+      "destination": "Tokyo",
+      "status": "unbooked",
+      "departure_time": null,
+      "arrival_time": null,
+      "notes": "International open-jaw outbound; flight details TBD"
+    },
+    {
+      "id": "transport-02",
+      "date": "2027-10-22",
+      "mode": "Train/Bus",
+      "origin": "Tokyo",
+      "destination": "Kawaguchiko",
+      "status": "unbooked",
+      "departure_time": null,
+      "arrival_time": null,
+      "notes": "2–2.5h; book suitable service"
+    },
+    {
+      "id": "transport-03",
+      "date": "2027-10-23",
+      "mode": "Bus/Train",
+      "origin": "Kawaguchiko",
+      "destination": "Kyoto",
+      "status": "unbooked",
+      "departure_time": null,
+      "arrival_time": null,
+      "notes": "Via Mishima; 4–5h door-to-door"
+    },
+    {
+      "id": "transport-04",
+      "date": "2027-10-27",
+      "mode": "Train",
+      "origin": "Kyoto",
+      "destination": "Osaka",
+      "status": "unbooked",
+      "departure_time": null,
+      "arrival_time": null,
+      "notes": "30–60m"
+    },
+    {
+      "id": "transport-05",
+      "date": "2027-10-28",
+      "mode": "Shinkansen",
+      "origin": "Shin-Osaka",
+      "destination": "Hiroshima",
+      "status": "unbooked",
+      "departure_time": null,
+      "arrival_time": null,
+      "notes": "Return same day; ~1.5h each way"
+    },
+    {
+      "id": "transport-06",
+      "date": "2027-10-30",
+      "mode": "Flight",
+      "origin": "Osaka",
+      "destination": "Busan",
+      "status": "unbooked",
+      "departure_time": null,
+      "arrival_time": null,
+      "notes": "Exact service TBD"
+    },
+    {
+      "id": "transport-07",
+      "date": "2027-11-01",
+      "mode": "KTX",
+      "origin": "Busan",
+      "destination": "Gyeongju",
+      "status": "unbooked",
+      "departure_time": null,
+      "arrival_time": null,
+      "notes": "Return same day, local transfer additional"
+    },
+    {
+      "id": "transport-08",
+      "date": "2027-11-02",
+      "mode": "KTX",
+      "origin": "Busan",
+      "destination": "Seoul",
+      "status": "unbooked",
+      "departure_time": null,
+      "arrival_time": null,
+      "notes": "2.5–3h"
+    },
+    {
+      "id": "transport-09",
+      "date": "2027-11-06",
+      "mode": "Flight",
+      "origin": "Seoul",
+      "destination": "Brussels",
+      "status": "unbooked",
+      "departure_time": null,
+      "arrival_time": null,
+      "notes": "International return; flight details TBD"
+    }
+  ],
+  "budget": {
+    "currency": "EUR",
+    "target": 10035,
+    "categories": {
+      "international_flights": 2300,
+      "osaka_busan_flight": 300,
+      "accommodation": 3315,
+      "intercity_transport": 600,
+      "local_transport": 450,
+      "food": 1450,
+      "activities": 420,
+      "baby_supplies": 200,
+      "insurance_connectivity_misc": 250,
+      "contingency": 750
+    },
+    "note": "Estimated family budget, not actual expenses. Hotel shortlist target totals may exceed baseline accommodation allowance."
+  },
+  "day_trips": [
+    {
+      "id": "daytrip-nikko",
+      "date": "2027-10-20",
+      "origin": "Tokyo",
+      "destination": "Nikko",
+      "estimated_total_hours": "9–11",
+      "priority": "optional",
+      "notes": "Optional; 2–2.5 h each way; alternative Tokyo garden"
+    },
+    {
+      "id": "daytrip-nara",
+      "date": "2027-10-26",
+      "origin": "Kyoto",
+      "destination": "Nara",
+      "estimated_total_hours": "6–8",
+      "priority": "planned",
+      "notes": "40–60 min train each way"
+    },
+    {
+      "id": "daytrip-hiroshima",
+      "date": "2027-10-28",
+      "origin": "Osaka",
+      "destination": "Hiroshima",
+      "estimated_total_hours": "9–10",
+      "priority": "planned",
+      "notes": "~1.5 h Shinkansen each way plus station transfers; no Miyajima"
+    },
+    {
+      "id": "daytrip-gyeongju",
+      "date": "2027-11-01",
+      "origin": "Busan",
+      "destination": "Gyeongju",
+      "estimated_total_hours": "8–10",
+      "priority": "planned",
+      "notes": "KTX 30–40 min station to station, longer door to door"
+    }
+  ],
+  "hidden_gems": [
+    {
+      "id": "gem-yanaka-ginza",
+      "name": "Yanaka Ginza",
+      "destination_id": "tokyo",
+      "date": "2027-10-18",
+      "status": "planned",
+      "notes": "Old Tokyo traditional shopping street"
+    },
+    {
+      "id": "gem-koishikawa-korakuen",
+      "name": "Koishikawa Korakuen",
+      "destination_id": "tokyo",
+      "date": "2027-10-20",
+      "status": "alternative",
+      "notes": "Alternative to Nikko, or visit Oct 21"
+    },
+    {
+      "id": "gem-oshino-hakkai",
+      "name": "Oshino Hakkai",
+      "destination_id": "kawaguchiko",
+      "date": "2027-10-23",
+      "status": "optional",
+      "notes": "Only with workable onward travel schedule"
+    },
+    {
+      "id": "gem-otagi-nenbutsuji",
+      "name": "Otagi Nenbutsuji",
+      "destination_id": "kyoto",
+      "date": "2027-10-25",
+      "status": "planned",
+      "notes": "Stone rakan statues; carrier recommended"
+    },
+    {
+      "id": "gem-murin-an-garden",
+      "name": "Murin-an Garden",
+      "destination_id": "kyoto",
+      "date": "2027-10-27",
+      "status": "planned",
+      "notes": "Check reservation policy"
+    },
+    {
+      "id": "gem-minoh-falls",
+      "name": "Minoh Falls",
+      "destination_id": "osaka",
+      "date": "2027-10-29",
+      "status": "optional",
+      "notes": "Alternative to Osaka city day"
+    },
+    {
+      "id": "gem-shukkeien-garden",
+      "name": "Shukkeien Garden",
+      "destination_id": "osaka",
+      "date": "2027-10-28",
+      "status": "optional",
+      "notes": "Hiroshima day-trip extension"
+    },
+    {
+      "id": "gem-huinnyeoul-culture-village",
+      "name": "Huinnyeoul Culture Village",
+      "destination_id": "busan",
+      "date": "2027-10-31",
+      "status": "optional",
+      "notes": "Long transfer from Haeundae; carrier"
+    },
+    {
+      "id": "gem-ahopsan-forest",
+      "name": "Ahopsan Forest",
+      "destination_id": "busan",
+      "date": "2027-10-31",
+      "status": "alternative",
+      "notes": "Swap for coastline day, not addition"
+    },
+    {
+      "id": "gem-gyochon-hanok-village",
+      "name": "Gyochon Hanok Village",
+      "destination_id": "busan",
+      "date": "2027-11-01",
+      "status": "planned",
+      "notes": "Gyeongju historic center"
+    },
+    {
+      "id": "gem-seochon",
+      "name": "Seochon",
+      "destination_id": "seoul",
+      "date": "2027-11-03",
+      "status": "planned",
+      "notes": "After palace"
+    },
+    {
+      "id": "gem-eunpyeong-hanok-village",
+      "name": "Eunpyeong Hanok Village",
+      "destination_id": "seoul",
+      "date": "2027-11-04",
+      "status": "planned",
+      "notes": "Mountain backdrop"
+    },
+    {
+      "id": "gem-olympic-park",
+      "name": "Olympic Park",
+      "destination_id": "seoul",
+      "date": "2027-11-05",
+      "status": "planned",
+      "notes": "Stroller friendly"
+    }
+  ],
+  "import_notes": {
+    "time_status": "All suggested clock times are tentative; no flights, rooms, tours or tickets are booked.",
+    "location_status": "Place names are supplied without invented GPS coordinates. Geocode during import with user review.",
+    "alternatives": "Optional activities must not become confirmed reservations or mandatory itinerary stops."
+  }
+}

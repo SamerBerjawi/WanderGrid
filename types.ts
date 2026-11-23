@@ -175,6 +175,8 @@ export interface Transport {
   approximateYear?: number;
   customFields?: Array<{ key: string; value: string }>;
   notes?: string;
+  /** Planning metadata (status, priority, where it was imported from). Absent on legs entered as bookings. */
+  plan?: ItemPlan;
   // Associated Trip (for flattened/query contexts)
   tripId?: string;
   tripName?: string;
@@ -201,6 +203,8 @@ export interface Accommodation {
   excludeFromAnalytics?: boolean;
   logoUrl?: string; // URL to brand logo
   coordinates?: GeoCoordinates;
+  /** Planning metadata (where it was imported from). */
+  plan?: ItemPlan;
 }
 
 export type ActivityType = 
@@ -233,6 +237,8 @@ export interface Activity {
   description?: string;
   type?: ActivityType;
   coordinates?: GeoCoordinates;
+  /** Planning metadata: priority (optional, alternative…), booking status, an unscheduled time, hidden gem. */
+  plan?: ItemPlan;
 }
 
 export interface LocationEntry {
@@ -242,6 +248,123 @@ export interface LocationEntry {
     endDate: string;
     description?: string;
     coordinates?: GeoCoordinates;
+    /** Planning metadata (the external id of an imported destination). */
+    plan?: ItemPlan;
+}
+
+/* ---------------------------------------------------------------- planning metadata (docs/TRIP_INTERCHANGE.md) */
+
+/** How much an item matters to the plan. Absent means planned. */
+export type PlanPriority = 'planned' | 'recommended' | 'optional' | 'alternative';
+/** Whether an item is booked. Absent means it was entered as a booking (the meaning before planning metadata existed). */
+export type PlanBookingStatus = 'unbooked' | 'candidate' | 'booked' | 'paid';
+
+/**
+ * Planning metadata on a leg, stay, activity or stop. Every field is optional, so records without it read as before.
+ * Written by the trip importer (utils/tripInterchange.ts) and read by the trip panels to show what isn't confirmed.
+ */
+export interface ItemPlan {
+  /** The item's id in an interchange file, so importing the same file again updates it instead of adding a copy. */
+  externalId?: string;
+  priority?: PlanPriority;
+  bookingStatus?: PlanBookingStatus;
+  /** `unscheduled`: no time chosen (the item's time is empty). `tentative`: a suggested time. */
+  timeStatus?: 'unscheduled' | 'tentative' | 'fixed';
+  /** A transport mode as the file wrote it ("Shinkansen", "Train/Bus") when it maps to a broader native mode. */
+  modeLabel?: string;
+  hiddenGem?: boolean;
+  /** A price the plan expects, kept apart from `cost` (which counts as booked spending) until it is booked. */
+  estimatedCost?: number;
+  /** Position within its day in the file. */
+  order?: number;
+  /** A fingerprint of the values as last imported: a re-import only updates fields nobody changed since. */
+  importHash?: string;
+  /** Stop only: the area to stay in and the country (ISO code). */
+  area?: string;
+  countryCode?: string;
+}
+
+/** A day's heading in a plan: what the day is about. */
+export interface DayPlan {
+  date: string;
+  externalId?: string;
+  title?: string;
+  summary?: string;
+  notes?: string[];
+  /** The stop (LocationEntry plan.externalId) the day belongs to; absent for travel days. */
+  destinationId?: string;
+  scheduleStatus?: string;
+}
+
+/** A hotel being considered for a stay. A candidate is never a booking; booking one adds an Accommodation. */
+export interface HotelCandidate {
+  externalId?: string;
+  name: string;
+  rank?: number;
+  status: 'candidate' | 'booked' | 'rejected';
+  /** The Accommodation created when it was booked. */
+  accommodationId?: string;
+}
+
+/** Where the trip will sleep for a run of nights, before (or after) it is booked. */
+export interface StayPlan {
+  externalId?: string;
+  destinationId?: string;
+  checkIn: string;
+  checkOut: string;
+  nights?: number;
+  status: 'unbooked' | 'booked';
+  area?: string;
+  targetPerNight?: number;
+  requirements?: string[];
+  notes?: string;
+  candidates: HotelCandidate[];
+}
+
+export interface DayTripPlan {
+  externalId?: string;
+  date: string;
+  origin?: string;
+  destination: string;
+  hours?: string;
+  priority?: string;
+  notes?: string;
+}
+
+export interface HiddenGemPlan {
+  externalId?: string;
+  name: string;
+  destinationId?: string;
+  date?: string;
+  /** planned, optional or alternative, as the file wrote it. */
+  status?: string;
+  notes?: string;
+}
+
+/** The planned budget: an estimate by category, never spending (that is `Trip.expenses`). */
+export interface BudgetPlan {
+  currency: string;
+  target?: number;
+  categories?: Record<string, number>;
+  note?: string;
+}
+
+export interface TripPlanTraveller { label: string; type: string; age?: string }
+
+/** A trip's plan beyond its bookings: day headings, stay shortlists, day trips, hidden gems and the budget estimate. */
+export interface TripPlan {
+  /** Where it came from: the file's format, version and trip id, and when it was imported. */
+  source?: { format: string; schemaVersion: string; externalId?: string; importedAt?: string };
+  origin?: string;
+  travellers?: TripPlanTraveller[];
+  days?: DayPlan[];
+  stays?: StayPlan[];
+  dayTrips?: DayTripPlan[];
+  hiddenGems?: HiddenGemPlan[];
+  budget?: BudgetPlan;
+  importNotes?: Record<string, string>;
+  /** Fields of the file nothing in WanderGrid reads, kept so an export gives them back. */
+  extra?: Record<string, unknown>;
 }
 
 export interface PackingItem {
@@ -343,6 +466,8 @@ export interface Trip {
   /** Spending logged on the trip (the ledger behind "who owes whom"), and the currency it is totalled in. */
   expenses?: Expense[];
   ledgerCurrency?: string;
+  /** The plan beyond bookings (imported itineraries): day headings, stay shortlists, day trips, hidden gems, budget estimate. */
+  plan?: TripPlan;
 
   // Map Data
   coordinates?: GeoCoordinates;

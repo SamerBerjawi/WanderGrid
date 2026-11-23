@@ -276,7 +276,7 @@ export const useExpeditionMapData = (scratchAppearance?: ScratchAppearanceFilter
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     // Filters
-    const [statusFilter, setStatusFilter] = useState<'all' | 'Past' | 'Upcoming' | 'Planning'>('all');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'Past' | 'Upcoming' | 'Planning'>('Past');
     const [yearFilter, setYearFilter] = useState<string>('all');
     const [countryFilter, setCountryFilter] = useState<string[]>([]);
     const [depFilter, setDepFilter] = useState<string[]>([]);

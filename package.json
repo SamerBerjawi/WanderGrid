@@ -1,7 +1,7 @@
 {
   "name": "wandergrid-v0.2",
   "private": true,
-  "version": "1.2-261120.2",
+  "version": "1.2-261123.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -48,7 +48,8 @@
     "searoute-js": "^0.1.0",
     "tailwind-merge": "^3.6.0",
     "vaul": "^1.1.2",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/d3": "^7.4.3",

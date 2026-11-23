@@ -4,6 +4,7 @@ import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, WorkspaceSetti
 import { convertTripLeave } from '../utils/leaveEntry';
 import { convertLegacyUser, policiesFromTypes } from '../utils/leaveSettings';
 import { tripKind } from '../utils/tripKind';
+import { isProposed } from '../utils/tripPlan';
 // Geocoding (~100 KB with its place-search tables) is only needed when trips are saved; load it on first
 // use so it isn't part of the app's startup bundle (PERF-001).
 const getCoordinates = async (query: string) => (await import('./geocoding')).getCoordinates(query);
@@ -1554,7 +1555,8 @@ class DataService {
     trips.forEach(trip => {
       if (trip.transports) {
         trip.transports.forEach(tr => {
-          if (tr.mode === 'Flight') {
+          // A proposed leg of a plan (not booked) isn't a flight in the log.
+          if (tr.mode === 'Flight' && !isProposed(tr)) {
             tripFlights.push({
               ...tr,
               tripId: trip.id,

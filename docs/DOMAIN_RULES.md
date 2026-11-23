@@ -38,6 +38,12 @@
    re-derived in at least four places: `utils/tripsModel.ts`, `utils/calendarModel.ts`, `utils/dashboardModel.ts`,
    `hooks/useExpeditionMapData.ts`. **→ home:** `utils/tripsModel.ts` (see STATE_MACHINE.md).
 10. Archive hides a trip from planning boards (`archived: true`); Delete removes it.
+10a. A plan is not a booking. Imported or planned items carry `plan` metadata (`types.ts` `ItemPlan`, `TripPlan`);
+    a leg or activity whose `plan.bookingStatus` is `unbooked`/`candidate` and that has no number or booking reference
+    is *proposed* (`utils/tripPlan.ts` `isProposed`): labelled "Not booked", and kept out of the flight log and the
+    next-flight card. Hotel candidates live in `trip.plan.stays` and become an `Accommodation` only when booked.
+    A budget estimate (`trip.plan.budget`) never creates `Expense` records. Import and export rules:
+    `docs/TRIP_INTERCHANGE.md` (home: `utils/tripInterchange.ts`).
 
 ### Transports and flights
 11. "Is this leg a flight?" Server restore and `useFlightLog` move logic: `!mode || mode === 'Flight'`. Flights

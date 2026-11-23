@@ -51,6 +51,14 @@ module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_
   const isArrayOrMissing = (v) => v === undefined || v === null || Array.isArray(v);
   const isStringOrMissing = (v, max = 2000) => v === undefined || v === null || (typeof v === 'string' && v.length <= max);
 
+  // Keys that would change an object's prototype when a reader merges the record (an imported plan is the main source).
+  const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+  const hasDangerousKey = (v, depth = 0) => {
+      if (!v || typeof v !== 'object' || depth > 16) return false;
+      return Object.keys(v).some(k => DANGEROUS_KEYS.has(k) || hasDangerousKey(v[k], depth + 1));
+  };
+  const isPlainObjectOrMissing = (v) => v === undefined || v === null || (typeof v === 'object' && !Array.isArray(v));
+
   const RECORD_RULES = {
       trips: (r) => {
           if (!isStringOrMissing(r.name, 500)) return 'name must be text (max 500 characters)';
@@ -64,6 +72,17 @@ module.exports = function createRecordStore({ pool, sendError, HttpError, EMAIL_
           if (r.excludeCostsFromAnalytics !== undefined && r.excludeCostsFromAnalytics !== null && typeof r.excludeCostsFromAnalytics !== 'boolean') return 'excludeCostsFromAnalytics must be true or false';
           if (r.privacy !== undefined && r.privacy !== null && !['Private', 'Public', 'Shared'].includes(r.privacy)) return 'privacy must be Private, Public or Shared';
           if (r.intent !== undefined && r.intent !== null && !['planned', 'confirmed', 'cancelled'].includes(r.intent)) return 'intent must be planned, confirmed or cancelled';
+          // The plan beyond bookings (docs/TRIP_INTERCHANGE.md): an object of lists, and nothing that could pollute a prototype.
+          if (!isPlainObjectOrMissing(r.plan)) return 'plan must be an object';
+          if (r.plan) {
+              for (const field of ['days', 'stays', 'dayTrips', 'hiddenGems', 'travellers']) if (!isArrayOrMissing(r.plan[field])) return `plan.${field} must be a list`;
+              if (Array.isArray(r.plan.stays) && !r.plan.stays.every(s => s && typeof s === 'object' && Array.isArray(s.candidates))) return 'plan.stays must each have a candidates list';
+              if (!isPlainObjectOrMissing(r.plan.budget) || (r.plan.budget && r.plan.budget.target != null && !(typeof r.plan.budget.target === 'number' && r.plan.budget.target >= 0))) return 'plan.budget.target must be a number of 0 or more';
+          }
+          for (const field of ['transports', 'accommodations', 'activities', 'locations']) {
+              if (Array.isArray(r[field]) && r[field].some(x => x && x.plan !== undefined && x.plan !== null && (typeof x.plan !== 'object' || Array.isArray(x.plan)))) return `${field}[].plan must be an object`;
+          }
+          if (hasDangerousKey(r)) return 'keys named __proto__, constructor or prototype are not allowed';
           return null;
       },
       flights: (r) => {

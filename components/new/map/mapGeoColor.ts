@@ -1,4 +1,5 @@
 import { mix, type RGB, type RpPalette } from './mapPalette';
+import type { LegStatus } from './mapModel';
 
 /**
  * Regional colour gradient of the map, in the rp-* accents. Six poles, one per world region, blended by
@@ -58,11 +59,26 @@ export const gradientRuns = (path: [number, number][], from: RGB, to: RGB, chunk
 };
 
 /**
- * The "Static" route colour: one colour for every route, chosen by the basemap it is drawn on, not by the app
- * theme (a dark app theme can show a light basemap and the other way round). A deep rust on light basemaps
- * (4.4:1 or better against Positron's water, the darkest large area) and the sun-yellow mustard on dark
- * basemaps, satellite and night imagery (well above 7:1 against the dark styles).
+ * The "Static" route colours: one colour per trip status, chosen by the basemap it is drawn on, not by
+ * the app theme (a dark app theme can show a light basemap and the other way round).
+ * - Past: deep rust on light basemaps, sun-yellow mustard on dark basemaps.
+ * - Upcoming: deep green on light basemaps, bright mint on dark basemaps.
+ * - Planning: plum on light basemaps, soft plum on dark basemaps.
  */
 export const STATIC_ROUTE_ON_LIGHT: RGB = [176, 52, 18];
 export const STATIC_ROUTE_ON_DARK: RGB = [244, 211, 106];
-export const staticRouteColor = (lightBasemap: boolean): RGB => (lightBasemap ? STATIC_ROUTE_ON_LIGHT : STATIC_ROUTE_ON_DARK);
+
+export const STATIC_STATUS_ON_LIGHT: Record<LegStatus, RGB> = {
+    past: STATIC_ROUTE_ON_LIGHT,
+    upcoming: [44, 93, 79],
+    planning: [126, 72, 112],
+};
+
+export const STATIC_STATUS_ON_DARK: Record<LegStatus, RGB> = {
+    past: STATIC_ROUTE_ON_DARK,
+    upcoming: [102, 217, 173],
+    planning: [216, 162, 214],
+};
+
+export const staticRouteColor = (lightBasemap: boolean, status: LegStatus = 'past'): RGB =>
+    (lightBasemap ? STATIC_STATUS_ON_LIGHT : STATIC_STATUS_ON_DARK)[status];
