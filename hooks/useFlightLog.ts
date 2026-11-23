@@ -11,6 +11,7 @@ import {
   getAirportsByQueryLocally, getCarriersByQueryLocally,
 } from '../utils/flightData';
 import { isFlightLeg } from '../utils/legMode';
+import { isProposed } from '../utils/tripPlan';
 
 /**
  * Data, filters, sorting, grouping and mutations for the Flights page, shared by the Golden Hour variant.
@@ -252,7 +253,7 @@ export const useFlightLog = () => {
         setCurrentUser(sessionUser);
 
         const extracted: FlightRecord[] = [];
-        t.forEach(trip => (trip.transports || []).forEach(tr => { if (isFlightLeg(tr)) extracted.push({ flight: tr, trip }); }));
+        t.forEach(trip => (trip.transports || []).forEach(tr => { if (isFlightLeg(tr) && !isProposed(tr)) extracted.push({ flight: tr, trip }); }));
         const onlyFlights = (independentFlights || []).filter(fl => isFlightLeg(fl) && (!fl.tripId || fl.tripId === 'unassigned'));
         const unassignedTrip: Trip = { id: 'unassigned', name: 'Independent Flights', location: 'Various', startDate: '', endDate: '', status: 'Planning', participants: [], transports: onlyFlights };
         onlyFlights.forEach(fl => extracted.push({ flight: fl, trip: unassignedTrip }));

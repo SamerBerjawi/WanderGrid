@@ -1,0 +1,1975 @@
+{
+ "id": "imported-japan-korea",
+ "name": "Japan & South Korea — Autumn 2027",
+ "location": "Tokyo, Japan",
+ "startDate": "2027-10-16",
+ "endDate": "2027-11-06",
+ "status": "Planning",
+ "classification": "Family",
+ "participants": [],
+ "privacy": "Private",
+ "kind": "trip",
+ "locations": [
+  {
+   "id": "ix-1",
+   "name": "Tokyo",
+   "startDate": "2027-10-17",
+   "endDate": "2027-10-22",
+   "plan": {
+    "externalId": "tokyo",
+    "area": "Shinjuku-sanchome or quieter Sendagaya",
+    "countryCode": "JP",
+    "importHash": "193vyte"
+   }
+  },
+  {
+   "id": "ix-2",
+   "name": "Kawaguchiko",
+   "startDate": "2027-10-22",
+   "endDate": "2027-10-23",
+   "plan": {
+    "externalId": "kawaguchiko",
+    "area": "South/east Lake Kawaguchiko shore, shuttle access",
+    "countryCode": "JP",
+    "importHash": "m17dq8"
+   }
+  },
+  {
+   "id": "ix-3",
+   "name": "Kyoto",
+   "startDate": "2027-10-23",
+   "endDate": "2027-10-27",
+   "plan": {
+    "externalId": "kyoto",
+    "area": "Sanjo-Kawaramachi",
+    "countryCode": "JP",
+    "importHash": "tr826s"
+   }
+  },
+  {
+   "id": "ix-4",
+   "name": "Osaka",
+   "startDate": "2027-10-27",
+   "endDate": "2027-10-30",
+   "plan": {
+    "externalId": "osaka",
+    "area": "Namba or Honmachi",
+    "countryCode": "JP",
+    "importHash": "2s0m4x"
+   }
+  },
+  {
+   "id": "ix-5",
+   "name": "Busan",
+   "startDate": "2027-10-30",
+   "endDate": "2027-11-02",
+   "plan": {
+    "externalId": "busan",
+    "area": "Haeundae near beach and metro",
+    "countryCode": "KR",
+    "importHash": "10g2bfn"
+   }
+  },
+  {
+   "id": "ix-6",
+   "name": "Seoul",
+   "startDate": "2027-11-02",
+   "endDate": "2027-11-06",
+   "plan": {
+    "externalId": "seoul",
+    "area": "Insadong / Jongno near Anguk",
+    "countryCode": "KR",
+    "importHash": "1dji1dv"
+   }
+  }
+ ],
+ "activities": [
+  {
+   "id": "ix-7",
+   "date": "2027-10-18",
+   "time": "",
+   "title": "Sensō-ji",
+   "location": "Sensō-ji",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-18-01",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "importHash": "uwcj0r"
+   }
+  },
+  {
+   "id": "ix-8",
+   "date": "2027-10-18",
+   "time": "",
+   "title": "Nakamise Street",
+   "location": "Nakamise Street",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-18-02",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 2,
+    "importHash": "1gwujlo"
+   }
+  },
+  {
+   "id": "ix-9",
+   "date": "2027-10-18",
+   "time": "",
+   "title": "Ueno Park",
+   "location": "Ueno Park",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-18-03",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 3,
+    "importHash": "2loaw7"
+   }
+  },
+  {
+   "id": "ix-10",
+   "date": "2027-10-18",
+   "time": "",
+   "title": "Yanaka Ginza",
+   "location": "Yanaka Ginza",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-18-04",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 4,
+    "hiddenGem": true,
+    "importHash": "ktf11o"
+   }
+  },
+  {
+   "id": "ix-11",
+   "date": "2027-10-19",
+   "time": "",
+   "title": "Meiji Jingu",
+   "location": "Meiji Jingu",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-19-01",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "importHash": "kvf636"
+   }
+  },
+  {
+   "id": "ix-12",
+   "date": "2027-10-19",
+   "time": "",
+   "title": "Takeshita Street",
+   "location": "Takeshita Street",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-19-02",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 2,
+    "importHash": "efd30h"
+   }
+  },
+  {
+   "id": "ix-13",
+   "date": "2027-10-19",
+   "time": "",
+   "title": "Omotesando",
+   "location": "Omotesando",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-19-03",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 3,
+    "importHash": "pry1ia"
+   }
+  },
+  {
+   "id": "ix-14",
+   "date": "2027-10-19",
+   "time": "",
+   "title": "Shibuya Crossing",
+   "location": "Shibuya Crossing",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-19-04",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 4,
+    "importHash": "1jwp473"
+   }
+  },
+  {
+   "id": "ix-15",
+   "date": "2027-10-19",
+   "time": "",
+   "title": "Shibuya Sky",
+   "location": "Shibuya Sky",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-19-05",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 5,
+    "importHash": "1lanqs6"
+   }
+  },
+  {
+   "id": "ix-16",
+   "date": "2027-10-20",
+   "time": "",
+   "title": "Nikko",
+   "location": "Nikko",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-20-01",
+    "priority": "optional",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "importHash": "3budhn"
+   }
+  },
+  {
+   "id": "ix-17",
+   "date": "2027-10-20",
+   "time": "",
+   "title": "Shinkyo Bridge",
+   "location": "Shinkyo Bridge",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-20-02",
+    "priority": "optional",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 2,
+    "importHash": "z20adq"
+   }
+  },
+  {
+   "id": "ix-18",
+   "date": "2027-10-20",
+   "time": "",
+   "title": "Toshogu Shrine",
+   "location": "Toshogu Shrine",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-20-03",
+    "priority": "optional",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 3,
+    "importHash": "1nq4ep9"
+   }
+  },
+  {
+   "id": "ix-19",
+   "date": "2027-10-20",
+   "time": "",
+   "title": "Taiyuinbyo",
+   "location": "Taiyuinbyo",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-20-04",
+    "priority": "optional",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 4,
+    "importHash": "1nqcuye"
+   }
+  },
+  {
+   "id": "ix-20",
+   "date": "2027-10-20",
+   "time": "",
+   "title": "Koishikawa Korakuen",
+   "location": "Koishikawa Korakuen",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-20-05",
+    "priority": "optional",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 5,
+    "hiddenGem": true,
+    "importHash": "1y8t35b"
+   }
+  },
+  {
+   "id": "ix-21",
+   "date": "2027-10-21",
+   "time": "",
+   "title": "Shimokitazawa",
+   "location": "Shimokitazawa",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-21-01",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "importHash": "1e95xp5"
+   }
+  },
+  {
+   "id": "ix-22",
+   "date": "2027-10-21",
+   "time": "",
+   "title": "Sakurai Japanese Tea Experience",
+   "location": "Sakurai Japanese Tea Experience",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-21-02",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 2,
+    "importHash": "1d85vow"
+   }
+  },
+  {
+   "id": "ix-23",
+   "date": "2027-10-21",
+   "time": "",
+   "title": "Koishikawa Korakuen",
+   "location": "Koishikawa Korakuen",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-21-03",
+    "priority": "optional",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 3,
+    "importHash": "pa53rs"
+   }
+  },
+  {
+   "id": "ix-24",
+   "date": "2027-10-22",
+   "time": "",
+   "title": "Lake Kawaguchiko",
+   "location": "Lake Kawaguchiko",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-22-01",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "importHash": "al83a6"
+   }
+  },
+  {
+   "id": "ix-25",
+   "date": "2027-10-22",
+   "time": "",
+   "title": "Oishi Park",
+   "location": "Oishi Park",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-22-02",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 2,
+    "importHash": "1pu1au9"
+   }
+  },
+  {
+   "id": "ix-26",
+   "date": "2027-10-23",
+   "time": "",
+   "title": "Oshino Hakkai",
+   "location": "Oshino Hakkai",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-23-01",
+    "priority": "optional",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "hiddenGem": true,
+    "importHash": "m01tds"
+   }
+  },
+  {
+   "id": "ix-27",
+   "date": "2027-10-23",
+   "time": "",
+   "title": "Gion",
+   "location": "Gion",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-23-02",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 2,
+    "importHash": "p4aeje"
+   }
+  },
+  {
+   "id": "ix-28",
+   "date": "2027-10-23",
+   "time": "",
+   "title": "Yasaka Shrine",
+   "location": "Yasaka Shrine",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-23-03",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 3,
+    "importHash": "1hvdu6p"
+   }
+  },
+  {
+   "id": "ix-29",
+   "date": "2027-10-24",
+   "time": "",
+   "title": "Fushimi Inari Taisha",
+   "location": "Fushimi Inari Taisha",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-24-01",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "importHash": "144ow7m"
+   }
+  },
+  {
+   "id": "ix-30",
+   "date": "2027-10-24",
+   "time": "",
+   "title": "Tea Ceremony Ju-An at Jotokuji",
+   "location": "Tea Ceremony Ju-An at Jotokuji",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-24-02",
+    "priority": "optional",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 2,
+    "importHash": "1gsnyvo"
+   }
+  },
+  {
+   "id": "ix-31",
+   "date": "2027-10-24",
+   "time": "",
+   "title": "Higashiyama",
+   "location": "Higashiyama",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-24-03",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 3,
+    "importHash": "idx51g"
+   }
+  },
+  {
+   "id": "ix-32",
+   "date": "2027-10-24",
+   "time": "",
+   "title": "Yasaka Shrine",
+   "location": "Yasaka Shrine",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-24-04",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 4,
+    "importHash": "1mfl8n1"
+   }
+  },
+  {
+   "id": "ix-33",
+   "date": "2027-10-25",
+   "time": "",
+   "title": "Arashiyama Bamboo Grove",
+   "location": "Arashiyama Bamboo Grove",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-25-01",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "importHash": "970g0x"
+   }
+  },
+  {
+   "id": "ix-34",
+   "date": "2027-10-25",
+   "time": "",
+   "title": "Tenryu-ji",
+   "location": "Tenryu-ji",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-25-02",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 2,
+    "importHash": "j419vo"
+   }
+  },
+  {
+   "id": "ix-35",
+   "date": "2027-10-25",
+   "time": "",
+   "title": "Saga-Toriimoto",
+   "location": "Saga-Toriimoto",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-25-03",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 3,
+    "importHash": "1vyslqb"
+   }
+  },
+  {
+   "id": "ix-36",
+   "date": "2027-10-25",
+   "time": "",
+   "title": "Otagi Nenbutsuji",
+   "location": "Otagi Nenbutsuji",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-25-04",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 4,
+    "hiddenGem": true,
+    "importHash": "brgtxi"
+   }
+  },
+  {
+   "id": "ix-37",
+   "date": "2027-10-26",
+   "time": "",
+   "title": "Nara Park",
+   "location": "Nara Park",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-26-01",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "importHash": "1ypates"
+   }
+  },
+  {
+   "id": "ix-38",
+   "date": "2027-10-26",
+   "time": "",
+   "title": "Todai-ji",
+   "location": "Todai-ji",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-26-02",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 2,
+    "importHash": "gqh31b"
+   }
+  },
+  {
+   "id": "ix-39",
+   "date": "2027-10-26",
+   "time": "",
+   "title": "Naramachi",
+   "location": "Naramachi",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-26-03",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 3,
+    "importHash": "12cveoa"
+   }
+  },
+  {
+   "id": "ix-40",
+   "date": "2027-10-26",
+   "time": "",
+   "title": "Kasuga Taisha",
+   "location": "Kasuga Taisha",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-26-04",
+    "priority": "optional",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 4,
+    "importHash": "m24vpa"
+   }
+  },
+  {
+   "id": "ix-41",
+   "date": "2027-10-27",
+   "time": "",
+   "title": "Murin-an Garden",
+   "location": "Murin-an Garden",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-27-01",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "hiddenGem": true,
+    "importHash": "8eeqj"
+   }
+  },
+  {
+   "id": "ix-42",
+   "date": "2027-10-27",
+   "time": "",
+   "title": "Philosopher’s Path",
+   "location": "Philosopher’s Path",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-27-02",
+    "priority": "optional",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 2,
+    "importHash": "133o9kf"
+   }
+  },
+  {
+   "id": "ix-43",
+   "date": "2027-10-27",
+   "time": "",
+   "title": "Dotonbori",
+   "location": "Dotonbori",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-27-03",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 3,
+    "importHash": "tv7al"
+   }
+  },
+  {
+   "id": "ix-44",
+   "date": "2027-10-28",
+   "time": "",
+   "title": "Hiroshima Peace Memorial Park",
+   "location": "Hiroshima Peace Memorial Park",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-28-01",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "importHash": "vvld5a"
+   }
+  },
+  {
+   "id": "ix-45",
+   "date": "2027-10-28",
+   "time": "",
+   "title": "Atomic Bomb Dome",
+   "location": "Atomic Bomb Dome",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-28-02",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 2,
+    "importHash": "17he8mr"
+   }
+  },
+  {
+   "id": "ix-46",
+   "date": "2027-10-28",
+   "time": "",
+   "title": "Hiroshima Peace Memorial Museum",
+   "location": "Hiroshima Peace Memorial Museum",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-28-03",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 3,
+    "importHash": "d9kj2s"
+   }
+  },
+  {
+   "id": "ix-47",
+   "date": "2027-10-28",
+   "time": "",
+   "title": "Shukkeien Garden",
+   "location": "Shukkeien Garden",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-28-04",
+    "priority": "optional",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 4,
+    "hiddenGem": true,
+    "importHash": "rjcvs"
+   }
+  },
+  {
+   "id": "ix-48",
+   "date": "2027-10-29",
+   "time": "",
+   "title": "Osaka Castle Park",
+   "location": "Osaka Castle Park",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-29-01",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "importHash": "1kr3ayl"
+   }
+  },
+  {
+   "id": "ix-49",
+   "date": "2027-10-29",
+   "time": "",
+   "title": "Shinsekai",
+   "location": "Shinsekai",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-29-02",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 2,
+    "importHash": "1lfmfgg"
+   }
+  },
+  {
+   "id": "ix-50",
+   "date": "2027-10-29",
+   "time": "",
+   "title": "Minoh Falls",
+   "location": "Minoh Falls",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-29-03",
+    "priority": "optional",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 3,
+    "hiddenGem": true,
+    "importHash": "1tz3mto"
+   }
+  },
+  {
+   "id": "ix-51",
+   "date": "2027-10-30",
+   "time": "",
+   "title": "Haeundae Beach",
+   "location": "Haeundae Beach",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-30-01",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "importHash": "1xa8nk1"
+   }
+  },
+  {
+   "id": "ix-52",
+   "date": "2027-10-31",
+   "time": "",
+   "title": "Haeundae Beach",
+   "location": "Haeundae Beach",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-31-01",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "importHash": "8idrwo"
+   }
+  },
+  {
+   "id": "ix-53",
+   "date": "2027-10-31",
+   "time": "",
+   "title": "Haeundae Blueline Park Sky Capsule",
+   "location": "Haeundae Blueline Park Sky Capsule",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-31-02",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 2,
+    "importHash": "169c6sb"
+   }
+  },
+  {
+   "id": "ix-54",
+   "date": "2027-10-31",
+   "time": "",
+   "title": "Huinnyeoul Culture Village",
+   "location": "Huinnyeoul Culture Village",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-31-03",
+    "priority": "optional",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 3,
+    "hiddenGem": true,
+    "importHash": "1rjyhgv"
+   }
+  },
+  {
+   "id": "ix-55",
+   "date": "2027-10-31",
+   "time": "",
+   "title": "Ahopsan Forest",
+   "location": "Ahopsan Forest",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-10-31-04",
+    "priority": "optional",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 4,
+    "hiddenGem": true,
+    "importHash": "1b0o8so"
+   }
+  },
+  {
+   "id": "ix-56",
+   "date": "2027-11-01",
+   "time": "",
+   "title": "Daereungwon",
+   "location": "Daereungwon",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-11-01-01",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "importHash": "1ufp8xa"
+   }
+  },
+  {
+   "id": "ix-57",
+   "date": "2027-11-01",
+   "time": "",
+   "title": "Hwangnidan-gil",
+   "location": "Hwangnidan-gil",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-11-01-02",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 2,
+    "importHash": "aq6ekr"
+   }
+  },
+  {
+   "id": "ix-58",
+   "date": "2027-11-01",
+   "time": "",
+   "title": "Gyochon Hanok Village",
+   "location": "Gyochon Hanok Village",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-11-01-03",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 3,
+    "hiddenGem": true,
+    "importHash": "jhbrts"
+   }
+  },
+  {
+   "id": "ix-59",
+   "date": "2027-11-01",
+   "time": "",
+   "title": "Woljeonggyo Bridge",
+   "location": "Woljeonggyo Bridge",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-11-01-04",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 4,
+    "importHash": "1jujeib"
+   }
+  },
+  {
+   "id": "ix-60",
+   "date": "2027-11-01",
+   "time": "",
+   "title": "Cheomseongdae",
+   "location": "Cheomseongdae",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-11-01-05",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 5,
+    "importHash": "v9npuq"
+   }
+  },
+  {
+   "id": "ix-61",
+   "date": "2027-11-02",
+   "time": "",
+   "title": "Cheonggyecheon Stream",
+   "location": "Cheonggyecheon Stream",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-11-02-01",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "importHash": "140ngyz"
+   }
+  },
+  {
+   "id": "ix-62",
+   "date": "2027-11-03",
+   "time": "",
+   "title": "Gyeongbokgung Palace",
+   "location": "Gyeongbokgung Palace",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-11-03-01",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "importHash": "rwt3x0"
+   }
+  },
+  {
+   "id": "ix-63",
+   "date": "2027-11-03",
+   "time": "",
+   "title": "Seochon",
+   "location": "Seochon",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-11-03-02",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 2,
+    "hiddenGem": true,
+    "importHash": "hcln9"
+   }
+  },
+  {
+   "id": "ix-64",
+   "date": "2027-11-03",
+   "time": "",
+   "title": "Insadong",
+   "location": "Insadong",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-11-03-03",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 3,
+    "importHash": "34xzw"
+   }
+  },
+  {
+   "id": "ix-65",
+   "date": "2027-11-04",
+   "time": "",
+   "title": "Eunpyeong Hanok Village",
+   "location": "Eunpyeong Hanok Village",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-11-04-01",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "hiddenGem": true,
+    "importHash": "1bcu5y9"
+   }
+  },
+  {
+   "id": "ix-66",
+   "date": "2027-11-04",
+   "time": "",
+   "title": "Myeongdong",
+   "location": "Myeongdong",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-11-04-02",
+    "priority": "optional",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 2,
+    "importHash": "b5l8y7"
+   }
+  },
+  {
+   "id": "ix-67",
+   "date": "2027-11-05",
+   "time": "",
+   "title": "Olympic Park",
+   "location": "Olympic Park",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-11-05-01",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 1,
+    "hiddenGem": true,
+    "importHash": "py4xgc"
+   }
+  },
+  {
+   "id": "ix-68",
+   "date": "2027-11-05",
+   "time": "",
+   "title": "Seongsu",
+   "location": "Seongsu",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-11-05-02",
+    "priority": "recommended",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 2,
+    "importHash": "itv88j"
+   }
+  },
+  {
+   "id": "ix-69",
+   "date": "2027-11-05",
+   "time": "",
+   "title": "Seoul Forest",
+   "location": "Seoul Forest",
+   "description": "Verify opening times, infant policies, and local transit before booking.",
+   "plan": {
+    "externalId": "activity-2027-11-05-03",
+    "priority": "optional",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "order": 3,
+    "importHash": "ncnzyf"
+   }
+  }
+ ],
+ "transports": [
+  {
+   "id": "ix-70",
+   "itineraryId": "itinerary-imported-japan-korea",
+   "type": "One-Way",
+   "mode": "Flight",
+   "provider": "",
+   "identifier": "",
+   "confirmationCode": "",
+   "origin": "Brussels",
+   "destination": "Tokyo",
+   "departureDate": "2027-10-16",
+   "departureTime": "",
+   "arrivalDate": "2027-10-16",
+   "arrivalTime": "",
+   "notes": "International open-jaw outbound; flight details TBD",
+   "plan": {
+    "externalId": "transport-01",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "importHash": "164a2i1"
+   }
+  },
+  {
+   "id": "ix-71",
+   "itineraryId": "itinerary-imported-japan-korea",
+   "type": "One-Way",
+   "mode": "Train",
+   "provider": "",
+   "identifier": "",
+   "confirmationCode": "",
+   "origin": "Tokyo",
+   "destination": "Kawaguchiko",
+   "departureDate": "2027-10-22",
+   "departureTime": "",
+   "arrivalDate": "2027-10-22",
+   "arrivalTime": "",
+   "notes": "2–2.5h; book suitable service",
+   "plan": {
+    "externalId": "transport-02",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "modeLabel": "Train/Bus",
+    "importHash": "130dxjj"
+   }
+  },
+  {
+   "id": "ix-72",
+   "itineraryId": "itinerary-imported-japan-korea",
+   "type": "One-Way",
+   "mode": "Bus",
+   "provider": "",
+   "identifier": "",
+   "confirmationCode": "",
+   "origin": "Kawaguchiko",
+   "destination": "Kyoto",
+   "departureDate": "2027-10-23",
+   "departureTime": "",
+   "arrivalDate": "2027-10-23",
+   "arrivalTime": "",
+   "notes": "Via Mishima; 4–5h door-to-door",
+   "plan": {
+    "externalId": "transport-03",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "modeLabel": "Bus/Train",
+    "importHash": "6gqy4p"
+   }
+  },
+  {
+   "id": "ix-73",
+   "itineraryId": "itinerary-imported-japan-korea",
+   "type": "One-Way",
+   "mode": "Train",
+   "provider": "",
+   "identifier": "",
+   "confirmationCode": "",
+   "origin": "Kyoto",
+   "destination": "Osaka",
+   "departureDate": "2027-10-27",
+   "departureTime": "",
+   "arrivalDate": "2027-10-27",
+   "arrivalTime": "",
+   "notes": "30–60m",
+   "plan": {
+    "externalId": "transport-04",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "importHash": "zg1ja"
+   }
+  },
+  {
+   "id": "ix-74",
+   "itineraryId": "itinerary-imported-japan-korea",
+   "type": "One-Way",
+   "mode": "Train",
+   "provider": "",
+   "identifier": "",
+   "confirmationCode": "",
+   "origin": "Shin-Osaka",
+   "destination": "Hiroshima",
+   "departureDate": "2027-10-28",
+   "departureTime": "",
+   "arrivalDate": "2027-10-28",
+   "arrivalTime": "",
+   "notes": "Return same day; ~1.5h each way",
+   "plan": {
+    "externalId": "transport-05",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "modeLabel": "Shinkansen",
+    "importHash": "140a3hx"
+   }
+  },
+  {
+   "id": "ix-75",
+   "itineraryId": "itinerary-imported-japan-korea",
+   "type": "One-Way",
+   "mode": "Flight",
+   "provider": "",
+   "identifier": "",
+   "confirmationCode": "",
+   "origin": "Osaka",
+   "destination": "Busan",
+   "departureDate": "2027-10-30",
+   "departureTime": "",
+   "arrivalDate": "2027-10-30",
+   "arrivalTime": "",
+   "notes": "Exact service TBD",
+   "plan": {
+    "externalId": "transport-06",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "importHash": "1irgbwe"
+   }
+  },
+  {
+   "id": "ix-76",
+   "itineraryId": "itinerary-imported-japan-korea",
+   "type": "One-Way",
+   "mode": "Train",
+   "provider": "",
+   "identifier": "",
+   "confirmationCode": "",
+   "origin": "Busan",
+   "destination": "Gyeongju",
+   "departureDate": "2027-11-01",
+   "departureTime": "",
+   "arrivalDate": "2027-11-01",
+   "arrivalTime": "",
+   "notes": "Return same day, local transfer additional",
+   "plan": {
+    "externalId": "transport-07",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "modeLabel": "KTX",
+    "importHash": "1pb3fur"
+   }
+  },
+  {
+   "id": "ix-77",
+   "itineraryId": "itinerary-imported-japan-korea",
+   "type": "One-Way",
+   "mode": "Train",
+   "provider": "",
+   "identifier": "",
+   "confirmationCode": "",
+   "origin": "Busan",
+   "destination": "Seoul",
+   "departureDate": "2027-11-02",
+   "departureTime": "",
+   "arrivalDate": "2027-11-02",
+   "arrivalTime": "",
+   "notes": "2.5–3h",
+   "plan": {
+    "externalId": "transport-08",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "modeLabel": "KTX",
+    "importHash": "ra10m9"
+   }
+  },
+  {
+   "id": "ix-78",
+   "itineraryId": "itinerary-imported-japan-korea",
+   "type": "One-Way",
+   "mode": "Flight",
+   "provider": "",
+   "identifier": "",
+   "confirmationCode": "",
+   "origin": "Seoul",
+   "destination": "Brussels",
+   "departureDate": "2027-11-06",
+   "departureTime": "",
+   "arrivalDate": "2027-11-06",
+   "arrivalTime": "",
+   "notes": "International return; flight details TBD",
+   "plan": {
+    "externalId": "transport-09",
+    "bookingStatus": "unbooked",
+    "timeStatus": "unscheduled",
+    "importHash": "1nlwit4"
+   }
+  }
+ ],
+ "accommodations": [],
+ "plan": {
+  "source": {
+   "format": "wandergrid-trip-interchange",
+   "schemaVersion": "1.0.0",
+   "externalId": "japan-korea-family-2027",
+   "importedAt": "2026-11-23T10:00:00.000Z"
+  },
+  "origin": "Brussels, Belgium",
+  "travellers": [
+   {
+    "label": "Adult 1",
+    "type": "adult"
+   },
+   {
+    "label": "Adult 2",
+    "type": "adult"
+   },
+   {
+    "label": "Zoé",
+    "type": "infant",
+    "age": "1 year"
+   }
+  ],
+  "days": [
+   {
+    "date": "2027-10-16",
+    "externalId": "day-2027-10-16",
+    "title": "Brussels to Tokyo",
+    "summary": "International flight departure; exact routing and time TBD",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-10-17",
+    "externalId": "day-2027-10-17",
+    "title": "Arrival and recovery",
+    "summary": "Airport transfer; check-in; short neighborhood walk; optional Omoide Yokocho",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "tokyo",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-10-18",
+    "externalId": "day-2027-10-18",
+    "title": "Old Tokyo",
+    "summary": "Sensō-ji; Nakamise; Asakusa lanes; Ueno Park; Yanaka Ginza",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "tokyo",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-10-19",
+    "externalId": "day-2027-10-19",
+    "title": "Modern Tokyo",
+    "summary": "Meiji Jingu; Harajuku; Omotesando; Shibuya Crossing; Shibuya Sky near sunset",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "tokyo",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-10-20",
+    "externalId": "day-2027-10-20",
+    "title": "Nikko OR garden",
+    "summary": "Optional Nikko day trip: Shinkyo Bridge; Toshogu; Taiyuinbyo. Alternative Koishikawa Korakuen",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "tokyo",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-10-21",
+    "externalId": "day-2027-10-21",
+    "title": "Slow Tokyo and tea",
+    "summary": "Shimokitazawa; Sakurai Japanese Tea Experience; optional Koishikawa Korakuen",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "tokyo",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-10-22",
+    "externalId": "day-2027-10-22",
+    "title": "Mount Fuji overnight",
+    "summary": "Tokyo to Kawaguchiko; lake promenade; Oishi Park; ryokan and family bath",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "kawaguchiko",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-10-23",
+    "externalId": "day-2027-10-23",
+    "title": "Fuji to Kyoto",
+    "summary": "Fuji-view breakfast; optional Oshino Hakkai only if transport/time allow; bus to Mishima and Shinkansen to Kyoto; Gion",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "kyoto",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-10-24",
+    "externalId": "day-2027-10-24",
+    "title": "Fushimi Inari and Higashiyama",
+    "summary": "Fushimi Inari lower paths; optional Tea Ceremony Ju-An; Higashiyama; Yasaka Shrine",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "kyoto",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-10-25",
+    "externalId": "day-2027-10-25",
+    "title": "Arashiyama and hidden temple",
+    "summary": "Bamboo Grove; Tenryu-ji; Saga-Toriimoto; Otagi Nenbutsuji",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "kyoto",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-10-26",
+    "externalId": "day-2027-10-26",
+    "title": "Nara day trip",
+    "summary": "Nara Park; Todai-ji; Naramachi; optional Kasuga Taisha",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "kyoto",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-10-27",
+    "externalId": "day-2027-10-27",
+    "title": "Quiet Kyoto to Osaka",
+    "summary": "Murin-an Garden; optional short Philosopher’s Path; Kyoto to Osaka; Namba and Dotonbori",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "osaka",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-10-28",
+    "externalId": "day-2027-10-28",
+    "title": "Hiroshima day trip",
+    "summary": "Shinkansen return from Shin-Osaka; Peace Memorial Park; Atomic Bomb Dome; museum; optional Shukkeien Garden; skip Miyajima",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "osaka",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-10-29",
+    "externalId": "day-2027-10-29",
+    "title": "Osaka or waterfall",
+    "summary": "Osaka Castle Park; Shinsekai; shopping. Optional Minoh Falls half-day instead; skip Koyasan",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "osaka",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-10-30",
+    "externalId": "day-2027-10-30",
+    "title": "Osaka to Busan",
+    "summary": "Fly Osaka to Busan; airport transfer; Haeundae Beach walk",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "busan",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-10-31",
+    "externalId": "day-2027-10-31",
+    "title": "Busan coastline",
+    "summary": "Haeundae; Blueline Park Sky Capsule; optional Huinnyeoul Culture Village; alternative Ahopsan Forest",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "busan",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-11-01",
+    "externalId": "day-2027-11-01",
+    "title": "Gyeongju day trip",
+    "summary": "KTX to Gyeongju and transfer; Daereungwon; Hwangnidan-gil; Gyochon Hanok Village; Woljeonggyo; Cheomseongdae",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "busan",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-11-02",
+    "externalId": "day-2027-11-02",
+    "title": "Busan to Seoul",
+    "summary": "KTX; check-in; Cheonggyecheon Stream; easy dinner",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "seoul",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-11-03",
+    "externalId": "day-2027-11-03",
+    "title": "Historic Seoul",
+    "summary": "Gyeongbokgung Palace; Seochon; Insadong",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "seoul",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-11-04",
+    "externalId": "day-2027-11-04",
+    "title": "Hanok village and mountain backdrop",
+    "summary": "Eunpyeong Hanok Village; cafés; Myeongdong optional",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "seoul",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-11-05",
+    "externalId": "day-2027-11-05",
+    "title": "Parks and design",
+    "summary": "Olympic Park; Seongsu cafés; optional Seoul Forest; packing",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "destinationId": "seoul",
+    "scheduleStatus": "suggested"
+   },
+   {
+    "date": "2027-11-06",
+    "externalId": "day-2027-11-06",
+    "title": "Return to Brussels",
+    "summary": "Seoul Incheon airport transfer; flight to Brussels",
+    "notes": [
+     "Keep time for Zoé naps, feeding and stroller access; adapt to weather and energy."
+    ],
+    "scheduleStatus": "suggested"
+   }
+  ],
+  "stays": [
+   {
+    "externalId": "stay-tokyo",
+    "destinationId": "tokyo",
+    "checkIn": "2027-10-17",
+    "checkOut": "2027-10-22",
+    "nights": 5,
+    "status": "unbooked",
+    "area": "Shinjuku-sanchome or quieter Sendagaya",
+    "targetPerNight": 200,
+    "requirements": [
+     "2 adults + infant occupancy confirmed",
+     "cot availability confirmed",
+     "sufficient room space",
+     "elevator access"
+    ],
+    "notes": "Verify luggage storage and forwarding if applicable.",
+    "candidates": [
+     {
+      "externalId": "hotel-tokyo-1",
+      "name": "Mitsui Garden Hotel Jingugaien Tokyo Premier",
+      "rank": 1,
+      "status": "candidate"
+     },
+     {
+      "externalId": "hotel-tokyo-2",
+      "name": "HOTEL GROOVE SHINJUKU",
+      "rank": 2,
+      "status": "candidate"
+     },
+     {
+      "externalId": "hotel-tokyo-3",
+      "name": "Hotel Metropolitan Tokyo Marunouchi",
+      "rank": 3,
+      "status": "candidate"
+     }
+    ]
+   },
+   {
+    "externalId": "stay-kawaguchiko",
+    "destinationId": "kawaguchiko",
+    "checkIn": "2027-10-22",
+    "checkOut": "2027-10-23",
+    "nights": 1,
+    "status": "unbooked",
+    "area": "South/east Lake Kawaguchiko shore, shuttle access",
+    "targetPerNight": 400,
+    "requirements": [
+     "2 adults + infant occupancy confirmed",
+     "cot availability confirmed",
+     "sufficient room space",
+     "elevator access"
+    ],
+    "notes": "Kawaguchiko: consider private family bath, ryokan meal timing and shuttle.",
+    "candidates": [
+     {
+      "externalId": "hotel-kawaguchiko-1",
+      "name": "Konansou",
+      "rank": 1,
+      "status": "candidate"
+     },
+     {
+      "externalId": "hotel-kawaguchiko-2",
+      "name": "Fuji View Hotel",
+      "rank": 2,
+      "status": "candidate"
+     },
+     {
+      "externalId": "hotel-kawaguchiko-3",
+      "name": "La Vista Fuji Kawaguchiko",
+      "rank": 3,
+      "status": "candidate"
+     }
+    ]
+   },
+   {
+    "externalId": "stay-kyoto",
+    "destinationId": "kyoto",
+    "checkIn": "2027-10-23",
+    "checkOut": "2027-10-27",
+    "nights": 4,
+    "status": "unbooked",
+    "area": "Sanjo-Kawaramachi",
+    "targetPerNight": 190,
+    "requirements": [
+     "2 adults + infant occupancy confirmed",
+     "cot availability confirmed",
+     "sufficient room space",
+     "elevator access"
+    ],
+    "notes": "Verify luggage storage and forwarding if applicable.",
+    "candidates": [
+     {
+      "externalId": "hotel-kyoto-1",
+      "name": "Cross Hotel Kyoto",
+      "rank": 1,
+      "status": "candidate"
+     },
+     {
+      "externalId": "hotel-kyoto-2",
+      "name": "The Royal Park Hotel Iconic Kyoto",
+      "rank": 2,
+      "status": "candidate"
+     },
+     {
+      "externalId": "hotel-kyoto-3",
+      "name": "Hotel Resol Trinity Kyoto",
+      "rank": 3,
+      "status": "candidate"
+     }
+    ]
+   },
+   {
+    "externalId": "stay-osaka",
+    "destinationId": "osaka",
+    "checkIn": "2027-10-27",
+    "checkOut": "2027-10-30",
+    "nights": 3,
+    "status": "unbooked",
+    "area": "Namba or Honmachi",
+    "targetPerNight": 170,
+    "requirements": [
+     "2 adults + infant occupancy confirmed",
+     "cot availability confirmed",
+     "sufficient room space",
+     "elevator access"
+    ],
+    "notes": "Verify luggage storage and forwarding if applicable.",
+    "candidates": [
+     {
+      "externalId": "hotel-osaka-1",
+      "name": "Citadines Namba Osaka",
+      "rank": 1,
+      "status": "candidate"
+     },
+     {
+      "externalId": "hotel-osaka-2",
+      "name": "Hotel The Flag Shinsaibashi",
+      "rank": 2,
+      "status": "candidate"
+     },
+     {
+      "externalId": "hotel-osaka-3",
+      "name": "Miyako City Osaka Hommachi",
+      "rank": 3,
+      "status": "candidate"
+     }
+    ]
+   },
+   {
+    "externalId": "stay-busan",
+    "destinationId": "busan",
+    "checkIn": "2027-10-30",
+    "checkOut": "2027-11-02",
+    "nights": 3,
+    "status": "unbooked",
+    "area": "Haeundae near beach and metro",
+    "targetPerNight": 140,
+    "requirements": [
+     "2 adults + infant occupancy confirmed",
+     "cot availability confirmed",
+     "sufficient room space",
+     "elevator access"
+    ],
+    "notes": "Verify luggage storage and forwarding if applicable.",
+    "candidates": [
+     {
+      "externalId": "hotel-busan-1",
+      "name": "L7 Haeundae by LOTTE",
+      "rank": 1,
+      "status": "candidate"
+     },
+     {
+      "externalId": "hotel-busan-2",
+      "name": "Shilla Stay Haeundae",
+      "rank": 2,
+      "status": "candidate"
+     },
+     {
+      "externalId": "hotel-busan-3",
+      "name": "Ramada Encore by Wyndham Busan Haeundae",
+      "rank": 3,
+      "status": "candidate"
+     }
+    ]
+   },
+   {
+    "externalId": "stay-seoul",
+    "destinationId": "seoul",
+    "checkIn": "2027-11-02",
+    "checkOut": "2027-11-06",
+    "nights": 4,
+    "status": "unbooked",
+    "area": "Insadong / Jongno near Anguk",
+    "targetPerNight": 190,
+    "requirements": [
+     "2 adults + infant occupancy confirmed",
+     "cot availability confirmed",
+     "sufficient room space",
+     "elevator access"
+    ],
+    "notes": "Verify luggage storage and forwarding if applicable.",
+    "candidates": [
+     {
+      "externalId": "hotel-seoul-1",
+      "name": "Orakai Insadong Suites",
+      "rank": 1,
+      "status": "candidate"
+     },
+     {
+      "externalId": "hotel-seoul-2",
+      "name": "Nine Tree Premier Hotel Insadong",
+      "rank": 2,
+      "status": "candidate"
+     },
+     {
+      "externalId": "hotel-seoul-3",
+      "name": "Somerset Palace Seoul",
+      "rank": 3,
+      "status": "candidate"
+     }
+    ]
+   }
+  ],
+  "dayTrips": [
+   {
+    "externalId": "daytrip-nikko",
+    "date": "2027-10-20",
+    "origin": "Tokyo",
+    "destination": "Nikko",
+    "hours": "9–11",
+    "priority": "optional",
+    "notes": "Optional; 2–2.5 h each way; alternative Tokyo garden"
+   },
+   {
+    "externalId": "daytrip-nara",
+    "date": "2027-10-26",
+    "origin": "Kyoto",
+    "destination": "Nara",
+    "hours": "6–8",
+    "priority": "planned",
+    "notes": "40–60 min train each way"
+   },
+   {
+    "externalId": "daytrip-hiroshima",
+    "date": "2027-10-28",
+    "origin": "Osaka",
+    "destination": "Hiroshima",
+    "hours": "9–10",
+    "priority": "planned",
+    "notes": "~1.5 h Shinkansen each way plus station transfers; no Miyajima"
+   },
+   {
+    "externalId": "daytrip-gyeongju",
+    "date": "2027-11-01",
+    "origin": "Busan",
+    "destination": "Gyeongju",
+    "hours": "8–10",
+    "priority": "planned",
+    "notes": "KTX 30–40 min station to station, longer door to door"
+   }
+  ],
+  "hiddenGems": [
+   {
+    "externalId": "gem-yanaka-ginza",
+    "name": "Yanaka Ginza",
+    "destinationId": "tokyo",
+    "date": "2027-10-18",
+    "status": "planned",
+    "notes": "Old Tokyo traditional shopping street"
+   },
+   {
+    "externalId": "gem-koishikawa-korakuen",
+    "name": "Koishikawa Korakuen",
+    "destinationId": "tokyo",
+    "date": "2027-10-20",
+    "status": "alternative",
+    "notes": "Alternative to Nikko, or visit Oct 21"
+   },
+   {
+    "externalId": "gem-oshino-hakkai",
+    "name": "Oshino Hakkai",
+    "destinationId": "kawaguchiko",
+    "date": "2027-10-23",
+    "status": "optional",
+    "notes": "Only with workable onward travel schedule"
+   },
+   {
+    "externalId": "gem-otagi-nenbutsuji",
+    "name": "Otagi Nenbutsuji",
+    "destinationId": "kyoto",
+    "date": "2027-10-25",
+    "status": "planned",
+    "notes": "Stone rakan statues; carrier recommended"
+   },
+   {
+    "externalId": "gem-murin-an-garden",
+    "name": "Murin-an Garden",
+    "destinationId": "kyoto",
+    "date": "2027-10-27",
+    "status": "planned",
+    "notes": "Check reservation policy"
+   },
+   {
+    "externalId": "gem-minoh-falls",
+    "name": "Minoh Falls",
+    "destinationId": "osaka",
+    "date": "2027-10-29",
+    "status": "optional",
+    "notes": "Alternative to Osaka city day"
+   },
+   {
+    "externalId": "gem-shukkeien-garden",
+    "name": "Shukkeien Garden",
+    "destinationId": "osaka",
+    "date": "2027-10-28",
+    "status": "optional",
+    "notes": "Hiroshima day-trip extension"
+   },
+   {
+    "externalId": "gem-huinnyeoul-culture-village",
+    "name": "Huinnyeoul Culture Village",
+    "destinationId": "busan",
+    "date": "2027-10-31",
+    "status": "optional",
+    "notes": "Long transfer from Haeundae; carrier"
+   },
+   {
+    "externalId": "gem-ahopsan-forest",
+    "name": "Ahopsan Forest",
+    "destinationId": "busan",
+    "date": "2027-10-31",
+    "status": "alternative",
+    "notes": "Swap for coastline day, not addition"
+   },
+   {
+    "externalId": "gem-gyochon-hanok-village",
+    "name": "Gyochon Hanok Village",
+    "destinationId": "busan",
+    "date": "2027-11-01",
+    "status": "planned",
+    "notes": "Gyeongju historic center"
+   },
+   {
+    "externalId": "gem-seochon",
+    "name": "Seochon",
+    "destinationId": "seoul",
+    "date": "2027-11-03",
+    "status": "planned",
+    "notes": "After palace"
+   },
+   {
+    "externalId": "gem-eunpyeong-hanok-village",
+    "name": "Eunpyeong Hanok Village",
+    "destinationId": "seoul",
+    "date": "2027-11-04",
+    "status": "planned",
+    "notes": "Mountain backdrop"
+   },
+   {
+    "externalId": "gem-olympic-park",
+    "name": "Olympic Park",
+    "destinationId": "seoul",
+    "date": "2027-11-05",
+    "status": "planned",
+    "notes": "Stroller friendly"
+   }
+  ],
+  "budget": {
+   "currency": "EUR",
+   "target": 10035,
+   "categories": {
+    "international_flights": 2300,
+    "osaka_busan_flight": 300,
+    "accommodation": 3315,
+    "intercity_transport": 600,
+    "local_transport": 450,
+    "food": 1450,
+    "activities": 420,
+    "baby_supplies": 200,
+    "insurance_connectivity_misc": 250,
+    "contingency": 750
+   },
+   "note": "Estimated family budget, not actual expenses. Hotel shortlist target totals may exceed baseline accommodation allowance."
+  },
+  "importNotes": {
+   "time_status": "All suggested clock times are tentative; no flights, rooms, tours or tickets are booked.",
+   "location_status": "Place names are supplied without invented GPS coordinates. Geocode during import with user review.",
+   "alternatives": "Optional activities must not become confirmed reservations or mandatory itinerary stops."
+  }
+ },
+ "targetBudget": 10035,
+ "notes": "Family-paced trip, mostly rail, 13 hotel nights Japan and 7 South Korea\nAll prices and times are estimates, not reservations\nNo dog included in travel party; pet travel not planned\nAvoid assigning actual expense ledger entries for estimates",
+ "ledgerCurrency": "EUR",
+ "intent": "planned"
+}

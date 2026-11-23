@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import type { BackupSelectionOptions } from '../../../types';
 import type { SettingsData } from '../../../hooks/useSettingsData';
 import { dataService } from '../../../services/mockDb';
@@ -11,7 +11,14 @@ import { StackPanel, type StackPage } from '../../kokonutui/stack-panel';
 import ParticleButton from '../../kokonutui/particle-button';
 import HoldButton from '../../kokonutui/hold-button';
 import { RpChip, RpSection, RpSheet, RpToggle } from '../ui';
-import { ArrowsClockwise, ArrowsMerge, Database, DownloadSimple, Airplane, Trash, UploadSimple, WarningCircle } from '../../ui/hugeicons';
+import { ArrowsClockwise, ArrowsMerge, ArrowUpRight, Database, DownloadSimple, Airplane, Sparkle, Trash, UploadSimple, WarningCircle } from '../../ui/hugeicons';
+import type { TripImportResult } from '../trips/TripImportSheet';
+import { ItineraryAiGuide, TEMPLATE_NAME, TEMPLATE_URL } from '../trips/ItineraryAiGuide';
+import { useUndoToast } from '../UndoToast';
+import type { Trip } from '../../../types';
+
+// The trip importer carries the file checks (zod); it loads when first opened.
+const TripImportSheet = lazy(() => import('../trips/TripImportSheet'));
 import { cn } from '../../../utils/cn';
 import { card, CANCEL_BTN, HoldSheet, PaneHeader } from './SettingsParts';
 
@@ -265,7 +272,30 @@ const RefreshSheet: React.FC<{ open: boolean; onClose: () => void; onDone: (mess
 };
 
 export const DataPane: React.FC<{ data: SettingsData; onNavigate: (path: string) => void }> = ({ data, onNavigate }) => {
-    const [sheet, setSheet] = useState<'backup' | 'refresh' | 'wipe' | null>(null);
+    const [sheet, setSheet] = useState<'backup' | 'refresh' | 'wipe' | 'ai' | null>(null);
+    const [importing, setImporting] = useState<'closed' | 'open' | 'mounted'>('closed');
+    const undo = useUndoToast();
+    // The trips to import into: read when the importer opens, and again after an import.
+    const [trips, setTrips] = useState<Trip[]>([]);
+    const loadTrips = () => dataService.getTrips().then(setTrips).catch(() => setTrips([]));
+    useEffect(() => { if (importing === 'open') void loadTrips(); }, [importing]);
+    const imported = ({ trip, previous }: TripImportResult) => {
+        void loadTrips();
+        undo.show(previous ? `Imported the itinerary into ${trip.name}` : `Created ${trip.name}`, async () => {
+            try {
+                if (previous) await dataService.applyBatch({ upsertTrips: [previous] }, { skipGeocoding: true });
+                else await dataService.applyBatch({ deleteTrips: [trip.id] });
+            } catch (e) { toast.error(errorMessage(e, "Couldn't undo the import.")); }
+        }, { duration: 10000, action: { label: 'Open', icon: ArrowUpRight, onClick: () => onNavigate(`/trip/${trip.id}`) } });
+    };
+    const downloadTemplate = () => {
+        const a = document.createElement('a');
+        a.href = TEMPLATE_URL;
+        a.download = TEMPLATE_NAME;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    };
     const [restore, setRestore] = useState<{ name: string; state: any } | null>(null);
     const [lastRefresh, setLastRefresh] = useState<string>('');
     const fileRef = useRef<HTMLInputElement>(null);
@@ -296,6 +326,15 @@ export const DataPane: React.FC<{ data: SettingsData; onNavigate: (path: string)
                     ],
                 },
                 {
+                    title: 'Trips',
+                    rows: [
+                        { id: 'import-itinerary', icon: UploadSimple, label: 'Import itinerary', detail: 'JSON file', onSelect: () => setImporting('open') },
+                        { id: 'ai-guide', icon: Sparkle, label: 'Make a trip file with AI', detail: 'How it works', onSelect: () => setSheet('ai') },
+                        { id: 'template', icon: DownloadSimple, label: 'Download the template', detail: 'For AI assistants', onSelect: downloadTemplate },
+                    ],
+                    footer: 'Plan a whole trip with ChatGPT, Claude or another AI assistant, then import it as a trip: days, stays to consider, transport and a budget estimate. Nothing is marked as booked.',
+                },
+                {
                     title: 'Lists',
                     rows: [
                         { id: 'refresh', icon: ArrowsClockwise, label: 'Refresh airports and carriers', detail: lastRefresh ? 'Just now' : hasServer() ? undefined : 'Needs the server', onSelect: () => setSheet('refresh') },
@@ -321,6 +360,13 @@ export const DataPane: React.FC<{ data: SettingsData; onNavigate: (path: string)
 
             <BackupSheet open={sheet === 'backup'} data={data} onClose={() => setSheet(null)} />
             <RestoreSheet file={restore} onClose={() => setRestore(null)} />
+            <ItineraryAiGuide open={sheet === 'ai'} onClose={() => setSheet(null)} onImport={() => { setSheet(null); setImporting('open'); }} />
+            {importing !== 'closed' ? (
+                <Suspense fallback={null}>
+                    <TripImportSheet open={importing === 'open'} trips={trips} onClose={() => setImporting('mounted')} onImported={imported} onOpenTrip={id => onNavigate(`/trip/${id}`)} onShowGuide={() => { setImporting('mounted'); setSheet('ai'); }} />
+                </Suspense>
+            ) : null}
+            {undo.host}
             <RefreshSheet open={sheet === 'refresh'} onClose={() => setSheet(null)} onDone={setLastRefresh} />
             <HoldSheet
                 open={sheet === 'wipe'}

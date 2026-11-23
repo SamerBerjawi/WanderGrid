@@ -77,4 +77,16 @@ _Nothing open._
 - **Recommendation:** A, auth and records first (they hold the security rules).
 - **Status:** Decided 2026-11-12: Option A, done in PRs #79, #80, #81 and the schema PR. `server.js` went from 3.8k to about 1k lines: `records.js`, `recordRoutes.js`, `auth.js`, `settings.js`, `jobs.js`, `proxy.js` and `dbSchema.js` are pure moves with explicit dependencies and the original route order, checked by the API tests and a no-undef lint.
 
+### D-08 Importing and exporting whole itineraries
+- **Context:** a full travel plan (days, stops, proposed legs, hotel shortlists, hidden gems, a budget estimate)
+  arrives as one JSON file. The trip model held bookings, not plans: no day headings, no shortlist, no notion of
+  "not booked".
+- **Options:** A) a separate itinerary collection; B) optional `plan` metadata on the trip and its items, written
+  through the existing `/api/batch` transaction; C) import into notes only.
+- **Decision (2026-11-23):** B. One trip record per import (atomic, versioned, permission-checked like any trip
+  write), no migration: every new field is optional and old readers ignore it. Candidates stay in `trip.plan.stays`
+  until booked; proposed legs stay out of the flight log. Re-imports match records by the file's ids and only change
+  fields nobody edited (a per-record fingerprint); everything else is a conflict the user settles. Validation uses
+  `zod` (already installed through loaders.gl), loaded only with the import sheet. Contract: `docs/TRIP_INTERCHANGE.md`.
+
 _See `UI_UX_DESIGN_REFERENCE.md` §7 and `audit/plan.md` §2 for earlier decisions._

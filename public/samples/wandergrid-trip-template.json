@@ -1,0 +1,273 @@
+{
+  "$comment": [
+    "WanderGrid trip file. Instructions for the AI assistant filling it in: read all of these, then replace the example trip with the user's itinerary.",
+    "OUTPUT: reply with one JSON object only, in exactly this structure. No markdown, no code fences, no comments, no trailing commas. Keep \"format\" and \"schema_version\" exactly as they are. You may keep or drop this \"$comment\" field.",
+    "DO NOT INVENT what isn't known: leave times, flight or train numbers, booking references, prices and addresses as null. Never add GPS coordinates. Nothing is booked unless the user says so.",
+    "DATES are YYYY-MM-DD; TIMES are 24-hour HH:mm in local time, or null. trip.start_date to trip.end_date covers the whole trip, including travel days.",
+    "IDS: every \"id\" is unique within its list (activity ids unique across all days), lowercase, with no spaces or slashes, e.g. \"day-2027-05-02\", \"act-belem-tower\". trip.external_id names the trip and must never change. When the user asks for changes later, keep the existing ids so WanderGrid updates the trip instead of duplicating it.",
+    "DESTINATIONS: one entry per base, in order. arrival_date/departure_date are the nights there (the next base's arrival_date = this departure_date). country_code is the ISO two-letter code (JP, KR, PT).",
+    "DAYS: exactly one entry per date from start_date to end_date, day_number counting from 1. destination_id is the base you sleep at that night (a destinations[].id), or null on the travel days at the very start and end. title and summary describe the day in a few words.",
+    "ACTIVITIES (inside each day): title is the place or experience; location_name its place name; order its position in the day. priority is recommended, optional, alternative (instead of another item) or planned (must do). booking_status is unbooked unless the user booked it. start_time null and time_status \"unscheduled\" unless a time matters (then time_status \"tentative\"). notes for practical tips.",
+    "STAYS (accommodation_stays): one per base, with check_in/check_out matching the destination and nights = the number of nights. hotel_options are suggestions ranked 1, 2, 3 with status \"candidate\". Only if the user has booked a hotel: status \"booked\", that option's status \"booked\", and a \"booking\" object. target_per_night_eur is a nightly budget in EUR (use target_per_night instead for another currency).",
+    "TRANSPORT: one entry per leg between bases and for day trips, on its date. mode is one of Flight, Train, Bus, Ferry, Cruise, Car Rental, Personal Car (names like Shinkansen, KTX or coach are fine). A leg mixing modes may be written \"Train/Bus\". status is unbooked unless booked. Put durations and advice in notes.",
+    "BUDGET is an estimate, never spending: currency is a three-letter code, target the total, categories (any names, snake_case) add up to target.",
+    "DAY_TRIPS: one per day spent away from the base and back, with estimated_total_hours like \"6-8\" and priority planned or optional.",
+    "HIDDEN_GEMS: lesser-known places worth the detour. name must match the title of an activity on the same date; status planned, optional or alternative.",
+    "Leave out fields you have nothing for, or set them to null. Lists with nothing in them are []."
+  ],
+  "schema_version": "1.0.0",
+  "format": "wandergrid-trip-interchange",
+  "trip": {
+    "external_id": "my-trip-2027",
+    "name": "Lisbon and Porto",
+    "start_date": "2027-05-01",
+    "end_date": "2027-05-05",
+    "status": "planning",
+    "classification": "Personal",
+    "currency": "EUR",
+    "origin": "Brussels, Belgium",
+    "travelers": [
+      {
+        "label": "Adult 1",
+        "type": "adult"
+      },
+      {
+        "label": "Adult 2",
+        "type": "adult"
+      }
+    ],
+    "notes": [
+      "All prices and times are estimates, not reservations"
+    ]
+  },
+  "destinations": [
+    {
+      "id": "lisbon",
+      "name": "Lisbon",
+      "country_code": "PT",
+      "arrival_date": "2027-05-01",
+      "departure_date": "2027-05-03",
+      "recommended_area": "Baixa or Chiado"
+    },
+    {
+      "id": "porto",
+      "name": "Porto",
+      "country_code": "PT",
+      "arrival_date": "2027-05-03",
+      "departure_date": "2027-05-05",
+      "recommended_area": "Ribeira"
+    }
+  ],
+  "days": [
+    {
+      "id": "day-1",
+      "date": "2027-05-01",
+      "day_number": 1,
+      "destination_id": "lisbon",
+      "title": "Arrival",
+      "summary": "Flight in; Alfama walk at sunset",
+      "activities": [
+        {
+          "id": "act-alfama",
+          "title": "Alfama",
+          "location_name": "Alfama",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": null
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "day-2",
+      "date": "2027-05-02",
+      "day_number": 2,
+      "destination_id": "lisbon",
+      "title": "Belém",
+      "summary": "Monastery and tower; optional LX Factory",
+      "activities": [
+        {
+          "id": "act-jeronimos",
+          "title": "Jerónimos Monastery",
+          "location_name": "Jerónimos Monastery",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": "10:00",
+          "time_status": "tentative",
+          "notes": "Book a timed ticket"
+        },
+        {
+          "id": "act-lxfactory",
+          "title": "LX Factory",
+          "location_name": "LX Factory",
+          "order": 2,
+          "priority": "optional",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": null
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "day-3",
+      "date": "2027-05-03",
+      "day_number": 3,
+      "destination_id": "porto",
+      "title": "To Porto",
+      "summary": "Train north; Ribeira in the evening",
+      "activities": [],
+      "notes": []
+    },
+    {
+      "id": "day-4",
+      "date": "2027-05-04",
+      "day_number": 4,
+      "destination_id": "porto",
+      "title": "Porto",
+      "summary": "Livraria Lello; port cellars across the river",
+      "activities": [
+        {
+          "id": "act-cellars",
+          "title": "Port cellars in Vila Nova de Gaia",
+          "location_name": "Vila Nova de Gaia",
+          "order": 1,
+          "priority": "recommended",
+          "booking_status": "unbooked",
+          "start_time": null,
+          "time_status": "unscheduled",
+          "notes": null
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "day-5",
+      "date": "2027-05-05",
+      "day_number": 5,
+      "destination_id": null,
+      "title": "Home",
+      "summary": "Flight back",
+      "activities": [],
+      "notes": []
+    }
+  ],
+  "accommodation_stays": [
+    {
+      "id": "stay-lisbon",
+      "destination_id": "lisbon",
+      "check_in": "2027-05-01",
+      "check_out": "2027-05-03",
+      "nights": 2,
+      "status": "unbooked",
+      "preferred_area": "Baixa or Chiado",
+      "target_per_night_eur": 150,
+      "hotel_options": [
+        {
+          "id": "hotel-lisbon-1",
+          "name": "Example Hotel Chiado",
+          "rank": 1,
+          "status": "candidate"
+        },
+        {
+          "id": "hotel-lisbon-2",
+          "name": "Example Guesthouse Baixa",
+          "rank": 2,
+          "status": "candidate"
+        }
+      ],
+      "family_requirements": [
+        "lift access"
+      ],
+      "notes": null
+    },
+    {
+      "id": "stay-porto",
+      "destination_id": "porto",
+      "check_in": "2027-05-03",
+      "check_out": "2027-05-05",
+      "nights": 2,
+      "status": "booked",
+      "hotel_options": [
+        {
+          "id": "hotel-porto-1",
+          "name": "Example Hotel Ribeira",
+          "rank": 1,
+          "status": "booked"
+        }
+      ],
+      "booking": {
+        "check_in_time": "15:00",
+        "check_out_time": "11:00",
+        "confirmation_code": null,
+        "cost": 260
+      }
+    }
+  ],
+  "transport": [
+    {
+      "id": "leg-out",
+      "date": "2027-05-01",
+      "mode": "Flight",
+      "origin": "Brussels",
+      "destination": "Lisbon",
+      "status": "unbooked",
+      "departure_time": null,
+      "arrival_time": null,
+      "notes": "Morning flight preferred"
+    },
+    {
+      "id": "leg-north",
+      "date": "2027-05-03",
+      "mode": "Train",
+      "origin": "Lisbon",
+      "destination": "Porto",
+      "status": "unbooked",
+      "departure_time": null,
+      "arrival_time": null,
+      "notes": "About 3 h"
+    },
+    {
+      "id": "leg-home",
+      "date": "2027-05-05",
+      "mode": "Flight",
+      "origin": "Porto",
+      "destination": "Brussels",
+      "status": "unbooked",
+      "departure_time": null,
+      "arrival_time": null,
+      "notes": null
+    }
+  ],
+  "budget": {
+    "currency": "EUR",
+    "target": 1500,
+    "categories": {
+      "flights": 400,
+      "accommodation": 560,
+      "food": 350,
+      "activities": 90,
+      "contingency": 100
+    },
+    "note": "Estimate, not actual expenses"
+  },
+  "day_trips": [],
+  "hidden_gems": [
+    {
+      "id": "gem-lxfactory",
+      "name": "LX Factory",
+      "destination_id": "lisbon",
+      "date": "2027-05-02",
+      "status": "optional",
+      "notes": "Former factory with shops and cafés"
+    }
+  ],
+  "import_notes": {
+    "time_status": "Times are tentative; nothing is booked unless its status says so."
+  }
+}

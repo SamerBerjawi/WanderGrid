@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Trip } from '../../types';
 import { useTripsData, type TripDraft } from '../../hooks/useTripsData';
 import { canMoveTo, sortTrips, tripMatches, tripYears, type TripBucket, type TripSort } from '../../utils/tripsModel';
@@ -24,8 +24,12 @@ import { LeavePlanSheet } from '../../components/new/trips/LeavePlanSheet';
 import { LeavePlannerContext, addStarterLeaveType, takeLeave, useLeavePlanner } from '../../hooks/useLeavePlanner';
 import { openPage } from '../../utils/appNavigation';
 import { BookingImportSheet, type BookingImportResult } from '../../components/new/trips/BookingImportSheet';
+import type { TripImportResult } from '../../components/new/trips/TripImportSheet';
+import { ItineraryAiGuide } from '../../components/new/trips/ItineraryAiGuide';
+// The importer carries the file checks (zod); it loads when first opened.
+const TripImportSheet = lazy(() => import('../../components/new/trips/TripImportSheet'));
 import { dataService } from '../../services/mockDb';
-import { Archive, ArrowDown, ArrowUpRight, CalendarBlank, DownloadSimple, Envelope, Kanban, List, MagnifyingGlass, MapPin, MapTrifold, Plus, Receipt, Stack, Suitcase, Tag, XCircle } from '../../components/ui/hugeicons';
+import { Archive, ArrowDown, ArrowUpRight, CalendarBlank, DownloadSimple, Envelope, Kanban, List, MagnifyingGlass, MapPin, MapTrifold, Plus, Receipt, Stack, Suitcase, Tag, UploadSimple, XCircle } from '../../components/ui/hugeicons';
 import { cn } from '../../utils/cn';
 
 /**
@@ -123,6 +127,8 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     const [leaveTripId, setLeaveTripId] = useState<string | null>(null);
     const leaveTrip = leaveTripId ? data.trips.find(t => t.id === leaveTripId) ?? null : null;
     const [bookingOpen, setBookingOpen] = useState(false);
+    const [planImport, setPlanImport] = useState<'closed' | 'open' | 'mounted'>('closed');
+    const [aiGuide, setAiGuide] = useState(false);
 
     const changeView = (next: View) => {
         setView(next);
@@ -217,6 +223,14 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
     });
     const openTrip = (trip: Trip) => { if (onTripClick) onTripClick(trip.id); };
 
+    const planImported = ({ trip, previous }: TripImportResult) => {
+        void data.reload();
+        undo.show(previous ? `Imported the itinerary into ${trip.name}` : `Created ${trip.name}`, () => attempt(async () => {
+            if (previous) await dataService.applyBatch({ upsertTrips: [previous] }, { skipGeocoding: true });
+            else await dataService.applyBatch({ deleteTrips: [trip.id] });
+            await data.reload();
+        }), { duration: 10000, action: onTripClick ? { label: 'Open', icon: ArrowUpRight, onClick: () => onTripClick(trip.id) } : undefined });
+    };
     const bookingImported = ({ trip, previous, adopted, added }: BookingImportResult) => {
         void data.reload();
         const what = `${added} ${added === 1 ? 'booking' : 'bookings'}`;
@@ -280,6 +294,7 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
         { id: 'new', label: 'New trip', icon: Plus as any, action: () => setSheet({ kind: 'create', bucket: 'planned' }) },
         ...(offline.packs.length > 0 ? [{ id: 'offline', label: 'Saved for offline', icon: DownloadSimple as any, action: () => setPacksOpen(true) }] : []),
         { id: 'booking', label: 'Import a booking', icon: Envelope as any, action: () => setBookingOpen(true) },
+        { id: 'itinerary', label: 'Import itinerary', icon: UploadSimple as any, action: () => setPlanImport('open') },
     ];
 
     const dragEnabled = !mobile && view !== 'list' && scope === 'active';
@@ -500,6 +515,12 @@ export const TripsNew: React.FC<TripsNewProps> = ({ onTripClick }) => {
                 onOpenCalendar={() => { setLeaveTripId(null); openPage('/calendar'); }}
                 onCreateType={() => addStarterLeaveType(leaveTrip ? planner.memberFor(leaveTrip) : undefined, data.reload)}
             />
+            {planImport !== 'closed' ? (
+                <Suspense fallback={null}>
+                    <TripImportSheet open={planImport === 'open'} trips={data.trips} onClose={() => setPlanImport('mounted')} onImported={planImported} onOpenTrip={onTripClick} onShowGuide={() => { setPlanImport('mounted'); setAiGuide(true); }} />
+                </Suspense>
+            ) : null}
+            <ItineraryAiGuide open={aiGuide} onClose={() => setAiGuide(false)} onImport={() => { setAiGuide(false); setPlanImport('open'); }} />
             <BookingImportSheet open={bookingOpen} trips={data.trips} brandfetchApiKey={data.brandfetchApiKey} onClose={() => setBookingOpen(false)} onImported={bookingImported} />
             <DeleteTripSheet trip={deleting} onClose={() => setDeleting(null)} onConfirm={confirmDelete} />
             {undo.host}
